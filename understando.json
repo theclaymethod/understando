@@ -1,0 +1,5 @@
+{
+  "default_questions": 5,
+  "default_level": "medium",
+  "pass_threshold": 0.8
+}
