@@ -1,7 +1,7 @@
 #!/bin/bash
 # Understando Pre-Commit Gate
 # Intercepts git commit commands and triggers the understando quiz
-# unless the --understando-passed flag is present
+# unless the quiz was already passed (indicated by .understando-passed file)
 
 set -e
 
@@ -22,12 +22,11 @@ if [[ "$command" != *"git commit"* ]]; then
   exit 0
 fi
 
-# Check for --understando-passed flag (quiz already passed)
-if [[ "$command" == *"--understando-passed"* ]]; then
-  # Strip the flag and allow the commit
-  # Output modified command for Claude to use
-  modified_command=$(echo "$command" | sed 's/--understando-passed//g' | sed 's/  */ /g' | sed 's/ *$//')
-  echo "{\"modifiedCommand\": \"$modified_command\"}" >&2
+# Check for quiz-passed marker file in project directory
+MARKER_FILE="${CLAUDE_PROJECT_DIR:-.}/.understando-passed"
+if [[ -f "$MARKER_FILE" ]]; then
+  # Quiz was passed, allow commit and clean up marker
+  rm -f "$MARKER_FILE"
   exit 0
 fi
 
@@ -39,7 +38,7 @@ Before committing, you must pass the Understando quiz to verify you understand t
 
 Please run the /understando skill now to start the quiz.
 
-After passing (or choosing to skip), retry the commit with the --understando-passed flag.
+After passing (or choosing to skip), the commit will proceed automatically.
 EOF
 
 exit 2

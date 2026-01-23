@@ -86,7 +86,7 @@ Quiz Complete! You scored X/Y (Z%)
 
 Proceeding with commit...
 ```
-Then execute the original commit command with `--understando-passed` flag appended.
+Create a marker file `.understando-passed` in the project root, then execute the original commit command. The hook will see this marker and allow the commit through.
 
 **If FAILED:**
 ```
@@ -105,7 +105,7 @@ Would you like to try again with new questions? (yes/skip)
 ```
 
 - If "yes" or "y": Generate NEW questions (not the same ones), go back to Step 4
-- If "skip": Show shame message, then execute commit with `--understando-passed` flag
+- If "skip": Show shame message, create `.understando-passed` marker, then execute the commit
 
 ### Shame Message
 
@@ -125,7 +125,7 @@ Proceeding with commit anyway...
 1. **Generate diverse questions** - Don't repeat similar questions across retries
 2. **Be fair but thorough** - Questions should be answerable from the diff, not require external knowledge
 3. **Keep it interactive** - Wait for user input after each question
-4. **Strip the flag** - When retrying the commit, the `--understando-passed` flag tells the hook to allow it through. Make sure to include it.
+4. **Create marker file** - Before committing, create `.understando-passed` file so the hook allows the commit through. The hook will automatically delete this file after the commit.
 
 ## Example Questions by Difficulty
 

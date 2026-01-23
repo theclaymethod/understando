@@ -180,9 +180,8 @@ Type `skip` when prompted to bypass the quiz. You'll see a gentle reminder about
               ▼                               ▼
 ┌──────────────────────┐        ┌──────────────────────┐
 │  ≥80%: PASS          │        │  <80%: FAIL          │
-│  Commit proceeds     │        │  Show explanations   │
-│  (--understando-     │        │  Retry or skip?      │
-│   passed flag)       │        │                      │
+│  Creates marker file │        │  Show explanations   │
+│  Commit proceeds     │        │  Retry or skip?      │
 └──────────────────────┘        └──────────────────────┘
 ```
 
