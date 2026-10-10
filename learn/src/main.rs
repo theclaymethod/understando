@@ -130,6 +130,7 @@ async fn main() {
         std::process::exit(1);
     };
 
+    git::sweep_stale(&std::env::temp_dir());
     let scratch = std::env::temp_dir().join(format!("understando-learn-{}-{}", std::process::id(), &uuid::Uuid::new_v4().to_string()[..8]));
     let ws = match git::Workspace::create(&repo, map.head(), &scratch) {
         Ok(w) => w,

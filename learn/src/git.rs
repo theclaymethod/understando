@@ -66,11 +66,9 @@ impl Workspace {
         Ok(())
     }
 
-    /// Remove the worktree, the clone and the root. Safe to call twice.
+    /// Remove the worktree, the clone and the root. The worktree metadata lives in the clone, so
+    /// one recursive delete removes all of it, and the user's repo holds no trace. Safe to call twice.
     pub fn remove(&self) {
-        if self.worktree.exists() {
-            let _ = git(&self.clone, &["worktree", "remove", "--force", self.worktree.to_str().unwrap()]);
-        }
         let _ = std::fs::remove_dir_all(&self.root);
     }
 
@@ -92,5 +90,21 @@ impl Workspace {
             return Err(format!("The path {rel:?} leaves the worktree."));
         }
         Ok(path)
+    }
+}
+
+/// Remove scratch folders that an earlier run left when it was killed: `understando-learn-<pid>-*`
+/// in the temp folder, where no process with that pid is alive.
+pub fn sweep_stale(temp: &Path) {
+    let Ok(entries) = std::fs::read_dir(temp) else { return };
+    for e in entries.flatten() {
+        let name = e.file_name().to_string_lossy().to_string();
+        let Some(rest) = name.strip_prefix("understando-learn-") else { continue };
+        let Some(pid) = rest.split('-').next().and_then(|p| p.parse::<i32>().ok()) else { continue };
+        // SAFETY: signal 0 only checks that the process exists.
+        let alive = unsafe { libc::kill(pid, 0) } == 0 || std::io::Error::last_os_error().raw_os_error() == Some(libc::EPERM);
+        if !alive && e.path().join("clone").exists() {
+            let _ = std::fs::remove_dir_all(e.path());
+        }
     }
 }
