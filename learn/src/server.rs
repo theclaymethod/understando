@@ -44,6 +44,9 @@ pub struct App {
     pub codex_auth: Result<CodexAuth, String>,
     pub api_key_repo: bool,
     pub deny_read: Vec<String>,
+    pub probes: Vec<agent::Probe>,
+    /// Some(reason) when the Codex read-deny check failed: the Codex shell is then off.
+    pub codex_deny: Mutex<Option<String>>,
     pub sandbox_ready: bool,
     pub busy: Mutex<Option<(String, watch::Sender<bool>)>>,
     pub proposals: Mutex<HashMap<String, (String, String)>>,
@@ -217,7 +220,11 @@ async fn setup(State(app): State<Shared>, Query(q): Query<HashMap<String, String
             return Json(v.clone());
         }
     }
+    let codex_deny = app.codex_deny.lock().unwrap().clone();
     let v = doctor::run(doctor::DoctorInput {
+        deny_read: &app.deny_read,
+        probes: &app.probes,
+        codex_deny,
         cwd: &app.ws.worktree,
         scratch: &app.ws.root,
         codex_auth: app.codex_auth.clone(),
@@ -519,6 +526,7 @@ async fn explain_back(State(app): State<Shared>, Json(body): Json<Value>) -> Res
         output_schema: Some(tutor::grader_schema()),
         codex_auth: auth,
         deny_read: vec![],
+        probes: vec![],
     };
     let out = agent::run(call, cancel_rx, |_| {}).await;
     let _ = std::fs::remove_dir_all(&empty);
@@ -603,7 +611,8 @@ async fn chat(State(app): State<Shared>, Json(body): Json<Value>) -> Response {
         let user = json!({"id": uuid::Uuid::new_v4().to_string(), "role": "user", "text": message, "level": level,
                           "context": Value::Object(context.clone()), "createdAt": doctor::now()});
         messages.push(user);
-        let shell = app.sandbox_ready;
+        let codex_blocked = provider == Provider::Codex && app.codex_deny.lock().unwrap().is_some();
+        let shell = app.sandbox_ready && !codex_blocked;
         let mut assistant = json!({"id": uuid::Uuid::new_v4().to_string(), "role": "assistant", "text": "", "provider": provider.id(),
             "tier": "guess", "status": "streaming", "createdAt": doctor::now(), "tools": [], "actions": [], "shell": shell});
         let _ = tx.send(json!({"type": "message", "message": assistant}));
@@ -627,6 +636,7 @@ async fn chat(State(app): State<Shared>, Json(body): Json<Value>) -> Response {
             output_schema: None,
             codex_auth: auth,
             deny_read: app.deny_read.clone(),
+            probes: app.probes.clone(),
         };
         let stream = Arc::new(Mutex::new((TagStream::default(), String::new(), Vec::<Value>::new(), Vec::<Value>::new())));
         let handle = |pieces: Vec<Piece>, st: &mut (TagStream, String, Vec<Value>, Vec<Value>)| {
@@ -698,6 +708,9 @@ async fn chat(State(app): State<Shared>, Json(body): Json<Value>) -> Response {
                 assistant["usage"] = a.usage;
             }
             Err(e) => {
+                if e.starts_with(agent::DENY_CHECK_FAILED) {
+                    *app.codex_deny.lock().unwrap() = Some(e.clone());
+                }
                 assistant["status"] = json!("error");
                 assistant["text"] = json!(if streamed.is_empty() { format!("The tutor could not answer: {e}") } else { streamed });
                 let _ = tx.send(json!({"type": "error", "message": e}));

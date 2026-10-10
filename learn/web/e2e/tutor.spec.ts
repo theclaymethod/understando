@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync, mkdtempSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdtempSync, mkdirSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test, expect, worktreeList } from "./fixtures";
@@ -67,12 +67,18 @@ for (const provider of ["claude", "codex"] as const) {
       for (const f of ["--restricted", "--strict-mcp-config", "--no-session-persistence", "--disable-slash-commands"]) expect(argv).toContain(f);
     } else {
       const turn = (await learn.calls((x) => x.cli === "codex" && x.role === "tutor"))[0];
-      expect(turn.params.sandboxPolicy).toEqual({ type: "workspaceWrite", writableRoots: [learn.worktree], networkAccess: false, excludeTmpdirEnvVar: true, excludeSlashTmp: true });
+      // The permission profile is the sandbox, so neither the thread nor the turn sets one.
+      expect(turn.params.sandboxPolicy).toBeUndefined();
       expect(turn.params.approvalPolicy).toBe("never");
       const thread = (await learn.calls((x) => x.cli === "codex" && x.role === "thread"))[0];
-      expect(thread.params.sandbox).toBe("workspace-write");
+      expect(thread.params.sandbox).toBeUndefined();
       const args = thread.argv!.join(" ");
+      expect(args).toContain('default_permissions="learn"');
+      expect(args).toContain('permissions.learn={extends=":read-only", filesystem={' + JSON.stringify(learn.worktree) + '="write"');
       for (const f of ["features.plugins=false", "features.hooks=false", "features.browser_use=false", "features.multi_agent=false", "features.memories=false", 'web_search="disabled"', 'approval_policy="never"', "mcp_servers.docs={enabled=false"]) expect(args).toContain(f);
+      // The turn ran only after the deny probes passed in the same app-server.
+      const probes = await learn.calls((x) => x.cli === "codex" && x.role === "probe");
+      expect(probes.some((p: any) => p.command[1].endsWith("/canary/deep/.env.local") && p.ok === false)).toBe(true);
       expect(args).not.toContain("features.shell_tool=false");
     }
   });
@@ -128,4 +134,46 @@ test("codex on a function-intelligence run: the key comes from the .env file by 
   expect(learn.output()).not.toContain("sk-synthetic");
   const page2 = await (await fetch(`${learn.origin}/api/setup`)).text();
   expect(page2).not.toContain("sk-synthetic");
+});
+
+for (const provider of ["claude", "codex"] as const) {
+  test(`${provider}: a shell cat of a planted secret outside the worktree fails`, async ({ page, learn }) => {
+    const repo = realpathSync(learn.repo);
+    const secret = "sk-planted-e2e-secret-0123456789";
+    writeFileSync(join(repo, ".env"), `OPENAI_API_KEY=${secret}\n`);
+    mkdirSync(join(repo, "config"), { recursive: true });
+    writeFileSync(join(repo, "config", ".env.local"), `TOKEN=${secret}\n`);
+    await learn.configureFake({ reads: [join(repo, ".env"), join(repo, "config", ".env.local"), "wallet/core.py"] });
+    await learn.open(page);
+    await page.getByRole("radio", { name: provider === "claude" ? /Claude Code/ : /Codex/ }).check();
+    await ask(page, "Read three files.");
+    const answer = page.getByTestId("msg-assistant").last();
+    await expect(answer).toContainText("Tutor shell and file tools (3)");
+    await answer.locator("summary").click();
+    await expect(answer.locator("li").filter({ hasText: ".env" }).first()).toContainText("failed");
+    await expect(answer.locator("li").filter({ hasText: "wallet/core.py" })).toContainText("completed");
+    const saved = readFileSync(join(learn.run, "my-work", "tutor-conversation.json"), "utf8");
+    expect(saved).not.toContain(secret);
+    if (provider === "claude") {
+      const [c] = await learn.calls((x) => x.cli === "claude" && x.role === "tutor");
+      for (const p of [repo, "/Users/clayton/dev/function-intelligence/**/.env*", `${process.env.HOME}/.codex`, `${process.env.HOME}/Library/Keychains`, `${process.env.HOME}/.docker/config.json`])
+        expect(c.settings.sandbox.filesystem.denyRead).toContain(p);
+    }
+  });
+}
+
+test("codex fails closed: when the deny check fails, the shell is off and the doctor says why", async ({ page, startLearn }) => {
+  const learn = await startLearn({ fakeConfig: { breakDeny: true } });
+  await learn.open(page, "setup");
+  await expect(page.getByTestId("check-codex-deny")).toContainText("needs-action");
+  await expect(page.getByTestId("check-codex-deny")).toContainText("the Codex shell is off");
+  await expect(page.getByTestId("provider-codex")).toContainText("Shell: off");
+  await page.goto(`${learn.origin}/`);
+  await page.getByRole("radio", { name: /Codex/ }).check();
+  await ask(page, "Read a file.");
+  await expect(page.getByTestId("msg-assistant").last()).toContainText("e2e codex reply");
+  const thread = (await learn.calls((x) => x.cli === "codex" && x.role === "thread")).at(-1)!;
+  expect(thread.argv).toContain("features.shell_tool=false");
+  expect(thread.argv!.join(" ")).not.toContain("default_permissions");
+  expect(thread.params.sandbox).toBe("read-only");
 });

@@ -48,14 +48,36 @@ The tutor is a coding agent. It can read files, run tests, use `git diff`, edit 
 |---|---|---|
 | Call | `claude -p`, stream-json | `codex app-server --stdio`, JSON-RPC |
 | Tools | Bash, Read, Grep, Glob, Edit, Write | its shell, with `shell_tool` on |
-| Sandbox | `--settings` `sandbox.enabled`, `failIfUnavailable`, `allowUnsandboxedCommands: false`, no allowed domains, `denyRead` for the checkout and the secret folders | `workspace-write`: the writable root is the worktree only, `networkAccess: false`, no `/tmp`, no `$TMPDIR` |
+| Sandbox | `--settings` `sandbox.enabled`, `failIfUnavailable`, `allowUnsandboxedCommands: false`, no allowed domains, `denyRead` with the denied paths below | the permission profile `learn`: it extends `:read-only` (no network, no write), adds write for the worktree only, and adds `deny` for the denied paths below |
 | Isolation | `--restricted`, `--setting-sources ""`, `--strict-mcp-config` with no servers, `disableAllHooks`, `--disable-slash-commands`, `--no-session-persistence`, `--permission-mode dontAsk` | each MCP server off (checked with `codex mcp list --json`), plugins, hooks, browser use, multi-agent, memories and web search off, `approval_policy=never` |
 | Account | the learner's signed-in Claude account | the learner's Codex login. For Function-Health/function-intelligence: the `OPENAI_API_KEY` in `/Users/clayton/dev/function-intelligence/.env` |
 
 - **Environment.** The server removes provider keys, agent session markers and secret-like names (`*_API_KEY`, `*_TOKEN`, `*_SECRET`, `*PASSWORD*`, `*_OP_REF`) from each child environment.
 - **Codex key.** For function-intelligence runs, Codex gets an empty `CODEX_HOME` in the scratch folder and `cli_auth_credentials_store="ephemeral"`. The server sends the key in an `account/login/start` RPC. Thus, the key is in no environment variable and in no file that Codex writes, and the shell cannot see it in its environment. The server never prints the key.
-- **Fail closed.** The doctor checks the OS sandbox (macOS `sandbox-exec`, Linux bubblewrap). When it cannot start, the Claude tutor gets Read, Grep and Glob only, and Codex gets a read-only sandbox. The app never falls back to a shell without a sandbox.
-- **Limit.** The macOS sandbox of Codex can read the whole disk. Thus, a Codex shell can read a file such as the function-intelligence `.env`. Claude's `denyRead` blocks the paths in its list.
+- **Fail closed.** The doctor checks the OS sandbox (macOS `sandbox-exec`, Linux bubblewrap). When it cannot start, the Claude tutor gets Read, Grep and Glob only, and Codex gets a read-only sandbox with `shell_tool` off. The app never falls back to a shell without a sandbox.
+
+### Denied paths
+
+The tutor shell cannot read these paths. Both providers get the same list.
+
+- The user's checkout of the reviewed repo, and each `.env*` file under it (`<checkout>/**/.env*`).
+- Each `.env*` file under `/Users/clayton/dev/function-intelligence`, and the key file `/Users/clayton/dev/function-intelligence/.env`.
+- `~/.codex`, `~/.claude`, `~/.ssh`, `~/.aws`, `~/.config/gh`, `~/.netrc`, `~/Library/Keychains` and `~/.docker/config.json`.
+- `~/.gnupg`, `~/.npmrc`, `~/.pypirc` and `~/.kube`.
+- Two canaries in the scratch folder: `canary/**/.env*` and `canary-dir/`.
+
+**The Codex layer.** A second `sandbox-exec` profile around `codex app-server` does not work. macOS refuses a nested sandbox (`sandbox_apply: Operation not permitted`) when the outer profile has a deny rule, and Codex starts its own seatbelt for each command. Thus, the deny rules go into Codex's own seatbelt, as `deny` entries of a permission profile (`-c permissions.learn=...`, `-c default_permissions="learn"`). The thread and the turn set no sandbox field, so nothing overrides the profile.
+
+**The Codex check.** Before each Codex turn, the server runs probes in the same `codex app-server` through `command/exec`, which sends no model request:
+
+- A `cat` of each canary must fail.
+- A `touch` outside the worktree must fail.
+- A `cat` of a file in the worktree must work.
+- A `cat` of the real key file must fail, when the file exists.
+
+The server also checks that the thread reports no full access and no network. The server start and the doctor run the same probes. When one probe fails, the Codex shell is off for the session, and the doctor says why.
+
+**The Claude check.** Claude Code applies `denyRead` in its own sandbox. No check without a model call exists for it. The e2e tests check that the server passes each path. `learn/web/e2e/sandbox-check.sh` checks the real denial with one live call.
 
 ### Why grading stays with the server
 
@@ -99,4 +121,4 @@ The tutor shell can edit the worktree, so its output can be wrong, and the tutor
 ## Tests
 
 - `learn/e2e.sh` builds the UI and the release binary. It runs Playwright on the fixture repo, with a fake `claude` and a fake `codex app-server` first on PATH. Then it runs the model-free #489 smoke run: start, load, one control, stop. Set `SKIP_489=1` to skip the smoke run.
-- The fake CLIs model the sandbox from the config that the server passes. `learn/web/e2e/sandbox-check.sh` checks the real sandbox with one live call. It runs only with `REAL_SANDBOX_CHECK=1`.
+- The fake CLIs model the sandbox and the read denial from the config that the server passes. `learn/web/e2e/sandbox-check.sh` checks the real sandbox with one live call. It tries a write in the worktree, a write in the checkout, the network, and a `cat` of a planted secret. It runs only with `REAL_SANDBOX_CHECK=1`.

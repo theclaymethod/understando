@@ -42,7 +42,7 @@ function toolDir(name: string) {
   throw new Error(`The e2e harness needs ${name} on PATH.`);
 }
 
-export type LaunchOptions = { repoName?: string; fiEnv?: string; mutateMap?: (map: any) => void };
+export type LaunchOptions = { repoName?: string; fiEnv?: string; mutateMap?: (map: any) => void; fakeConfig?: object };
 
 async function launch(opts: LaunchOptions = {}): Promise<Learn> {
   const dir = await mkdtemp(join(tmpdir(), "learn-e2e-"));
@@ -64,7 +64,7 @@ async function launch(opts: LaunchOptions = {}): Promise<Learn> {
   }
   const fakeConfig = join(dir, "fake-config.json");
   const fakeLog = join(dir, "fake-calls.jsonl");
-  await writeFile(fakeConfig, "{}");
+  await writeFile(fakeConfig, JSON.stringify(opts.fakeConfig ?? {}));
   await writeFile(fakeLog, "");
   const codexHome = join(dir, "codex-home");
   await mkdir(codexHome);

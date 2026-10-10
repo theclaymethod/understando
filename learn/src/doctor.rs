@@ -94,6 +94,9 @@ pub async fn codex_default_model(cenv: &agent::CodexEnv, args: &[String], cwd: &
 }
 
 pub struct DoctorInput<'a> {
+    pub deny_read: &'a [String],
+    pub probes: &'a [agent::Probe],
+    pub codex_deny: Option<String>,
     pub cwd: &'a Path,
     pub scratch: &'a Path,
     pub codex_auth: Result<CodexAuth, String>,
@@ -157,6 +160,8 @@ pub async fn run(input: DoctorInput<'_>) -> Value {
     let mut codex_detail = "Install Codex: https://developers.openai.com/codex/cli/".to_string();
     let mut codex_model = Value::Null;
     let mut isolation_detail = String::from("Not checked.");
+    let mut deny_ready = false;
+    let mut deny_detail = String::from("Not checked.");
     if codex_installed {
         match &input.codex_auth {
             Err(e) => {
@@ -181,11 +186,24 @@ pub async fn run(input: DoctorInput<'_>) -> Value {
                         Ok(args) => {
                             isolation_detail = "Every MCP server, plugin, hook, browser, multi-agent, memory and web-search feature is off.".into();
                             codex_model = codex_default_model(&cenv, &args, cwd).await.map(Value::from).unwrap_or(Value::Null);
+                            if let Some(reason) = &input.codex_deny {
+                                deny_detail = reason.clone();
+                            } else if !sandbox_ready {
+                                deny_detail = "Not checked: the OS sandbox is not ready, so the Codex shell is off.".into();
+                            } else {
+                                match agent::codex_deny_check(auth, input.scratch, cwd, input.deny_read, input.probes).await {
+                                    Ok(()) => {
+                                        deny_ready = true;
+                                        deny_detail = format!("Codex denies reads of the {} protected paths (checked with planted files), writes outside the worktree and the network.", input.deny_read.len());
+                                    }
+                                    Err(e) => deny_detail = format!("{}: {e}", agent::DENY_CHECK_FAILED),
+                                }
+                            }
                             codex_ready = auth_ok;
                             codex_detail = if !auth_ok {
                                 "Run codex login in your terminal, then check again.".into()
                             } else {
-                                format!("Ready. {}", if sandbox_ready { "The shell runs in the workspace-write sandbox, with no network." } else { "The shell is read-only: the OS sandbox is not ready." })
+                                "Ready.".to_string()
                             };
                         }
                         Err(e) => {
@@ -202,6 +220,7 @@ pub async fn run(input: DoctorInput<'_>) -> Value {
     checks.push(json!({"id": "codex", "label": "Codex", "required": false, "status": if codex_ready { "ready" } else { "needs-action" },
         "detail": codex_detail, "version": first_line(&xv.output)}));
     checks.push(check("codex-isolation", "Codex tool isolation", false, isolation_detail.starts_with("Every"), isolation_detail));
+    checks.push(check("codex-deny", "Codex read-deny layer", false, deny_ready, deny_detail));
 
     let default = if claude_ready { "claude" } else if codex_ready { "codex" } else { "claude" };
     let tutor_ready = claude_ready || codex_ready;
@@ -218,7 +237,7 @@ pub async fn run(input: DoctorInput<'_>) -> Value {
              "shell": claude_ready && sandbox_ready},
             {"id": "codex", "label": "Codex", "installed": codex_installed, "ready": codex_ready, "billing": codex_billing,
              "model": std::env::var("UNDERSTANDO_CODEX_MODEL").ok().filter(|m| !m.is_empty()).map(Value::from).unwrap_or(codex_model),
-             "shell": codex_ready && sandbox_ready}
+             "shell": codex_ready && sandbox_ready && deny_ready}
         ],
         "checks": checks
     })

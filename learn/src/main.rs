@@ -24,7 +24,53 @@ use agent::CodexAuth;
 
 const FI_REPO: &str = "function-health/function-intelligence";
 const FI_ENV: &str = "/Users/clayton/dev/function-intelligence/.env";
+const FI_ROOT: &str = "/Users/clayton/dev/function-intelligence";
 const DEFAULT_PORT: u16 = 4190;
+
+/// The paths and globs that the tutor shell must not read, and the planted files that prove it.
+///
+/// Denied: the user's checkout of the reviewed repo, each `.env*` under it and under the
+/// function-intelligence checkout, the key file, and the secret folders in HOME. The canaries in
+/// the scratch folder match the same kinds of rule (a `**/.env*` glob and a folder), so a probe
+/// that reads them tests the layer without a read of a real secret.
+fn deny_layer(repo: &Path, fi_env: &str, ws: &git::Workspace) -> (Vec<String>, Vec<agent::Probe>) {
+    let r = repo.display().to_string();
+    let canary = ws.root.join("canary");
+    let canary_dir = ws.root.join("canary-dir");
+    let note = "understando canary, not a secret\n";
+    let _ = std::fs::create_dir_all(canary.join("deep"));
+    let _ = std::fs::create_dir_all(&canary_dir);
+    let _ = std::fs::write(canary.join(".env"), note);
+    let _ = std::fs::write(canary.join("deep/.env.local"), note);
+    let _ = std::fs::write(canary_dir.join("secret.txt"), note);
+    let c = canary.display().to_string();
+    let cd = canary_dir.display().to_string();
+    let mut deny = vec![
+        r.clone(),
+        format!("{r}/**/.env*"),
+        format!("{FI_ROOT}/**/.env*"),
+        FI_ENV.to_string(),
+        fi_env.to_string(),
+        format!("{c}/**/.env*"),
+        cd.clone(),
+    ];
+    deny.extend(home_paths(&[".codex", ".claude", ".ssh", ".aws", ".config/gh", ".netrc", "Library/Keychains", ".docker/config.json", ".gnupg", ".npmrc", ".pypirc", ".kube"]));
+    deny.dedup();
+    let cat = |p: String, ok: bool| agent::Probe { argv: vec!["cat".into(), p], expect_ok: ok };
+    let mut probes = vec![
+        cat(format!("{c}/.env"), false),
+        cat(format!("{c}/deep/.env.local"), false),
+        cat(format!("{cd}/secret.txt"), false),
+        agent::Probe { argv: vec!["touch".into(), format!("{c}/write-probe")], expect_ok: false },
+        cat(ws.worktree.join(".git").display().to_string(), true),
+    ];
+    for real in [fi_env.to_string(), format!("{r}/.env")] {
+        if Path::new(&real).is_file() {
+            probes.push(cat(real, false));
+        }
+    }
+    (deny, probes)
+}
 
 struct Args {
     run_dir: PathBuf,
@@ -149,8 +195,7 @@ async fn main() {
         Ok(CodexAuth::OwnLogin)
     };
     let fi_env = std::env::var("UNDERSTANDO_FI_ENV").unwrap_or_else(|_| FI_ENV.to_string());
-    let mut deny_read = vec![repo.display().to_string(), FI_ENV.to_string(), fi_env];
-    deny_read.extend(home_paths(&[".ssh", ".aws", ".gnupg", ".netrc", ".config/gh", ".codex", ".claude", ".docker", ".npmrc", ".pypirc", ".kube"]));
+    let (deny_read, probes) = deny_layer(&repo, &fi_env, &ws);
     let (sandbox_ready, sandbox_detail) = doctor::os_sandbox(&ws.worktree).await;
 
     let origin = format!("http://127.0.0.1:{port}");
@@ -165,6 +210,8 @@ async fn main() {
         codex_auth,
         api_key_repo,
         deny_read,
+        probes,
+        codex_deny: Mutex::new(None),
         sandbox_ready,
         busy: Mutex::new(None),
         proposals: Mutex::new(HashMap::new()),
@@ -216,6 +263,19 @@ async fn main() {
             }
             *app.busy.lock().unwrap() = None;
             println!("worktree setup: done");
+        });
+    }
+
+    // Check the Codex read-deny layer once, with no model request. A failure turns the Codex shell off.
+    if sandbox_ready && proc::which("codex").is_some() {
+        let app = app.clone();
+        tokio::spawn(async move {
+            let Ok(auth) = app.codex_auth.clone() else { return };
+            if let Err(e) = agent::codex_deny_check(&auth, &app.ws.root, &app.ws.worktree, &app.deny_read, &app.probes).await {
+                let reason = format!("{}: {e}", agent::DENY_CHECK_FAILED);
+                eprintln!("{reason}");
+                *app.codex_deny.lock().unwrap() = Some(reason);
+            }
         });
     }
 

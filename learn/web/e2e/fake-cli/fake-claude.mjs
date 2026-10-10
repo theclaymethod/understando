@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // A fake `claude` CLI for the learn e2e tests: --version, auth status, --help and `-p` calls in
 // the stream-json format. It logs its argv (without the system prompt), cwd and settings.
-import { log, readConfig, sandboxedWrite } from "./common.mjs";
+import { log, readConfig, sandboxedRead, sandboxedWrite } from "./common.mjs";
 
 const argv = process.argv.slice(2);
 const flag = (name) => { const i = argv.indexOf(name); return i < 0 ? undefined : argv[i + 1]; };
@@ -26,6 +26,12 @@ const shell = tools.includes("Bash") && settings.sandbox?.enabled === true;
 
 const lines = [{ type: "system", subtype: "init", model: "claude-e2e" }];
 if (role === "tutor") {
+  for (const [n, path] of (config.reads ?? []).entries()) {
+    const id = `toolu_r${n}`;
+    lines.push({ type: "assistant", message: { model: "claude-e2e", content: [{ type: "tool_use", id, name: "Bash", input: { command: `cat ${path}` } }] } });
+    const r = shell ? sandboxedRead(path, settings.sandbox.filesystem?.denyRead ?? []) : { ok: false, detail: "Bash is not available" };
+    lines.push({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: id, is_error: !r.ok, content: r.detail }] } });
+  }
   for (const [n, w] of (config.writes ?? []).entries()) {
     const id = `toolu_${n}`;
     lines.push({ type: "assistant", message: { model: "claude-e2e", content: [{ type: "tool_use", id, name: "Bash", input: { command: `cat > ${w.path}` } }] } });

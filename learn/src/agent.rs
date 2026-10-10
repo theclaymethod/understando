@@ -70,9 +70,23 @@ pub struct Call {
     pub cwd: PathBuf,
     pub output_schema: Option<Value>,
     pub codex_auth: CodexAuth,
-    /// Paths that the sandboxed shell must not read: the user's checkout and secret folders.
+    /// Paths and globs that the sandboxed shell must not read: the user's checkout, `.env*`
+    /// files and secret folders.
     pub deny_read: Vec<String>,
+    /// Codex only: commands that check the read-deny layer before the turn starts.
+    pub probes: Vec<Probe>,
 }
+
+/// One check of the deny layer: `argv` runs in the Codex sandbox through `command/exec`, which
+/// sends no model request. `expect_ok` false means the command must fail (a denied read or write).
+#[derive(Clone, Debug)]
+pub struct Probe {
+    pub argv: Vec<String>,
+    pub expect_ok: bool,
+}
+
+/// The prefix of the error when the Codex deny check fails. The server then turns the shell off.
+pub const DENY_CHECK_FAILED: &str = "The Codex read-deny check failed, so the Codex shell is off";
 
 #[derive(Debug)]
 pub enum Event {
@@ -163,7 +177,7 @@ async fn run_claude(call: Call, cancel: watch::Receiver<bool>, mut on_event: imp
     let mut model = None;
     let mut usage = Value::Null;
     let mut stderr_tail = String::new();
-    let mut tools: HashMap<String, String> = HashMap::new();
+    let mut tools: HashMap<String, (String, String)> = HashMap::new();
     let out = proc::run(
         proc::Spec {
             program: "claude",
@@ -198,7 +212,7 @@ async fn run_claude(call: Call, cancel: watch::Receiver<bool>, mut on_event: imp
                             let id = b.get("id").and_then(Value::as_str).unwrap_or("tool").to_string();
                             let name = b.get("name").and_then(Value::as_str).unwrap_or("tool").to_string();
                             let detail = b.get("input").map(|i| clip(&i.to_string(), 400)).unwrap_or_default();
-                            tools.insert(id.clone(), name.clone());
+                            tools.insert(id.clone(), (name.clone(), detail.clone()));
                             on_event(Event::Tool { id, name, status: "running".into(), detail });
                         }
                     }
@@ -207,9 +221,10 @@ async fn run_claude(call: Call, cancel: watch::Receiver<bool>, mut on_event: imp
                     for b in e.pointer("/message/content").and_then(Value::as_array).into_iter().flatten() {
                         if b.get("type").and_then(Value::as_str) == Some("tool_result") {
                             let id = b.get("tool_use_id").and_then(Value::as_str).unwrap_or("tool").to_string();
-                            let name = tools.get(&id).cloned().unwrap_or_else(|| "tool".into());
+                            let (name, input) = tools.get(&id).cloned().unwrap_or_else(|| ("tool".into(), String::new()));
                             let err = b.get("is_error").and_then(Value::as_bool) == Some(true);
-                            let detail = b.get("content").map(|c| clip(&c.to_string(), 600)).unwrap_or_default();
+                            let out = b.get("content").map(|c| clip(&c.to_string(), 600)).unwrap_or_default();
+                            let detail = format!("{input} -> {out}");
                             on_event(Event::Tool { id, name, status: if err { "failed" } else { "completed" }.into(), detail });
                         }
                     }
@@ -361,6 +376,21 @@ pub async fn codex_isolation(env: &HashMap<String, String>, base: &[String], cwd
     Ok(args)
 }
 
+/// The Codex permission profile for a tutor with a shell. It extends `:read-only`, so the shell
+/// has no network and no write outside the worktree, and it denies reads of each `deny` entry.
+/// Codex applies it in its own seatbelt: a second `sandbox-exec` cannot nest around Codex's.
+pub fn codex_profile_args(worktree: &Path, deny: &[String]) -> Vec<String> {
+    let q = |s: &str| serde_json::to_string(s).unwrap();
+    let mut fs = vec![format!("{}=\"write\"", q(&worktree.display().to_string()))];
+    fs.extend(deny.iter().map(|d| format!("{}=\"deny\"", q(d))));
+    vec![
+        "-c".into(),
+        format!("permissions.learn={{extends=\":read-only\", filesystem={{{}}}}}", fs.join(", ")),
+        "-c".into(),
+        r#"default_permissions="learn""#.into(),
+    ]
+}
+
 pub fn codex_sandbox_policy(worktree: &Path, shell: bool) -> Value {
     if shell {
         json!({"type": "workspaceWrite", "writableRoots": [worktree.display().to_string()], "networkAccess": false,
@@ -379,6 +409,11 @@ async fn run_codex(call: Call, mut cancel: watch::Receiver<bool>, mut on_event: 
     let shell = matches!(call.role, Role::Tutor { shell: true });
     let mut full = vec!["app-server".to_string(), "--stdio".to_string()];
     full.extend(args);
+    if shell {
+        full.extend(codex_profile_args(&call.cwd, &call.deny_read));
+    } else {
+        full.extend(["-c", "features.shell_tool=false", "-c", "features.unified_exec=false"].map(String::from));
+    }
     let mut cmd = Command::new("codex");
     cmd.args(&full)
         .current_dir(&call.cwd)
@@ -432,12 +467,19 @@ async fn run_codex(call: Call, mut cancel: watch::Receiver<bool>, mut on_event: 
     tokio::pin!(deadline);
     let worktree = call.cwd.display().to_string();
 
+    // With a shell, the permission profile is the sandbox, so no sandbox field may override it.
     let thread_start = |model: &Option<String>| {
-        json!({"cwd": worktree, "ephemeral": true, "approvalPolicy": "never",
-               "sandbox": if shell { "workspace-write" } else { "read-only" },
+        let mut p = json!({"cwd": worktree, "ephemeral": true, "approvalPolicy": "never",
                "baseInstructions": call.system, "developerInstructions": call.system, "model": model,
-               "config": {"web_search": "disabled", "project_doc_max_bytes": 0}})
+               "config": {"web_search": "disabled", "project_doc_max_bytes": 0}});
+        if !shell { p["sandbox"] = json!("read-only"); }
+        p
     };
+    let probe = |i: usize| {
+        let pr = &call.probes[i];
+        json!({"command": pr.argv, "cwd": worktree, "timeoutMs": 10_000})
+    };
+    let mut next_probe = 0usize;
 
     while !done {
         tokio::select! {
@@ -458,8 +500,27 @@ async fn run_codex(call: Call, mut cancel: watch::Receiver<bool>, mut on_event: 
                     }
                     let r = &e["result"];
                     match id {
-                        1 => {
-                            let _ = wtx.send(json!({"method": "initialized", "params": {}}).to_string());
+                        1 | 100.. => {
+                            if id == 1 {
+                                let _ = wtx.send(json!({"method": "initialized", "params": {}}).to_string());
+                            } else {
+                                let pr = &call.probes[(id - 100) as usize];
+                                let ok = r.get("exitCode").and_then(Value::as_i64) == Some(0);
+                                if ok != pr.expect_ok {
+                                    failure = format!("{DENY_CHECK_FAILED}: `{}` {}.", pr.argv.join(" "),
+                                        if pr.expect_ok { "did not run" } else { "was not denied" });
+                                    break;
+                                }
+                            }
+                            if shell && next_probe < call.probes.len() {
+                                send(100 + next_probe as u64, "command/exec", probe(next_probe));
+                                next_probe += 1;
+                                continue;
+                            }
+                            if shell && call.probes.is_empty() {
+                                failure = format!("{DENY_CHECK_FAILED}: no check was given.");
+                                break;
+                            }
                             match &call.codex_auth {
                                 CodexAuth::ApiKey { key, .. } => send(2, "account/login/start", json!({"type": "apiKey", "apiKey": key})),
                                 CodexAuth::OwnLogin => {
@@ -482,8 +543,13 @@ async fn run_codex(call: Call, mut cancel: watch::Receiver<bool>, mut on_event: 
                             thread_id = r.pointer("/thread/id").and_then(Value::as_str).unwrap_or("").to_string();
                             if let Some(m) = r.get("model").and_then(Value::as_str) { model = Some(m.to_string()); }
                             if thread_id.is_empty() { failure = "Codex did not start a thread.".into(); break; }
-                            let mut p = json!({"threadId": thread_id, "input": [{"type": "text", "text": call.prompt}],
-                                "approvalPolicy": "never", "sandboxPolicy": codex_sandbox_policy(&call.cwd, shell)});
+                            let sb = &r["sandbox"];
+                            if shell && (sb.get("type").and_then(Value::as_str) == Some("dangerFullAccess") || sb.get("networkAccess").and_then(Value::as_bool) == Some(true)) {
+                                failure = format!("{DENY_CHECK_FAILED}: the thread sandbox is {sb}.");
+                                break;
+                            }
+                            let mut p = json!({"threadId": thread_id, "input": [{"type": "text", "text": call.prompt}], "approvalPolicy": "never"});
+                            if !shell { p["sandboxPolicy"] = codex_sandbox_policy(&call.cwd, false); }
                             if let Some(s) = &call.output_schema { p["outputSchema"] = s.clone(); }
                             send(5, "turn/start", p);
                         }
@@ -510,7 +576,10 @@ async fn run_codex(call: Call, mut cancel: watch::Receiver<bool>, mut on_event: 
                         } else if ty == "commandExecution" || ty == "fileChange" || ty == "mcpToolCall" {
                             let id = item.get("id").and_then(Value::as_str).unwrap_or("tool").to_string();
                             let name = if ty == "commandExecution" { "shell" } else if ty == "fileChange" { "edit" } else { "mcp" }.to_string();
-                            let detail = item.get("command").map(|c| clip(&c.to_string(), 400)).unwrap_or_default();
+                            let mut detail = item.get("command").map(|c| clip(&c.to_string(), 400)).unwrap_or_default();
+                            if let Some(out) = item.get("aggregatedOutput").and_then(Value::as_str) {
+                                detail = format!("{detail} -> {}", clip(out, 600));
+                            }
                             let status = if method == "item/started" { "running".to_string() } else {
                                 match item.get("status").and_then(Value::as_str) { Some("failed") | Some("declined") => "failed".into(), _ => "completed".into() }
                             };
@@ -568,4 +637,69 @@ pub fn read_env_key(path: &Path) -> Result<String, String> {
         }
     }
     Err(format!("{} has no OPENAI_API_KEY.", path.display()))
+}
+
+/// Run the deny probes in a fresh `codex app-server` with the tutor's profile, and no model
+/// request. The doctor and the server start use it. Ok means each probe gave the expected result.
+pub async fn codex_deny_check(auth: &CodexAuth, scratch: &Path, worktree: &Path, deny: &[String], probes: &[Probe]) -> Result<(), String> {
+    if probes.is_empty() {
+        return Err("no check was given".into());
+    }
+    let cenv = codex_env(auth, scratch)?;
+    let mut args = codex_isolation(&cenv.env, &cenv.base_args, worktree).await?;
+    args.extend(codex_profile_args(worktree, deny));
+    let mut full = vec!["app-server".to_string(), "--stdio".to_string()];
+    full.extend(args);
+    let mut child = Command::new("codex")
+        .args(&full)
+        .current_dir(worktree)
+        .env_clear()
+        .envs(&cenv.env)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .kill_on_drop(true)
+        .spawn()
+        .map_err(|e| format!("codex app-server did not start: {e}"))?;
+    let mut stdin = child.stdin.take().unwrap();
+    let mut lines = BufReader::new(child.stdout.take().unwrap()).lines();
+    let msg = |v: Value| format!("{v}\n");
+    let wt = worktree.display().to_string();
+    let result = tokio::time::timeout(Duration::from_secs(30), async {
+        stdin
+            .write_all(msg(json!({"id": 1, "method": "initialize", "params": {"clientInfo": {"name": "understando-check", "title": "check", "version": "1"}}})).as_bytes())
+            .await
+            .map_err(|e| e.to_string())?;
+        let mut next = 0usize;
+        while let Ok(Some(line)) = lines.next_line().await {
+            let Ok(v) = serde_json::from_str::<Value>(&line) else { continue };
+            let Some(id) = v.get("id").and_then(Value::as_u64) else { continue };
+            if v.get("method").is_some() {
+                continue;
+            }
+            if let Some(e) = v.get("error") {
+                return Err(format!("command/exec failed: {}", e.get("message").and_then(Value::as_str).unwrap_or("")));
+            }
+            if id == 1 {
+                let _ = stdin.write_all(msg(json!({"method": "initialized", "params": {}})).as_bytes()).await;
+            } else {
+                let pr = &probes[(id - 100) as usize];
+                let ok = v.pointer("/result/exitCode").and_then(Value::as_i64) == Some(0);
+                if ok != pr.expect_ok {
+                    return Err(format!("`{}` {}", pr.argv.join(" "), if pr.expect_ok { "did not run" } else { "was not denied" }));
+                }
+            }
+            if next == probes.len() {
+                return Ok(());
+            }
+            let p = json!({"id": 100 + next as u64, "method": "command/exec", "params": {"command": probes[next].argv, "cwd": wt, "timeoutMs": 10_000}});
+            let _ = stdin.write_all(msg(p).as_bytes()).await;
+            next += 1;
+        }
+        Err("codex app-server closed before the check finished".to_string())
+    })
+    .await
+    .unwrap_or_else(|_| Err("the check took more than 30 s".into()));
+    let _ = child.kill().await;
+    result
 }
