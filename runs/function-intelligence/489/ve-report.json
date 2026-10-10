@@ -1348,7 +1348,7 @@
       "stage": "browser",
       "severity": "warn",
       "status": "warn",
-      "evidence": "Clickable controls below 44px hit target: [{\"run\":\"1440x900-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"Floor\",\"selector\":\"div.ve-section-body.min-w-0:nth-of-type(2) > ol.ux-steps > li:nth-of-type(6) > a\",\"width\":39,\"height\":44},{\"run\":\"1440x900-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"C31\",\"selector\":\"ol.ux-risks > li.ux-risk:nth-of-type(1) > h4 > a\",\"width\":38,\"height\":27},{\"run\":\"1440x900-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"C38\",\"selector\":\"ol.ux-risks > li.ux-risk:nth-of-type(2) > h4 > a\",\"width\":38,\"height\":27},{\"run\":\"1440x900-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"C01\",\"selector\":\"ol.ux-risks > li.ux-risk:nth-of-type(3) > h4 > a\",\"width\":38,\"height\":27},{\"run\":\"1440x900-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"C35\",\"selector\":\"ol.ux-risks > li.ux-risk:nth-of-type(4) > h4 > a\",\"width\":38,\"height\":27},{\"run\":\"1440x900-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"C36\",\"selector\":\"ol.ux-risks > li.ux-risk:nth-of-type(5) > h4 > a\",\"width\":38,\"height\":27},{\"run\":\"1440x900-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"C37\",\"selector\":\"ol.ux-risks > li.ux-risk:nth-of-type(6) > h4 > a\",\"width\":38,\"height\":27},{\"run\":\"1440x900-dark\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"Floor\",\"selector\":\"div.ve-section-body.min-w-0:nth-of-type(2) > ol.ux-steps > li:nth-of-type(6) > a\",\"width\":39,\"height\":44},{\"run\":\"1440x900-dark\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"C31\",\"selector\":\"ol.ux-risks > li.ux-risk:nth-of-type(1) > h4 > a\",\"width\":38,\"height\":27},{\"run\":\"1440x900-dark\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"C38\",\"selector\":\"ol.ux-risks > li.ux-risk:nth-of-type(2) > h4 > a\",\"width\":38,\"height\":27}]",
+      "evidence": "Clickable controls below 44px hit target: [{\"run\":\"1440x900-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"Project\",\"selector\":\"div.ve-section-body.min-w-0:nth-of-type(2) > ol > li:nth-of-type(1) > a\",\"width\":53,\"height\":20},{\"run\":\"1440x900-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"Reflect\",\"selector\":\"div.ve-section-body.min-w-0:nth-of-type(2) > ol > li:nth-of-type(2) > a\",\"width\":53,\"height\":20},{\"run\":\"1440x900-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"Edit rounds\",\"selector\":\"div.ve-section-body.min-w-0:nth-of-type(2) > ol > li:nth-of-type(3) > a\",\"width\":86,\"height\":20},{\"run\":\"1440x900-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"Accept\",\"selector\":\"div.ve-section-body.min-w-0:nth-of-type(2) > ol > li:nth-of-type(4) > a\",\"width\":54,\"height\":20},{\"run\":\"1440x900-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"Release audit\",\"selector\":\"div.ve-section-body.min-w-0:nth-of-type(2) > ol > li:nth-of-type(5) > a\",\"width\":101,\"height\":20},{\"run\":\"1440x900-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"Floor\",\"selector\":\"div.ve-section-body.min-w-0:nth-of-type(2) > ol > li:nth-of-type(6) > a\",\"width\":39,\"height\":20},{\"run\":\"1440x900-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"Render\",\"selector\":\"div.ve-section-body.min-w-0:nth-of-type(2) > ol > li:nth-of-type(7) > a\",\"width\":54,\"height\":20},{\"run\":\"1440x900-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"C31\",\"selector\":\"section.ve-subsection:nth-of-type(1) > h4.ve-subsection-title > span > a\",\"width\":40,\"height\":21},{\"run\":\"1440x900-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"C38\",\"selector\":\"section.ve-subsection:nth-of-type(2) > h4.ve-subsection-title > span > a\",\"width\":40,\"height\":21},{\"run\":\"1440x900-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"C01\",\"selector\":\"section.ve-subsection:nth-of-type(3) > h4.ve-subsection-title > span > a\",\"width\":40,\"height\":21}]",
       "where": "undersized-touch-targets",
       "fix_hint": "Provide at least a 44x44px clickable parent for nav dots, tabs, controls, links, and buttons."
     },
@@ -1390,16 +1390,16 @@
     }
   ],
   "screenshots": [
-    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/1440x900-light.png",
-    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/1440x900-light-full.png",
-    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/1440x900-dark.png",
-    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/1440x900-dark-full.png",
-    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/390x844-light.png",
-    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/390x844-light-full.png",
-    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/390x844-dark.png",
-    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/390x844-dark-full.png",
-    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/1440x900-light-reduced-motion.png",
-    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/1440x900-light-reduced-motion-full.png"
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/1440x900-light.png",
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/1440x900-light-full.png",
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/1440x900-dark.png",
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/1440x900-dark-full.png",
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/390x844-light.png",
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/390x844-light-full.png",
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/390x844-dark.png",
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/390x844-dark-full.png",
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/1440x900-light-reduced-motion.png",
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/1440x900-light-reduced-motion-full.png"
   ],
   "llm_passes_required": [
     "artifact-review:page"
@@ -1418,81 +1418,81 @@
   ],
   "review_contract": {
     "schema_version": 2,
-    "artifact_sha256": "8ba7ad14b1b7b4b87cb69e2551ada782e46d495020f89dda32b419d620ee2aad",
+    "artifact_sha256": "4b95820b215ffc011ba7b1d948f4400ad83a82d0dd22e88ae7994e63e2bbea27",
     "mechanics_profile": "page",
     "review_profile": "page",
     "profile": "page",
     "preset": "custom",
     "truth_sha256": null,
-    "inventory_sha256": "c1f6640a40b708ebac50bd26fbe0cc971e3b0c21be56e4e20b1ba03d1fdae041",
+    "inventory_sha256": "900e147ea98675e64955ecf57cffbb997416b1a8ae3f6757eabe86610db4051a",
     "inventory_provenance": "browser-rendered",
-    "mechanics_sha256": "ac59682e6cf62e5b227ae382229b705824a1b7014804be90f3485c012f367b16",
-    "capture_root": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF",
-    "artifact_snapshot": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/artifact.html",
+    "mechanics_sha256": "9b697af40dc7db28c44ca61954eeac97c40d3d01896a238ef1987e671459614b",
+    "capture_root": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS",
+    "artifact_snapshot": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/artifact.html",
     "truth_snapshot": null,
     "evidence": [
       {
         "kind": "screenshot",
-        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/1440x900-light.png",
-        "sha256": "7ad8a39f3fb57bc91a5a929fc4cfe9d92a84754b8ec654b2389405e3faf061b1"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/1440x900-light.png",
+        "sha256": "0747d63d839c56787e7930f5b1f8c502046e159dabb8f82de141c64bfc6c258b"
       },
       {
         "kind": "screenshot",
-        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/1440x900-light-full.png",
-        "sha256": "f2bf94eef23efdaf503633915e0a91959dce09670629d78052fbec178d563934"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/1440x900-light-full.png",
+        "sha256": "e594d23746f16e14f275008046bdb8b038ba14e04e966307e476e87df29b4ffe"
       },
       {
         "kind": "screenshot",
-        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/1440x900-dark.png",
-        "sha256": "69c76b0782ff8f92cc0afc65e31b9c1067aaddd06b50a7d5f5de256368fae2a2"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/1440x900-dark.png",
+        "sha256": "720a972e5be714c2d972fcc3bcce0ac919855842cf256977f9a502c9a77ac4d0"
       },
       {
         "kind": "screenshot",
-        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/1440x900-dark-full.png",
-        "sha256": "fd30483f662e8bf46b6d4d79b53ebc553161f534990413109763731eac72ecb9"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/1440x900-dark-full.png",
+        "sha256": "ccc4e1d003f9b7cb7dbfeb72a1a34600db62bf340220facdcb071828fa9ddcce"
       },
       {
         "kind": "screenshot",
-        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/390x844-light.png",
-        "sha256": "890004f04dddcb435855355baa7391a6ec2989b34106fca55ca5deade71b827c"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/390x844-light.png",
+        "sha256": "316d9982cfb08784e15a78dd5d222f0f9ea7205047df71907456cdb1782e2cd9"
       },
       {
         "kind": "screenshot",
-        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/390x844-light-full.png",
-        "sha256": "b6514cb14bfbf6fed5dacffced5d4a3729fae56a7987e4c5f5054042fe9ca0a9"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/390x844-light-full.png",
+        "sha256": "40c5ead4de2a65dde33cfbce1274f74d90218c2efa619a087ffac17595189e07"
       },
       {
         "kind": "screenshot",
-        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/390x844-dark.png",
-        "sha256": "7610eb79db3679f81d3a47a4d09315e3f5f05a36889dc44bf2902d339cfd657d"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/390x844-dark.png",
+        "sha256": "28733990fde7210915fad88eba3fb49eb80fcfdfdef6143a6bbe1a1a8dd2832e"
       },
       {
         "kind": "screenshot",
-        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/390x844-dark-full.png",
-        "sha256": "bfe550f5ccd4ff44a25751c7e373cde2ca8892ea1949dedbcee82fef59dfe65c"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/390x844-dark-full.png",
+        "sha256": "753b5a0d871c02980e3a4c667f1b9c230cb94a933fc85ebf3d9f731d8dcdcdfa"
       },
       {
         "kind": "screenshot",
-        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/1440x900-light-reduced-motion.png",
-        "sha256": "5fda9ab40cf8496935e56c7e59c9c622982f2a8fc0bb8950d129b4b36e8e68cd"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/1440x900-light-reduced-motion.png",
+        "sha256": "0747d63d839c56787e7930f5b1f8c502046e159dabb8f82de141c64bfc6c258b"
       },
       {
         "kind": "screenshot",
-        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-OxgJIF/1440x900-light-reduced-motion-full.png",
-        "sha256": "8f4697bdf93f869fc3797c61d21ea8218e51b8eb4e17f388cae2577b8df8bf30"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-1leihS/1440x900-light-reduced-motion-full.png",
+        "sha256": "f48f8726c17d89bbe299ce941d0da195b64cdfd2be5d211a71764e18163e76f4"
       }
     ],
     "evidence_sha256": [
-      "7ad8a39f3fb57bc91a5a929fc4cfe9d92a84754b8ec654b2389405e3faf061b1",
-      "f2bf94eef23efdaf503633915e0a91959dce09670629d78052fbec178d563934",
-      "69c76b0782ff8f92cc0afc65e31b9c1067aaddd06b50a7d5f5de256368fae2a2",
-      "fd30483f662e8bf46b6d4d79b53ebc553161f534990413109763731eac72ecb9",
-      "890004f04dddcb435855355baa7391a6ec2989b34106fca55ca5deade71b827c",
-      "b6514cb14bfbf6fed5dacffced5d4a3729fae56a7987e4c5f5054042fe9ca0a9",
-      "7610eb79db3679f81d3a47a4d09315e3f5f05a36889dc44bf2902d339cfd657d",
-      "bfe550f5ccd4ff44a25751c7e373cde2ca8892ea1949dedbcee82fef59dfe65c",
-      "5fda9ab40cf8496935e56c7e59c9c622982f2a8fc0bb8950d129b4b36e8e68cd",
-      "8f4697bdf93f869fc3797c61d21ea8218e51b8eb4e17f388cae2577b8df8bf30"
+      "0747d63d839c56787e7930f5b1f8c502046e159dabb8f82de141c64bfc6c258b",
+      "e594d23746f16e14f275008046bdb8b038ba14e04e966307e476e87df29b4ffe",
+      "720a972e5be714c2d972fcc3bcce0ac919855842cf256977f9a502c9a77ac4d0",
+      "ccc4e1d003f9b7cb7dbfeb72a1a34600db62bf340220facdcb071828fa9ddcce",
+      "316d9982cfb08784e15a78dd5d222f0f9ea7205047df71907456cdb1782e2cd9",
+      "40c5ead4de2a65dde33cfbce1274f74d90218c2efa619a087ffac17595189e07",
+      "28733990fde7210915fad88eba3fb49eb80fcfdfdef6143a6bbe1a1a8dd2832e",
+      "753b5a0d871c02980e3a4c667f1b9c230cb94a933fc85ebf3d9f731d8dcdcdfa",
+      "0747d63d839c56787e7930f5b1f8c502046e159dabb8f82de141c64bfc6c258b",
+      "f48f8726c17d89bbe299ce941d0da195b64cdfd2be5d211a71764e18163e76f4"
     ],
     "required_passes": [
       "artifact-review:page"
@@ -2881,72 +2881,48 @@
           "text": "The weakest claims first"
         },
         {
-          "role": "li",
-          "text": "C31AssertedProduction does not change, because cr_service does not import cr.docgen.The production service does not import cr.docgen. Thus, the new code cannot change production.Why it is weakIf cr_service imports cr.docgen, the new code can change production. Only the PR text says that it does not.Cheapest fixAdd a cr_service rule to scripts/check_docgen_boundary.py that refuses an import of cr.docgen. Then plant the import as a control."
-        },
-        {
           "role": "h4",
-          "text": "C31AssertedProduction does not change, because cr_service does not import cr.docgen."
+          "text": "C31 Asserted Production does not change, because cr_service does not import cr.docgen."
         },
         {
           "role": "p",
           "text": "The production service does not import cr.docgen. Thus, the new code cannot change production."
         },
         {
-          "role": "li",
-          "text": "C38Assertedcr docgen --reflection judiciary works with the real judiciary reflection worker.cr docgen --reflection judiciary operates with the real judiciary worker, not only a test worker.Why it is weakV36 skips when judiciary is not built, and it skips in CI. The control K36 stayed green, so the test cannot fail now.Cheapest fixBuild judiciary in the CI test job, or make V36 fail, not skip, when the build is missing."
-        },
-        {
           "role": "h4",
-          "text": "C38Assertedcr docgen --reflection judiciary works with the real judiciary reflection worker."
+          "text": "C38 Asserted cr docgen --reflection judiciary works with the real judiciary reflection worker."
         },
         {
           "role": "p",
           "text": "cr docgen --reflection judiciary operates with the real judiciary worker, not only a test worker."
         },
         {
-          "role": "li",
-          "text": "C01ProvenThe editor takes only an EditableFinding. A plain Finding or a classify result is a type error.The editor accepts only an EditableFinding. An EditableFinding is a finding that passed the editability gate. A raw finding is a type error.Why it is weakPin V01 stayed green on K01b, which widened the editor contract. Only the project-wide check V35 went red.Cheapest fixAdd a pin that calls each editor with a plain Finding list, so that the pin file goes red on K01b."
-        },
-        {
           "role": "h4",
-          "text": "C01ProvenThe editor takes only an EditableFinding. A plain Finding or a classify result is a type error."
+          "text": "C01 Proven The editor takes only an EditableFinding. A plain Finding or a classify result is a type error."
         },
         {
           "role": "p",
           "text": "The editor accepts only an EditableFinding. An EditableFinding is a finding that passed the editability gate. A raw finding is a type error."
         },
         {
-          "role": "li",
-          "text": "C35Gaprequire_same_scope refuses a packet and a ledger of different members or snapshots.require_same_scope refuses a packet and a ledger that are for different members or different snapshots.Why it is weakA packet and a ledger of different members could reach one document. No test gives require_same_scope a mismatched pair.Cheapest fixAdd a test that gives require_same_scope a packet and a ledger of different members, and expects a refusal."
-        },
-        {
           "role": "h4",
-          "text": "C35Gaprequire_same_scope refuses a packet and a ledger of different members or snapshots."
+          "text": "C35 Gap require_same_scope refuses a packet and a ledger of different members or snapshots."
         },
         {
           "role": "p",
           "text": "require_same_scope refuses a packet and a ledger that are for different members or different snapshots."
         },
         {
-          "role": "li",
-          "text": "C36GapNo caller uses sheet_names, which the PR deletes from guidance/_xlsx.py.The PR deletes sheet_names from guidance/_xlsx.py. The PR assumes that no code calls it.Why it is weakA caller of the deleted sheet_names fails at run time. The PR assumes that no caller exists.Cheapest fixRecord the project-wide type check, or a repo search for sheet_names, as a verifier for this claim."
-        },
-        {
           "role": "h4",
-          "text": "C36GapNo caller uses sheet_names, which the PR deletes from guidance/_xlsx.py."
+          "text": "C36 Gap No caller uses sheet_names, which the PR deletes from guidance/_xlsx.py."
         },
         {
           "role": "p",
           "text": "The PR deletes sheet_names from guidance/_xlsx.py. The PR assumes that no code calls it."
         },
         {
-          "role": "li",
-          "text": "C37GapWith diagnose, submission_text names the unexpected tool calls, not an empty body.When the model makes tool calls that we do not expect, submission_text names those calls. It does not show an empty body.Why it is weakIn diagnose mode, an unexpected tool call could give an empty error body. No test sends one.Cheapest fixAdd a test that sends unexpected tool calls in diagnose mode, and checks that submission_text names them."
-        },
-        {
           "role": "h4",
-          "text": "C37GapWith diagnose, submission_text names the unexpected tool calls, not an empty body."
+          "text": "C37 Gap With diagnose, submission_text names the unexpected tool calls, not an empty body."
         },
         {
           "role": "p",
@@ -4834,7 +4810,7 @@
         },
         {
           "role": "h4",
-          "text": "C01ProvenThe editor takes only an EditableFinding. A plain Finding or a classify result is a type error."
+          "text": "C01 Proven The editor takes only an EditableFinding. A plain Finding or a classify result is a type error."
         },
         {
           "role": "p",
@@ -5210,7 +5186,7 @@
         },
         {
           "role": "h4",
-          "text": "C02ProvenWiring rejects an adapter and a subset of different kinds."
+          "text": "C02 Proven Wiring rejects an adapter and a subset of different kinds."
         },
         {
           "role": "p",
@@ -5338,7 +5314,7 @@
         },
         {
           "role": "h4",
-          "text": "C03Provenrun_adapter and _run_kind reject an adapter, a subset or a setup of a different kind."
+          "text": "C03 Proven run_adapter and _run_kind reject an adapter, a subset or a setup of a different kind."
         },
         {
           "role": "p",
@@ -5466,7 +5442,7 @@
         },
         {
           "role": "h4",
-          "text": "C04ProvenOutputs rejects the note kind, because write_outputs does not write it."
+          "text": "C04 Proven Outputs rejects the note kind, because write_outputs does not write it."
         },
         {
           "role": "p",
@@ -5538,7 +5514,7 @@
         },
         {
           "role": "h4",
-          "text": "C05ProvenA docgen module imports only the docgen modules that its DOCGEN_IMPORTS row lists."
+          "text": "C05 Proven A docgen module imports only the docgen modules that its DOCGEN_IMPORTS row lists."
         },
         {
           "role": "p",
@@ -5610,7 +5586,7 @@
         },
         {
           "role": "h4",
-          "text": "C06ProvenNo adapter imports another adapter."
+          "text": "C06 Proven No adapter imports another adapter."
         },
         {
           "role": "p",
@@ -5678,7 +5654,7 @@
         },
         {
           "role": "h4",
-          "text": "C07ProvenThe core imports no CLI, FMM, 4H, refine or cr.uap module."
+          "text": "C07 Proven The core imports no CLI, FMM, 4H, refine or cr.uap module."
         },
         {
           "role": "p",
@@ -5746,7 +5722,7 @@
         },
         {
           "role": "h4",
-          "text": "C08ProvenOnly clinician_note and the allowlist import cr.note.author and cr.note.loop."
+          "text": "C08 Proven Only clinician_note and the allowlist import cr.note.author and cr.note.loop."
         },
         {
           "role": "p",
@@ -5806,7 +5782,7 @@
         },
         {
           "role": "h4",
-          "text": "C09ProvenOnly finished_cr.py and tests/_crp_fixtures.py call FinishedCR."
+          "text": "C09 Proven Only finished_cr.py and tests/_crp_fixtures.py call FinishedCR."
         },
         {
           "role": "p",
@@ -5882,7 +5858,7 @@
         },
         {
           "role": "h4",
-          "text": "C10ProvenOnly findings.py calls EditableFinding."
+          "text": "C10 Proven Only findings.py calls EditableFinding."
         },
         {
           "role": "p",
@@ -5950,7 +5926,7 @@
         },
         {
           "role": "h4",
-          "text": "C11ProvenThe editor never gets a finding whose key is in not_editable."
+          "text": "C11 Proven The editor never gets a finding whose key is in not_editable."
         },
         {
           "role": "p",
@@ -6022,7 +5998,7 @@
         },
         {
           "role": "h4",
-          "text": "C12ProvenAn evidence_bound finding is editable only in a card file whose evidence holds its input fact."
+          "text": "C12 Proven An evidence_bound finding is editable only in a card file whose evidence holds its input fact."
         },
         {
           "role": "p",
@@ -6094,7 +6070,7 @@
         },
         {
           "role": "h4",
-          "text": "C13ProvenThe editor never gets a model major that the second sample did not report again."
+          "text": "C13 Proven The editor never gets a model major that the second sample did not report again."
         },
         {
           "role": "p",
@@ -6166,7 +6142,7 @@
         },
         {
           "role": "h4",
-          "text": "C14ProvenA second report counts only for the same claim: the cartridge, the key and the place."
+          "text": "C14 Proven A second report counts only for the same claim: the cartridge, the key and the place."
         },
         {
           "role": "p",
@@ -6294,7 +6270,7 @@
         },
         {
           "role": "h4",
-          "text": "C15ProvenThe edit rounds stop after a round that the accept rule did not keep and that changed no file."
+          "text": "C15 Proven The edit rounds stop after a round that the accept rule did not keep and that changed no file."
         },
         {
           "role": "p",
@@ -6366,7 +6342,7 @@
         },
         {
           "role": "h4",
-          "text": "C16ProvenA floor finding that no writable file holds stops the edit rounds."
+          "text": "C16 Proven A floor finding that no writable file holds stops the edit rounds."
         },
         {
           "role": "p",
@@ -6438,7 +6414,7 @@
         },
         {
           "role": "h4",
-          "text": "C17ProvenA lost editor call never reflects or releases its partial edit."
+          "text": "C17 Proven A lost editor call never reflects or releases its partial edit."
         },
         {
           "role": "p",
@@ -6522,7 +6498,7 @@
         },
         {
           "role": "h4",
-          "text": "C18ProvenThe finish tool refuses while a code check reports a blocking finding, up to three times."
+          "text": "C18 Proven The finish tool refuses while a code check reports a blocking finding, up to three times."
         },
         {
           "role": "p",
@@ -6594,7 +6570,7 @@
         },
         {
           "role": "h4",
-          "text": "C19ProvenThe editor cannot delete a writable file."
+          "text": "C19 Proven The editor cannot delete a writable file."
         },
         {
           "role": "p",
@@ -6702,7 +6678,7 @@
         },
         {
           "role": "h4",
-          "text": "C20ProvenLastClean restores the last kept draft with no blocking finding, not the first."
+          "text": "C20 Proven LastClean restores the last kept draft with no blocking finding, not the first."
         },
         {
           "role": "p",
@@ -6774,7 +6750,7 @@
         },
         {
           "role": "h4",
-          "text": "C21ProvenThe judiciary reflector refuses a worker that is not synthetic-only."
+          "text": "C21 Proven The judiciary reflector refuses a worker that is not synthetic-only."
         },
         {
           "role": "p",
@@ -6846,7 +6822,7 @@
         },
         {
           "role": "h4",
-          "text": "C22Provencr docgen sends model requests that are byte-identical to the golden file."
+          "text": "C22 Proven cr docgen sends model requests that are byte-identical to the golden file."
         },
         {
           "role": "p",
@@ -6886,7 +6862,7 @@
         },
         {
           "role": "h4",
-          "text": "C23ProvenIn the 14 scripted sessions, cr docgen --kind note sends the requests of write_clinician_note."
+          "text": "C23 Proven In the 14 scripted sessions, cr docgen --kind note sends the requests of write_clinician_note."
         },
         {
           "role": "p",
@@ -6962,7 +6938,7 @@
         },
         {
           "role": "h4",
-          "text": "C24Provencr uap and cr fmm call cr docgen with --reflection none."
+          "text": "C24 Proven cr uap and cr fmm call cr docgen with --reflection none."
         },
         {
           "role": "p",
@@ -7034,7 +7010,7 @@
         },
         {
           "role": "h4",
-          "text": "C25ProvenEach kind refuses a CR that fails CR-33 acceptance."
+          "text": "C25 Proven Each kind refuses a CR that fails CR-33 acceptance."
         },
         {
           "role": "p",
@@ -7114,7 +7090,7 @@
         },
         {
           "role": "h4",
-          "text": "C26BackedAgainst production, the CR note agent cuts agreed blind failures from 2.65 to 0.02 per note."
+          "text": "C26 Backed Against production, the CR note agent cuts agreed blind failures from 2.65 to 0.02 per note."
         },
         {
           "role": "p",
@@ -7134,7 +7110,7 @@
         },
         {
           "role": "h4",
-          "text": "C27BackedThe harness is non-inferior to main for FMM, 4H and the UAP after the anti-gaming changes."
+          "text": "C27 Backed The harness is non-inferior to main for FMM, 4H and the UAP after the anti-gaming changes."
         },
         {
           "role": "p",
@@ -7154,7 +7130,7 @@
         },
         {
           "role": "h4",
-          "text": "C28BackedAn Opus audit found no gaming in the kept edits."
+          "text": "C28 Backed An Opus audit found no gaming in the kept edits."
         },
         {
           "role": "p",
@@ -7174,7 +7150,7 @@
         },
         {
           "role": "h4",
-          "text": "C29BackedThe cost per document goes up: UAP $0.75 to $1.30, FMM $0.34 to $0.38, 4H $0.24 to $0.32."
+          "text": "C29 Backed The cost per document goes up: UAP $0.75 to $1.30, FMM $0.34 to $0.38, 4H $0.24 to $0.32."
         },
         {
           "role": "p",
@@ -7194,7 +7170,7 @@
         },
         {
           "role": "h4",
-          "text": "C30Backed4,249 CR tests, 1,272 harness tests and 74 root tests pass. Ruff, basedpyright and the boundary checks are clean."
+          "text": "C30 Backed 4,249 CR tests, 1,272 harness tests and 74 root tests pass. Ruff, basedpyright and the boundary checks are clean."
         },
         {
           "role": "p",
@@ -7222,7 +7198,7 @@
         },
         {
           "role": "h4",
-          "text": "C38Assertedcr docgen --reflection judiciary works with the real judiciary reflection worker."
+          "text": "C38 Asserted cr docgen --reflection judiciary works with the real judiciary reflection worker."
         },
         {
           "role": "p",
@@ -7294,7 +7270,7 @@
         },
         {
           "role": "h4",
-          "text": "C31AssertedProduction does not change, because cr_service does not import cr.docgen."
+          "text": "C31 Asserted Production does not change, because cr_service does not import cr.docgen."
         },
         {
           "role": "p",
@@ -7306,7 +7282,7 @@
         },
         {
           "role": "h4",
-          "text": "C32AssertedThe source code is 47 lines smaller than main."
+          "text": "C32 Asserted The source code is 47 lines smaller than main."
         },
         {
           "role": "p",
@@ -7318,7 +7294,7 @@
         },
         {
           "role": "h4",
-          "text": "C33AssertedThe UAP trace label released, on a plan that needs clinician review, is a label error and not a floor gap."
+          "text": "C33 Asserted The UAP trace label released, on a plan that needs clinician review, is a label error and not a floor gap."
         },
         {
           "role": "p",
@@ -7330,7 +7306,7 @@
         },
         {
           "role": "h4",
-          "text": "C34AssertedNobody measured the two folded defaults, #438 and #424, in production."
+          "text": "C34 Asserted Nobody measured the two folded defaults, #438 and #424, in production."
         },
         {
           "role": "p",
@@ -7350,7 +7326,7 @@
         },
         {
           "role": "h4",
-          "text": "C35Gaprequire_same_scope refuses a packet and a ledger of different members or snapshots."
+          "text": "C35 Gap require_same_scope refuses a packet and a ledger of different members or snapshots."
         },
         {
           "role": "p",
@@ -7366,7 +7342,7 @@
         },
         {
           "role": "h4",
-          "text": "C36GapNo caller uses sheet_names, which the PR deletes from guidance/_xlsx.py."
+          "text": "C36 Gap No caller uses sheet_names, which the PR deletes from guidance/_xlsx.py."
         },
         {
           "role": "p",
@@ -7382,7 +7358,7 @@
         },
         {
           "role": "h4",
-          "text": "C37GapWith diagnose, submission_text names the unexpected tool calls, not an empty body."
+          "text": "C37 Gap With diagnose, submission_text names the unexpected tool calls, not an empty body."
         },
         {
           "role": "p",
@@ -7477,9 +7453,9 @@
           "text": "Point-and-click feedback is off."
         }
       ],
-      "sha256": "c1f6640a40b708ebac50bd26fbe0cc971e3b0c21be56e4e20b1ba03d1fdae041",
+      "sha256": "900e147ea98675e64955ecf57cffbb997416b1a8ae3f6757eabe86610db4051a",
       "provenance": "browser-rendered"
     },
-    "sha256": "4447784488a11c1fcf8bd4a6edba6b73f648ef3bbef8df9f8bf9f01393031714"
+    "sha256": "c903296690e3bbc8337a199c4803b99eba689273c9d3f5c752efd0e6d00100b6"
   }
 }

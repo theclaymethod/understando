@@ -103,6 +103,32 @@ if absent:
     sys.exit(f"FAIL: the guided tour does not show {absent}")
 print(f"{len(names)} chapter units; the guided tour shows all {len(claims)} claims")
 PY
+# Default themes: the rendered page has no page <style> and no preset other than iso (DEFAULT_PRESET
+# in visual-explainer-mdx/preset-policy.mjs).
+node - "$VE" "$WORK/explain/explainer.html" <<'JS'
+const path = require('node:path');
+const [ve, html] = process.argv.slice(2);
+const { chromium } = require(require.resolve('playwright', { paths: [ve] }));
+(async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.goto('file://' + path.resolve(html), { waitUntil: 'load' });
+    await page.waitForSelector('main.ve-shell');
+    const got = await page.evaluate(() => ({
+      styles: document.querySelectorAll('#root style').length,
+      presets: [...new Set([...document.querySelectorAll('[data-ve-preset]')].map((e) => e.dataset.vePreset))],
+    }));
+    if (got.styles || got.presets.join() !== 'iso') {
+      console.error(`FAIL: the explainer has ${got.styles} page <style> elements and presets [${got.presets}]; want 0 and [iso]`);
+      process.exit(1);
+    }
+    console.log('the explainer has no page <style> and uses only the iso preset');
+  } finally {
+    await browser.close();
+  }
+})();
+JS
 LINT="$(find "$HOME/.claude/skills/asd-ste100/scripts" "$HOME/.agents/skills/asd-ste100/scripts" -name ste-lint.py 2>/dev/null | head -1)"
 python3 -I "$LINT" "$WORK/explain/pr-section.md" | tail -2
 

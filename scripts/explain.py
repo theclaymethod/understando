@@ -166,6 +166,23 @@ def inline(text: str) -> str:
     return "".join(out)
 
 
+def definitions(items) -> str:
+    """A DefinitionList of (term, STE text, tone or None)."""
+    body = "".join(f"<Definition term={js(term)}" + (f" tone=\"{tone}\"" if tone else "") + f">{inline(text)}</Definition>"
+                   for term, text, tone in items)
+    return f"<DefinitionList>{body}</DefinitionList>"
+
+
+def subsection(anchor: str | None, title: str, body: str, level: int = 3, marker: str | None = None) -> str:
+    """A Subsection: a titled block under a rule. `title` is a JSX expression; an anchor makes it a rail target."""
+    attrs = (f" id={js(anchor)}" if anchor else "") + (f" level={{{level}}}" if level != 3 else "") + (f" marker={js(marker)}" if marker else "")
+    return f"<Subsection{attrs} title={title}>\n{body}\n</Subsection>"
+
+
+def none(text: str) -> str:
+    return f"<p><em>{js(text)}</em></p>"
+
+
 def table(columns: list[dict], rows: list[dict], label: str) -> str:
     return f"<DataTable label={js(label)} columns={js(columns)} rows={js(rows)} />"
 
@@ -197,8 +214,7 @@ def glossary(data: dict) -> str:
     items = data.get("glossary") or []
     if not items:
         return f"<p>{js('This trust map has no glossary.')}</p>"
-    body = "".join(f"<dt>{js(g['term'])}</dt><dd>{inline(g['meaning'])}</dd>" for g in items)
-    return f"<dl className=\"ux-glossary\">{body}</dl>"
+    return definitions((g["term"], g["meaning"], None) for g in items)
 
 
 def weakest(cids: list[str], verdict_of: dict[str, str]) -> str | None:
@@ -234,9 +250,9 @@ SHAPE_NAMES = {"rect": "module or function", "oval": "input or outside system", 
 
 
 def walkthrough(spec: dict, anchor: str, legend: list[dict]) -> str:
-    return (f"<div id={js(anchor)} data-ve-anchor=\"true\"><h4>{js(spec['title'])}</h4>"
+    return (f"<h4 id={js(anchor)} data-ve-anchor=\"true\">{js(spec['title'])}</h4>\n"
             f"<DiagramWalkthrough layout=\"flow\" title={js(spec['title'])} description={js(spec['description'])} "
-            f"nodes={js(spec['nodes'])} edges={js(spec['edges'])} steps={js(spec['steps'])} legend={js(legend)} /></div>")
+            f"nodes={js(spec['nodes'])} edges={js(spec['edges'])} steps={js(spec['steps'])} legend={js(legend)} />")
 
 
 def claim_rows(data: dict, cids: list[str]) -> list[dict]:
@@ -267,20 +283,20 @@ def chips(data: dict, cids: list[str]) -> str:
         ids = [c for c in cids if verdict_of.get(c) == v]
         if ids:
             parts.append(f"<StatusPill tone=\"{TONE[v]}\">{js(v + ': ' + ', '.join(ids))}</StatusPill>")
-    return "<p className=\"ux-pills\">" + " ".join(parts) + "</p>" if parts else ""
+    return "<p>" + " ".join(parts) + "</p>" if parts else ""
 
 
 # ---- Chapter 1: orientation ---------------------------------------------------------------
 
 def orientation(data: dict, extra: dict) -> str:
     lines = extra.get("orientation") or [s.strip() + "." for s in data.get("narrative", "").split(". ")[:5] if s.strip()]
-    parts = ["<div className=\"ux-lede\">" + "".join(f"<p>{inline(t)}</p>" for t in lines) + "</div>"]
+    parts = [f"<p>{inline(t)}</p>" for t in lines]
     if extra.get("architecture"):
         arch = extra["architecture"]
-        parts.append(f"<div id=\"orientation-architecture\" data-ve-anchor=\"true\"><h3>{js('Architecture')}</h3>"
-                     f"<DiagramCanvas layout=\"flow\" title={js('Architecture')} description={js(arch.get('description', 'Architecture'))} "
-                     f"nodes={js(arch['nodes'])} edges={js(arch['edges'])} legend={js(glyph_legend(arch, SHAPE_NAMES))} /></div>")
-    parts.append(f"<div id=\"orientation-words\" data-ve-anchor=\"true\"><h3>{js('Words to know')}</h3>{glossary(data)}</div>")
+        parts.append(subsection("orientation-architecture", js("Architecture"),
+                                f"<DiagramCanvas layout=\"flow\" title={js('Architecture')} description={js(arch.get('description', 'Architecture'))} "
+                                f"nodes={js(arch['nodes'])} edges={js(arch['edges'])} legend={js(glyph_legend(arch, SHAPE_NAMES))} />"))
+    parts.append(subsection("orientation-words", js("Words to know"), glossary(data)))
     return "\n".join(parts)
 
 
@@ -303,35 +319,33 @@ def tour(data: dict, extra: dict, repo: str) -> str:
     verdict_of = {c["id"]: c["verdict"] for c in data["claims"]}
     steps = tour_steps(data, extra)
     parts = [f"<p>{js('The tour follows one run in execution order. At each step, the table shows the claims that protect it, and each ID links to its evidence.')}</p>",
-             "<ol className=\"ux-steps\">" + "".join(f"<li><a href={js('#tour-' + s['id'])}>{js(s['title'].split(':')[0])}</a></li>" for s in steps) + "</ol>"]
+             "<ol>" + "".join(f"<li><a href={js('#tour-' + s['id'])}>{js(s['title'].split(':')[0])}</a></li>" for s in steps) + "</ol>"]
     for i, s in enumerate(steps, 1):
-        parts.append(f"<div className=\"ux-stop\" id={js('tour-' + s['id'])} data-ve-anchor=\"true\">")
-        parts.append(f"<h3><span className=\"ux-step\">{js(str(i))}</span>{js(s['title'])}</h3>")
-        parts += [f"<p>{inline(t)}</p>" for t in s.get("text", [])]
+        stop = [f"<p>{inline(t)}</p>" for t in s.get("text", [])]
         name = s.get("diagram")
         if name and name in (extra.get("diagrams") or {}):
             spec, used = toned(extra["diagrams"][name], verdict_of)
             legend = ([i for i in VERDICT_LEGEND if i["label"] in used] + glyph_legend(spec, SHAPE_NAMES)
                       + ([{"label": "refused import", "stroke": "dashed"}] if any(e.get("style") == "dashed" for e in spec["edges"]) else []))
-            parts.append(f"<h4>{js(spec['title'])}</h4><DiagramCanvas layout=\"flow\" title={js(spec['title'])} "
+            stop.append(f"<h4>{js(spec['title'])}</h4><DiagramCanvas layout=\"flow\" title={js(spec['title'])} "
                          f"description={js(spec['description'])} nodes={js(spec['nodes'])} edges={js(spec['edges'])} legend={js(legend)} />")
         name = s.get("walkthrough")
         if name and name in (extra.get("walkthroughs") or {}):
             spec, used = toned(extra["walkthroughs"][name], verdict_of)
             legend = [i for i in VERDICT_LEGEND if i["label"] in used] + glyph_legend(spec, SHAPE_NAMES)
-            parts.append(walkthrough(spec, f"tour-{s['id']}-motion", legend))
+            stop.append(walkthrough(spec, f"tour-{s['id']}-motion", legend))
         for ref in s.get("code", []):
             got = snippet(repo, data["head"], ref)
             if got:
                 code, start = got
-                parts.append(f"<CodeBlock language={js(LANG.get(Path(ref['path']).suffix, 'text'))} "
+                stop.append(f"<CodeBlock language={js(LANG.get(Path(ref['path']).suffix, 'text'))} "
                              f"filename={js(ref['path'] + ':' + str(start))} code={js(code)} />")
         if s.get("claims"):
-            parts.append(f"<p><strong>{js('Claims at this step: ')}</strong></p>" + chips(data, s["claims"]))
-            parts.append(table(CLAIM_COLUMNS, claim_rows(data, s["claims"]), f"Claims at step {i}"))
+            stop.append(f"<p><strong>{js('Claims at this step: ')}</strong></p>" + chips(data, s["claims"]))
+            stop.append(table(CLAIM_COLUMNS, claim_rows(data, s["claims"]), f"Claims at step {i}"))
         else:
-            parts.append(f"<p className=\"ux-none\">{js('No claim in this trust map protects this step.')}</p>")
-        parts.append("</div>")
+            stop.append(none("No claim in this trust map protects this step."))
+        parts.append(subsection("tour-" + s["id"], js(s["title"]), "\n".join(stop), marker=str(i)))
     return "\n".join(parts)
 
 
@@ -369,26 +383,23 @@ def confidence(data: dict, extra: dict) -> str:
     parts = [f"<p>{js('This chapter ranks the claims by risk, not by count. The weakest claims with the highest stakes come first, each with the cheapest fix.')}</p>"]
     risks = extra.get("risks") or [{"claims": [c["id"]], "why": c["reason"], "fix": ""}
                                    for c in data["claims"] if c["verdict"] in ("Gap", "Asserted")]
-    parts.append(f"<div id=\"confidence-weak\" data-ve-anchor=\"true\"><h3>{js('The weakest claims first')}</h3><ol className=\"ux-risks\">")
+    weak = []
     for r in risks:
         head = "".join(f"<a href={js('#' + claim_anchor(cid))}><code>{js(cid)}</code></a> <StatusPill tone=\"{TONE[verdict_of[cid]]}\">{js(verdict_of[cid])}</StatusPill> "
                        for cid in r["claims"])
         text = " ".join(claims[cid]["text"] for cid in r["claims"])
         what = " ".join((claims[cid].get("plain") or {}).get("what", "") for cid in r["claims"]).strip()
-        body = f"<dt>{js('Why it is weak')}</dt><dd>{inline(r['why'])}</dd>"
-        if r.get("fix"):
-            body += f"<dt>{js('Cheapest fix')}</dt><dd>{inline(r['fix'])}</dd>"
-        parts.append(f"<li className=\"ux-risk\"><h4>{head}{js(text)}</h4>" + (f"<p>{inline(what)}</p>" if what else "")
-                     + f"<dl className=\"ux-plain\">{body}</dl></li>")
-    parts.append("</ol></div>")
+        terms = [("Why it is weak", r["why"], None)] + ([("Cheapest fix", r["fix"], None)] if r.get("fix") else [])
+        weak.append(subsection(None, "{<>" + head + js(text) + "</>}",
+                               (f"<p>{inline(what)}</p>\n" if what else "") + definitions(terms), level=4))
+    parts.append(subsection("confidence-weak", js("The weakest claims first"), "\n".join(weak)))
 
     for i, spec in enumerate(extra.get("control_walkthroughs") or []):
         motion = control_walkthrough(data, spec)
         legend = [{"label": "caught: the check went red", "tone": "ok"}, {"label": "missed: the check stayed green", "tone": "warn"},
                   {"label": "planted bug", "glyph": "oval"}, {"label": "check", "glyph": "rect"}]
-        parts.append(f"<div id={js('confidence-controls' + (str(i) if i else ''))} data-ve-anchor=\"true\"><h3>{js('Verify the verifiers')}</h3>"
-                     f"<p>{inline(spec['description'])}</p>"
-                     + walkthrough(motion, f"confidence-controls-motion{i}", legend) + "</div>")
+        parts.append(subsection("confidence-controls" + (str(i) if i else ""), js("Verify the verifiers"),
+                                f"<p>{inline(spec['description'])}</p>\n" + walkthrough(motion, f"confidence-controls-motion{i}", legend)))
 
     s = data["summary"]
     proven = [c for c in data["claims"] if c["verdict"] == "Proven"]
@@ -402,8 +413,7 @@ def confidence(data: dict, extra: dict) -> str:
              f"{len(red)} of {len(ran)} controls went red in scratch worktrees, with no model call and no cost."]
     if s["Backed"]:
         solid.append(f"{s['Backed']} claims are Backed: the evidence is a record of a past run, and this run did not repeat it.")
-    parts.append(f"<div id=\"confidence-solid\" data-ve-anchor=\"true\"><h3>{js('What is solid')}</h3>"
-                 + "<ul>" + "".join(f"<li>{js(t)}</li>" for t in solid) + "</ul></div>")
+    parts.append(subsection("confidence-solid", js("What is solid"), "<ul>" + "".join(f"<li>{js(t)}</li>" for t in solid) + "</ul>"))
     parts.append(verifier_map(data))
     return "\n".join(parts)
 
@@ -438,8 +448,7 @@ def verifier_map(data: dict) -> str:
               + [{"label": "fact tier", "stroke": "solid"}]
               + ([{"label": "guess tier", "stroke": "dashed"}] if any(k["guess"] for k in kinds.values()) else []))
     uncovered = [layer for layer in layers if layer not in covered]
-    parts = [f"<div id=\"confidence-map\" data-ve-anchor=\"true\"><h3>{js('From verifiers to claims')}</h3>"
-             f"<p>{js('Each verifier kind, with an edge to each claim layer that it backs. A layer takes the colour and the word of its weakest verdict.' + (' No verifier backs: ' + ', '.join(uncovered) + '.' if uncovered else ''))}</p>"
+    parts = [f"<p>{js('Each verifier kind, with an edge to each claim layer that it backs. A layer takes the colour and the word of its weakest verdict.' + (' No verifier backs: ' + ', '.join(uncovered) + '.' if uncovered else ''))}</p>"
              f"<DiagramCanvas layout=\"flow\" title={js('From verifiers to claims')} description={js('Verifier kinds and the claim layers they back.')} "
              f"nodes={js(nodes)} edges={js(edges)} legend={js(legend)} />"]
     controls: dict[str, list[str]] = {}
@@ -461,8 +470,8 @@ def verifier_map(data: dict) -> str:
         "state": {"text": v.get("state", "unknown"), "status": STATE_TONE.get(v.get("state", ""), "neutral")},
         "claims": {"badges": [{"label": cid, "tone": TONE.get(verdict_of.get(cid, ""), "neutral")} for cid in v["claims"]]},
         "controls": "; ".join(controls.get(v["id"], [])) or None}} for v in data["verifiers"]]
-    parts.append(f"<h4>{js('Verifier map')}</h4>" + table(columns, rows, "Verifier map") + "</div>")
-    return "".join(parts)
+    parts.append(f"<h4>{js('Verifier map')}</h4>\n" + table(columns, rows, "Verifier map"))
+    return subsection("confidence-map", js("From verifiers to claims"), "\n".join(parts))
 
 
 # ---- Chapter 4: evidence ------------------------------------------------------------------
@@ -488,48 +497,45 @@ def evidence(data: dict, repo: str, steps: list[dict]) -> str:
     for k in data["controls"]:
         controls.setdefault(k["verifier"], []).append(k)
     parts = [f"<p>{js('Each claim with its plain text, its code at the head, each verifier, and each control with its edit and its output.')}</p>",
-             f"<div id=\"evidence-index\" data-ve-anchor=\"true\"><h3>{js('Claim index')}</h3>"
-             + table(CLAIM_COLUMNS, claim_rows(data, [c["id"] for c in data["claims"]]), "Claim index") + "</div>"]
+             subsection("evidence-index", js("Claim index"), table(CLAIM_COLUMNS, claim_rows(data, [c["id"] for c in data["claims"]]), "Claim index"))]
     for verdict, claims in by_verdict(data):
-        parts.append(f"<h3 id={js('evidence-' + slug(verdict))} data-ve-anchor=\"true\">{js(f'{verdict} ({len(claims)})')}</h3>")
-        parts.append(intro(data, verdict))
+        group = [intro(data, verdict)]
         for c in claims:
-            parts.append(f"<article className=\"ux-claim\" id={js(claim_anchor(c['id']))} data-ve-anchor=\"true\">")
-            parts.append(f"<h4><code>{js(c['id'])}</code> <StatusPill tone=\"{TONE[c['verdict']]}\">{js(c['verdict'])}</StatusPill> {js(c['text'])}</h4>")
+            body = []
             step = step_of.get(c["id"])
             if step:
-                parts.append(f"<p className=\"ux-drill\"><a href={js('#tour-' + step['id'])}>{js('Tour step: ' + step['title'].split(':')[0])}</a></p>")
+                body.append(f"<p><a href={js('#tour-' + step['id'])}>{js('Tour step: ' + step['title'].split(':')[0])}</a></p>")
             plain = c.get("plain")
             if plain:
-                body = "".join(f"<dt>{js(k)}</dt><dd>{inline(t)}</dd>" for k, t in [("What it is", plain["what"]), ("How it is proven", plain["proof"])])
-                if plain.get("warning"):
-                    body += f"<dt className=\"ux-warning\">{js('Warning')}</dt><dd className=\"ux-warning\">{inline(plain['warning'])}</dd>"
-                parts.append(f"<dl className=\"ux-plain\">{body}</dl>")
-            parts.append(f"<p>{js('Reason: ' + c['reason'] + ' Source: ' + c['source'] + '.')}</p>")
+                body.append(definitions([("What it is", plain["what"], None), ("How it is proven", plain["proof"], None)]
+                                        + ([("Warning", plain["warning"], "warn")] if plain.get("warning") else [])))
+            body.append(f"<p>{js('Reason: ' + c['reason'] + ' Source: ' + c['source'] + '.')}</p>")
             for ref in c.get("code", []):
                 got = snippet(repo, data["head"], ref)
                 if got:
                     code, start = got
-                    parts.append(f"<CodeBlock language={js(LANG.get(Path(ref['path']).suffix, 'text'))} "
-                                 f"filename={js(ref['path'] + ':' + str(start))} code={js(code)} />")
+                    body.append(f"<CodeBlock language={js(LANG.get(Path(ref['path']).suffix, 'text'))} "
+                                f"filename={js(ref['path'] + ':' + str(start))} code={js(code)} />")
             for v in by_claim.get(c["id"], []):
-                parts.append(f"<p><strong>{js(v['id'] + ':')}</strong>{js(' ' + v['description'] + ' Provenance: ' + v['provenance'])}</p>")
+                body.append(f"<p><strong>{js(v['id'] + ':')}</strong>{js(' ' + v['description'] + ' Provenance: ' + v['provenance'])}</p>")
                 if "recorded" in v:
-                    parts.append(f"<TerminalBlock title={js('Recorded: ' + v['recorded']['source'])} content={js(v['recorded']['result'])} />")
+                    body.append(f"<TerminalBlock title={js('Recorded: ' + v['recorded']['source'])} content={js(v['recorded']['result'])} />")
                 if "command" in v:
                     b = v.get("baseline") or {}
-                    parts.append(f"<CodeBlock language=\"bash\" filename={js('At the PR head: ' + b.get('status', 'not run'))} "
-                                 f"code={js('$ ' + ' '.join(v['command']['argv']))} />")
+                    body.append(f"<CodeBlock language=\"bash\" filename={js('At the PR head: ' + b.get('status', 'not run'))} "
+                                f"code={js('$ ' + ' '.join(v['command']['argv']))} />")
                     if b.get("output_tail"):
-                        parts.append(f"<TerminalBlock title={js('Output at the PR head')} content={js(b['output_tail'])} />")
+                        body.append(f"<TerminalBlock title={js('Output at the PR head')} content={js(b['output_tail'])} />")
                 for k in controls.get(v["id"], []):
                     r = k.get("result") or {}
-                    parts.append(f"<p><strong>{js('Control ' + k['id'] + ' (' + k['recipe'] + '): ' + r.get('status', 'not run') + '.')}</strong>{js(' ' + k['description'])}</p>")
-                    parts += [edit_block(e) for e in k["edits"]]
+                    body.append(f"<p><strong>{js('Control ' + k['id'] + ' (' + k['recipe'] + '): ' + r.get('status', 'not run') + '.')}</strong>{js(' ' + k['description'])}</p>")
+                    body += [edit_block(e) for e in k["edits"]]
                     tail = r.get("output_tail", r.get("note", ""))
                     if tail:
-                        parts.append(f"<TerminalBlock title={js('Control ' + k['id'] + ' output')} content={js(tail)} />")
-            parts.append("</article>")
+                        body.append(f"<TerminalBlock title={js('Control ' + k['id'] + ' output')} content={js(tail)} />")
+            title = f"{{<><code>{js(c['id'])}</code> <StatusPill tone=\"{TONE[c['verdict']]}\">{js(c['verdict'])}</StatusPill> {js(c['text'])}</>}}"
+            group.append(subsection(claim_anchor(c["id"]), title, "\n".join(body), level=4))
+        parts.append(subsection("evidence-" + slug(verdict), js(f"{verdict} ({len(claims)})"), "\n".join(p for p in group if p)))
     return "\n".join(p for p in parts if p)
 
 
@@ -543,13 +549,13 @@ def bullets(items: list[str], empty: str) -> str:
 
 def tradeoffs(extra: dict) -> str:
     return "\n".join([
-        f"<div id=\"tradeoffs-list\" data-ve-anchor=\"true\"><h3>{js('Trade-offs')}</h3>{bullets(extra.get('tradeoffs', []), 'No trade-offs recorded.')}</div>",
-        f"<div id=\"tradeoffs-concerns\" data-ve-anchor=\"true\"><h3>{js('Concerns')}</h3>{bullets(extra.get('concerns', []), 'No concerns recorded.')}</div>",
-        f"<div id=\"tradeoffs-verifications\" data-ve-anchor=\"true\"><h3>{js('Verifications of this explainer')}</h3>{bullets(extra.get('verifications', []), 'No verifications recorded.')}</div>"])
+        subsection("tradeoffs-list", js("Trade-offs"), bullets(extra.get("tradeoffs", []), "No trade-offs recorded.")),
+        subsection("tradeoffs-concerns", js("Concerns"), bullets(extra.get("concerns", []), "No concerns recorded.")),
+        subsection("tradeoffs-verifications", js("Verifications of this explainer"), bullets(extra.get("verifications", []), "No verifications recorded."))])
 
 
 def exercises() -> str:
-    return f"<p className=\"ux-none\">{js('This chapter is a placeholder. The learning app fills it.')}</p>"
+    return none("This chapter is a placeholder. The learning app fills it.")
 
 
 def anchors(items: list[tuple[str, str]]) -> str:
@@ -557,7 +563,7 @@ def anchors(items: list[tuple[str, str]]) -> str:
 
 
 CHAPTERS = ["orientation", "tour", "confidence", "evidence", "tradeoffs", "exercises"]
-CHAPTER_COMPONENTS = "DiagramCanvas, DiagramWalkthrough, DataTable, StatusPill, CodeBlock, DiffBlock, TerminalBlock"
+CHAPTER_COMPONENTS = "DiagramCanvas, DiagramWalkthrough, DataTable, StatusPill, CodeBlock, DiffBlock, TerminalBlock, DefinitionList, Definition, Subsection"
 
 
 def chapter_file(repo_path: str, name: str, body: str) -> str:
