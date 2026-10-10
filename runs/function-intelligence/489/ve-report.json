@@ -1,0 +1,4289 @@
+{
+  "file": "/Users/clayton/dev/understando/runs/function-intelligence/489/explainer.html",
+  "profile": "page",
+  "mechanics_profile": "page",
+  "review_profile": "page",
+  "preset": "custom",
+  "summary": {
+    "errors": 0,
+    "warns": 3,
+    "skipped": 124,
+    "passed": 26
+  },
+  "checks": [
+    {
+      "id": "no-placeholder-leak",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "Regex the final HTML for `{{[A-Za-z0-9_]+}}` and `{{NN}}` tokens, standalone `TODO`/`FIXME`, `Lorem ipsum`, and generic placeholder names `\\bModule [A-Z]\\b` / `\\bComponent [A-Z]\\b`. Any match outside a <code>/<pre> block that is demonstrably documenting template syntax = fail."
+    },
+    {
+      "id": "self-contained-html-file",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "Scan all `src=`/`href=` attribute values; fail if any resolves to a relative/local filesystem path (does not start with http://, https://, data:, blob:, #, mailto:, tel:). CDN links (https) and data:/blob: URIs are allowed; the artifact must be one portable file."
+    },
+    {
+      "id": "file-structure-head-contract",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "Per SKILL.md File Structure, assert the raw file starts with `<!DOCTYPE html>` (case-insensitive) and the parsed DOM contains `<meta charset>`, `<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">`, and a non-empty `<title>`. Any missing piece = fail."
+    },
+    {
+      "id": "theme-both-light-dark",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "Parse <style>. Collect color custom properties in the top-level `:root{}`. Require a dark override block — `@media (prefers-color-scheme: dark){:root{…}}` OR `:root[data-theme=\"dark\"]{…}` — that redefines at least the core semantic set present in light (bg/surface/text/border/accent, case-insensitive substring). Fail if color custom props exist but no dark override block, or the dark block omits the core set."
+    },
+    {
+      "id": "no-default-link-color",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Document has >=1 `<a href>` (excluding #, mailto:, tel:).",
+      "where": "",
+      "fix_hint": "If the document contains real links, assert the CSS has an `a`/`a:link`/`.prose a` rule setting `color` to a non-initial value (ideally `var(--accent)`). Fail if links exist but no link-color override rule is present, since UA-default link blue looks unstyled and has poor contrast on dark backgrounds."
+    },
+    {
+      "id": "css-class-node-collision",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Page uses Mermaid (`class=\"mermaid\"` / `.mermaid` / `mermaid.initialize`).",
+      "where": "",
+      "fix_hint": "Scan CSS selectors for a bare `.node` class token not nested under `.mermaid`, and scan HTML for an element whose class list contains the exact token `node`. Either = fail — Mermaid uses `.node` internally on SVG <g> elements, so page-level `.node` rules leak into diagrams; use `.ve-card` instead."
+    },
+    {
+      "id": "code-block-whitespace-preserved",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "For CSS rules targeting block code containers (`pre`, `pre code`, `.code-block`, `.code-file__body`, `.dir-tree`), assert `white-space` is pre / pre-wrap / pre-line (never normal). Directory-tree / box-drawing containers (`.dir-tree`, or text containing ├└│─) must specifically be `pre` — pre-wrap soft-wraps and breaks connector alignment. Missing declaration or `normal` = fail."
+    },
+    {
+      "id": "code-block-length-constrained",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Page has a `<pre><code>` block over ~100 lines or that would render taller than ~500px.",
+      "where": "",
+      "fix_hint": "For `<pre><code>` blocks NOT inside `<details>`: (a) if newline-delimited line count > 100 → warn (avoid dumping full files; use outlines/collapsible/snippets); (b) if the block would render taller than ~500px, require `max-height` set and `overflow-y: auto|scroll`. Either unmet = warn."
+    },
+    {
+      "id": "prose-readability-minimums",
+      "stage": "browser",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Page has a `.prose` reading-first region.",
+      "where": "",
+      "fix_hint": "Extend the 16px font-size / ≥1.5 line-height / ≤~75–85ch measure floors from `.prose p` to ALL running body prose (any multi-line <p>/list item that is not a caption/label/eyebrow/mono/code/table-cell), on page AND magazine profiles. Keep captions/labels/metadata/axis-labels exempt. Slides remain covered by min-slide-body-text-16px; poster/video-comp fixed canvases stay exempt (fixed-size type is intentional there)."
+    },
+    {
+      "id": "mermaid-rendered",
+      "stage": "browser",
+      "severity": "error",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "Wait up to the configured Mermaid readiness timeout, then require every declared Mermaid container to contain an SVG and no Mermaid parse-error marker. A timeout is recorded as browser evidence and fails this check instead of aborting the verifier before findings are produced."
+    },
+    {
+      "id": "no-console-errors",
+      "stage": "browser",
+      "severity": "error",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "Load the page headlessly in both light and dark schemes; collect console messages of type 'error' plus failed network requests (non-2xx on linked resources). Fail on any error-level console message or non-2xx asset load, except a documented allowlist. Retry transient CDN 404s once before failing."
+    },
+    {
+      "id": "reduced-motion-media-query",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "If the stylesheet defines any animation/transition with duration > 0, assert it also contains an `@media (prefers-reduced-motion: reduce){…}` block that collapses animation/transition durations to near-zero for the animated elements or `*`. Missing = warn."
+    },
+    {
+      "id": "page-overflow-clip-contract",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Page profile only; skip when the artifact is fixed-canvas (root/body has fixed px width+height matching a slide/poster/magazine-deck canvas, a data-layout=slide|magazine|poster marker, or the document declares no @media(max-width) query at all).",
+      "where": "",
+      "fix_hint": "In the concatenated <style> text, locate the rule(s) targeting html and body (combined `html,body` or separate). Require ALL: `overflow-x:hidden` AND `overflow-x:clip` both declared, with the clip declaration appearing AFTER hidden in source order (progressive enhancement); `max-width:100%`; `margin:0`; `padding:0` covering html/body. Additionally assert NO rule targeting html|body|:root sets `overflow-x:scroll` (regex `(?:html|body|:root)[^{]*\\{[^}]*overflow-x:\\s*scroll` anywhere ⇒ violation). Browser corroboration (when a DOM is available): getComputedStyle(document.body).overflowX and getComputedStyle(document.documentElement).overflowX must each resolve to 'clip' or 'hidden', never 'scroll' or 'visible'. Fail if any required clause is missing or the scroll negative matches."
+    },
+    {
+      "id": "box-sizing-border-box-global",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Page profile, non-fixed-canvas (same profile guard as page-overflow-clip-contract).",
+      "where": "",
+      "fix_hint": "Regex the concatenated <style> for a universal border-box reset: a selector group covering `*` (optionally with `*::before,*::after`) whose declaration block contains `box-sizing:\\s*border-box`. Also accept the inherit idiom (`html{box-sizing:border-box}` plus `*,*::before,*::after{box-sizing:inherit}`) or an equivalent reset-library rule. Fail only if no universal border-box coverage exists anywhere."
+    },
+    {
+      "id": "body-overflow-wrap",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Page profile, non-fixed-canvas.",
+      "where": "",
+      "fix_hint": "Regex for a `body` rule containing `overflow-wrap:\\s*(anywhere|break-word)` or `word-break:\\s*break-word`. Warn if absent. Advisory only — the authoritative failure for long-token overflow is the measured body-overflow gate; equivalent per-element `word-break` on long-token elements also satisfies intent."
+    },
+    {
+      "id": "minmax0-not-bare-1fr",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Page profile; only when a grid-template-columns declaration pairs a bare 1fr with a fixed-px track.",
+      "where": "",
+      "fix_hint": "Scan <style> grid-template-columns declarations for a bare `1fr` track directly adjacent to a fixed-px track and NOT wrapped in minmax(): match `grid-template-columns:\\s*[^;]*\\b\\d+px\\s+1fr\\b` or `\\b1fr\\s+\\d+px\\b` within a declaration where that `1fr` is not the tail of a `minmax(` call. Any match is a violation (documented #1 root cause of horizontal overflow)."
+    },
+    {
+      "id": "mobile-breakpoint-standard",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Page profile with at least one `@media (max-width: Npx)` query.",
+      "where": "",
+      "fix_hint": "Extract every `@media` `max-width:\\s*(\\d+)px` value. Allowed standard set {768, 820}; sanctioned exceptions {640 (Nothing grid-lines), 1000 (responsive-nav.md TOC sidebar→bar collapse)}. Warn on any other max-width value."
+    },
+    {
+      "id": "pipeline-mobile-nowrap",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Page contains an element with class `pipeline`.",
+      "where": "",
+      "fix_hint": "Inside a mobile `@media (max-width:...)` block, the `.pipeline` rule must declare `flex-wrap:\\s*nowrap`. Warn if .pipeline exists on the page but the mobile rule is missing or sets flex-wrap:wrap."
+    },
+    {
+      "id": "kpi-row-autofit-minmax",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Page contains an element with class `kpi-row`.",
+      "where": "",
+      "fix_hint": "Inside the mobile media query, `.kpi-row` should set `grid-template-columns: repeat(auto-fit, minmax(<N>px, 1fr))` (N tolerant). Warn if .kpi-row is present but reduces to a fixed column count at mobile instead of an auto-fit minmax floor."
+    },
+    {
+      "id": "no-horizontal-body-overflow",
+      "stage": "browser",
+      "severity": "error",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "Load the page and, at BOTH viewports 390x844 and 1440x900, in BOTH prefers-color-scheme light and dark, assert `document.documentElement.scrollWidth - window.innerWidth <= 1` AND `document.body.scrollWidth - window.innerWidth <= 1`. Fail if the 1px tolerance is exceeded at any viewport/scheme combination. (1px tolerance replaces the doc's strict === to absorb browser sub-pixel rounding.)"
+    },
+    {
+      "id": "overflow-source-census",
+      "stage": "browser",
+      "severity": "error",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "At 390x844 (and 1440x900) in both schemes, evaluate `[...document.querySelectorAll('body *')].filter(el => el.clientWidth>0 && el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflowX === 'visible')`. The list must be empty; report {tag, className, scrollWidth, clientWidth} for each offender so the fix (add .scroll-x / min-width:0 / max-width:100%) can be targeted. Non-empty ⇒ fail."
+    },
+    {
+      "id": "grid-flex-child-min-width-0",
+      "stage": "browser",
+      "severity": "error",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "At 390x844, for each direct child of such a container, if child.scrollWidth > child.clientWidth + 1 (child is overflowing its own box) AND getComputedStyle(child).minWidth resolves to a non-zero value (i.e. min-width:auto), flag as a shrink-refusing child. Gate strictly on measured child overflow to avoid failing grids whose children are naturally narrow."
+    },
+    {
+      "id": "fixed-grid-collapses-single-column",
+      "stage": "browser",
+      "severity": "error",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "At 390x844 (representing <=768px), for each such element assert getComputedStyle(el).gridTemplateColumns resolves to a SINGLE track (value is a single length/none, no internal space between track sizes). Covers both fixed-column named grids and the 2-column magazine hero. Skip .kpi-row (auto-fit exception)."
+    },
+    {
+      "id": "wide-content-scroll-x-wrapper",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Page contains a <table>, .pipeline, .dir-tree, an inline diagram <svg>, or a .code-block.",
+      "where": "",
+      "fix_hint": "At 390x844, for each candidate wide element (table, .pipeline, .dir-tree pre, inline diagram svg, .code-block) that actually overflows (el.scrollWidth > el.clientWidth + 1), verify the element itself OR an ancestor within 3 levels has computed overflow-x in {auto, scroll} (i.e. a scroll container such as .scroll-x/.table-wrap/.mermaid-wrap or inline overflow-x:auto). If it overflows and no scroll container is found ⇒ violation. This subsumes the ~640px SVG threshold using measured overflow rather than the raw viewBox number."
+    },
+    {
+      "id": "dir-tree-connectors-no-wrap",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Page has a .dir-tree element, or a <pre> whose text contains box-drawing characters (├ └ │).",
+      "where": "",
+      "fix_hint": "For each such <pre>, assert getComputedStyle(el).whiteSpace is 'pre' or 'nowrap' (NOT 'pre-wrap' or 'normal') AND the element or an ancestor within 3 levels has overflow-x auto/scroll. Violation if wrapping is permitted (pre-wrap/normal) OR no horizontal scroll container exists."
+    },
+    {
+      "id": "text-clip-candidates",
+      "stage": "browser",
+      "severity": "warn",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "At 390x844 (both schemes) collect elements where getComputedStyle overflowX or overflowY is 'clip'/'hidden' AND (scrollWidth>clientWidth+1 OR scrollHeight>clientHeight+1) AND the element has non-empty direct text content, EXCLUDING elements whose computed `-webkit-line-clamp` is not 'none' or `text-overflow` is 'ellipsis'. Emit the candidate list for the single profile-aware artifact review. Non-empty ⇒ warn (visual confirmation decides the ship-blocker)."
+    },
+    {
+      "id": "content-behind-fixed-ui-candidates",
+      "stage": "browser",
+      "severity": "warn",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "At 390x844 (both schemes), for each position:fixed element with a non-transparent computed background, compute its bounding rect and find interactive/text elements (a, button, h1-h4, p, td, .sec-head) whose rects geometrically intersect it and paint beneath it. Emit overlap candidates for the single profile-aware artifact review. Non-empty ⇒ warn."
+    },
+    {
+      "id": "no-scroll-x-on-prose",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Page profile, non-fixed-canvas.",
+      "where": "",
+      "fix_hint": "Assert no <p> element and no hero text-bearing element carries class `scroll-x`; assert card-grid containers are not themselves wrapped in `.scroll-x` (they should reflow to one column). A `.scroll-x` wrapper around a wide diagram that happens to live inside the hero is allowed — scope to text-bearing prose nodes, not any .hero descendant."
+    },
+    {
+      "id": "toc-nav-structure",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Page has both a `.wrap` element and a `nav.toc`.",
+      "where": "",
+      "fix_hint": "Assert .wrap.firstElementChild is nav.toc (tag nav, classList includes 'toc'); assert all section content lives inside a `.main` child of .wrap (every .sec-head is a descendant of .main, none are direct children of .wrap); and assert the stylesheet contains a `.main{...min-width:0...}` declaration. Fail if the toc is not first, content leaks outside .main, or .main lacks min-width:0."
+    },
+    {
+      "id": "toc-anchors-resolve",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Page has a `nav.toc`.",
+      "where": "",
+      "fix_hint": "Assert every `.sec-head` element has a non-empty id; every `.toc a[href^=\"#\"]` (excluding a '#'/'#top' back-to-top link) resolves via document.getElementById to an existing element; and the count of section .toc links equals the count of .sec-head elements."
+    },
+    {
+      "id": "skip-toc-under-four-sections",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Page has a `nav.toc`.",
+      "where": "",
+      "fix_hint": "Count .sec-head elements (or section .toc links). Warn if fewer than 4 — a near-empty TOC adds clutter."
+    },
+    {
+      "id": "pretext-fonts-ready-before-measure",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Source contains a `prepareWithSegments(` call (pretext label-measurement library in use).",
+      "where": "",
+      "fix_hint": "For each `prepareWithSegments(` call, require an awaited `document.fonts.ready` or `document.fonts.load(` earlier in the same script scope (before the call). Warn on any prepareWithSegments with no preceding fonts-ready await — measuring against fallback fonts yields wrong widths that drift every downstream box calc."
+    },
+    {
+      "id": "diagram-no-hardcoded-hex",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Document contains an inline <svg> authored by the skill (heuristic: an <svg> whose element attributes reference var(--...) tokens, or that declares data-diagram-role).",
+      "where": "",
+      "fix_hint": "Regex diagram-body elements for hex color literals (#[0-9a-fA-F]{3,8}) and rgb()/rgba() literals appearing inside fill=, stroke=, or style= attributes. Exclude the :root/@media token-definition blocks and url(#...) references. Flag any literal color on a body element."
+    },
+    {
+      "id": "diagram-forbidden-fx",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Document contains an inline skill-authored <svg> diagram.",
+      "where": "",
+      "fix_hint": "Regex-scan diagram markup and flag any of: (a) box-shadow or SVG feDropShadow on nodes; (b) background-clip:text / -webkit-background-clip:text co-occurring with a linear-gradient on a title/heading; (c) pictographic emoji codepoints inside <text> content; (d) box-shadow or filter:blur combined with animation/transition/@keyframes (animated shadow); (e) writing-mode:vertical on arrow-associated <text>; (f) Tailwind class rounded-2xl or an rx/ry/border-radius of exactly 16."
+    },
+    {
+      "id": "diagram-jetbrains-mono-forbidden",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Inline skill-authored <svg> diagram present AND the active aesthetic is NOT an IDE-inspired one whose canonical palette specifies JetBrains Mono.",
+      "where": "",
+      "fix_hint": "Regex for \"JetBrains Mono\" in any font-family declaration (inline style, @font-face, or Google Fonts href) within diagram markup. Flag presence."
+    },
+    {
+      "id": "diagram-4px-grid",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Inline skill-authored <svg> diagram present.",
+      "where": "",
+      "fix_hint": "Parse numeric values of x, y, cx, cy, width, height, font-size, and gap/spacing across diagram SVG; assert each value % 4 === 0. Report every offending element+attribute+value."
+    },
+    {
+      "id": "diagram-typography-mono-scope",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Inline diagram with node-name/title/description text identifiable (data-diagram-role tagging present) AND aesthetic is NOT Monochrome-Terminal. Warn-level heuristic fallback when tagging absent.",
+      "where": "",
+      "fix_hint": "For every <text> classified as a node name/title/description, resolve font-family and assert it is var(--font-body), not var(--font-mono). Additionally flag if var(--font-mono) is the majority face across body-classified text. Technical labels (ports/types/URLs/arrow labels/eyebrow kickers) may be mono."
+    },
+    {
+      "id": "diagram-host-token-inheritance",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "A diagram <svg>/<style> lives inside a document that already declares a :root token block (--paper/--ink) earlier in the cascade.",
+      "where": "",
+      "fix_hint": "Flag duplicate :root declarations of the diagram color-token names (--paper/--ink/etc.) within a single document — an embedded diagram must inherit host tokens rather than redeclaring them."
+    },
+    {
+      "id": "diagram-z-order-arrows-before-nodes",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Arrows and nodes are distinguishable via data-diagram-role or separate <g> groups.",
+      "where": "",
+      "fix_hint": "Assert the arrows group's document index precedes the nodes group; or, per connected component, assert every arrow-classified element's document index precedes the node elements it connects."
+    },
+    {
+      "id": "diagram-legend-placement",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "A legend group is present in the diagram.",
+      "where": "",
+      "fix_hint": "Assert the legend group bbox sits within the bottom ~60px band of the viewBox; items lay out left-to-right (width >> height, x-coords monotonic and non-overlapping); a sibling line/rect with stroke=var(--rule) sits directly above it; and viewBox height >= bodyMaxY + ~50-70px headroom. Never float inside the diagram body."
+    },
+    {
+      "id": "diagram-arrow-label-masking-rect",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Arrow-label text is present (role tagging or arrow-associated <text>).",
+      "where": "",
+      "fix_hint": "For every <text> classified as an arrow label, assert the immediately-preceding sibling is a <rect> with fill resolving to var(--paper)/var(--paper-2). (Pixel-coverage of the rect over the text bbox is verified in diagram-text-clipping-overlap.)"
+    },
+    {
+      "id": "diagram-density-budget",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Elements carry data-diagram-role tagging (decision c). Warn-level heuristic count fallback when tagging absent.",
+      "where": "",
+      "fix_hint": "Count generic node elements (role=node), assert <=9; count arrow/transition elements (marker-end=url(#arrow*) or role=arrow), assert <=12. Exclude legend/annotation/axis elements from the node count."
+    },
+    {
+      "id": "diagram-focal-accent-count",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Inline diagram where the accent token/literal is resolvable.",
+      "where": "",
+      "fix_hint": "Count distinct elements whose fill or stroke resolves to var(--accent) (or the aesthetic's literal accent hex); assert count <= 2."
+    },
+    {
+      "id": "diagram-complexity-budget-by-type",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Diagram type is detectable (data-diagram-type or structural signature) AND role tagging present. Warn-level fallback when tagging absent.",
+      "where": "",
+      "fix_hint": "Per detected type, assert count <= budget: sequence lifelines <=5; swimlane lanes <=5; ER entities <=8; nested containment levels <=6; tree depth <=4 and children-per-node <=5; layer-stack layers 4-6; venn set-circles <=3; pyramid/funnel layers 4-6; annotation callouts <=2; quadrant items <=12."
+    },
+    {
+      "id": "diagram-shape-semantics",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Detected diagram type is flowchart, state-machine, or sequence.",
+      "where": "",
+      "fix_hint": "Flowchart: start/end rx=20, step rx=6, decision=diamond with <=3 outgoing arrows (else must nest), merge=filled <circle r=4>; every decision outgoing arrow has a text label; shape (not color) must be the semantic channel. State-machine: state rects rx=8, start=filled <circle r=6>, end=two concentric circles, transition label matches /^\\S+(\\s\\[[^\\]]+\\])?\\s*/\\s*\\S+/, transitions <= 2x state count, no 'from any state' fan-out. Sequence: lifelines vertical (x1~x2) with stroke-dasharray set, message arrows horizontal (y1~y2) with non-decreasing y in document order, activation bars width=8 stroke-width=0.8 fill~var(--muted) each with matched open+close, return arrows dashed, no lane dividers."
+    },
+    {
+      "id": "diagram-quadrant-conventions",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Detected diagram type is quadrant.",
+      "where": "",
+      "fix_hint": "Assert axis lines cross at the plot-area geometric center; axis labels lie near the extreme x/y of each axis (not within a midpoint tolerance band); item dots have r=4; no item (x,y) sits within epsilon of x=centerX or y=centerY; any quadrant background rects all share the same fill."
+    },
+    {
+      "id": "diagram-annotation-callout-conventions",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "An annotation-callout structure is present.",
+      "where": "",
+      "fix_hint": "Callout text font-style=italic and font-family=var(--font-display); leader path has stroke-dasharray set (never solid); a landing-dot <circle> exists at the leader terminus; count <=2 per diagram; neutral callout leader stroke-opacity~0.4 and text fill=var(--ink), focal callout leader+text fill=var(--accent). Non-overlap with content is verified in diagram-text-clipping-overlap."
+    },
+    {
+      "id": "diagram-sketchy-filter-shapes-not-text",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "A <filter> using feTurbulence/feDisplacementMap is defined.",
+      "where": "",
+      "fix_hint": "Assert filter params baseFrequency in [0.01,0.04], numOctaves in [1,3], scale in [1,6], and a fixed seed attribute present. Find every element referencing that filter (directly or via a filtered ancestor); assert no <text> is among them or their descendants."
+    },
+    {
+      "id": "diagram-proportional-honesty",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "A ranked/proportional diagram (pyramid, funnel, venn, timeline, bar) whose items carry data-value / data-percentage / data-cardinality attributes.",
+      "where": "",
+      "fix_hint": "Recompute expected geometry from the data and assert rendered geometry matches within a few px: pyramid/funnel layer width = maxWidth x (value/base); venn circle radius proportional to sqrt(cardinality); timeline event x-position proportional to real time delta across adjacent events (or a visible axis-break marker over anomalous gaps). Accent must not sit on the base/largest layer; widths monotonic in a single direction."
+    },
+    {
+      "id": "diagram-arrow-endpoint-air-gap",
+      "stage": "browser",
+      "severity": "error",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "Render at 1440x900 (both schemes). Resolve the start and terminal points for line, path, polyline, and polygon connectors into viewport coordinates with getScreenCTM(). Pair data-diagram-source and data-diagram-target with nodes by data-diagram-id; when no target is declared, use the nearest tagged node. Assert a 6-10px air gap and no point-in-rect intersection at every declared endpoint. When data-diagram-source-anchor or data-diagram-target-anchor is left-center, right-center, top-center, or bottom-center, also assert that endpoint lands on the named side and aligns to its midpoint within 3px."
+    },
+    {
+      "id": "diagram-text-clipping-overlap",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Inline skill-authored <svg> diagram present.",
+      "where": "",
+      "fix_hint": "Render (1440x900, both schemes). For every <text> assert getBBox() is fully contained within the SVG viewBox and its intended container group's bbox. Pairwise collision-test all text bboxes and leader-line paths and assert no unexpected intersections (excluding intentional label-on-mask overlaps). For each arrow-label mask rect assert it contains its text bbox with >= ~4px margin per side."
+    },
+    {
+      "id": "mono-type-budget",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Mono-Industrial detected: Space Grotesk loaded as --font-body AND no Doto/Libre Baskerville/Manrope loaded (distinguishes from Nothing).",
+      "where": "",
+      "fix_hint": "Parse font-family declarations actually applied to elements (first non-generic name per stack only). (1) Distinct applied families ≤3 (Space Grotesk, Space Mono, +optional one Geist Pixel accent); fail if >3 or if >1 pixel-accent face loaded. (2) Geist Pixel @font-face present only if some element's resolved computed font-family (following --font-display var chain) uses it; warn if loaded-but-unused. (3) Distinct applied font-size values (var(--size-*), literal px, one clamp()=one size) ≤4 — display/section/body/caption per tokens.md; error if >4, warn at exactly 4 if the 4th isn't --size-section. (4) No font-weight resolving to 700/bold on any element whose family resolves to Space Grotesk/--font-display sans (check computed style so UA-default <b>/<strong> bold counts); distinct weights in use (excluding Space Mono 700) ≤2."
+    },
+    {
+      "id": "mono-grayscale-status-color",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Mono-Industrial detected (Space Grotesk body, no Doto/Libre Baskerville).",
+      "where": "",
+      "fix_hint": "Scan all color/background/border-color/fill/stroke literals. Whitelist documented grayscale values (#000, #f6f4f0, rgba(242,237,229,*), rgba(22,19,15,*) and var(--fg)/--text-*/--rule* forms) plus the six status hexes and var(--ok|--warn|--err). Fail on: any other hue-bearing literal; linear-gradient(/radial-gradient( in chrome; background-clip:text with non-monochrome color or -webkit-text-fill-color set to a hue; var(--ok|--warn|--err) used as background-color/fill on row/section selectors (tr,.row,.section,li) or as color on label-classed text (status marks the value/datum, never a container or label)."
+    },
+    {
+      "id": "mono-theme-toggle-structure",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Mono-Industrial detected AND profile is scrollable page.",
+      "where": "",
+      "fix_hint": "Find one fixed-position container (position:fixed with top/right offsets) holding exactly 3 co-located options whose text/aria-label match /light/i, /dark/i, /auto|system/i. Within it: each option's icon slot is an inline <svg viewBox='0 0 16 16'> with a <circle r='5'> (or proportionally equivalent viewBox scaling), rendered ~12x12; fail if the literal glyphs ○/●/◐ (U+25CB/25CF/25D0) are used as icons."
+    },
+    {
+      "id": "mono-theme-override-mechanism",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Mono-Industrial detected AND profile is scrollable page.",
+      "where": "",
+      "fix_hint": "Sniff the base mode from bare :root token values (dark-first vs light-first). Assert the OPPOSITE-mode @media (prefers-color-scheme:…) block's selector is :root:not([data-theme='<base-mode>']) — not bare :root. Assert standalone :root[data-theme='light'] AND :root[data-theme='dark'] rule blocks both exist and define the full token set. Assert inline script persists to localStorage key 'mono-industrial-theme' via setItem/getItem, and removeItem (falling back to prefers-color-scheme) when the selection is system/auto."
+    },
+    {
+      "id": "mono-toggle-styling",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Mono-Industrial detected AND a theme toggle is present.",
+      "where": "",
+      "fix_hint": "Assert the active-state rule background matches color-mix(in srgb, var(--fg) 10%, transparent) (whitespace-tolerant) and active label color references var(--text-display) — never a new hue. Assert an @media (hover:hover)/pointer:fine rule collapses the pill to the active indicator paired with a :hover/:focus-within (or JS mouseenter/focus class-toggle) expansion, with no collapse under pointer:coarse. Assert a responsive rule moves the dock bottom-right with ≥44px touch targets at tablet/phone."
+    },
+    {
+      "id": "mono-mermaid-toggle-sync",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Mono-Industrial detected AND page contains Mermaid diagrams (.mermaid or mermaid.initialize).",
+      "where": "",
+      "fix_hint": "In the toggle change handler, assert code that resolves palette via a mode function (checks data-theme then OS preference), clears/resets data-processed on .mermaid, restores stashed original diagram source text, and calls mermaid.run(. Additionally assert a matchMedia('(prefers-color-scheme: dark)') addEventListener('change',…) triggers the same re-theme when data-theme is unset (live OS tracking)."
+    },
+    {
+      "id": "mono-token-values-exact",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Mono-Industrial detected.",
+      "where": "",
+      "fix_hint": "Extract :root base and data-theme override custom-property declarations. After detecting base mode, string-compare --bg,--fg,--text-display,--text-primary,--text-secondary,--text-disabled,--rule,--rule-strong,--ok,--warn,--err against the exact hex/rgba values in tokens.md for BOTH light and dark modes. Fail on any deviation."
+    },
+    {
+      "id": "mono-motion-discipline",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Mono-Industrial detected.",
+      "where": "",
+      "fix_hint": "Scan CSS/JS. Fail on: any @keyframes glow/pulse/animated-shadow; any animation applied unconditionally (not scoped to :hover/:focus/.active/[data-*]); any IntersectionObserver toggling opacity/transform on scroll (scroll-reveal); any inline opacity:0 transitioned to 1 on load/DOMContentLoaded; any transition/animation-duration >120ms; any cubic-bezier spring/bounce on non-interaction elements. Require an @media (prefers-reduced-motion: reduce) block forcing ~0.01ms durations on *,*::before,*::after. For slide-deck structure, assert slide-changing property (transform/opacity) has no transition (instant cut; scroll-snap handles the step)."
+    },
+    {
+      "id": "mono-mermaid-theming",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Mono-Industrial detected AND page contains Mermaid.",
+      "where": "",
+      "fix_hint": "Parse mermaid.initialize themeVariables: primaryColor/secondaryColor/tertiaryColor/lineColor must resolve to grayscale nodeFill/nodeBorder/edgeColor values (not arbitrary hue). Any classDef setting fill/stroke may only use the six approved status hexes. Assert edge labels resolve to Space Mono uppercase 11px and node labels to Space Grotesk 15px (20px allowed in slide role)."
+    },
+    {
+      "id": "mono-data-table",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Mono-Industrial detected AND a real <table> is present.",
+      "where": "",
+      "fix_hint": "For <table> elements: no nth-child(even/odd) background-color (zebra); no border-left/right on td/th; row elements carry border-top:1px solid var(--rule); header cells resolve to --font-mono, uppercase, ~11px, var(--text-secondary); cells whose content is numeric (regex \\d with %/currency/ratio) are text-align:right with font-variant-numeric:tabular-nums; assert no text-overflow:ellipsis, white-space:nowrap+overflow:hidden, or -webkit-line-clamp on cells (long text wraps, never truncates)."
+    },
+    {
+      "id": "mono-instrument-microcopy",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Mono-Industrial detected.",
+      "where": "",
+      "fix_hint": "For label/caption/index/metadata-classed elements: font-family resolves to Space Mono, text is uppercase (text-transform or already-caps source), letter-spacing 0.08em–0.14em, not sentence-case prose with trailing colons. Date-like strings in metadata rows match /^\\d{4}\\s*·\\s*\\d{2}\\s*·\\s*\\d{2}$/ (no slashes). Empty/error/loading state containers use inline Space Mono ALL CAPS bracketed text matching /^\\[[A-Z0-9 .:\\-]+\\]$/ with no illustrations, multi-sentence <p>, or fixed-position toast."
+    },
+    {
+      "id": "mono-surface-spacing-discipline",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Mono-Industrial detected.",
+      "where": "",
+      "fix_hint": "Flag margin/padding/gap px literals not in {4,8,16,32,64,96} and not var(--space-*), excluding 1px hairlines and the toggle's 24px/44px. Flag any card-signature wrapper (border + background-color/fill + border-radius/box-shadow) that contains the page's primary display/hero element (never box the display element), and flag non-table/non-nav border dividers between sibling blocks as spacing-should-have-sufficed candidates."
+    },
+    {
+      "id": "mono-code-block-terminal",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Mono-Industrial detected AND a .code-block / pre>code[class*='language-'] is present.",
+      "where": "",
+      "fix_hint": "Assert .code-block background resolves to #0a0a0a in both data-theme states (does not swap with --bg). Assert markup pre.code-block > code[class*='language-']. Assert no stock Prism theme (tomorrow/okaidia/twilight/etc.) is linked — only the custom Mono-Industrial token CSS. Assert no line-numbers/copy-button elements unless requested. Diff-line backgrounds use ~0.1-alpha green/red (never solid alpha=1). Flag code blocks >20 lines not wrapped in <details>."
+    },
+    {
+      "id": "mono-hero-and-surprise-count",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Mono-Industrial detected.",
+      "where": "",
+      "fix_hint": "Assert elements with role='hero'/top-level .ve-hero count ≤1. Count pattern-break candidate signatures (Geist-Pixel-styled elements; border-radius:50% among otherwise rectangular content; spacing gaps ≥2× the largest tier used elsewhere; font-size outliers beyond the declared scale). Flag if candidate count is 0 (sterile) or >1 (noisy) — this is the deterministic pre-filter feeding mono-one-surprise."
+    },
+    {
+      "id": "preset-both-mode-inversion",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "A named aesthetic is detected (Mono-Industrial or Nothing).",
+      "where": "",
+      "fix_hint": "Render at 1440×900 in prefers-color-scheme light AND dark (and each data-theme override). In each mode: compute contrast ratio of --text-primary against --bg and assert ≥4.5:1; assert no text-bearing element resolves to a color within ~ΔE small of its own background (invisible-text guard); assert elements spec'd to stay fixed across modes (dark terminal code blocks, CTA-on-blue) do not flip. Fail if any mode has failing contrast or invisible text."
+    },
+    {
+      "id": "assembly-dedup-single-tokens",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "In the final HTML, count occurrences of each distinct @font-face{font-family:'X'} block and each library CDN <script src> (mermaid/chart.js/anime) and its init call; fail if any is duplicated. Count :root design-token declaration blocks defining core tokens (--bg,--fg,--text-*,--rule*,--space-*,--size-*,--ok/--warn/--err); fail if the same core token is (re)declared in more than the sanctioned base + data-theme override blocks (fragment/section CSS must not redefine root tokens)."
+    },
+    {
+      "id": "nothing-font-allowlist",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Nothing detected: Doto loaded AND Space Grotesk body AND no Libre Baskerville (distinguishes from Mono).",
+      "where": "",
+      "fix_hint": "Scan <link>/@import/font-family. Allowlist named families = {Doto, Space Grotesk, Space Mono}; flag any other named family, with an explicit hard-fail if 'Geist Pixel' appears anywhere (Mono's default must not leak into Nothing)."
+    },
+    {
+      "id": "nothing-type-size-budget",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Nothing detected.",
+      "where": "",
+      "fix_hint": "At a single canonical viewport, collect computed font-size across visible text elements, cluster within 1px tolerance; assert distinct-size count ≤3 (one Doto hero, one Space Grotesk body, one Space Mono caption). Nothing states the budget unconditionally — no numeric-hero exception. Error if >3."
+    },
+    {
+      "id": "nothing-doto-single-hero",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Nothing detected.",
+      "where": "",
+      "fix_hint": "Query elements whose computed font-family includes 'Doto'; assert exactly 1 uses it and its text is short (word count ≤6, not a paragraph/body block). Assert its computed font-size ≥48px (Decision (c): §4.1's 48px is authoritative; treat 36–47px as a warn band due to the §2-vs-§4.1 doc conflict; error below 36px)."
+    },
+    {
+      "id": "nothing-labels-allcaps-mono",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Nothing detected.",
+      "where": "",
+      "fix_hint": "Query candidate label elements (nav a, th, button text, .label/.unit/.kicker/section-kicker classes); assert each has computed font-family including 'Space Mono' AND (text-transform:uppercase OR raw text already all-uppercase)."
+    },
+    {
+      "id": "nothing-accent-red-single-use",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Nothing detected.",
+      "where": "",
+      "fix_hint": "Count elements where #D71921 / var(--accent) is actually APPLIED (painted) as a foreground, background, or border color across the DOM; assert ≤1. Diff the --accent token's literal value between the dark :root block and the light-mode override; assert identical (red is unchanged between modes)."
+    },
+    {
+      "id": "nothing-status-color-scope",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Nothing detected.",
+      "where": "",
+      "fix_hint": "Assert label-like elements (.label, th, nav items) do not have computed color equal to var(--success)/--warning/--accent. Assert row containers (tr, .stat-row) do not have those tokens as background-color. Confirm .value/.num elements ARE permitted to carry them."
+    },
+    {
+      "id": "nothing-flat-surface-and-motion",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Nothing detected.",
+      "where": "",
+      "fix_hint": "Scan CSS. Fail on: any box-shadow value other than none; linear-gradient(/radial-gradient( outside a hero-vignette-scoped selector; backdrop-filter or filter:blur outside a .nav-dots/magazine-deck-scoped selector; border-radius >16px on .card/card-like selectors (buttons excluded). Also fail on any transition/animation declaration whose properties include transform, scale(, translate(, or box-shadow (hover feedback is border/text-color only). Where an explicit timing is set, durations should be 150–250ms (micro) or 300–400ms (view) with cubic-bezier(0.25,0.1,0.25,1)."
+    },
+    {
+      "id": "nothing-forbidden-ui-patterns",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Nothing detected.",
+      "where": "",
+      "fix_hint": "Flag class/id names containing 'skeleton','toast','spinner'. Flag nth-child alternating background-color on table rows (zebra). Flag emoji Unicode ranges or multi-fill/filled <svg>/<img class='icon'> inside buttons/nav. For elements explicitly marked as empty/loading/error states, flag >1 paragraph and require a bracket-notation pattern /^\\[.*\\]$/ somewhere in the state's text (e.g. [LOADING…], [NO DATA])."
+    },
+    {
+      "id": "nothing-button-shape",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Nothing detected AND button-like elements exist.",
+      "where": "",
+      "fix_hint": "For primary/secondary buttons: computed font-family Space Mono, font-size ≈13px, text-transform uppercase, letter-spacing ≈0.06em, padding ≈12px 24px, min-height ≥44px. Count primary buttons (white bg + black text); assert ≤1 per screen. Collect secondary button border-radius values; assert all pill (~999px) OR all technical (4–8px), never mixed."
+    },
+    {
+      "id": "nothing-motif-min3",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Nothing detected.",
+      "where": "",
+      "fix_hint": "Detect each motif: (1) a Doto-family element; (2) ALL-CAPS Space Mono labels; (3) segmented progress bars (.progress/.seg); (4) dot-grid radial-gradient background; (5) bracket-notation text /\\[[^\\]]+\\]/ inside a dedicated UI-state container; (6) a grid-break candidate. Count detected motifs; assert ≥3."
+    },
+    {
+      "id": "nothing-chart-not-color-alone",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Nothing detected AND a multi-series chart/legend exists.",
+      "where": "",
+      "fix_hint": "For multi-series charts, check whether series are distinguished ONLY by distinct fill/stroke colors with no accompanying opacity variation, hatch/pattern fill, or distinguishing legend text/shape. Flag color-alone differentiation."
+    },
+    {
+      "id": "slide-viewport-fit-no-internal-scroll",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "At 1440x900 and 390x844: for vertical decks, each `section.slide` computed height == viewport height within +-2px and computed overflow-y == 'hidden'; for magazine, each `.page` computed width == window.innerWidth AND height == window.innerHeight within +-2px, and both `body` and `.mag` have computed overflow-y == 'hidden'. For every slide/page element assert element.scrollHeight <= element.clientHeight + 2 (no internal overflow), EXCLUDING known nested scroll containers (.mermaid-wrap, .table-scroll, .code-scroll and any descendant whose own computed overflow is auto/scroll). Also assert document.documentElement.scrollHeight <= clientHeight for magazine (no vertical scrollbar). Do NOT run at additional widths — these are fixed-canvas profiles, not responsive."
+    },
+    {
+      "id": "deck-scroll-snap-axis",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Vertical: computed `scroll-snap-type` of the vertical deck container resolves to `y mandatory`. Magazine: computed `scroll-snap-type` of `.mag` resolves to `x mandatory` (or longhand x/mandatory) AND no element in the document declares `scroll-snap-type: y ...` (magazine must not mix in the vertical engine). Use getComputedStyle after load so shorthand/longhand both resolve."
+    },
+    {
+      "id": "nav-chrome-fixed-and-layered",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "For each present nav-chrome element, assert computed `position === 'fixed'` and numeric computed `z-index >= 100`. If class names differ, match by structural role (element that is a direct child of body, outside the .deck/.mag, functioning as progress/dots/counter/hints)."
+    },
+    {
+      "id": "deck-rail-first-frame-collapsed",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "At 1920x1080, load the first slide in a fresh document before any pointer, focus, or keyboard input. The rail's exposed width must be <=46px and `data-rail-expanded` must not resolve to true. Fail any timer-driven peek or automatic expansion. The slide stage must begin at or to the right of the exposed spine, or otherwise prove a non-overlapping safe area."
+    },
+    {
+      "id": "deck-navigation-shell-safe-controls",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "At the delivery viewport: (a) the rail brand/open control, every chapter target, and previous/next buttons each measure at least 44x44px; (b) the first chapter target begins within 24px below the brand cell rather than being vertically centered; (c) clicking a visible non-navigation button, link, input, dialog control, `[data-interactive]`, or `[data-drill-target]` does not change the slide hash; and (d) while `[data-drill-open]` or a role=dialog surface is active, the rail is hidden, behind the modal, or has pointer-events:none."
+    },
+    {
+      "id": "autofit-safety-net-present-and-ordered",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Across combined stylesheet text and inline <script> text, at least one autofit safety-net marker must be present: `fitty`, `autoFit`/`autofit`, `resizeText`, or a `--min-font-size` custom property. Presence-only check; no ordering requirement."
+    },
+    {
+      "id": "slide-reduced-motion-support",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Regex <style> text for a `@media (prefers-reduced-motion: reduce)` block that targets the slide/reveal selectors and forces `transition: none` (and opacity/transform to their resting values) with `!important`. Presence check on stylesheet text."
+    },
+    {
+      "id": "min-slide-body-text-16px",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "For every text-bearing element inside a slide/page, compute getComputedStyle(el).fontSize; flag any resolving below 16px, EXCLUDING documented label/caption/mono-badge roles: `.slide__label`, `.slide__subtitle`, `.slide__kpi-label`, `.pipeline__file`, `cite`, `caption`, table header cells, and any element whose class matches /label|caption|kicker|eyebrow|meta|badge|foot/. Measure at 1440x900 (widest authored clamp min)."
+    },
+    {
+      "id": "split-bleed-zero-padding",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "For each `.slide--split` / `.slide--bleed`, assert computed padding-top/right/bottom/left are all `0px`. Inner panels keep their own padding — only the slide element itself must be zero."
+    },
+    {
+      "id": "magazine-page-fullbleed",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "For each `.page`, assert computed margin (all sides) and padding (all sides) are `0px`. Inner content elements (.page__half, .q, .cell) may pad; only the outermost `.page` boundary must be edge-to-edge."
+    },
+    {
+      "id": "magazine-dark-cover-backcover-min3-invariant",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Classify a page as dark if relative luminance of its computed background-color < 0.2 OR it carries `.page--dark`/`data-tint=\"dark\"`. Assert: first `.page` and last `.page` in document order are both dark; total dark pages >= 3. Then render under prefers-color-scheme light AND dark and assert each dark page's computed background luminance is unchanged between schemes (dark is absolute, not mode-responsive)."
+    },
+    {
+      "id": "magazine-stat-page-anchor",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Assert at least one `.page--stat` (or `.stat-xl` primary-number element) exists. For each, assert the primary number's computed font-size >= 100px (measured at 1440x900; authored `clamp(160px,22vw,360px)` satisfies this). Assert no two stat pages are adjacent in document order. Spacing cadence (every 4-6 pages) is NOT enforced."
+    },
+    {
+      "id": "magazine-consecutive-layout-repeat",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Classify each `.page` by its layout-type modifier class. For each adjacent pair in document order, assert the layout-type classes differ (split->split is forbidden). Pages with no recognized layout class are excluded from the comparison rather than defaulted to a match."
+    },
+    {
+      "id": "magazine-tint-no-consecutive-repeat",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "For each adjacent pair of non-dark `.page` elements, compare `data-tint` attribute (preferred) or computed page-level background-color; flag any adjacent pair with an identical value. Dark panels are excluded from the comparison since they legitimately interrupt the rotation."
+    },
+    {
+      "id": "magazine-grid-frequency-cap",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Count grid pages (`.page--grid`, or `.page` with >= 6 direct `.cell`/tile children). Flag if count > 1. The single-color-block bleed cap is NOT enforced here (no reliable signature — see dropped)."
+    },
+    {
+      "id": "magazine-nav-dots-and-keyboard",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Static portion: a `.nav-dots` (or role-equivalent fixed dot strip) exists with exactly one `.nav-dot`/button child per `.page`; inline script registers a keydown handler covering ArrowRight/ArrowLeft/PageDown/PageUp/Space/Home/End that calls scrollBy/scrollTo with a `left` offset. Runtime portion: dispatch an ArrowRight keydown and assert `.mag.scrollLeft` increases by ~one viewport width; click a nav dot and assert scroll position changes to that page's offset."
+    },
+    {
+      "id": "diagram-slide-legibility",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "After Mermaid render + autoFit: (1) the rendered `.mermaid svg` has no fixed `height` attribute and its getBoundingClientRect().width is within a few px of its `.mermaid-wrap` container width (fills, not tiny). (2) every `.nodeLabel` computed font-size >= 18px. (3) edge path stroke-width >= 2px. Soft signal in the same finding: rendered `.node` group count > 10 (slide budget is 8-10). Also verify the CSS override `.slide--diagram .mermaid svg{width:100%!important;height:auto!important}` (or equivalent) is present as a fallback."
+    },
+    {
+      "id": "slide-density-budget",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Advisory predictor of overflow (authoritative gate is slide-viewport-fit-no-internal-scroll). Per slide type, flag when a documented max is exceeded: `.slide--content .slide__bullets > li` count > 6; `.slide--table .data-table tbody > tr` count > 8; `.slide--code .slide__code-block code` line count > 10 (trim leading/trailing blank lines); `.slide__kpis > .slide__kpi` count > 6; `.slide__kpi-val` textContent length > 6 chars; `.pipeline > .pipeline__step` count > 6; `.slide--quote blockquote` textContent length > 150 chars."
+    },
+    {
+      "id": "divider-number-oversized-clamp",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Validate the CSS PATTERN, not rendered px (per resolved contradiction: prose says '200px+' but authored CSS is clamp(100px,22vw,260px), which renders below 200px at narrow viewports). Assert the divider number's font-size is authored as a `clamp(min, vw, max)` whose max >= 160px (oversized) and that uses a viewport unit for the preferred term. Fail only a fixed small size or a clamp with a small max."
+    },
+    {
+      "id": "vertical-consecutive-composition-run",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Classify each `.slide` by its type modifier (slide--title/content/split/diagram/dashboard/table/code/quote/bleed/divider) as a composition proxy. Flag any run of 3+ consecutive slides with the identical type class. This static run is a candidate only — pair with the composition-variety-visual llm pass for confirmation."
+    },
+    {
+      "id": "keyboard-hints-autofade",
+      "stage": "browser",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Static pre-check: inline script wires a fade (adds a faded/hidden class or sets opacity to 0) on both a ~4000ms timer and a keydown/click handler. Runtime: on fresh load dispatch a keydown and assert the hints element trends to opacity 0 (or gains its fade class) within one frame; separately, with no interaction, assert the same after 4000ms."
+    },
+    {
+      "id": "slide-dim-text-contrast",
+      "stage": "browser",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Deterministic pre-filter of the presentation-readability rule: for each slide/page, compute WCAG contrast between the resolved --text-dim color and the slide's resolved background; flag if ratio < 4.5:1. For nav-chrome elements, compute contrast against every distinct slide background (light and dark); flag if any falls below 3:1. Judgment about a single focal point is handled by the separate slide-single-focal-point llm pass."
+    },
+    {
+      "id": "poster-root-single-sized-element",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Parse the default-export component's return(...). FAIL if the top-level returned JSX is a Fragment (`<>...</>` or `<React.Fragment>`). Also FAIL if the single root element's className lacks BOTH a `w-[<int>px]` and an `h-[<int>px]` Tailwind arbitrary-value token (or explicit inline width/height in px). The renderer measures exactly this one element and crops to its declared size."
+    },
+    {
+      "id": "poster-no-live-mermaid",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Grep poster source for a live Mermaid dependency: an import of `mermaid`, a `<script src=...mermaid...>` CDN tag, or a `class=\"mermaid\"`/`<pre class=\"mermaid\">`-equivalent JSX node. Any match is a FAIL. The 1500ms rasterization wait is too short for Mermaid's async render, silently producing a blank diagram."
+    },
+    {
+      "id": "poster-no-runtime-fs",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Grep poster source for Node fs APIs: `require('fs')`, `from 'fs'`/`from 'node:fs'`, `readFileSync`, `writeFileSync`, `fs.promises`. Any match is a FAIL — the poster is a headless-Chrome-rasterized bundle with no runtime fs; everything must be embedded at build time."
+    },
+    {
+      "id": "poster-fonts-loaded-in-root",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "For each font family referenced by the poster: (a) if it is a Google Fonts family, require a `<link href=\"https://fonts.googleapis.com/...\">` (or preconnect+stylesheet) present as a JSX child INSIDE the returned root element (poster has no accessible document head; head-appended fonts won't apply); (b) if it references a Geist Pixel variant ('Geist Pixel Square/Grid/Circle/Triangle/Line'), require a `<style>` `@font-face` block inside the root with matching `font-family` and a `src: url('https://cdn.jsdelivr.net/npm/geist@...woff2')` whose filename matches the variant. FAIL if a referenced family has no in-root source."
+    },
+    {
+      "id": "poster-content-within-canvas",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Render the poster in headless chromium at the declared canvas size. For every content element, read getBoundingClientRect relative to the root; FAIL if any right edge > width or bottom edge > height (element cut by the frame), or if any text node has computed text-overflow:ellipsis with scrollWidth>clientWidth (truncated). This is the deterministic half of the canvas-fit contract; pairs with poster-visual-fit-squint for rasterization-only clipping."
+    },
+    {
+      "id": "poster-single-theme",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Grep the poster component for a live theme toggle: `matchMedia('(prefers-color-scheme` driving render output, or `useState` bound to a theme-switch control, or a rendered light/dark toggle button. WARN if present — a poster is a static rasterized artifact; emit two separate posters instead of a runtime switcher."
+    },
+    {
+      "id": "poster-filename-convention",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "WARN if a poster output filename does not match `.*\\.poster\\.(html|png|svg|pdf|jpg|jpeg|webp)$`. Keeps poster artifacts distinguishable from scrollable HTML output by name alone."
+    },
+    {
+      "id": "poster-export-wait-sufficient",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "If the poster embeds known-slow async content AND the export invocation has no `--wait-for` value materially above the 1500ms default, WARN of an export race that can capture unhighlighted code / an unfinished chart frame. Prefer pre-rendered tokens/plain `<code>` with inline color spans for Prism inside posters."
+    },
+    {
+      "id": "gsap-timeline-paused",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "For each `gsap.timeline(` call site with an object-literal options argument, require `paused: true`. FAIL if the options object omits `paused` or sets `paused: false`. Autoplay races the engine's seek-based capture and produces nondeterministic frames."
+    },
+    {
+      "id": "gsap-timeline-registration-contract",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Parse the composition JS (acorn, not naive regex). Assert all of: (1) the `window.__timelines[\"<id>\"] = ` assignment is NOT inside a setTimeout, async function, Promise executor/.then, or a DOMContentLoaded/load listener — it must run during synchronous top-level script execution; (2) each literal composition-id key is assigned exactly once (no duplicate registration); (3) the key string equals the root element's `data-composition-id` attribute (case-sensitive exact match). FAIL on any violation."
+    },
+    {
+      "id": "video-forbidden-nondeterministic-apis",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Grep all executable composition JS/CSS for forbidden patterns and FAIL on any live (non-commented) match: `Math.random(`; `Date.now(` / `new Date(`; `gsap.ticker.add(`; native WAAPI `<ident>.animate([` (array-literal first arg); manual `requestAnimationFrame(`; `repeat: -1` and CSS `animation-iteration-count: infinite`; engine-owned transport calls `tl.play()/.seek()`, `video.play()/audio.play()`, `.currentTime =`. Each breaks deterministic frame-seeked capture or hangs the render."
+    },
+    {
+      "id": "video-seed-literal",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "For each seed-PRNG factory call, extract the seed argument; FAIL if it is not a bare numeric literal (e.g. it contains Date.now(), Math.random(), a variable, or a function call). 'Allowed randomness' must stay deterministic across renders."
+    },
+    {
+      "id": "hyperframes-video-muted-playsinline",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "For every `<video>` in the composition, assert both a `muted` attribute (boolean or muted=\"muted\"/\"true\") and a `playsinline` attribute are present. FAIL otherwise — audio must travel via separate `<audio>` for mixing, and unmuted/non-inline video breaks the engine's audio model."
+    },
+    {
+      "id": "root-composition-no-template-wrapper",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "If the file is a standalone root composition (no element in it carries `data-composition-src` and it is not referenced elsewhere as a sub-composition), assert the root is NOT a `<template>` and its content is not wrapped in a top-level `<template>`. If the file is loaded as a sub-composition (referenced via `data-composition-src=\"thisfile\"`), assert its content IS wrapped in a `<template>`. FAIL on mismatch."
+    },
+    {
+      "id": "audio-as-separate-elements",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "For each `<video>` whose src/<source> filename is not a silent pattern (not matching *-silent.*/*-noaudio.*/screen-recording heuristics), WARN if no sibling `<audio>` element anywhere in the document references the same base filename — audio should travel as `<audio>` for explicit mixing, not as a video's audio track."
+    },
+    {
+      "id": "video-duration-format-limits",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Read data-duration/width/height on the composition root. Detect format (reel = portrait 1080x1920 or reel-labeled; long-form = landscape 1920x1080). FAIL (error) if a reel's data-duration > 60 (hard max). WARN if duration is merely outside the ideal band (reel 30–45s, long-form 60–180s) but within absolute limits, or resolution mismatches the format's target — such out-of-range renders are legitimized by an AskUserQuestion confirmation (see protocol)."
+    },
+    {
+      "id": "reel-beat-order",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "If beat-labeled elements are present, read their data-start values and WARN only if present beats are out of the canonical sequence HOOK→PROBLEM→CONTEXT→MECHANISM→PROOF→RESOLUTION→CTA. Missing or merged beats are allowed (the 7-beat template is explicitly 'a template, not a rule')."
+    },
+    {
+      "id": "reel-cut-pacing",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Compute deltas between consecutive scene data-start values. WARN on any body-beat delta outside [1.2,1.8]s (excluding the HOOK/CTA first-and-last beats and the MECHANISM beat, which may dwell 3–5s). Also WARN if the delta distribution is bimodal (many sub-2s cuts AND several 5s+ dwell scenes) indicating an accidental reel/long-form pacing mix."
+    },
+    {
+      "id": "reel-transitions-at-boundaries",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Identify full-frame cross-dissolve tweens and registered shader transition blocks with their time ranges. FAIL if any transition sits entirely within a single beat's span (not spanning a boundary), or if any beat boundary has more than one transition stacked. Dissolves/shaders are reserved for beat-to-beat transitions, never intra-beat."
+    },
+    {
+      "id": "reel-caption-line-length",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Count words per .cap div. WARN if a 9:16 caption exceeds ~9 words (or a 16:9 caption exceeds ~16 words / 2 lines). Long captions must be split at a natural clause boundary in the script before TTS, never rewritten after the fact (which would break the verbatim rule)."
+    },
+    {
+      "id": "reel-caption-styling",
+      "stage": "browser",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "In a headless render, read the caption's computed style: WARN if font-size outside 36–44px, font-weight != 600, background is transparent/light (not a solid dark fill), the bounding box spans ~100% of frame width (should not be full-bleed), or its box is not within the bottom third of the frame."
+    },
+    {
+      "id": "reel-safe-zone-margins",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "At each measured beat/keyframe, compute bounding boxes of visible text/primary-content elements. FAIL if any top edge is above frameTop+safeTop or any bottom edge below frameHeight−safeBottom, using aspect-appropriate margins: 9:16 = 100px top / 200px bottom; 16:9 = 60px top / 140px bottom. Protects against clipping by phone chrome and caption overlays."
+    },
+    {
+      "id": "reel-full-bleed-no-gutters",
+      "stage": "browser",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Read computed margin/padding on the composition root/body/stage — assert 0 on all sides. FAIL if any wrapping container introduces a visible border/box-shadow/background distinct from the intended full-bleed canvas (gutters or a padded frame)."
+    },
+    {
+      "id": "reel-vertical-hierarchy-thirds",
+      "stage": "browser",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "WARN if a primary-content element's bounding box extends below 0.667×frameHeight, or a caption's box extends above 0.667×frameHeight — the two reading zones must not mix."
+    },
+    {
+      "id": "reel-single-focal-element",
+      "stage": "browser",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Deterministic pre-filter: at each measured timestamp, count simultaneously-visible (opacity>0, on-screen) card-like content blocks (bordered/backgrounded containers with independent text) above a size/prominence threshold. WARN on any timestamp with 3+ such blocks visible — reel frames should present one focal element, not competing cards. (An LLM may confirm the flagged frame genuinely reads as competing focal points.)"
+    },
+    {
+      "id": "reel-typography-roles",
+      "stage": "browser",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "In a headless render, read computed fontSize/fontWeight/letterSpacing/textTransform per role class and WARN when outside the documented table: hook-stat 180–260px/600–700; hook-claim 80–120px/500; beat-title 60–80px/500; body-copy 32–48px/400; caption 28–36px/600; kicker 18–22px/500 mono ALL-CAPS 0.12em. Enforces the loud, glance-legible hierarchy."
+    },
+    {
+      "id": "reel-no-paragraph-body-copy",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Count words in each reel body-copy block; WARN if it exceeds ~25 words (beyond ~1–2 lines at 32–48px on a 1080px canvas). Paragraph-length prose belongs in long-form, not a fast-cut silent-autoplay reel."
+    },
+    {
+      "id": "reel-kinetic-preauthored-spans",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Assert `<span class=\"w\">` word spans already exist in the final emitted HTML for any element targeted by a .w tween. FAIL if the composition builds these spans at runtime (e.g. textContent.split(' ').map(...) then innerHTML=/appendChild) — Hyperframes captures frame-by-frame and runtime-generated spans can be missing on early frames."
+    },
+    {
+      "id": "reel-progressive-reveal-order",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Extract GSAP tween start-times targeting node-N / arrow-N / label-N classes. WARN if the staged order is violated: all node-N reveals should precede all arrow-N reveals, which should precede all label-N/mask reveals, so the diagram builds up legibly."
+    },
+    {
+      "id": "reel-kenburns-scale",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "profile page not in scope",
+      "where": "",
+      "fix_hint": "Extract the target scale value in GSAP from/to tweens on still-image elements. WARN if the final scale exceeds 1.15 or the start scale is below 1.0 (delta larger than the documented 1.0→1.08–1.15 band) — large deltas 'look seasick.'"
+    },
+    {
+      "id": "demo-format-webm-not-gif",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "The page embeds an inline UI demo media element.",
+      "where": "",
+      "fix_hint": "For inline demo media, assert a `<video>` with a `<source type=\"video/webm\">` (base64 data URI), not `<img src=\"data:image/gif...\">`. FAIL on an inline demo gif. Webm(VP9) is 5–10× smaller than an equivalent gif and looks identical."
+    },
+    {
+      "id": "demo-video-attributes",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "The page has a demo `<video>` (identified by a data:video/webm;base64 source).",
+      "where": "",
+      "fix_hint": "For every inline demo `<video>`, assert the boolean attributes `autoplay`, `loop`, `muted`, and `playsinline` are all present so the clip behaves like a silent looping GIF-replacement in every modern browser. FAIL if any is missing."
+    },
+    {
+      "id": "demo-embed-size-budget",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "The page inlines a demo webm as a base64 data URI.",
+      "where": "",
+      "fix_hint": "Estimate the decoded byte size of the base64 demo video data URI. FAIL if > 2MB (inlined data URIs above this make the self-contained HTML sluggish). Additionally WARN if the source clip duration exceeds ~20s (long demos should link externally / use a share link). Fix by reducing frames, fps, scale, or demo length."
+    },
+    {
+      "id": "review-quadrant-completeness",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Page contains a code-review or plan-review block, detected by the presence of at least TWO of the four category headings {Good, Bad, Ugly, Questions} (case-insensitive, whole-word) inside one review section. Skip entirely if fewer than two are present (page is not a review artifact).",
+      "where": "",
+      "fix_hint": "Within the detected review section, assert all four category sub-blocks exist with headings matching /^(good|bad|ugly|questions)\\b/i. For each of the four, assert it is non-empty: it must contain at least one item/card child element OR the literal case-insensitive text 'None found'. Fail if any of the four category headings is absent, or a present category is empty and does not say 'None found'. This catches silent omission of a category (reads as 'not checked' rather than 'nothing found')."
+    },
+    {
+      "id": "decision-log-confidence-styling",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "For each decision-log card, read its confidence level. Assert: high -> computed border-left-color resolves to the ok/green status token; medium -> border-left-color resolves to the blue token AND the card text contains 'inferred' (case-insensitive); low -> border-left-color resolves to the amber/warn token AND the card text contains the substring 'not recoverable' (case-insensitive, fuzzy). Fail on any mismatch between the stated confidence and its required color+text pairing."
+    },
+    {
+      "id": "factcheck-summary-shape",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Output contains a fact-check verification summary, detected by a heading or class matching /verification summary/i. Skip if absent (presence is enforced separately as a protocol obligation, since the engine cannot reliably tell an arbitrary HTML file is a fact-check target).",
+      "where": "",
+      "fix_hint": "Within the verification-summary region assert all four data points are present: a total-claims-checked count, a confirmed count, a corrections list-or-count, and an unverifiable-claims mention. Assert every claim-status label used is drawn only from {Confirmed, Corrected, Unverifiable} (no other status words like 'Wrong'/'Partial'). If all three sub-counts and the total are numerically parseable, assert confirmed + corrected + unverifiable == total. Fail on a missing data point, an out-of-vocabulary label, or a count that does not reconcile."
+    },
+    {
+      "id": "table-data-label-required",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "A <table> uses the sub-640px stacked-row degradation pattern, detected by either class 've-table' OR the page CSS containing an @media (max-width:640px) rule that sets a table td to display:block and uses content:attr(data-label) in a ::before. Do NOT run on tables that only scroll horizontally (wrapped in .scroll-x / overflow-x:auto) — those keep normal columns.",
+      "where": "",
+      "fix_hint": "For each in-scope table, assert every <td> inside <tbody> has a non-empty data-label attribute. A missing or empty data-label silently breaks the mobile stacked layout (the ::before label disappears and rows become unreadable)."
+    },
+    {
+      "id": "font-family-sprawl",
+      "stage": "browser",
+      "severity": "error",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "Collect the computed primary font-family (first named family, ignoring generic keywords system-ui/sans-serif/serif/monospace) for every visible text node. FAIL when the count of distinct NAMED families exceeds 4. A dedicated monospace stack for code counts as one family, not a violation by itself."
+    },
+    {
+      "id": "flat-type-scale-weak-hierarchy",
+      "stage": "browser",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Page exposes at least two distinct type roles (a largest heading and body copy) that are not part of a dense data table.",
+      "where": "",
+      "fix_hint": "Read computed font-size for the largest heading and for body copy (and, where present, adjacent heading levels h1/h2/h3). Compute adjacent ratios. FLAG when an adjacent pair's size ratio is <1.25 AND font-weight is equal AND color is near-identical — i.e. no dimension of hierarchy (size, weight, or color) meaningfully separates the roles. This is the mechanical complement to the visual-hierarchy dimension of the artifact review."
+    },
+    {
+      "id": "uppercase-no-tracking",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "Find short (≤~6 word) label-like elements with computed text-transform:uppercase (eyebrows, badges, nav labels, kickers) whose computed letter-spacing is `normal` or 0. FLAG — untracked all-caps reads as an unstyled default; capitals need ~0.05–0.12em tracking."
+    },
+    {
+      "id": "unbounded-fluid-type-clamp",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "Parse clamp(min,preferred,max) on font-size for body/heading roles; normalize min/max to one unit. FLAG when max/min > ~2.5 (breaks zoom/reflow) OR when max exceeds ~6rem/96px on a hero/display heading (shouting, not designing)."
+    },
+    {
+      "id": "blocking-webfont-no-swap",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "warn",
+      "evidence": "@font-face missing font-display: swap/optional",
+      "where": "@font-face",
+      "fix_hint": "The skill MANDATES Google Fonts <link>s — this check never bans the link, it only requires non-blocking load. FLAG @font-face blocks missing `font-display` entirely (defaults to auto/block → FOIT) and Google-Fonts <link>/@import URLs missing `&display=swap`."
+    },
+    {
+      "id": "unscalable-viewport",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "FAIL when the viewport meta content contains `user-scalable=no` or `maximum-scale=1(.0)?` — an accessibility-breaking app-boilerplate default that never belongs on a static explainer/slide/magazine page."
+    },
+    {
+      "id": "gray-text-on-colored-surface",
+      "stage": "browser",
+      "severity": "warn",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "For each text node, resolve the nearest non-transparent ancestor background. When that background's OKLCH chroma >~0.05 (a real accent color) and the text color is a mid-tone (L 0.4–0.7) near-zero-chroma gray — not a tint/shade of the background hue, not near-white/near-black at reduced alpha — FLAG as washed-out."
+    },
+    {
+      "id": "body-text-contrast-aa",
+      "stage": "browser",
+      "severity": "error",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "For each informational text node, resolve effective text color and the first opaque stacked-ancestor background; compute the WCAG relative-luminance contrast ratio. FAIL when font-size<24px (or <18.66px bold) with ratio<4.5:1, or ≥24px/≥18.66px-bold with ratio<3:1. Test both light and dark renders. Catches the pale-elegant-gray failure that is the single biggest reason AI designs read as hard to read."
+    },
+    {
+      "id": "focus-ring-stripped",
+      "stage": "static-text",
+      "severity": "error",
+      "status": "skip",
+      "evidence": "Document has focusable/interactive elements (a[href], button, input, [tabindex], summary).",
+      "where": "",
+      "fix_hint": "FAIL when `outline: none|0` is applied to a focusable selector (a/button/input/[tabindex]/summary) or a global reset (*, :focus) AND no overlapping `:focus-visible` (or `:focus`) rule supplies a visible replacement (a non-none outline, a contrasting box-shadow ring, or a border/background change)."
+    },
+    {
+      "id": "hidden-until-js-reveal",
+      "stage": "static-dom",
+      "severity": "error",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "FAIL when a class/selector defaults content to opacity:0 / visibility:hidden and a companion selector (same base + .in-view/.visible/.revealed/.active) restores it via JS `classList.add`, AND there is neither an `@media (prefers-reduced-motion: reduce)` rule forcing the visible state nor a <noscript> override. Headless renders, PDF/PNG export, and print skip the scroll/JS trigger, so the section ships blank — a correctness failure, not just a motion tell. Highest-value check for exported static artifacts."
+    },
+    {
+      "id": "layout-property-animation",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "FLAG transition/@keyframes that animate width, height, top, left, right, bottom, or plain margin/padding for decorative or continuous/looping motion instead of transform/opacity. Compositor-friendly transform:translate/scale should carry motion."
+    },
+    {
+      "id": "undersized-touch-targets",
+      "stage": "browser",
+      "severity": "warn",
+      "status": "warn",
+      "evidence": "Clickable controls below 44px hit target: [{\"run\":\"390x844-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"adapter.project\",\"selector\":\"article.ve-diagram-mobile-node:nth-of-type(1) > ul.ve-diagram-mobile-connections > li > a\",\"width\":100,\"height\":34},{\"run\":\"390x844-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"reflect: code checks + reflectors\",\"selector\":\"article.ve-diagram-mobile-node:nth-of-type(2) > ul.ve-diagram-mobile-connections > li > a\",\"width\":216,\"height\":34},{\"run\":\"390x844-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"Editor.edit\",\"selector\":\"article.ve-diagram-mobile-node:nth-of-type(3) > ul.ve-diagram-mobile-connections > li > a\",\"width\":66,\"height\":34},{\"run\":\"390x844-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"AcceptRule.keep / settle\",\"selector\":\"article.ve-diagram-mobile-node:nth-of-type(4) > ul.ve-diagram-mobile-connections > li > a\",\"width\":161,\"height\":34},{\"run\":\"390x844-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"reflect: code checks + reflectors\",\"selector\":\"article.ve-diagram-mobile-node:nth-of-type(5) > ul.ve-diagram-mobile-connections > li:nth-of-type(1) > a\",\"width\":216,\"height\":34},{\"run\":\"390x844-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"_floor\",\"selector\":\"article.ve-diagram-mobile-node:nth-of-type(5) > ul.ve-diagram-mobile-connections > li:nth-of-type(2) > a\",\"width\":37,\"height\":34},{\"run\":\"390x844-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"write_outputs\",\"selector\":\"article.ve-diagram-mobile-node:nth-of-type(6) > ul.ve-diagram-mobile-connections > li > a\",\"width\":89,\"height\":34},{\"run\":\"390x844-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"Judiciary Judges\",\"selector\":\"article.ve-diagram-mobile-node:nth-of-type(7) > ul.ve-diagram-mobile-connections > li > a\",\"width\":114,\"height\":34},{\"run\":\"390x844-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"EditableFinding left? (C11-C13)\",\"selector\":\"article.ve-diagram-mobile-node:nth-of-type(1) > ul.ve-diagram-mobile-connections > li > a\",\"width\":200,\"height\":34},{\"run\":\"390x844-light\",\"tag\":\"a\",\"className\":\"\",\"id\":\"\",\"text\":\"floor fixable? (C16)\",\"selector\":\"article.ve-diagram-mobile-node:nth-of-type(2) > ul.ve-diagram-mobile-connections > li:nth-of-type(1) > a\",\"width\":125,\"height\":34}]",
+      "where": "undersized-touch-targets",
+      "fix_hint": "Provide at least a 44x44px clickable parent for nav dots, tabs, controls, links, and buttons."
+    },
+    {
+      "id": "meaning-without-labels",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "pass",
+      "evidence": "ok",
+      "where": "",
+      "fix_hint": "FLAG when (a) status/comparison meaning is carried by a red-band vs green-band color pair used side by side with no status word (pass/fail/before/after/old/new/added/removed/error/success/deprecated), no icon child, and no legend mapping color to meaning within ~100px; OR (b) a legend/key container (class/id ~ legend|key, or a row of small fixed-size swatches/icons) has swatches/icons with no adjacent text, title, or aria-label."
+    },
+    {
+      "id": "flat-wall-of-bullets",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Page has a top-level <ul>/<ol> with ≥8 direct <li> children.",
+      "where": "",
+      "fix_hint": "FLAG a top-level list with ≥8 direct <li> children where no sub-heading-weight element (strong/b/h5/h6 opening a subgroup) and no divider (hr/border-top) breaks it into clusters, AND items are multi-clause explanatory sentences (avg >~60 chars) — a bullet dump that should have been grouped or turned into a table/diagram."
+    },
+    {
+      "id": "arbitrary-spacing-scale",
+      "stage": "static-text",
+      "severity": "warn",
+      "status": "warn",
+      "evidence": "off-scale px spacing literals: 1, 6, 9, 5",
+      "where": "spacing",
+      "fix_hint": "Extract raw px margin/padding/gap/inset literals from authored CSS + inline styles. FLAG when the fraction NOT divisible by a common base (test 4 and 8) exceeds ~30% AND there are ≥8 distinct values — hand-picked one-off spacing (13/17/22/29px) instead of a scale."
+    },
+    {
+      "id": "inconsistent-heading-case",
+      "stage": "static-dom",
+      "severity": "warn",
+      "status": "skip",
+      "evidence": "Page has ≥3 headings at the same level (or ≥3 same-class card titles).",
+      "where": "",
+      "fix_hint": "For each heading level / repeated title component, classify each heading as Title Case, Sentence case, or ALL CAPS. FLAG when a single level mixes ≥2 casing styles across ≥3 headings — casing drift from section-by-section drafting."
+    }
+  ],
+  "screenshots": [
+    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/1440x900-light.png",
+    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/1440x900-light-full.png",
+    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/1440x900-dark.png",
+    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/1440x900-dark-full.png",
+    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/390x844-light.png",
+    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/390x844-light-full.png",
+    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/390x844-dark.png",
+    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/390x844-dark-full.png",
+    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/1440x900-light-reduced-motion.png",
+    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/1440x900-light-reduced-motion-full.png"
+  ],
+  "llm_passes_required": [
+    "artifact-review:page"
+  ],
+  "llm_dispatch_plan": [
+    {
+      "pass": "artifact-review:page",
+      "owner": "artifacture",
+      "status": "fallback-required",
+      "reason": "no-eval-qualified-model",
+      "qualification": "unqualified-fallback",
+      "selection": "best-available-model",
+      "batch_size": null,
+      "policy_source": null
+    }
+  ],
+  "review_contract": {
+    "schema_version": 2,
+    "artifact_sha256": "ee587f01954a3f440320f6ea9e3601dab1dd6688293b1dc6859ea82f9072cacd",
+    "mechanics_profile": "page",
+    "review_profile": "page",
+    "profile": "page",
+    "preset": "custom",
+    "truth_sha256": null,
+    "inventory_sha256": "fc3cc71c101ff44e2677fdeaab384379e7cd4f0db4285dc184ab2b8d36cf7909",
+    "inventory_provenance": "browser-rendered",
+    "mechanics_sha256": "8a1568d5896477625090f06dfb0a461c4c0134a7cdc5bf3b70bea543021f25c1",
+    "capture_root": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC",
+    "artifact_snapshot": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/artifact.html",
+    "truth_snapshot": null,
+    "evidence": [
+      {
+        "kind": "screenshot",
+        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/1440x900-light.png",
+        "sha256": "f491216d9c555e256d19dcd8989c0fb540c167c061a1cd916a5c03b30c006960"
+      },
+      {
+        "kind": "screenshot",
+        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/1440x900-light-full.png",
+        "sha256": "05c5a49480ebe8137ef96021ab1e5daa5acace97803f754cb7d76d1f3da3510e"
+      },
+      {
+        "kind": "screenshot",
+        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/1440x900-dark.png",
+        "sha256": "f491216d9c555e256d19dcd8989c0fb540c167c061a1cd916a5c03b30c006960"
+      },
+      {
+        "kind": "screenshot",
+        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/1440x900-dark-full.png",
+        "sha256": "05c5a49480ebe8137ef96021ab1e5daa5acace97803f754cb7d76d1f3da3510e"
+      },
+      {
+        "kind": "screenshot",
+        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/390x844-light.png",
+        "sha256": "876ed56aaa61170f477c7c1c1cc0f88a80c8d11eb998187c0e0e50d02f2b41b3"
+      },
+      {
+        "kind": "screenshot",
+        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/390x844-light-full.png",
+        "sha256": "3db6bf11b0eda7986834b9bc7281618b79aa19630651daea3dbbc5c57f9fbfbd"
+      },
+      {
+        "kind": "screenshot",
+        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/390x844-dark.png",
+        "sha256": "876ed56aaa61170f477c7c1c1cc0f88a80c8d11eb998187c0e0e50d02f2b41b3"
+      },
+      {
+        "kind": "screenshot",
+        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/390x844-dark-full.png",
+        "sha256": "3db6bf11b0eda7986834b9bc7281618b79aa19630651daea3dbbc5c57f9fbfbd"
+      },
+      {
+        "kind": "screenshot",
+        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/1440x900-light-reduced-motion.png",
+        "sha256": "f491216d9c555e256d19dcd8989c0fb540c167c061a1cd916a5c03b30c006960"
+      },
+      {
+        "kind": "screenshot",
+        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/understando/ve-screens/ve-capture-u0F8OC/1440x900-light-reduced-motion-full.png",
+        "sha256": "05c5a49480ebe8137ef96021ab1e5daa5acace97803f754cb7d76d1f3da3510e"
+      }
+    ],
+    "evidence_sha256": [
+      "f491216d9c555e256d19dcd8989c0fb540c167c061a1cd916a5c03b30c006960",
+      "05c5a49480ebe8137ef96021ab1e5daa5acace97803f754cb7d76d1f3da3510e",
+      "f491216d9c555e256d19dcd8989c0fb540c167c061a1cd916a5c03b30c006960",
+      "05c5a49480ebe8137ef96021ab1e5daa5acace97803f754cb7d76d1f3da3510e",
+      "876ed56aaa61170f477c7c1c1cc0f88a80c8d11eb998187c0e0e50d02f2b41b3",
+      "3db6bf11b0eda7986834b9bc7281618b79aa19630651daea3dbbc5c57f9fbfbd",
+      "876ed56aaa61170f477c7c1c1cc0f88a80c8d11eb998187c0e0e50d02f2b41b3",
+      "3db6bf11b0eda7986834b9bc7281618b79aa19630651daea3dbbc5c57f9fbfbd",
+      "f491216d9c555e256d19dcd8989c0fb540c167c061a1cd916a5c03b30c006960",
+      "05c5a49480ebe8137ef96021ab1e5daa5acace97803f754cb7d76d1f3da3510e"
+    ],
+    "required_passes": [
+      "artifact-review:page"
+    ],
+    "missing": [
+      "truth-brief"
+    ],
+    "complete": false,
+    "truth": null,
+    "inventory": {
+      "items": [
+        {
+          "role": "h1",
+          "text": "Trust map for #489"
+        },
+        {
+          "role": "p",
+          "text": "Function-Health/function-intelligence: One document harness for the clinician note, UAP, FMM and Four Horsemen. 25 Proven, 5 Backed, 5 Asserted, 3 Gap. Head 3758b0901c."
+        },
+        {
+          "role": "h2",
+          "text": "High: every claim and its verdict"
+        },
+        {
+          "role": "p",
+          "text": "38 claims: 25 Proven, 5 Backed, 5 Asserted, 3 Gap."
+        },
+        {
+          "role": "p",
+          "text": "cannot-fail: V36 stayed green on control K36. It checks nothing that the control broke."
+        },
+        {
+          "role": "th",
+          "text": "ID"
+        },
+        {
+          "role": "th",
+          "text": "Layer"
+        },
+        {
+          "role": "th",
+          "text": "Claim"
+        },
+        {
+          "role": "th",
+          "text": "Verdict"
+        },
+        {
+          "role": "td",
+          "text": "C01"
+        },
+        {
+          "role": "td",
+          "text": "Type pins"
+        },
+        {
+          "role": "td",
+          "text": "The editor takes only an EditableFinding. A plain Finding or a classify result is a type error."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C02"
+        },
+        {
+          "role": "td",
+          "text": "Type pins"
+        },
+        {
+          "role": "td",
+          "text": "Wiring rejects an adapter and a subset of different kinds."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C03"
+        },
+        {
+          "role": "td",
+          "text": "Type pins"
+        },
+        {
+          "role": "td",
+          "text": "run_adapter and _run_kind reject an adapter, a subset or a setup of a different kind."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C04"
+        },
+        {
+          "role": "td",
+          "text": "Type pins"
+        },
+        {
+          "role": "td",
+          "text": "Outputs rejects the note kind, because write_outputs does not write it."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C05"
+        },
+        {
+          "role": "td",
+          "text": "Boundary rules"
+        },
+        {
+          "role": "td",
+          "text": "A docgen module imports only the docgen modules that its DOCGEN_IMPORTS row lists."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C06"
+        },
+        {
+          "role": "td",
+          "text": "Boundary rules"
+        },
+        {
+          "role": "td",
+          "text": "No adapter imports another adapter."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C07"
+        },
+        {
+          "role": "td",
+          "text": "Boundary rules"
+        },
+        {
+          "role": "td",
+          "text": "The core imports no CLI, FMM, 4H, refine or cr.uap module."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C08"
+        },
+        {
+          "role": "td",
+          "text": "Boundary rules"
+        },
+        {
+          "role": "td",
+          "text": "Only clinician_note and the allowlist import cr.note.author and cr.note.loop."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C09"
+        },
+        {
+          "role": "td",
+          "text": "Boundary rules"
+        },
+        {
+          "role": "td",
+          "text": "Only finished_cr.py and tests/_crp_fixtures.py call FinishedCR."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C10"
+        },
+        {
+          "role": "td",
+          "text": "Boundary rules"
+        },
+        {
+          "role": "td",
+          "text": "Only findings.py calls EditableFinding."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C11"
+        },
+        {
+          "role": "td",
+          "text": "Anti-gaming rules"
+        },
+        {
+          "role": "td",
+          "text": "The editor never gets a finding whose key is in not_editable."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C12"
+        },
+        {
+          "role": "td",
+          "text": "Anti-gaming rules"
+        },
+        {
+          "role": "td",
+          "text": "An evidence_bound finding is editable only in a card file whose evidence holds its input fact."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C13"
+        },
+        {
+          "role": "td",
+          "text": "Anti-gaming rules"
+        },
+        {
+          "role": "td",
+          "text": "The editor never gets a model major that the second sample did not report again."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C14"
+        },
+        {
+          "role": "td",
+          "text": "Anti-gaming rules"
+        },
+        {
+          "role": "td",
+          "text": "A second report counts only for the same claim: the cartridge, the key and the place."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C15"
+        },
+        {
+          "role": "td",
+          "text": "Loop and editor"
+        },
+        {
+          "role": "td",
+          "text": "The edit rounds stop after a round that the accept rule did not keep and that changed no file."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C16"
+        },
+        {
+          "role": "td",
+          "text": "Loop and editor"
+        },
+        {
+          "role": "td",
+          "text": "A floor finding that no writable file holds stops the edit rounds."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C17"
+        },
+        {
+          "role": "td",
+          "text": "Loop and editor"
+        },
+        {
+          "role": "td",
+          "text": "A lost editor call never reflects or releases its partial edit."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C18"
+        },
+        {
+          "role": "td",
+          "text": "Loop and editor"
+        },
+        {
+          "role": "td",
+          "text": "The finish tool refuses while a code check reports a blocking finding, up to three times."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C19"
+        },
+        {
+          "role": "td",
+          "text": "Loop and editor"
+        },
+        {
+          "role": "td",
+          "text": "The editor cannot delete a writable file."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C20"
+        },
+        {
+          "role": "td",
+          "text": "Loop and editor"
+        },
+        {
+          "role": "td",
+          "text": "LastClean restores the last kept draft with no blocking finding, not the first."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C21"
+        },
+        {
+          "role": "td",
+          "text": "Loop and editor"
+        },
+        {
+          "role": "td",
+          "text": "The judiciary reflector refuses a worker that is not synthetic-only."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C22"
+        },
+        {
+          "role": "td",
+          "text": "Parity and loader"
+        },
+        {
+          "role": "td",
+          "text": "cr docgen sends model requests that are byte-identical to the golden file."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C23"
+        },
+        {
+          "role": "td",
+          "text": "Parity and loader"
+        },
+        {
+          "role": "td",
+          "text": "In the 14 scripted sessions, cr docgen --kind note sends the requests of write_clinician_note."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C24"
+        },
+        {
+          "role": "td",
+          "text": "Parity and loader"
+        },
+        {
+          "role": "td",
+          "text": "cr uap and cr fmm call cr docgen with --reflection none."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C25"
+        },
+        {
+          "role": "td",
+          "text": "Parity and loader"
+        },
+        {
+          "role": "td",
+          "text": "Each kind refuses a CR that fails CR-33 acceptance."
+        },
+        {
+          "role": "td",
+          "text": "Proven"
+        },
+        {
+          "role": "td",
+          "text": "C38"
+        },
+        {
+          "role": "td",
+          "text": "Parity and loader"
+        },
+        {
+          "role": "td",
+          "text": "cr docgen --reflection judiciary works with the real judiciary reflection worker."
+        },
+        {
+          "role": "td",
+          "text": "Asserted"
+        },
+        {
+          "role": "td",
+          "text": "C26"
+        },
+        {
+          "role": "td",
+          "text": "Recorded results"
+        },
+        {
+          "role": "td",
+          "text": "Against production, the CR note agent cuts agreed blind failures from 2.65 to 0.02 per note."
+        },
+        {
+          "role": "td",
+          "text": "Backed"
+        },
+        {
+          "role": "td",
+          "text": "C27"
+        },
+        {
+          "role": "td",
+          "text": "Recorded results"
+        },
+        {
+          "role": "td",
+          "text": "The harness is non-inferior to main for FMM, 4H and the UAP after the anti-gaming changes."
+        },
+        {
+          "role": "td",
+          "text": "Backed"
+        },
+        {
+          "role": "td",
+          "text": "C28"
+        },
+        {
+          "role": "td",
+          "text": "Recorded results"
+        },
+        {
+          "role": "td",
+          "text": "An Opus audit found no gaming in the kept edits."
+        },
+        {
+          "role": "td",
+          "text": "Backed"
+        },
+        {
+          "role": "td",
+          "text": "C29"
+        },
+        {
+          "role": "td",
+          "text": "Recorded results"
+        },
+        {
+          "role": "td",
+          "text": "The cost per document goes up: UAP $0.75 to $1.30, FMM $0.34 to $0.38, 4H $0.24 to $0.32."
+        },
+        {
+          "role": "td",
+          "text": "Backed"
+        },
+        {
+          "role": "td",
+          "text": "C30"
+        },
+        {
+          "role": "td",
+          "text": "Recorded results"
+        },
+        {
+          "role": "td",
+          "text": "4,249 CR tests, 1,272 harness tests and 74 root tests pass. Ruff, basedpyright and the boundary checks are clean."
+        },
+        {
+          "role": "td",
+          "text": "Backed"
+        },
+        {
+          "role": "td",
+          "text": "C31"
+        },
+        {
+          "role": "td",
+          "text": "Narrative only"
+        },
+        {
+          "role": "td",
+          "text": "Production does not change, because cr_service does not import cr.docgen."
+        },
+        {
+          "role": "td",
+          "text": "Asserted"
+        },
+        {
+          "role": "td",
+          "text": "C32"
+        },
+        {
+          "role": "td",
+          "text": "Narrative only"
+        },
+        {
+          "role": "td",
+          "text": "The source code is 47 lines smaller than main."
+        },
+        {
+          "role": "td",
+          "text": "Asserted"
+        },
+        {
+          "role": "td",
+          "text": "C33"
+        },
+        {
+          "role": "td",
+          "text": "Narrative only"
+        },
+        {
+          "role": "td",
+          "text": "The UAP trace label released, on a plan that needs clinician review, is a label error and not a floor gap."
+        },
+        {
+          "role": "td",
+          "text": "Asserted"
+        },
+        {
+          "role": "td",
+          "text": "C34"
+        },
+        {
+          "role": "td",
+          "text": "Narrative only"
+        },
+        {
+          "role": "td",
+          "text": "Nobody measured the two folded defaults, #438 and #424, in production."
+        },
+        {
+          "role": "td",
+          "text": "Asserted"
+        },
+        {
+          "role": "td",
+          "text": "C35"
+        },
+        {
+          "role": "td",
+          "text": "Unstated changes"
+        },
+        {
+          "role": "td",
+          "text": "require_same_scope refuses a packet and a ledger of different members or snapshots."
+        },
+        {
+          "role": "td",
+          "text": "Gap"
+        },
+        {
+          "role": "td",
+          "text": "C36"
+        },
+        {
+          "role": "td",
+          "text": "Unstated changes"
+        },
+        {
+          "role": "td",
+          "text": "No caller uses sheet_names, which the PR deletes from guidance/_xlsx.py."
+        },
+        {
+          "role": "td",
+          "text": "Gap"
+        },
+        {
+          "role": "td",
+          "text": "C37"
+        },
+        {
+          "role": "td",
+          "text": "Unstated changes"
+        },
+        {
+          "role": "td",
+          "text": "With diagnose, submission_text names the unexpected tool calls, not an empty body."
+        },
+        {
+          "role": "td",
+          "text": "Gap"
+        },
+        {
+          "role": "p",
+          "text": "Proven: a fact-tier verifier went red on a planted defect. Backed: a verifier exists, but no control went red, or a model judged it. Asserted: only the PR text says so. Gap: no verifier and no statement."
+        },
+        {
+          "role": "h2",
+          "text": "Medium: architecture, code path and the verifier map"
+        },
+        {
+          "role": "h3",
+          "text": "load_finished_cr"
+        },
+        {
+          "role": "li",
+          "text": "F1 to F4 pass: adapter.project"
+        },
+        {
+          "role": "h3",
+          "text": "adapter.project"
+        },
+        {
+          "role": "li",
+          "text": "round 0: reflect: code checks + reflectors"
+        },
+        {
+          "role": "h3",
+          "text": "reflect: code checks + reflectors"
+        },
+        {
+          "role": "li",
+          "text": "EditableFinding only: Editor.edit"
+        },
+        {
+          "role": "h3",
+          "text": "Editor.edit"
+        },
+        {
+          "role": "li",
+          "text": "reflect again: AcceptRule.keep / settle"
+        },
+        {
+          "role": "h3",
+          "text": "AcceptRule.keep / settle"
+        },
+        {
+          "role": "li",
+          "text": "next round: reflect: code checks + reflectors"
+        },
+        {
+          "role": "li",
+          "text": "loop stops: _floor"
+        },
+        {
+          "role": "h3",
+          "text": "_floor"
+        },
+        {
+          "role": "li",
+          "text": "released or fallback: write_outputs"
+        },
+        {
+          "role": "h3",
+          "text": "write_outputs"
+        },
+        {
+          "role": "li",
+          "text": "grade: Judiciary Judges"
+        },
+        {
+          "role": "h3",
+          "text": "Judiciary Judges"
+        },
+        {
+          "role": "h3",
+          "text": "edit round n"
+        },
+        {
+          "role": "li",
+          "text": "To EditableFinding left? (C11-C13)"
+        },
+        {
+          "role": "h3",
+          "text": "EditableFinding left? (C11-C13)"
+        },
+        {
+          "role": "li",
+          "text": "yes: floor fixable? (C16)"
+        },
+        {
+          "role": "li",
+          "text": "no: stop: settle (C20), then _floor"
+        },
+        {
+          "role": "h3",
+          "text": "floor fixable? (C16)"
+        },
+        {
+          "role": "li",
+          "text": "yes: Editor.edit"
+        },
+        {
+          "role": "li",
+          "text": "no: stop: settle (C20), then _floor"
+        },
+        {
+          "role": "h3",
+          "text": "Editor.edit"
+        },
+        {
+          "role": "li",
+          "text": "To call lost? (C17)"
+        },
+        {
+          "role": "h3",
+          "text": "call lost? (C17)"
+        },
+        {
+          "role": "li",
+          "text": "no: kept, or idle? (C15)"
+        },
+        {
+          "role": "li",
+          "text": "yes: _floor blocks"
+        },
+        {
+          "role": "h3",
+          "text": "kept, or idle? (C15)"
+        },
+        {
+          "role": "li",
+          "text": "kept: next round: edit round n"
+        },
+        {
+          "role": "li",
+          "text": "idle: stop: settle (C20), then _floor"
+        },
+        {
+          "role": "h3",
+          "text": "_floor blocks"
+        },
+        {
+          "role": "h3",
+          "text": "settle (C20), then _floor"
+        },
+        {
+          "role": "p",
+          "text": "Claims by layer and verdict."
+        },
+        {
+          "role": "th",
+          "text": "Layer"
+        },
+        {
+          "role": "th",
+          "text": "Proven"
+        },
+        {
+          "role": "th",
+          "text": "Backed"
+        },
+        {
+          "role": "th",
+          "text": "Asserted"
+        },
+        {
+          "role": "th",
+          "text": "Gap"
+        },
+        {
+          "role": "td",
+          "text": "Type pins"
+        },
+        {
+          "role": "td",
+          "text": "4"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "Boundary rules"
+        },
+        {
+          "role": "td",
+          "text": "6"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "Anti-gaming rules"
+        },
+        {
+          "role": "td",
+          "text": "4"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "Loop and editor"
+        },
+        {
+          "role": "td",
+          "text": "7"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "Parity and loader"
+        },
+        {
+          "role": "td",
+          "text": "4"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "1"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "Recorded results"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "5"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "Narrative only"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "4"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "Unstated changes"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "0"
+        },
+        {
+          "role": "td",
+          "text": "3"
+        },
+        {
+          "role": "p",
+          "text": "The verifier map: each verifier, its state, the claims it backs and its controls."
+        },
+        {
+          "role": "th",
+          "text": "Verifier"
+        },
+        {
+          "role": "th",
+          "text": "Kind"
+        },
+        {
+          "role": "th",
+          "text": "Tier"
+        },
+        {
+          "role": "th",
+          "text": "State"
+        },
+        {
+          "role": "th",
+          "text": "Claims"
+        },
+        {
+          "role": "th",
+          "text": "Controls"
+        },
+        {
+          "role": "td",
+          "text": "V01"
+        },
+        {
+          "role": "td",
+          "text": "type-pin"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C01"
+        },
+        {
+          "role": "td",
+          "text": "K01 remove-type-pin: red; K01b remove-type-pin: green"
+        },
+        {
+          "role": "td",
+          "text": "V02"
+        },
+        {
+          "role": "td",
+          "text": "type-pin"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C01"
+        },
+        {
+          "role": "td",
+          "text": "K02 remove-type-pin: red"
+        },
+        {
+          "role": "td",
+          "text": "V03"
+        },
+        {
+          "role": "td",
+          "text": "type-pin"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C02"
+        },
+        {
+          "role": "td",
+          "text": "K03 remove-type-pin: red"
+        },
+        {
+          "role": "td",
+          "text": "V04"
+        },
+        {
+          "role": "td",
+          "text": "type-pin"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C02"
+        },
+        {
+          "role": "td",
+          "text": "K04 remove-type-pin: red"
+        },
+        {
+          "role": "td",
+          "text": "V05"
+        },
+        {
+          "role": "td",
+          "text": "type-pin"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C03"
+        },
+        {
+          "role": "td",
+          "text": "K05 remove-type-pin: red"
+        },
+        {
+          "role": "td",
+          "text": "V06"
+        },
+        {
+          "role": "td",
+          "text": "type-pin"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C03"
+        },
+        {
+          "role": "td",
+          "text": "K06 remove-type-pin: red"
+        },
+        {
+          "role": "td",
+          "text": "V07"
+        },
+        {
+          "role": "td",
+          "text": "type-pin"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C04"
+        },
+        {
+          "role": "td",
+          "text": "K07 remove-type-pin: red"
+        },
+        {
+          "role": "td",
+          "text": "V08"
+        },
+        {
+          "role": "td",
+          "text": "boundary"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C05"
+        },
+        {
+          "role": "td",
+          "text": "K08 drop-allowlist-row: red"
+        },
+        {
+          "role": "td",
+          "text": "V09"
+        },
+        {
+          "role": "td",
+          "text": "boundary"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C06"
+        },
+        {
+          "role": "td",
+          "text": "K09 plant-violation: red"
+        },
+        {
+          "role": "td",
+          "text": "V10"
+        },
+        {
+          "role": "td",
+          "text": "boundary"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C07"
+        },
+        {
+          "role": "td",
+          "text": "K10 plant-violation: red"
+        },
+        {
+          "role": "td",
+          "text": "V11"
+        },
+        {
+          "role": "td",
+          "text": "boundary"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C08"
+        },
+        {
+          "role": "td",
+          "text": "K11 drop-allowlist-row: red"
+        },
+        {
+          "role": "td",
+          "text": "V12"
+        },
+        {
+          "role": "td",
+          "text": "boundary"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C09"
+        },
+        {
+          "role": "td",
+          "text": "K12 drop-allowlist-row: red"
+        },
+        {
+          "role": "td",
+          "text": "V13"
+        },
+        {
+          "role": "td",
+          "text": "boundary"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C10"
+        },
+        {
+          "role": "td",
+          "text": "K13 plant-violation: red"
+        },
+        {
+          "role": "td",
+          "text": "V14"
+        },
+        {
+          "role": "td",
+          "text": "integration"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C11"
+        },
+        {
+          "role": "td",
+          "text": "K14 remove-guard-line: red"
+        },
+        {
+          "role": "td",
+          "text": "V15"
+        },
+        {
+          "role": "td",
+          "text": "integration"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C12"
+        },
+        {
+          "role": "td",
+          "text": "K15 remove-guard-line: red"
+        },
+        {
+          "role": "td",
+          "text": "V16"
+        },
+        {
+          "role": "td",
+          "text": "integration"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C13"
+        },
+        {
+          "role": "td",
+          "text": "K16 remove-guard-line: red"
+        },
+        {
+          "role": "td",
+          "text": "V17"
+        },
+        {
+          "role": "td",
+          "text": "integration"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C14"
+        },
+        {
+          "role": "td",
+          "text": "K17 remove-covered-code: red"
+        },
+        {
+          "role": "td",
+          "text": "V18"
+        },
+        {
+          "role": "td",
+          "text": "integration"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C14"
+        },
+        {
+          "role": "td",
+          "text": "K18 remove-covered-code: red"
+        },
+        {
+          "role": "td",
+          "text": "V19"
+        },
+        {
+          "role": "td",
+          "text": "integration"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C15"
+        },
+        {
+          "role": "td",
+          "text": "K19 remove-guard-line: red"
+        },
+        {
+          "role": "td",
+          "text": "V20"
+        },
+        {
+          "role": "td",
+          "text": "integration"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C16"
+        },
+        {
+          "role": "td",
+          "text": "K20 remove-guard-line: red"
+        },
+        {
+          "role": "td",
+          "text": "V21"
+        },
+        {
+          "role": "td",
+          "text": "integration"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C17"
+        },
+        {
+          "role": "td",
+          "text": "K21 remove-guard-line: red"
+        },
+        {
+          "role": "td",
+          "text": "V22"
+        },
+        {
+          "role": "td",
+          "text": "integration"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C18"
+        },
+        {
+          "role": "td",
+          "text": "K22 invert-condition: red"
+        },
+        {
+          "role": "td",
+          "text": "V24"
+        },
+        {
+          "role": "td",
+          "text": "integration"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C20"
+        },
+        {
+          "role": "td",
+          "text": "K24 invert-condition: red"
+        },
+        {
+          "role": "td",
+          "text": "V23"
+        },
+        {
+          "role": "td",
+          "text": "integration"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C19"
+        },
+        {
+          "role": "td",
+          "text": "K23 remove-guard-line: red"
+        },
+        {
+          "role": "td",
+          "text": "V25"
+        },
+        {
+          "role": "td",
+          "text": "integration"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C21"
+        },
+        {
+          "role": "td",
+          "text": "K25 remove-guard-line: red"
+        },
+        {
+          "role": "td",
+          "text": "V26"
+        },
+        {
+          "role": "td",
+          "text": "golden"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C22"
+        },
+        {
+          "role": "td",
+          "text": "K26 corrupt-golden-byte: red"
+        },
+        {
+          "role": "td",
+          "text": "V27"
+        },
+        {
+          "role": "td",
+          "text": "parity"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C23"
+        },
+        {
+          "role": "td",
+          "text": "K27 remove-covered-code: red"
+        },
+        {
+          "role": "td",
+          "text": "V28"
+        },
+        {
+          "role": "td",
+          "text": "parity"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C24"
+        },
+        {
+          "role": "td",
+          "text": "K28 invert-condition: red"
+        },
+        {
+          "role": "td",
+          "text": "V29"
+        },
+        {
+          "role": "td",
+          "text": "integration"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C25"
+        },
+        {
+          "role": "td",
+          "text": "K29 remove-guard-line: red"
+        },
+        {
+          "role": "td",
+          "text": "V30"
+        },
+        {
+          "role": "td",
+          "text": "eval"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "recorded"
+        },
+        {
+          "role": "td",
+          "text": "C26"
+        },
+        {
+          "role": "td",
+          "text": "none"
+        },
+        {
+          "role": "td",
+          "text": "V31"
+        },
+        {
+          "role": "td",
+          "text": "eval"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "recorded"
+        },
+        {
+          "role": "td",
+          "text": "C27"
+        },
+        {
+          "role": "td",
+          "text": "none"
+        },
+        {
+          "role": "td",
+          "text": "V32"
+        },
+        {
+          "role": "td",
+          "text": "model"
+        },
+        {
+          "role": "td",
+          "text": "guess"
+        },
+        {
+          "role": "td",
+          "text": "recorded"
+        },
+        {
+          "role": "td",
+          "text": "C28"
+        },
+        {
+          "role": "td",
+          "text": "none"
+        },
+        {
+          "role": "td",
+          "text": "V33"
+        },
+        {
+          "role": "td",
+          "text": "measurement"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "recorded"
+        },
+        {
+          "role": "td",
+          "text": "C29"
+        },
+        {
+          "role": "td",
+          "text": "none"
+        },
+        {
+          "role": "td",
+          "text": "V34"
+        },
+        {
+          "role": "td",
+          "text": "integration"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "recorded"
+        },
+        {
+          "role": "td",
+          "text": "C30"
+        },
+        {
+          "role": "td",
+          "text": "none"
+        },
+        {
+          "role": "td",
+          "text": "V35"
+        },
+        {
+          "role": "td",
+          "text": "type-pin"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "proven"
+        },
+        {
+          "role": "td",
+          "text": "C01"
+        },
+        {
+          "role": "td",
+          "text": "K35 remove-type-pin: red"
+        },
+        {
+          "role": "td",
+          "text": "V36"
+        },
+        {
+          "role": "td",
+          "text": "e2e"
+        },
+        {
+          "role": "td",
+          "text": "fact"
+        },
+        {
+          "role": "td",
+          "text": "cannot-fail"
+        },
+        {
+          "role": "td",
+          "text": "C38"
+        },
+        {
+          "role": "td",
+          "text": "K36 plant-violation: green"
+        },
+        {
+          "role": "h2",
+          "text": "Low: code and evidence per claim"
+        },
+        {
+          "role": "h3",
+          "text": "C01 Proven: The editor takes only an EditableFinding. A plain Finding or a classify result is a type error."
+        },
+        {
+          "role": "p",
+          "text": "V01 went red on control K01. Source: PR body, How it works, section 9."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/tests/_docgen_type_contracts.py:33"
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/docgen/adapter.py:199"
+        },
+        {
+          "role": "p",
+          "text": "V01: basedpyright strict keeps line 36 of tests/_docgen_type_contracts.py a type error. reportUnnecessaryTypeIgnoreComment fails the run when the line type-checks. Provenance: CI job lint (basedpyright strict) in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K01 (remove-type-pin): red"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K01b (remove-type-pin): green"
+        },
+        {
+          "role": "p",
+          "text": "V02: basedpyright strict keeps line 37 of tests/_docgen_type_contracts.py a type error. reportUnnecessaryTypeIgnoreComment fails the run when the line type-checks. Provenance: CI job lint (basedpyright strict) in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K02 (remove-type-pin): red"
+        },
+        {
+          "role": "p",
+          "text": "V35: Project-wide basedpyright strict checks each source file. A call that passes a plain Finding to review_file is a type error. Provenance: CI job lint (basedpyright strict) in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K35 (remove-type-pin): red"
+        },
+        {
+          "role": "h3",
+          "text": "C02 Proven: Wiring rejects an adapter and a subset of different kinds."
+        },
+        {
+          "role": "p",
+          "text": "V03 went red on control K03. Source: PR body, How it works, section 9."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/tests/_docgen_type_contracts.py:50"
+        },
+        {
+          "role": "p",
+          "text": "V03: basedpyright strict keeps line 51 of tests/_docgen_type_contracts.py a type error. reportUnnecessaryTypeIgnoreComment fails the run when the line type-checks. Provenance: CI job lint (basedpyright strict) in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K03 (remove-type-pin): red"
+        },
+        {
+          "role": "p",
+          "text": "V04: basedpyright strict keeps line 52 of tests/_docgen_type_contracts.py a type error. reportUnnecessaryTypeIgnoreComment fails the run when the line type-checks. Provenance: CI job lint (basedpyright strict) in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K04 (remove-type-pin): red"
+        },
+        {
+          "role": "h3",
+          "text": "C03 Proven: run_adapter and _run_kind reject an adapter, a subset or a setup of a different kind."
+        },
+        {
+          "role": "p",
+          "text": "V05 went red on control K05. Source: PR body, How it works, section 9."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/tests/_docgen_type_contracts.py:53"
+        },
+        {
+          "role": "p",
+          "text": "V05: basedpyright strict keeps line 54 of tests/_docgen_type_contracts.py a type error. reportUnnecessaryTypeIgnoreComment fails the run when the line type-checks. Provenance: CI job lint (basedpyright strict) in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K05 (remove-type-pin): red"
+        },
+        {
+          "role": "p",
+          "text": "V06: basedpyright strict keeps line 61 of tests/_docgen_type_contracts.py a type error. reportUnnecessaryTypeIgnoreComment fails the run when the line type-checks. Provenance: CI job lint (basedpyright strict) in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K06 (remove-type-pin): red"
+        },
+        {
+          "role": "h3",
+          "text": "C04 Proven: Outputs rejects the note kind, because write_outputs does not write it."
+        },
+        {
+          "role": "p",
+          "text": "V07 went red on control K07. Source: PR body, How it works, section 9."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/tests/_docgen_type_contracts.py:62"
+        },
+        {
+          "role": "p",
+          "text": "V07: basedpyright strict keeps line 62 of tests/_docgen_type_contracts.py a type error. reportUnnecessaryTypeIgnoreComment fails the run when the line type-checks. Provenance: CI job lint (basedpyright strict) in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K07 (remove-type-pin): red"
+        },
+        {
+          "role": "h3",
+          "text": "C05 Proven: A docgen module imports only the docgen modules that its DOCGEN_IMPORTS row lists."
+        },
+        {
+          "role": "p",
+          "text": "V08 went red on control K08. Source: PR body, How it works, section 9."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/scripts/check_docgen_boundary.py:44"
+        },
+        {
+          "role": "p",
+          "text": "V08: check_docgen_boundary.py reads the AST of src/cr and fails on a intra-docgen-import violation. Provenance: CI job seam in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K08 (drop-allowlist-row): red"
+        },
+        {
+          "role": "h3",
+          "text": "C06 Proven: No adapter imports another adapter."
+        },
+        {
+          "role": "p",
+          "text": "V09 went red on control K09. Source: PR body, How it works, section 9."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/scripts/check_docgen_boundary.py:62"
+        },
+        {
+          "role": "p",
+          "text": "V09: check_docgen_boundary.py reads the AST of src/cr and fails on a sibling-adapter violation. Provenance: CI job seam in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K09 (plant-violation): red"
+        },
+        {
+          "role": "h3",
+          "text": "C07 Proven: The core imports no CLI, FMM, 4H, refine or cr.uap module."
+        },
+        {
+          "role": "p",
+          "text": "V10 went red on control K10. Source: PR body, How it works, section 9."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/scripts/check_docgen_boundary.py:64"
+        },
+        {
+          "role": "p",
+          "text": "V10: check_docgen_boundary.py reads the AST of src/cr and fails on a core-generic violation. Provenance: CI job seam in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K10 (plant-violation): red"
+        },
+        {
+          "role": "h3",
+          "text": "C08 Proven: Only clinician_note and the allowlist import cr.note.author and cr.note.loop."
+        },
+        {
+          "role": "p",
+          "text": "V11 went red on control K11. Source: PR body, How it works, section 9."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/scripts/check_docgen_boundary.py:77"
+        },
+        {
+          "role": "p",
+          "text": "V11: check_docgen_boundary.py reads the AST of src/cr and fails on a note-edge violation. Provenance: CI job seam in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K11 (drop-allowlist-row): red"
+        },
+        {
+          "role": "h3",
+          "text": "C09 Proven: Only finished_cr.py and tests/_crp_fixtures.py call FinishedCR."
+        },
+        {
+          "role": "p",
+          "text": "V12 went red on control K12. Source: PR body, This is what we did, and section 9."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/scripts/check_docgen_boundary.py:99"
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/finished_cr.py:116"
+        },
+        {
+          "role": "p",
+          "text": "V12: check_docgen_boundary.py reads the AST of src/cr and fails on a constructor violation. Provenance: CI job seam in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K12 (drop-allowlist-row): red"
+        },
+        {
+          "role": "h3",
+          "text": "C10 Proven: Only findings.py calls EditableFinding."
+        },
+        {
+          "role": "p",
+          "text": "V13 went red on control K13. Source: PR body, How it works, sections 3 and 9."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/scripts/check_docgen_boundary.py:99"
+        },
+        {
+          "role": "p",
+          "text": "V13: check_docgen_boundary.py reads the AST of src/cr and fails on a constructor violation. Provenance: CI job seam in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K13 (plant-violation): red"
+        },
+        {
+          "role": "h3",
+          "text": "C11 Proven: The editor never gets a finding whose key is in not_editable."
+        },
+        {
+          "role": "p",
+          "text": "V14 went red on control K14. Source: PR body, How it works, section 3."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/docgen/judiciary.py:621"
+        },
+        {
+          "role": "p",
+          "text": "V14: The pytest test test_judiciary_grades_an_unnamed_result_but_never_sends_it_to_the_editor drives the UAP adapter with a toy judiciary worker and checks what the editor gets. Provenance: CI job test in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K14 (remove-guard-line): red"
+        },
+        {
+          "role": "h3",
+          "text": "C12 Proven: An evidence_bound finding is editable only in a card file whose evidence holds its input fact."
+        },
+        {
+          "role": "p",
+          "text": "V15 went red on control K15. Source: PR body, How it works, section 3."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/docgen/judiciary.py:614"
+        },
+        {
+          "role": "p",
+          "text": "V15: The pytest test test_a_result_finding_is_editable_only_in_a_card_whose_evidence_holds_the_result drives the UAP adapter with a toy judiciary worker and checks what the editor gets. Provenance: CI job test in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K15 (remove-guard-line): red"
+        },
+        {
+          "role": "h3",
+          "text": "C13 Proven: The editor never gets a model major that the second sample did not report again."
+        },
+        {
+          "role": "p",
+          "text": "V16 went red on control K16. Source: PR body, How it works, section 3."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/docgen/judiciary.py:589"
+        },
+        {
+          "role": "p",
+          "text": "V16: The pytest test test_a_major_the_second_sample_refutes_is_graded_but_never_sent_to_the_editor drives the UAP adapter with a toy judiciary worker and checks what the editor gets. Provenance: CI job test in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K16 (remove-guard-line): red"
+        },
+        {
+          "role": "h3",
+          "text": "C14 Proven: A second report counts only for the same claim: the cartridge, the key and the place."
+        },
+        {
+          "role": "p",
+          "text": "V17 went red on control K17. Source: PR body, How it works, section 3."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/docgen/judiciary.py:640"
+        },
+        {
+          "role": "p",
+          "text": "V17: The pytest test test_a_finding_in_another_file_never_inherits_a_confirmation_of_its_key drives the UAP adapter with a toy judiciary worker and checks what the editor gets. Provenance: CI job test in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K17 (remove-covered-code): red"
+        },
+        {
+          "role": "p",
+          "text": "V18: The pytest test test_a_model_finding_is_confirmed_only_by_a_confirmation_of_its_own_claim runs the judiciary reflector on two samples. Provenance: CI job test in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K18 (remove-covered-code): red"
+        },
+        {
+          "role": "h3",
+          "text": "C15 Proven: The edit rounds stop after a round that the accept rule did not keep and that changed no file."
+        },
+        {
+          "role": "p",
+          "text": "V19 went red on control K19. Source: PR body, How it works, section 1, and Merge danger."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:101"
+        },
+        {
+          "role": "p",
+          "text": "V19: The pytest test test_a_finished_round_that_changed_no_file_ends_the_edit_rounds runs the loop with a toy adapter and a scripted editor. Provenance: CI job test in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K19 (remove-guard-line): red"
+        },
+        {
+          "role": "h3",
+          "text": "C16 Proven: A floor finding that no writable file holds stops the edit rounds."
+        },
+        {
+          "role": "p",
+          "text": "V20 went red on control K20. Source: PR body, How it works, section 1."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:69"
+        },
+        {
+          "role": "p",
+          "text": "V20: The pytest test test_an_unfixable_floor_finding_stops_editing_and_the_projection_stands runs the loop with a toy adapter and a scripted editor. Provenance: CI job test in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K20 (remove-guard-line): red"
+        },
+        {
+          "role": "h3",
+          "text": "C17 Proven: A lost editor call never reflects or releases its partial edit."
+        },
+        {
+          "role": "p",
+          "text": "V21 went red on control K21. Source: PR body, How it works, section 1."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:219"
+        },
+        {
+          "role": "p",
+          "text": "V21: The pytest test test_a_lost_editor_call_never_reflects_or_releases_its_partial_edit runs the loop with a toy adapter and a scripted editor. Provenance: CI job test in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K21 (remove-guard-line): red"
+        },
+        {
+          "role": "h3",
+          "text": "C18 Proven: The finish tool refuses while a code check reports a blocking finding, up to three times."
+        },
+        {
+          "role": "p",
+          "text": "V22 went red on control K22. Source: PR body, How it works, section 5."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/docgen/session.py:255"
+        },
+        {
+          "role": "p",
+          "text": "V22: The pytest test test_finish_is_refused_while_a_finding_blocks runs the loop with a toy adapter and a scripted editor. Provenance: CI job test in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K22 (invert-condition): red"
+        },
+        {
+          "role": "h3",
+          "text": "C19 Proven: The editor cannot delete a writable file."
+        },
+        {
+          "role": "p",
+          "text": "V23 went red on control K23. Source: PR body, How it works, section 5."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/docgen/workspace.py:127"
+        },
+        {
+          "role": "p",
+          "text": "V23: The pytest test test_the_editor_can_never_delete_a_prose_file sends a delete through the UAP workspace. Provenance: CI job test in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K23 (remove-guard-line): red"
+        },
+        {
+          "role": "h3",
+          "text": "C20 Proven: LastClean restores the last kept draft with no blocking finding, not the first."
+        },
+        {
+          "role": "p",
+          "text": "V24 went red on control K24. Source: PR body, How it works, section 6."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/docgen/accept.py:55"
+        },
+        {
+          "role": "p",
+          "text": "V24: The pytest test test_last_clean_restores_the_last_clean_draft_not_the_first runs the loop with a toy adapter and a scripted editor. Provenance: CI job test in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K24 (invert-condition): red"
+        },
+        {
+          "role": "h3",
+          "text": "C21 Proven: The judiciary reflector refuses a worker that is not synthetic-only."
+        },
+        {
+          "role": "p",
+          "text": "V25 went red on control K25. Source: PR body, How it works, section 4."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/docgen/judiciary.py:323"
+        },
+        {
+          "role": "p",
+          "text": "V25: The pytest test test_the_worker_fails_closed starts a toy worker with 30 bad ready lines and replies. Provenance: CI job test in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K25 (remove-guard-line): red"
+        },
+        {
+          "role": "h3",
+          "text": "C22 Proven: cr docgen sends model requests that are byte-identical to the golden file."
+        },
+        {
+          "role": "p",
+          "text": "V26 went red on control K26. Source: PR body, This is how we proved it."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/tests/test_docgen_parity.py:554"
+        },
+        {
+          "role": "p",
+          "text": "V26: test_docgen_sends_the_golden_requests hashes each request field and compares it with tests/data/docgen_parity.json. Provenance: CI job test in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K26 (corrupt-golden-byte): red"
+        },
+        {
+          "role": "h3",
+          "text": "C23 Proven: In the 14 scripted sessions, cr docgen --kind note sends the requests of write_clinician_note."
+        },
+        {
+          "role": "p",
+          "text": "V27 went red on control K27. Source: PR body, This is why it's better."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/tests/test_docgen_parity.py:714"
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/docgen/clinician_note.py:340"
+        },
+        {
+          "role": "p",
+          "text": "V27: test_the_harness_note_path_sends_the_note_loops_requests runs each scripted session through both paths and compares the requests. Provenance: CI job test in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K27 (remove-covered-code): red"
+        },
+        {
+          "role": "h3",
+          "text": "C24 Proven: cr uap and cr fmm call cr docgen with --reflection none."
+        },
+        {
+          "role": "p",
+          "text": "V28 went red on control K28. Source: PR body, How it works, section 8."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/cli.py:680"
+        },
+        {
+          "role": "p",
+          "text": "V28: test_cr_uap_and_cr_fmm_send_the_requests_of_docgen_with_reflection_none compares the requests of both commands. Provenance: CI job test in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K28 (invert-condition): red"
+        },
+        {
+          "role": "h3",
+          "text": "C25 Proven: Each kind refuses a CR that fails CR-33 acceptance."
+        },
+        {
+          "role": "p",
+          "text": "V29 went red on control K29. Source: PR body, How it works, sections 2 and 8."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/finished_cr.py:105"
+        },
+        {
+          "role": "p",
+          "text": "V29: test_every_kind_refuses_a_cr_that_fails_cr33 runs each kind on a CR that fails CR-33. Provenance: CI job test in .github/workflows/clinical-reasoning.yml, at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K29 (remove-guard-line): red"
+        },
+        {
+          "role": "h3",
+          "text": "C38 Asserted: cr docgen --reflection judiciary works with the real judiciary reflection worker."
+        },
+        {
+          "role": "p",
+          "text": "Only the PR text states this claim. V36 is cannot-fail. Source: PR body, Known issues: the real judiciary-worker e2e test skips in CI."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/tests/test_docgen_judiciary_worker.py:40"
+        },
+        {
+          "role": "p",
+          "text": "V36: test_docgen_judiciary_worker.py runs cr docgen against the real worker with a stub model runtime. It skips when judiciary is not built. Provenance: CI job test in .github/workflows/clinical-reasoning.yml. The PR body says that it skips in CI."
+        },
+        {
+          "role": "figcaption",
+          "text": "At the PR head: green"
+        },
+        {
+          "role": "figcaption",
+          "text": "Control K36 (plant-violation): green"
+        },
+        {
+          "role": "h3",
+          "text": "C26 Backed: Against production, the CR note agent cuts agreed blind failures from 2.65 to 0.02 per note."
+        },
+        {
+          "role": "p",
+          "text": "V30 backs this claim, but the evidence is recorded, not run again. Source: PR body, This is why it's better."
+        },
+        {
+          "role": "p",
+          "text": "V30: A pre-registered eval on 23 members. gpt-6.1-sol and Opus labelled each note blind. Provenance: Recorded in the PR body. The eval tested the #295 agent, not the exact note code in this PR."
+        },
+        {
+          "role": "figcaption",
+          "text": "Recorded: PR body, This is why it's better"
+        },
+        {
+          "role": "h3",
+          "text": "C27 Backed: The harness is non-inferior to main for FMM, 4H and the UAP after the anti-gaming changes."
+        },
+        {
+          "role": "p",
+          "text": "V31 backs this claim, but the evidence is recorded, not run again. Source: PR body, This is why it's better."
+        },
+        {
+          "role": "p",
+          "text": "V31: Frozen Judges graded both arms at k=3 on 5 members. Two labellers labelled each document blind. Provenance: Recorded in the PR body. The same 5 members found the gaming paths."
+        },
+        {
+          "role": "figcaption",
+          "text": "Recorded: PR body, This is why it's better"
+        },
+        {
+          "role": "h3",
+          "text": "C28 Backed: An Opus audit found no gaming in the kept edits."
+        },
+        {
+          "role": "p",
+          "text": "V32 backs this claim, but the evidence is recorded, not run again. Source: PR body, This is how we proved it."
+        },
+        {
+          "role": "p",
+          "text": "V32: An Opus audit read each kept edit and looked for gaming. Provenance: Recorded in the PR body."
+        },
+        {
+          "role": "figcaption",
+          "text": "Recorded: PR body, This is how we proved it"
+        },
+        {
+          "role": "h3",
+          "text": "C29 Backed: The cost per document goes up: UAP $0.75 to $1.30, FMM $0.34 to $0.38, 4H $0.24 to $0.32."
+        },
+        {
+          "role": "p",
+          "text": "V33 backs this claim, but the evidence is recorded, not run again. Source: PR body, This is why it's better."
+        },
+        {
+          "role": "p",
+          "text": "V33: The meter of each run gives the cost per document. Provenance: Recorded in the PR body."
+        },
+        {
+          "role": "figcaption",
+          "text": "Recorded: PR body, This is why it's better"
+        },
+        {
+          "role": "h3",
+          "text": "C30 Backed: 4,249 CR tests, 1,272 harness tests and 74 root tests pass. Ruff, basedpyright and the boundary checks are clean."
+        },
+        {
+          "role": "p",
+          "text": "V34 backs this claim, but the evidence is recorded, not run again. Source: PR body, This is how we proved it."
+        },
+        {
+          "role": "p",
+          "text": "V34: The CI test, lint and seam jobs ran the full suites at the PR head. Provenance: Recorded in the PR body. This run did not read the CI logs."
+        },
+        {
+          "role": "figcaption",
+          "text": "Recorded: PR body, This is how we proved it"
+        },
+        {
+          "role": "h3",
+          "text": "C31 Asserted: Production does not change, because cr_service does not import cr.docgen."
+        },
+        {
+          "role": "p",
+          "text": "Only the PR text states this claim. Source: PR body, This is why it's better, and Merge danger."
+        },
+        {
+          "role": "h3",
+          "text": "C32 Asserted: The source code is 47 lines smaller than main."
+        },
+        {
+          "role": "p",
+          "text": "Only the PR text states this claim. Source: PR body, This is what we did."
+        },
+        {
+          "role": "h3",
+          "text": "C33 Asserted: The UAP trace label released, on a plan that needs clinician review, is a label error and not a floor gap."
+        },
+        {
+          "role": "p",
+          "text": "Only the PR text states this claim. Source: PR body, Known issues."
+        },
+        {
+          "role": "h3",
+          "text": "C34 Asserted: Nobody measured the two folded defaults, #438 and #424, in production."
+        },
+        {
+          "role": "p",
+          "text": "Only the PR text states this claim. Source: PR body, Merge danger."
+        },
+        {
+          "role": "h3",
+          "text": "C35 Gap: require_same_scope refuses a packet and a ledger of different members or snapshots."
+        },
+        {
+          "role": "p",
+          "text": "No verifier backs this claim, and the PR text does not state it. Source: scan: projects/clinical-reasoning/src/cr/generation_util.py changed, and no test names it. The PR text does not name require_same_scope.."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/generation_util.py:47"
+        },
+        {
+          "role": "h3",
+          "text": "C36 Gap: No caller uses sheet_names, which the PR deletes from guidance/_xlsx.py."
+        },
+        {
+          "role": "p",
+          "text": "No verifier backs this claim, and the PR text does not state it. Source: scan: projects/clinical-reasoning/src/cr/guidance/_xlsx.py changed, and no test names it. The PR text does not name sheet_names.."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/guidance/_xlsx.py:16"
+        },
+        {
+          "role": "h3",
+          "text": "C37 Gap: With diagnose, submission_text names the unexpected tool calls, not an empty body."
+        },
+        {
+          "role": "p",
+          "text": "No verifier backs this claim, and the PR text does not state it. Source: scan: projects/clinical-reasoning/src/cr/generation_util.py changed, and no test names it. The PR text does not name diagnose.."
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/generation_util.py:15"
+        },
+        {
+          "role": "h2",
+          "text": "Trade-offs"
+        },
+        {
+          "role": "li",
+          "text": "The run uses the PR's own tests as verifiers. It adds no new test to the PR."
+        },
+        {
+          "role": "li",
+          "text": "Each control runs only the one test or check that backs its claim. A full CI run can see more, but it costs more time."
+        },
+        {
+          "role": "li",
+          "text": "The run records the evals and does not run them again, so their verdict stays Backed."
+        },
+        {
+          "role": "h2",
+          "text": "Concerns"
+        },
+        {
+          "role": "li",
+          "text": "V36 skips without a judiciary build, here and in CI. So C38 has no live verifier."
+        },
+        {
+          "role": "li",
+          "text": "Pin L36 (V01) checks that a Finding is not an EditableFinding. It does not check the parameter type of Editor.edit. V35 covers that edit."
+        },
+        {
+          "role": "li",
+          "text": "C31 has no verifier. A boundary rule that cr_service never imports cr.docgen would back it."
+        },
+        {
+          "role": "li",
+          "text": "C35, C36 and C37 are changes that the PR text does not name, and no test names their module."
+        },
+        {
+          "role": "li",
+          "text": "V30, V31 and V32 use Opus, the same model family as the author."
+        },
+        {
+          "role": "h2",
+          "text": "Verifications of this explainer"
+        },
+        {
+          "role": "li",
+          "text": "Each verdict comes from scripts/verdicts.py, and the e2e test on the fixture checks that script."
+        },
+        {
+          "role": "li",
+          "text": "Each control ran in a new scratch worktree of a local clone. The run removed each worktree after the control."
+        },
+        {
+          "role": "li",
+          "text": "Each red control matched its expected pattern, except K01b. K01b stayed green, and the map flags it."
+        },
+        {
+          "role": "li",
+          "text": "No model call and no paid step ran. The env file set a dummy key and an unreachable base URL."
+        }
+      ],
+      "sha256": "fc3cc71c101ff44e2677fdeaab384379e7cd4f0db4285dc184ab2b8d36cf7909",
+      "provenance": "browser-rendered"
+    },
+    "sha256": "edd8c0d296ea9aec42af0e9c88b07650a15144e616dbb63140fd87519e833fdc"
+  }
+}

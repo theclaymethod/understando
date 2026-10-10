@@ -1,0 +1,3075 @@
+{
+  "schema_version": 1,
+  "repo": "Function-Health/function-intelligence",
+  "pr": 489,
+  "title": "One document harness for the clinician note, UAP, FMM and Four Horsemen",
+  "base": "7c5a9044225ca3de8b4728f5040ebc02c1387d06",
+  "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b",
+  "author_family": "anthropic",
+  "created_at": "2026-10-10",
+  "narrative": "gh pr view 489 -R Function-Health/function-intelligence (runs/function-intelligence/489/pr-body.md)",
+  "setup": [
+    {
+      "cwd": "projects/clinical-reasoning",
+      "argv": [
+        "uv",
+        "sync",
+        "--frozen",
+        "--all-packages",
+        "--extra",
+        "biomed"
+      ],
+      "timeout_s": 900
+    }
+  ],
+  "claims": [
+    {
+      "id": "C01",
+      "cc_id": null,
+      "text": "The editor takes only an EditableFinding. A plain Finding or a classify result is a type error.",
+      "stated": true,
+      "source": "PR body, How it works, section 9",
+      "layer": "Type pins",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
+          "start": 33,
+          "end": 38
+        },
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/adapter.py",
+          "start": 199,
+          "end": 213
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V01 went red on control K01."
+    },
+    {
+      "id": "C02",
+      "cc_id": null,
+      "text": "Wiring rejects an adapter and a subset of different kinds.",
+      "stated": true,
+      "source": "PR body, How it works, section 9",
+      "layer": "Type pins",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
+          "start": 50,
+          "end": 52
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V03 went red on control K03."
+    },
+    {
+      "id": "C03",
+      "cc_id": null,
+      "text": "run_adapter and _run_kind reject an adapter, a subset or a setup of a different kind.",
+      "stated": true,
+      "source": "PR body, How it works, section 9",
+      "layer": "Type pins",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
+          "start": 53,
+          "end": 61
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V05 went red on control K05."
+    },
+    {
+      "id": "C04",
+      "cc_id": null,
+      "text": "Outputs rejects the note kind, because write_outputs does not write it.",
+      "stated": true,
+      "source": "PR body, How it works, section 9",
+      "layer": "Type pins",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
+          "start": 62,
+          "end": 62
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V07 went red on control K07."
+    },
+    {
+      "id": "C05",
+      "cc_id": null,
+      "text": "A docgen module imports only the docgen modules that its DOCGEN_IMPORTS row lists.",
+      "stated": true,
+      "source": "PR body, How it works, section 9",
+      "layer": "Boundary rules",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
+          "start": 44,
+          "end": 60
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V08 went red on control K08."
+    },
+    {
+      "id": "C06",
+      "cc_id": null,
+      "text": "No adapter imports another adapter.",
+      "stated": true,
+      "source": "PR body, How it works, section 9",
+      "layer": "Boundary rules",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
+          "start": 62,
+          "end": 63
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V09 went red on control K09."
+    },
+    {
+      "id": "C07",
+      "cc_id": null,
+      "text": "The core imports no CLI, FMM, 4H, refine or cr.uap module.",
+      "stated": true,
+      "source": "PR body, How it works, section 9",
+      "layer": "Boundary rules",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
+          "start": 64,
+          "end": 75
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V10 went red on control K10."
+    },
+    {
+      "id": "C08",
+      "cc_id": null,
+      "text": "Only clinician_note and the allowlist import cr.note.author and cr.note.loop.",
+      "stated": true,
+      "source": "PR body, How it works, section 9",
+      "layer": "Boundary rules",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
+          "start": 77,
+          "end": 94
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V11 went red on control K11."
+    },
+    {
+      "id": "C09",
+      "cc_id": null,
+      "text": "Only finished_cr.py and tests/_crp_fixtures.py call FinishedCR.",
+      "stated": true,
+      "source": "PR body, This is what we did, and section 9",
+      "layer": "Boundary rules",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
+          "start": 99,
+          "end": 105
+        },
+        {
+          "path": "projects/clinical-reasoning/src/cr/finished_cr.py",
+          "start": 116,
+          "end": 139
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V12 went red on control K12."
+    },
+    {
+      "id": "C10",
+      "cc_id": null,
+      "text": "Only findings.py calls EditableFinding.",
+      "stated": true,
+      "source": "PR body, How it works, sections 3 and 9",
+      "layer": "Boundary rules",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
+          "start": 99,
+          "end": 105
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V13 went red on control K13."
+    },
+    {
+      "id": "C11",
+      "cc_id": null,
+      "text": "The editor never gets a finding whose key is in not_editable.",
+      "stated": true,
+      "source": "PR body, How it works, section 3",
+      "layer": "Anti-gaming rules",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
+          "start": 621,
+          "end": 633
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V14 went red on control K14."
+    },
+    {
+      "id": "C12",
+      "cc_id": null,
+      "text": "An evidence_bound finding is editable only in a card file whose evidence holds its input fact.",
+      "stated": true,
+      "source": "PR body, How it works, section 3",
+      "layer": "Anti-gaming rules",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
+          "start": 614,
+          "end": 633
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V15 went red on control K15."
+    },
+    {
+      "id": "C13",
+      "cc_id": null,
+      "text": "The editor never gets a model major that the second sample did not report again.",
+      "stated": true,
+      "source": "PR body, How it works, section 3",
+      "layer": "Anti-gaming rules",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
+          "start": 589,
+          "end": 604
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V16 went red on control K16."
+    },
+    {
+      "id": "C14",
+      "cc_id": null,
+      "text": "A second report counts only for the same claim: the cartridge, the key and the place.",
+      "stated": true,
+      "source": "PR body, How it works, section 3",
+      "layer": "Anti-gaming rules",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
+          "start": 640,
+          "end": 650
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V17 went red on control K17."
+    },
+    {
+      "id": "C15",
+      "cc_id": null,
+      "text": "The edit rounds stop after a round that the accept rule did not keep and that changed no file.",
+      "stated": true,
+      "source": "PR body, How it works, section 1, and Merge danger",
+      "layer": "Loop and editor",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
+          "start": 101,
+          "end": 107
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V19 went red on control K19."
+    },
+    {
+      "id": "C16",
+      "cc_id": null,
+      "text": "A floor finding that no writable file holds stops the edit rounds.",
+      "stated": true,
+      "source": "PR body, How it works, section 1",
+      "layer": "Loop and editor",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
+          "start": 69,
+          "end": 71
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V20 went red on control K20."
+    },
+    {
+      "id": "C17",
+      "cc_id": null,
+      "text": "A lost editor call never reflects or releases its partial edit.",
+      "stated": true,
+      "source": "PR body, How it works, section 1",
+      "layer": "Loop and editor",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
+          "start": 219,
+          "end": 222
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V21 went red on control K21."
+    },
+    {
+      "id": "C18",
+      "cc_id": null,
+      "text": "The finish tool refuses while a code check reports a blocking finding, up to three times.",
+      "stated": true,
+      "source": "PR body, How it works, section 5",
+      "layer": "Loop and editor",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/session.py",
+          "start": 255,
+          "end": 266
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V22 went red on control K22."
+    },
+    {
+      "id": "C19",
+      "cc_id": null,
+      "text": "The editor cannot delete a writable file.",
+      "stated": true,
+      "source": "PR body, How it works, section 5",
+      "layer": "Loop and editor",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/workspace.py",
+          "start": 127,
+          "end": 164
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V23 went red on control K23."
+    },
+    {
+      "id": "C20",
+      "cc_id": null,
+      "text": "LastClean restores the last kept draft with no blocking finding, not the first.",
+      "stated": true,
+      "source": "PR body, How it works, section 6",
+      "layer": "Loop and editor",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/accept.py",
+          "start": 55,
+          "end": 71
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V24 went red on control K24."
+    },
+    {
+      "id": "C21",
+      "cc_id": null,
+      "text": "The judiciary reflector refuses a worker that is not synthetic-only.",
+      "stated": true,
+      "source": "PR body, How it works, section 4",
+      "layer": "Loop and editor",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
+          "start": 323,
+          "end": 330
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V25 went red on control K25."
+    },
+    {
+      "id": "C22",
+      "cc_id": null,
+      "text": "cr docgen sends model requests that are byte-identical to the golden file.",
+      "stated": true,
+      "source": "PR body, This is how we proved it",
+      "layer": "Parity and loader",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/tests/test_docgen_parity.py",
+          "start": 554,
+          "end": 566
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V26 went red on control K26."
+    },
+    {
+      "id": "C23",
+      "cc_id": null,
+      "text": "In the 14 scripted sessions, cr docgen --kind note sends the requests of write_clinician_note.",
+      "stated": true,
+      "source": "PR body, This is why it's better",
+      "layer": "Parity and loader",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/tests/test_docgen_parity.py",
+          "start": 714,
+          "end": 730
+        },
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/clinician_note.py",
+          "start": 340,
+          "end": 355
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V27 went red on control K27."
+    },
+    {
+      "id": "C24",
+      "cc_id": null,
+      "text": "cr uap and cr fmm call cr docgen with --reflection none.",
+      "stated": true,
+      "source": "PR body, How it works, section 8",
+      "layer": "Parity and loader",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/cli.py",
+          "start": 680,
+          "end": 681
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V28 went red on control K28."
+    },
+    {
+      "id": "C25",
+      "cc_id": null,
+      "text": "Each kind refuses a CR that fails CR-33 acceptance.",
+      "stated": true,
+      "source": "PR body, How it works, sections 2 and 8",
+      "layer": "Parity and loader",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/finished_cr.py",
+          "start": 105,
+          "end": 113
+        }
+      ],
+      "verdict": "Proven",
+      "reason": "V29 went red on control K29."
+    },
+    {
+      "id": "C38",
+      "cc_id": null,
+      "stated": true,
+      "layer": "Parity and loader",
+      "text": "cr docgen --reflection judiciary works with the real judiciary reflection worker.",
+      "source": "PR body, Known issues: the real judiciary-worker e2e test skips in CI",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/tests/test_docgen_judiciary_worker.py",
+          "start": 40,
+          "end": 48
+        }
+      ],
+      "verdict": "Asserted",
+      "reason": "Only the PR text states this claim. V36 is cannot-fail."
+    },
+    {
+      "id": "C26",
+      "cc_id": null,
+      "text": "Against production, the CR note agent cuts agreed blind failures from 2.65 to 0.02 per note.",
+      "stated": true,
+      "source": "PR body, This is why it's better",
+      "layer": "Recorded results",
+      "code": [],
+      "verdict": "Backed",
+      "reason": "V30 backs this claim, but the evidence is recorded, not run again."
+    },
+    {
+      "id": "C27",
+      "cc_id": null,
+      "text": "The harness is non-inferior to main for FMM, 4H and the UAP after the anti-gaming changes.",
+      "stated": true,
+      "source": "PR body, This is why it's better",
+      "layer": "Recorded results",
+      "code": [],
+      "verdict": "Backed",
+      "reason": "V31 backs this claim, but the evidence is recorded, not run again."
+    },
+    {
+      "id": "C28",
+      "cc_id": null,
+      "text": "An Opus audit found no gaming in the kept edits.",
+      "stated": true,
+      "source": "PR body, This is how we proved it",
+      "layer": "Recorded results",
+      "code": [],
+      "verdict": "Backed",
+      "reason": "V32 backs this claim, but the evidence is recorded, not run again."
+    },
+    {
+      "id": "C29",
+      "cc_id": null,
+      "text": "The cost per document goes up: UAP $0.75 to $1.30, FMM $0.34 to $0.38, 4H $0.24 to $0.32.",
+      "stated": true,
+      "source": "PR body, This is why it's better",
+      "layer": "Recorded results",
+      "code": [],
+      "verdict": "Backed",
+      "reason": "V33 backs this claim, but the evidence is recorded, not run again."
+    },
+    {
+      "id": "C30",
+      "cc_id": null,
+      "text": "4,249 CR tests, 1,272 harness tests and 74 root tests pass. Ruff, basedpyright and the boundary checks are clean.",
+      "stated": true,
+      "source": "PR body, This is how we proved it",
+      "layer": "Recorded results",
+      "code": [],
+      "verdict": "Backed",
+      "reason": "V34 backs this claim, but the evidence is recorded, not run again."
+    },
+    {
+      "id": "C31",
+      "cc_id": null,
+      "text": "Production does not change, because cr_service does not import cr.docgen.",
+      "stated": true,
+      "source": "PR body, This is why it's better, and Merge danger",
+      "layer": "Narrative only",
+      "code": [],
+      "verdict": "Asserted",
+      "reason": "Only the PR text states this claim."
+    },
+    {
+      "id": "C32",
+      "cc_id": null,
+      "text": "The source code is 47 lines smaller than main.",
+      "stated": true,
+      "source": "PR body, This is what we did",
+      "layer": "Narrative only",
+      "code": [],
+      "verdict": "Asserted",
+      "reason": "Only the PR text states this claim."
+    },
+    {
+      "id": "C33",
+      "cc_id": null,
+      "text": "The UAP trace label released, on a plan that needs clinician review, is a label error and not a floor gap.",
+      "stated": true,
+      "source": "PR body, Known issues",
+      "layer": "Narrative only",
+      "code": [],
+      "verdict": "Asserted",
+      "reason": "Only the PR text states this claim."
+    },
+    {
+      "id": "C34",
+      "cc_id": null,
+      "text": "Nobody measured the two folded defaults, #438 and #424, in production.",
+      "stated": true,
+      "source": "PR body, Merge danger",
+      "layer": "Narrative only",
+      "code": [],
+      "verdict": "Asserted",
+      "reason": "Only the PR text states this claim."
+    },
+    {
+      "id": "C35",
+      "cc_id": null,
+      "stated": false,
+      "layer": "Unstated changes",
+      "text": "require_same_scope refuses a packet and a ledger of different members or snapshots.",
+      "source": "scan: projects/clinical-reasoning/src/cr/generation_util.py changed, and no test names it. The PR text does not name require_same_scope.",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/generation_util.py",
+          "start": 47,
+          "end": 55
+        }
+      ],
+      "verdict": "Gap",
+      "reason": "No verifier backs this claim, and the PR text does not state it."
+    },
+    {
+      "id": "C36",
+      "cc_id": null,
+      "stated": false,
+      "layer": "Unstated changes",
+      "text": "No caller uses sheet_names, which the PR deletes from guidance/_xlsx.py.",
+      "source": "scan: projects/clinical-reasoning/src/cr/guidance/_xlsx.py changed, and no test names it. The PR text does not name sheet_names.",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/guidance/_xlsx.py",
+          "start": 16,
+          "end": 28
+        }
+      ],
+      "verdict": "Gap",
+      "reason": "No verifier backs this claim, and the PR text does not state it."
+    },
+    {
+      "id": "C37",
+      "cc_id": null,
+      "stated": false,
+      "layer": "Unstated changes",
+      "text": "With diagnose, submission_text names the unexpected tool calls, not an empty body.",
+      "source": "scan: projects/clinical-reasoning/src/cr/generation_util.py changed, and no test names it. The PR text does not name diagnose.",
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/generation_util.py",
+          "start": 15,
+          "end": 27
+        }
+      ],
+      "verdict": "Gap",
+      "reason": "No verifier backs this claim, and the PR text does not state it."
+    }
+  ],
+  "verifiers": [
+    {
+      "id": "V01",
+      "kind": "type-pin",
+      "claims": [
+        "C01"
+      ],
+      "tier": "fact",
+      "description": "basedpyright strict keeps line 36 of tests/_docgen_type_contracts.py a type error. reportUnnecessaryTypeIgnoreComment fails the run when the line type-checks.",
+      "independence": {
+        "by": "tool",
+        "tool": "basedpyright"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job lint (basedpyright strict) in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "basedpyright",
+          "tests/_docgen_type_contracts.py"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 3.32,
+        "output_tail": "0 errors, 0 warnings, 0 notes",
+        "ran_at": "2026-10-10T18:48:00+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V02",
+      "kind": "type-pin",
+      "claims": [
+        "C01"
+      ],
+      "tier": "fact",
+      "description": "basedpyright strict keeps line 37 of tests/_docgen_type_contracts.py a type error. reportUnnecessaryTypeIgnoreComment fails the run when the line type-checks.",
+      "independence": {
+        "by": "tool",
+        "tool": "basedpyright"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job lint (basedpyright strict) in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "basedpyright",
+          "tests/_docgen_type_contracts.py"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 0.69,
+        "output_tail": "0 errors, 0 warnings, 0 notes",
+        "ran_at": "2026-10-10T18:48:00+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V03",
+      "kind": "type-pin",
+      "claims": [
+        "C02"
+      ],
+      "tier": "fact",
+      "description": "basedpyright strict keeps line 51 of tests/_docgen_type_contracts.py a type error. reportUnnecessaryTypeIgnoreComment fails the run when the line type-checks.",
+      "independence": {
+        "by": "tool",
+        "tool": "basedpyright"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job lint (basedpyright strict) in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "basedpyright",
+          "tests/_docgen_type_contracts.py"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 0.42,
+        "output_tail": "0 errors, 0 warnings, 0 notes",
+        "ran_at": "2026-10-10T18:48:01+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V04",
+      "kind": "type-pin",
+      "claims": [
+        "C02"
+      ],
+      "tier": "fact",
+      "description": "basedpyright strict keeps line 52 of tests/_docgen_type_contracts.py a type error. reportUnnecessaryTypeIgnoreComment fails the run when the line type-checks.",
+      "independence": {
+        "by": "tool",
+        "tool": "basedpyright"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job lint (basedpyright strict) in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "basedpyright",
+          "tests/_docgen_type_contracts.py"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 0.44,
+        "output_tail": "0 errors, 0 warnings, 0 notes",
+        "ran_at": "2026-10-10T18:48:01+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V05",
+      "kind": "type-pin",
+      "claims": [
+        "C03"
+      ],
+      "tier": "fact",
+      "description": "basedpyright strict keeps line 54 of tests/_docgen_type_contracts.py a type error. reportUnnecessaryTypeIgnoreComment fails the run when the line type-checks.",
+      "independence": {
+        "by": "tool",
+        "tool": "basedpyright"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job lint (basedpyright strict) in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "basedpyright",
+          "tests/_docgen_type_contracts.py"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 0.42,
+        "output_tail": "0 errors, 0 warnings, 0 notes",
+        "ran_at": "2026-10-10T18:48:02+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V06",
+      "kind": "type-pin",
+      "claims": [
+        "C03"
+      ],
+      "tier": "fact",
+      "description": "basedpyright strict keeps line 61 of tests/_docgen_type_contracts.py a type error. reportUnnecessaryTypeIgnoreComment fails the run when the line type-checks.",
+      "independence": {
+        "by": "tool",
+        "tool": "basedpyright"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job lint (basedpyright strict) in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "basedpyright",
+          "tests/_docgen_type_contracts.py"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 0.44,
+        "output_tail": "0 errors, 0 warnings, 0 notes",
+        "ran_at": "2026-10-10T18:48:02+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V07",
+      "kind": "type-pin",
+      "claims": [
+        "C04"
+      ],
+      "tier": "fact",
+      "description": "basedpyright strict keeps line 62 of tests/_docgen_type_contracts.py a type error. reportUnnecessaryTypeIgnoreComment fails the run when the line type-checks.",
+      "independence": {
+        "by": "tool",
+        "tool": "basedpyright"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job lint (basedpyright strict) in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "basedpyright",
+          "tests/_docgen_type_contracts.py"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 0.42,
+        "output_tail": "0 errors, 0 warnings, 0 notes",
+        "ran_at": "2026-10-10T18:48:02+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V08",
+      "kind": "boundary",
+      "claims": [
+        "C05"
+      ],
+      "tier": "fact",
+      "description": "check_docgen_boundary.py reads the AST of src/cr and fails on a intra-docgen-import violation.",
+      "independence": {
+        "by": "tool",
+        "tool": "check_docgen_boundary.py"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job seam in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "python",
+          "scripts/check_docgen_boundary.py"
+        ],
+        "env_file": true,
+        "timeout_s": 300,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 0.55,
+        "output_tail": "OK: document-harness boundary clean under .",
+        "ran_at": "2026-10-10T18:48:03+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V09",
+      "kind": "boundary",
+      "claims": [
+        "C06"
+      ],
+      "tier": "fact",
+      "description": "check_docgen_boundary.py reads the AST of src/cr and fails on a sibling-adapter violation.",
+      "independence": {
+        "by": "tool",
+        "tool": "check_docgen_boundary.py"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job seam in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "python",
+          "scripts/check_docgen_boundary.py"
+        ],
+        "env_file": true,
+        "timeout_s": 300,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 0.43,
+        "output_tail": "OK: document-harness boundary clean under .",
+        "ran_at": "2026-10-10T18:48:03+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V10",
+      "kind": "boundary",
+      "claims": [
+        "C07"
+      ],
+      "tier": "fact",
+      "description": "check_docgen_boundary.py reads the AST of src/cr and fails on a core-generic violation.",
+      "independence": {
+        "by": "tool",
+        "tool": "check_docgen_boundary.py"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job seam in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "python",
+          "scripts/check_docgen_boundary.py"
+        ],
+        "env_file": true,
+        "timeout_s": 300,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 0.44,
+        "output_tail": "OK: document-harness boundary clean under .",
+        "ran_at": "2026-10-10T18:48:04+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V11",
+      "kind": "boundary",
+      "claims": [
+        "C08"
+      ],
+      "tier": "fact",
+      "description": "check_docgen_boundary.py reads the AST of src/cr and fails on a note-edge violation.",
+      "independence": {
+        "by": "tool",
+        "tool": "check_docgen_boundary.py"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job seam in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "python",
+          "scripts/check_docgen_boundary.py"
+        ],
+        "env_file": true,
+        "timeout_s": 300,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 0.46,
+        "output_tail": "OK: document-harness boundary clean under .",
+        "ran_at": "2026-10-10T18:48:04+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V12",
+      "kind": "boundary",
+      "claims": [
+        "C09"
+      ],
+      "tier": "fact",
+      "description": "check_docgen_boundary.py reads the AST of src/cr and fails on a constructor violation.",
+      "independence": {
+        "by": "tool",
+        "tool": "check_docgen_boundary.py"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job seam in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "python",
+          "scripts/check_docgen_boundary.py"
+        ],
+        "env_file": true,
+        "timeout_s": 300,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 0.45,
+        "output_tail": "OK: document-harness boundary clean under .",
+        "ran_at": "2026-10-10T18:48:05+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V13",
+      "kind": "boundary",
+      "claims": [
+        "C10"
+      ],
+      "tier": "fact",
+      "description": "check_docgen_boundary.py reads the AST of src/cr and fails on a constructor violation.",
+      "independence": {
+        "by": "tool",
+        "tool": "check_docgen_boundary.py"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job seam in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "python",
+          "scripts/check_docgen_boundary.py"
+        ],
+        "env_file": true,
+        "timeout_s": 300,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 0.49,
+        "output_tail": "OK: document-harness boundary clean under .",
+        "ran_at": "2026-10-10T18:48:05+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V14",
+      "kind": "integration",
+      "claims": [
+        "C11"
+      ],
+      "tier": "fact",
+      "description": "The pytest test test_judiciary_grades_an_unnamed_result_but_never_sends_it_to_the_editor drives the UAP adapter with a toy judiciary worker and checks what the editor gets.",
+      "independence": {
+        "by": "tool",
+        "tool": "pytest"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job test in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/test_docgen_uap.py::test_judiciary_grades_an_unnamed_result_but_never_sends_it_to_the_editor"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 3.23,
+        "output_tail": ".                                                                        [100%]\n1 passed in 2.12s",
+        "ran_at": "2026-10-10T18:48:09+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V15",
+      "kind": "integration",
+      "claims": [
+        "C12"
+      ],
+      "tier": "fact",
+      "description": "The pytest test test_a_result_finding_is_editable_only_in_a_card_whose_evidence_holds_the_result drives the UAP adapter with a toy judiciary worker and checks what the editor gets.",
+      "independence": {
+        "by": "tool",
+        "tool": "pytest"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job test in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/test_docgen_uap.py::test_a_result_finding_is_editable_only_in_a_card_whose_evidence_holds_the_result"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 1.44,
+        "output_tail": "...                                                                      [100%]\n3 passed in 0.78s",
+        "ran_at": "2026-10-10T18:48:10+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V16",
+      "kind": "integration",
+      "claims": [
+        "C13"
+      ],
+      "tier": "fact",
+      "description": "The pytest test test_a_major_the_second_sample_refutes_is_graded_but_never_sent_to_the_editor drives the UAP adapter with a toy judiciary worker and checks what the editor gets.",
+      "independence": {
+        "by": "tool",
+        "tool": "pytest"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job test in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/test_docgen_uap.py::test_a_major_the_second_sample_refutes_is_graded_but_never_sent_to_the_editor"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 1.22,
+        "output_tail": ".                                                                        [100%]\n1 passed in 0.57s",
+        "ran_at": "2026-10-10T18:48:11+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V17",
+      "kind": "integration",
+      "claims": [
+        "C14"
+      ],
+      "tier": "fact",
+      "description": "The pytest test test_a_finding_in_another_file_never_inherits_a_confirmation_of_its_key drives the UAP adapter with a toy judiciary worker and checks what the editor gets.",
+      "independence": {
+        "by": "tool",
+        "tool": "pytest"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job test in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/test_docgen_uap.py::test_a_finding_in_another_file_never_inherits_a_confirmation_of_its_key"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 1.15,
+        "output_tail": ".                                                                        [100%]\n1 passed in 0.56s",
+        "ran_at": "2026-10-10T18:48:12+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V18",
+      "kind": "integration",
+      "claims": [
+        "C14"
+      ],
+      "tier": "fact",
+      "description": "The pytest test test_a_model_finding_is_confirmed_only_by_a_confirmation_of_its_own_claim runs the judiciary reflector on two samples.",
+      "independence": {
+        "by": "tool",
+        "tool": "pytest"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job test in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/test_docgen_judiciary.py::test_a_model_finding_is_confirmed_only_by_a_confirmation_of_its_own_claim"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 1.17,
+        "output_tail": ".                                                                        [100%]\n1 passed in 0.56s",
+        "ran_at": "2026-10-10T18:48:14+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V19",
+      "kind": "integration",
+      "claims": [
+        "C15"
+      ],
+      "tier": "fact",
+      "description": "The pytest test test_a_finished_round_that_changed_no_file_ends_the_edit_rounds runs the loop with a toy adapter and a scripted editor.",
+      "independence": {
+        "by": "tool",
+        "tool": "pytest"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job test in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/test_docgen_loop.py::test_a_finished_round_that_changed_no_file_ends_the_edit_rounds"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 1.51,
+        "output_tail": "...                                                                      [100%]\n3 passed in 0.88s",
+        "ran_at": "2026-10-10T18:48:15+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V20",
+      "kind": "integration",
+      "claims": [
+        "C16"
+      ],
+      "tier": "fact",
+      "description": "The pytest test test_an_unfixable_floor_finding_stops_editing_and_the_projection_stands runs the loop with a toy adapter and a scripted editor.",
+      "independence": {
+        "by": "tool",
+        "tool": "pytest"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job test in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/test_docgen_loop.py::test_an_unfixable_floor_finding_stops_editing_and_the_projection_stands"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 1.23,
+        "output_tail": ".                                                                        [100%]\n1 passed in 0.60s",
+        "ran_at": "2026-10-10T18:48:16+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V21",
+      "kind": "integration",
+      "claims": [
+        "C17"
+      ],
+      "tier": "fact",
+      "description": "The pytest test test_a_lost_editor_call_never_reflects_or_releases_its_partial_edit runs the loop with a toy adapter and a scripted editor.",
+      "independence": {
+        "by": "tool",
+        "tool": "pytest"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job test in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/test_docgen_loop.py::test_a_lost_editor_call_never_reflects_or_releases_its_partial_edit"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 1.13,
+        "output_tail": "..                                                                       [100%]\n2 passed in 0.49s",
+        "ran_at": "2026-10-10T18:48:17+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V22",
+      "kind": "integration",
+      "claims": [
+        "C18"
+      ],
+      "tier": "fact",
+      "description": "The pytest test test_finish_is_refused_while_a_finding_blocks runs the loop with a toy adapter and a scripted editor.",
+      "independence": {
+        "by": "tool",
+        "tool": "pytest"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job test in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/test_docgen_loop.py::test_finish_is_refused_while_a_finding_blocks"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 1.33,
+        "output_tail": ".                                                                        [100%]\n1 passed in 0.58s",
+        "ran_at": "2026-10-10T18:48:19+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V24",
+      "kind": "integration",
+      "claims": [
+        "C20"
+      ],
+      "tier": "fact",
+      "description": "The pytest test test_last_clean_restores_the_last_clean_draft_not_the_first runs the loop with a toy adapter and a scripted editor.",
+      "independence": {
+        "by": "tool",
+        "tool": "pytest"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job test in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/test_docgen_loop.py::test_last_clean_restores_the_last_clean_draft_not_the_first"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 1.2,
+        "output_tail": ".                                                                        [100%]\n1 passed in 0.53s",
+        "ran_at": "2026-10-10T18:48:20+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V23",
+      "kind": "integration",
+      "claims": [
+        "C19"
+      ],
+      "tier": "fact",
+      "description": "The pytest test test_the_editor_can_never_delete_a_prose_file sends a delete through the UAP workspace.",
+      "independence": {
+        "by": "tool",
+        "tool": "pytest"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job test in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/test_docgen_uap.py::test_the_editor_can_never_delete_a_prose_file"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 1.06,
+        "output_tail": ".                                                                        [100%]\n1 passed in 0.49s",
+        "ran_at": "2026-10-10T18:48:21+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V25",
+      "kind": "integration",
+      "claims": [
+        "C21"
+      ],
+      "tier": "fact",
+      "description": "The pytest test test_the_worker_fails_closed starts a toy worker with 30 bad ready lines and replies.",
+      "independence": {
+        "by": "tool",
+        "tool": "pytest"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job test in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/test_docgen_judiciary.py::test_the_worker_fails_closed"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 2.51,
+        "output_tail": "................................                                         [100%]\n32 passed in 1.84s",
+        "ran_at": "2026-10-10T18:48:23+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V26",
+      "kind": "golden",
+      "claims": [
+        "C22"
+      ],
+      "tier": "fact",
+      "description": "test_docgen_sends_the_golden_requests hashes each request field and compares it with tests/data/docgen_parity.json.",
+      "independence": {
+        "by": "tool",
+        "tool": "pytest"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job test in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/test_docgen_parity.py::test_docgen_sends_the_golden_requests"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 1.7,
+        "output_tail": "..............                                                           [100%]\n14 passed in 1.04s",
+        "ran_at": "2026-10-10T18:48:25+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V27",
+      "kind": "parity",
+      "claims": [
+        "C23"
+      ],
+      "tier": "fact",
+      "description": "test_the_harness_note_path_sends_the_note_loops_requests runs each scripted session through both paths and compares the requests.",
+      "independence": {
+        "by": "tool",
+        "tool": "pytest"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job test in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/test_docgen_parity.py::test_the_harness_note_path_sends_the_note_loops_requests"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 2.3,
+        "output_tail": "..............                                                           [100%]\n14 passed in 1.70s",
+        "ran_at": "2026-10-10T18:48:28+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V28",
+      "kind": "parity",
+      "claims": [
+        "C24"
+      ],
+      "tier": "fact",
+      "description": "test_cr_uap_and_cr_fmm_send_the_requests_of_docgen_with_reflection_none compares the requests of both commands.",
+      "independence": {
+        "by": "tool",
+        "tool": "pytest"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job test in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/test_docgen_parity.py::test_cr_uap_and_cr_fmm_send_the_requests_of_docgen_with_reflection_none"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 1.34,
+        "output_tail": "...                                                                      [100%]\n3 passed in 0.69s",
+        "ran_at": "2026-10-10T18:48:29+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V29",
+      "kind": "integration",
+      "claims": [
+        "C25"
+      ],
+      "tier": "fact",
+      "description": "test_every_kind_refuses_a_cr_that_fails_cr33 runs each kind on a CR that fails CR-33.",
+      "independence": {
+        "by": "tool",
+        "tool": "pytest"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 5
+      },
+      "provenance": "CI job test in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/test_finished_cr.py::test_every_kind_refuses_a_cr_that_fails_cr33"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 1.37,
+        "output_tail": "....                                                                     [100%]\n4 passed in 0.59s",
+        "ran_at": "2026-10-10T18:48:30+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V30",
+      "kind": "eval",
+      "claims": [
+        "C26"
+      ],
+      "tier": "fact",
+      "description": "A pre-registered eval on 23 members. gpt-6.1-sol and Opus labelled each note blind.",
+      "independence": {
+        "by": "model",
+        "family": "openai, anthropic",
+        "context": "fresh"
+      },
+      "cost": {
+        "usd": null,
+        "note": "part of the $89.09 total spend. Not run again."
+      },
+      "provenance": "Recorded in the PR body. The eval tested the #295 agent, not the exact note code in this PR.",
+      "recorded": {
+        "source": "PR body, This is why it's better",
+        "result": "Agreed blind failures per note: production 2.65, CR note agent 0.02 (p<0.001). Judge majority majors: 6.61 and 0.13.",
+        "at": "2026-10-06"
+      },
+      "state": "recorded"
+    },
+    {
+      "id": "V31",
+      "kind": "eval",
+      "claims": [
+        "C27"
+      ],
+      "tier": "fact",
+      "description": "Frozen Judges graded both arms at k=3 on 5 members. Two labellers labelled each document blind.",
+      "independence": {
+        "by": "model",
+        "family": "openai, anthropic",
+        "context": "fresh"
+      },
+      "cost": {
+        "usd": null,
+        "note": "part of the $89.09 total spend. Not run again."
+      },
+      "provenance": "Recorded in the PR body. The same 5 members found the gaming paths.",
+      "recorded": {
+        "source": "PR body, This is why it's better",
+        "result": "FMM 8 to 8 charges. 4H 3 to 1. UAP after the anti-gaming changes 21 to 16 charges, 7 to 7 blind defects.",
+        "at": "2026-10"
+      },
+      "state": "recorded"
+    },
+    {
+      "id": "V32",
+      "kind": "model",
+      "claims": [
+        "C28"
+      ],
+      "tier": "guess",
+      "description": "An Opus audit read each kept edit and looked for gaming.",
+      "independence": {
+        "by": "model",
+        "family": "anthropic",
+        "context": "fresh"
+      },
+      "cost": {
+        "usd": null,
+        "note": "Not run again."
+      },
+      "provenance": "Recorded in the PR body.",
+      "recorded": {
+        "source": "PR body, This is how we proved it",
+        "result": "The gaming audit is clean.",
+        "at": "2026-10"
+      },
+      "state": "recorded"
+    },
+    {
+      "id": "V33",
+      "kind": "measurement",
+      "claims": [
+        "C29"
+      ],
+      "tier": "fact",
+      "description": "The meter of each run gives the cost per document.",
+      "independence": {
+        "by": "tool",
+        "tool": "RoleMeter"
+      },
+      "cost": {
+        "usd": null,
+        "note": "Not run again."
+      },
+      "provenance": "Recorded in the PR body.",
+      "recorded": {
+        "source": "PR body, This is why it's better",
+        "result": "UAP $0.75 to $1.30, FMM $0.34 to $0.38, 4H $0.24 to $0.32.",
+        "at": "2026-10"
+      },
+      "state": "recorded"
+    },
+    {
+      "id": "V34",
+      "kind": "integration",
+      "claims": [
+        "C30"
+      ],
+      "tier": "fact",
+      "description": "The CI test, lint and seam jobs ran the full suites at the PR head.",
+      "independence": {
+        "by": "tool",
+        "tool": "GitHub Actions"
+      },
+      "cost": {
+        "usd": 0,
+        "note": "CI. Not run again here."
+      },
+      "provenance": "Recorded in the PR body. This run did not read the CI logs.",
+      "recorded": {
+        "source": "PR body, This is how we proved it",
+        "result": "4,249 CR tests, 1,272 harness tests and 74 root tests pass. 29 other checks pass.",
+        "at": "2026-10"
+      },
+      "state": "recorded"
+    },
+    {
+      "id": "V35",
+      "kind": "type-pin",
+      "claims": [
+        "C01"
+      ],
+      "tier": "fact",
+      "description": "Project-wide basedpyright strict checks each source file. A call that passes a plain Finding to review_file is a type error.",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "basedpyright"
+        ],
+        "env_file": true,
+        "timeout_s": 900,
+        "red_exits": [
+          1
+        ]
+      },
+      "independence": {
+        "by": "tool",
+        "tool": "basedpyright"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 60
+      },
+      "provenance": "CI job lint (basedpyright strict) in .github/workflows/clinical-reasoning.yml, at the PR head",
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 8.33,
+        "output_tail": "0 errors, 0 warnings, 0 notes",
+        "ran_at": "2026-10-10T18:53:20+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "proven"
+    },
+    {
+      "id": "V36",
+      "kind": "e2e",
+      "claims": [
+        "C38"
+      ],
+      "tier": "fact",
+      "description": "test_docgen_judiciary_worker.py runs cr docgen against the real worker with a stub model runtime. It skips when judiciary is not built.",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "-rs",
+          "tests/test_docgen_judiciary_worker.py"
+        ],
+        "env_file": true,
+        "timeout_s": 600,
+        "red_exits": [
+          1
+        ]
+      },
+      "independence": {
+        "by": "tool",
+        "tool": "pytest"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 2
+      },
+      "provenance": "CI job test in .github/workflows/clinical-reasoning.yml. The PR body says that it skips in CI.",
+      "baseline": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 4.8,
+        "output_tail": "ss                                                                       [100%]\n=========================== short test summary info ============================\nSKIPPED [1] tests/test_docgen_judiciary_worker.py:147: judiciary is not built: run pnpm install --frozen-lockfile && pnpm build in projects/judiciary, with node on PATH\nSKIPPED [1] tests/test_docgen_judiciary_worker.py:184: judiciary is not built: run pnpm install --frozen-lockfile && pnpm build in projects/judiciary, with node on PATH\n2 skipped in 1.81s",
+        "ran_at": "2026-10-10T18:54:21+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      },
+      "state": "cannot-fail"
+    }
+  ],
+  "controls": [
+    {
+      "id": "K01",
+      "verifier": "V01",
+      "recipe": "remove-type-pin",
+      "description": "Remove the ignore marker on line 36, so the type error shows.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
+          "find": "    await _edit(editor, d, client, [found])  # pyright: ignore[reportArgumentType]\n",
+          "replace": "    await _edit(editor, d, client, [found])\n",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "_docgen_type_contracts\\.py:36:"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 2.8,
+        "matched": true,
+        "output_tail": "<worktree>/projects/clinical-reasoning/tests/_docgen_type_contracts.py\n  <worktree>/projects/clinical-reasoning/tests/_docgen_type_contracts.py:36:37 - error: Argument of type \"list[Finding]\" cannot be assigned to parameter \"todo\" of type \"Sequence[EditableFinding]\" in function \"_edit\"\n    \"Finding\" is not assignable to \"EditableFinding\" (reportArgumentType)\n1 error, 0 warnings, 0 notes",
+        "ran_at": "2026-10-10T18:48:54+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K02",
+      "verifier": "V02",
+      "recipe": "remove-type-pin",
+      "description": "Remove the ignore marker on line 37, so the type error shows.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
+          "find": "    await _edit(editor, d, client, [classify(found)])  # pyright: ignore[reportArgumentType]\n",
+          "replace": "    await _edit(editor, d, client, [classify(found)])\n",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "_docgen_type_contracts\\.py:37:"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 2.98,
+        "matched": true,
+        "output_tail": "<worktree>/projects/clinical-reasoning/tests/_docgen_type_contracts.py\n  <worktree>/projects/clinical-reasoning/tests/_docgen_type_contracts.py:37:37 - error: Argument of type \"list[Finding]\" cannot be assigned to parameter \"todo\" of type \"Sequence[EditableFinding]\" in function \"_edit\"\n    \"Finding\" is not assignable to \"EditableFinding\" (reportArgumentType)\n1 error, 0 warnings, 0 notes",
+        "ran_at": "2026-10-10T18:49:01+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K03",
+      "verifier": "V03",
+      "recipe": "remove-type-pin",
+      "description": "Remove the ignore marker on line 51, so the type error shows.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
+          "find": "    Wiring(uap, FMM_SUBSET)  # pyright: ignore[reportArgumentType]\n",
+          "replace": "    Wiring(uap, FMM_SUBSET)\n",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "_docgen_type_contracts\\.py:51:"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 2.92,
+        "matched": true,
+        "output_tail": "<worktree>/projects/clinical-reasoning/tests/_docgen_type_contracts.py\n  <worktree>/projects/clinical-reasoning/tests/_docgen_type_contracts.py:51:12 - error: Argument of type \"UapAdapter\" cannot be assigned to parameter \"adapter\" of type \"ReportingAdapter[ProjT@Wiring, DocT@Wiring, K@Wiring]\" in function \"__init__\"\n    \"UapAdapter\" is incompatible with protocol \"ReportingAdapter[UapProjection, UapDocument, Literal[Kind.UAP, Kind.FMM]]\"\n      \"kind\" is invariant because it is mutable\n      \"kind\" is an incompatible type\n        Type \"Literal[Kind.UAP, Kind.FMM]\" is not assignable to type \"UapKind\"\n          Type \"Literal[Kind.UAP, Kind.FMM]\" is not assignable to type \"UapKind\"\n            \"FmmKind\" is not assignable to type \"UapKind\" (reportArgumentType)\n1 error, 0 warnings, 0 notes",
+        "ran_at": "2026-10-10T18:49:09+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K04",
+      "verifier": "V04",
+      "recipe": "remove-type-pin",
+      "description": "Remove the ignore marker on line 52, so the type error shows.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
+          "find": "    Wiring(fmm, FOUR_HORSEMEN_SUBSET)  # pyright: ignore[reportArgumentType]\n",
+          "replace": "    Wiring(fmm, FOUR_HORSEMEN_SUBSET)\n",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "_docgen_type_contracts\\.py:52:"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 3.08,
+        "matched": true,
+        "output_tail": "<worktree>/projects/clinical-reasoning/tests/_docgen_type_contracts.py\n  <worktree>/projects/clinical-reasoning/tests/_docgen_type_contracts.py:52:12 - error: Argument of type \"OneShotAdapter[FmmInputs, GenerationResult, FmmKind]\" cannot be assigned to parameter \"adapter\" of type \"ReportingAdapter[ProjT@Wiring, DocT@Wiring, K@Wiring]\" in function \"__init__\"\n    \"OneShotAdapter[FmmInputs, GenerationResult, FmmKind]\" is incompatible with protocol \"ReportingAdapter[OneShotProjection[FmmInputs], GenerationResult | None, Literal[Kind.FMM, Kind.FOUR_HORSEMEN]]\"\n      \"kind\" is invariant because it is mutable\n      \"kind\" is an incompatible type\n        Type \"Literal[Kind.FMM, Kind.FOUR_HORSEMEN]\" is not assignable to type \"FmmKind\"\n          Type \"Literal[Kind.FMM, Kind.FOUR_HORSEMEN]\" is not assignable to type \"FmmKind\"\n            \"FourHorsemenKind\" is not assignable to type \"FmmKind\" (reportArgumentType)\n1 error, 0 warnings, 0 notes",
+        "ran_at": "2026-10-10T18:49:17+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K05",
+      "verifier": "V05",
+      "recipe": "remove-type-pin",
+      "description": "Remove the ignore marker on line 54, so the type error shows.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
+          "find": "        uap,  # pyright: ignore[reportArgumentType]\n",
+          "replace": "        uap,\n",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "_docgen_type_contracts\\.py:54:"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 3.15,
+        "matched": true,
+        "output_tail": "<worktree>/projects/clinical-reasoning/tests/_docgen_type_contracts.py\n  <worktree>/projects/clinical-reasoning/tests/_docgen_type_contracts.py:54:9 - error: Argument of type \"UapAdapter\" cannot be assigned to parameter \"adapter\" of type \"DocumentAdapter[ProjT@run_adapter, DocT@run_adapter, K@run_adapter]\" in function \"run_adapter\"\n    \"UapAdapter\" is incompatible with protocol \"DocumentAdapter[UapProjection, UapDocument, Literal[Kind.UAP, Kind.FMM]]\"\n      \"kind\" is invariant because it is mutable\n      \"kind\" is an incompatible type\n        Type \"Literal[Kind.UAP, Kind.FMM]\" is not assignable to type \"UapKind\"\n          Type \"Literal[Kind.UAP, Kind.FMM]\" is not assignable to type \"UapKind\"\n            \"FmmKind\" is not assignable to type \"UapKind\" (reportArgumentType)\n1 error, 0 warnings, 0 notes",
+        "ran_at": "2026-10-10T18:49:25+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K06",
+      "verifier": "V06",
+      "recipe": "remove-type-pin",
+      "description": "Remove the ignore marker on line 61, so the type error shows.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
+          "find": "    _run_kind(run, Kind.UAP, fmm_setup)  # pyright: ignore[reportArgumentType]\n",
+          "replace": "    _run_kind(run, Kind.UAP, fmm_setup)\n",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "_docgen_type_contracts\\.py:61:"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 3.13,
+        "matched": true,
+        "output_tail": "<worktree>/projects/clinical-reasoning/tests/_docgen_type_contracts.py\n  <worktree>/projects/clinical-reasoning/tests/_docgen_type_contracts.py:61:30 - error: Argument of type \"Setup[OneShotProjection[FmmInputs], GenerationResult | None, FmmKind]\" cannot be assigned to parameter \"setup\" of type \"Setup[ProjT@_run_kind, DocT@_run_kind, K@_run_kind]\" in function \"_run_kind\"\n    Type \"Setup[OneShotProjection[FmmInputs], GenerationResult | None, FmmKind]\" is not assignable to type \"Setup[OneShotProjection[FmmInputs], GenerationResult | None, Literal[Kind.UAP]]\"\n      Function return type \"Wiring[OneShotProjection[FmmInputs], GenerationResult | None, FmmKind]\" is incompatible with type \"Wiring[OneShotProjection[FmmInputs], GenerationResult | None, Literal[Kind.UAP]]\"\n        \"Wiring[OneShotProjection[FmmInputs], GenerationResult | None, FmmKind]\" is not assignable to \"Wiring[OneShotProjection[FmmInputs], GenerationResult | None, Literal[Kind.UAP]]\"\n          Type parameter \"K@Wiring\" is invariant, but \"FmmKind\" is not the same as \"Literal[Kind.UAP]\" (reportArgumentType)\n1 error, 0 warnings, 0 notes",
+        "ran_at": "2026-10-10T18:49:32+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K07",
+      "verifier": "V07",
+      "recipe": "remove-type-pin",
+      "description": "Remove the ignore marker on line 62, so the type error shows.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
+          "find": "    Outputs(Kind.CLINICIAN_NOTE, cr, {})  # pyright: ignore[reportArgumentType]\n",
+          "replace": "    Outputs(Kind.CLINICIAN_NOTE, cr, {})\n",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "_docgen_type_contracts\\.py:62:"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 2.9,
+        "matched": true,
+        "output_tail": "<worktree>/projects/clinical-reasoning/tests/_docgen_type_contracts.py\n  <worktree>/projects/clinical-reasoning/tests/_docgen_type_contracts.py:62:13 - error: Argument of type \"Literal[Kind.CLINICIAN_NOTE]\" cannot be assigned to parameter \"kind\" of type \"K@Outputs\" in function \"__init__\"\n    Type \"Literal[Kind.CLINICIAN_NOTE]\" is not assignable to type \"WrittenKind\"\n      Type \"Literal[Kind.CLINICIAN_NOTE]\" is not assignable to type \"WrittenKind\"\n        \"Literal[Kind.CLINICIAN_NOTE]\" is not assignable to type \"Literal[Kind.UAP]\"\n        \"Literal[Kind.CLINICIAN_NOTE]\" is not assignable to type \"Literal[Kind.FMM]\"\n        \"Literal[Kind.CLINICIAN_NOTE]\" is not assignable to type \"Literal[Kind.FOUR_HORSEMEN]\" (reportArgumentType)\n1 error, 0 warnings, 0 notes",
+        "ran_at": "2026-10-10T18:49:39+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K01b",
+      "verifier": "V01",
+      "recipe": "remove-type-pin",
+      "description": "Widen the editor contract: Editor.edit, EditorSpec.edit and NoteAuthorEditor.edit take a plain Finding. The pin on line 36 must then go red.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/adapter.py",
+          "find": "        findings: Sequence[EditableFinding],\n",
+          "replace": "        findings: Sequence[Finding],\n",
+          "count": 1
+        },
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/session.py",
+          "find": "        findings: Sequence[EditableFinding],\n",
+          "replace": "        findings: Sequence[Finding],\n",
+          "count": 1
+        },
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/clinician_note.py",
+          "find": "        findings: Sequence[EditableFinding],\n",
+          "replace": "        findings: Sequence[Finding],\n",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "_docgen_type_contracts\\.py:36:.*[Uu]nnecessary"
+      },
+      "result": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 3.25,
+        "matched": null,
+        "output_tail": "0 errors, 0 warnings, 0 notes",
+        "ran_at": "2026-10-10T18:52:54+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K08",
+      "verifier": "V08",
+      "recipe": "drop-allowlist-row",
+      "description": "Remove accept from the DOCGEN_IMPORTS row of loop. loop.py imports accept.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
+          "find": "    \"loop\": (\"adapter\", \"accept\", \"findings\", \"workspace\"),\n",
+          "replace": "    \"loop\": (\"adapter\", \"findings\", \"workspace\"),\n",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "intra-docgen-import"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 0.47,
+        "matched": true,
+        "output_tail": "Found 1 document-harness boundary violation(s):\n\nsrc/cr/docgen/loop.py:38: intra-docgen-import: loop imports accept; it may import adapter, findings, workspace",
+        "ran_at": "2026-10-10T18:49:49+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K09",
+      "verifier": "V09",
+      "recipe": "plant-violation",
+      "description": "Add an import of the UAP adapter to the FMM adapter.",
+      "edits": [
+        {
+          "op": "append",
+          "path": "projects/clinical-reasoning/src/cr/docgen/fmm.py",
+          "text": "\nfrom . import uap as _understando_control  # noqa\n"
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "sibling-adapter"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 0.48,
+        "matched": true,
+        "output_tail": "Found 2 document-harness boundary violation(s):\n\nsrc/cr/docgen/fmm.py:133: intra-docgen-import: fmm imports uap; it may import adapter, submission\nsrc/cr/docgen/fmm.py:133: sibling-adapter: adapter fmm imports adapter uap",
+        "ran_at": "2026-10-10T18:49:53+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K10",
+      "verifier": "V10",
+      "recipe": "plant-violation",
+      "description": "Add an import of the FMM generator to the core loop.",
+      "edits": [
+        {
+          "op": "append",
+          "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
+          "text": "\nimport cr.fmm.generator as _understando_control  # noqa\n"
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "core-generic"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 0.47,
+        "matched": true,
+        "output_tail": "Found 1 document-harness boundary violation(s):\n\nsrc/cr/docgen/loop.py:291: core-generic: core module loop imports cr.fmm.generator (cr.fmm.*)",
+        "ran_at": "2026-10-10T18:49:57+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K11",
+      "verifier": "V11",
+      "recipe": "drop-allowlist-row",
+      "description": "Remove the loop and cr.note.loop pair from EXTERNAL_EDGE_ALLOWLIST.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
+          "find": "        (\"loop\", \"cr.note.loop\"),\n",
+          "replace": "",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "note-edge"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 0.65,
+        "matched": true,
+        "output_tail": "Found 1 document-harness boundary violation(s):\n\nsrc/cr/docgen/loop.py:36: note-edge: loop imports cr.note.loop; only clinician_note may",
+        "ran_at": "2026-10-10T18:50:01+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K12",
+      "verifier": "V12",
+      "recipe": "drop-allowlist-row",
+      "description": "Remove tests/_crp_fixtures.py from the FinishedCR allowlist.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
+          "find": "    \"FinishedCR\": frozenset({\"src/cr/finished_cr.py\", \"tests/_crp_fixtures.py\"}),\n",
+          "replace": "    \"FinishedCR\": frozenset({\"src/cr/finished_cr.py\"}),\n",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "_crp_fixtures\\.py:\\d+: constructor"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 0.52,
+        "matched": true,
+        "output_tail": "Found 1 document-harness boundary violation(s):\n\ntests/_crp_fixtures.py:48: constructor: FinishedCR(...) only in src/cr/finished_cr.py",
+        "ran_at": "2026-10-10T18:50:05+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K13",
+      "verifier": "V13",
+      "recipe": "plant-violation",
+      "description": "Add a call of EditableFinding to the core loop.",
+      "edits": [
+        {
+          "op": "append",
+          "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
+          "text": "\n_understando_control = lambda: EditableFinding()  # noqa\n"
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "loop\\.py:\\d+: constructor"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 0.66,
+        "matched": true,
+        "output_tail": "Found 1 document-harness boundary violation(s):\n\nsrc/cr/docgen/loop.py:291: constructor: EditableFinding(...) only in src/cr/docgen/findings.py",
+        "ran_at": "2026-10-10T18:50:11+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K14",
+      "verifier": "V14",
+      "recipe": "remove-guard-line",
+      "description": "Remove the not_editable guard in _fixable.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
+          "find": "    if f.key in policy.not_editable:\n        return False\n",
+          "replace": "",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "FAILED|failed"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 3.3,
+        "matched": true,
+        "output_tail": "            \"cartridge\": \"result.lab-fidelity\",\n            \"key\": \"value_mismatch\",\n            \"when\": \"leads it\",\n            \"quote\": \"your 145 mg/dL leads it\",\n            \"severity\": \"S5\",\n        }\n        args, _ = worker(tmp_path, ledger_fingerprint(ledger), [unnamed, mismatch])\n        _wire(monkeypatch, SlotRealizer(), Judge())\n        review = json.dumps({\"path\": \"review/round-1.md\", \"start_line\": None, \"max_lines\": None})\n        rc, out, wiring = run_cli(\n            monkeypatch,\n            tmp_path,\n            \"uap\",\n            FIXTURE_MEMBER,\n            *args,\n            checkpoint=crp,\n            editor=[[function_call_item(\"read_file\", review, \"r1\")], [finish_call()]],\n        )\n        assert rc == 0\n        trace = as_dict(read(out / \"trace.json\"))\n        found = {\n            as_dict(f)[\"key\"]: as_dict(f) for f in as_list(as_dict(trace[\"reflection\"])[\"findings\"])\n        }\n>       assert {k: (f[\"where\"], f[\"blocking\"], f[\"editable\"]) for k, f in found.items()} == {\n            \"actionable_result_unnamed\": (OVERVIEW, True, False),\n            \"value_mismatch\": (OVERVIEW, True, True),\n        }\nE       AssertionError: assert {'actionable_..., True, True)} == {'actionable_..., True, True)}\nE         \nE         Omitting 1 identical items, use -vv to show\nE         Differing items:\nE         {'actionable_result_unnamed': ('plan/overview.md', True, True)} != {'actionable_result_unnamed': ('plan/overview.md', True, False)}\nE         Use -v to get more diff\n\ntests/test_docgen_uap.py:463: AssertionError\n----------------------------- Captured stdout call -----------------------------\ncr docgen: UAP released -> /private/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/pytest-of-clayton/pytest-2367/test_judiciary_grades_an_unnam0/out\n=========================== short test summary info ============================\nFAILED tests/test_docgen_uap.py::test_judiciary_grades_an_unnamed_result_but_never_sends_it_to_the_editor\n1 failed in 2.14s",
+        "ran_at": "2026-10-10T18:50:19+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K15",
+      "verifier": "V15",
+      "recipe": "remove-guard-line",
+      "description": "Make _fixable return True for an evidence_bound key.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
+          "find": "        return _held(file_evidence, f.where, f.input_fact)\n",
+          "replace": "        return True\n",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "FAILED|failed"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 3.31,
+        "matched": true,
+        "output_tail": "        editable: bool,\n    ) -> None:\n        \"\"\"H1 fix 4 (otis): a must-address finding asks for its result to be named. Located in the\n        overview, or in a card whose evidence lacks that result, it is graded and kept to the end but\n        never sent to the editor, so no edit runs and the plan is released. In the card whose\n        evidence holds the result, the editor's review file holds it.\"\"\"\n        ledger, _ = load_checkpoint(crp)\n        _, path = _card(_direct(crp, SlotRealizer(), Judge()))\n        key = \"must_address_result_unaddressed\"\n        rule = {\"cartridge\": \"obligation.uap-required-content\", \"key\": key, \"when\": quote}\n        args, _ = worker(tmp_path, ledger_fingerprint(ledger), [{**rule, \"input\": result}])\n        _wire(monkeypatch, SlotRealizer(), Judge())\n        review = json.dumps({\"path\": \"review/round-1.md\", \"start_line\": None, \"max_lines\": None})\n        rc, out, wiring = run_cli(\n            monkeypatch,\n            tmp_path,\n            \"uap\",\n            FIXTURE_MEMBER,\n            *args,\n            checkpoint=crp,\n            editor=[[function_call_item(\"read_file\", review, \"r1\")], [finish_call()]],\n        )\n        assert rc == 0 and (out / \"uap.json\").exists()\n        trace = as_dict(read(out / \"trace.json\"))\n        (found,) = [as_dict(f) for f in as_list(as_dict(trace[\"reflection\"])[\"findings\"])]\n        where = path if in_card else OVERVIEW\n        assert (found[\"key\"], found[\"where\"], found[\"input_fact\"]) == (key, where, result)\n>       assert (found[\"blocking\"], found[\"decided\"], found[\"editable\"]) == (True, \"code\", editable)\nE       AssertionError: assert (True, 'code', True) == (True, 'code', False)\nE         \nE         At index 2 diff: True != False\nE         Use -v to get more diff\n\ntests/test_docgen_uap.py:576: AssertionError\n----------------------------- Captured stdout call -----------------------------\ncr docgen: UAP released -> /private/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/pytest-of-clayton/pytest-2368/test_a_result_finding_is_edita1/out\n=========================== short test summary info ============================\nFAILED tests/test_docgen_uap.py::test_a_result_finding_is_editable_only_in_a_card_whose_evidence_holds_the_result[Here is your plan-Apolipoprotein B (ApoB)-False-False]\nFAILED tests/test_docgen_uap.py::test_a_result_finding_is_editable_only_in_a_card_whose_evidence_holds_the_result[more fiber can help-Hemoglobin-True-False]\n2 failed, 1 passed in 2.21s",
+        "ran_at": "2026-10-10T18:50:27+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K16",
+      "verifier": "V16",
+      "recipe": "remove-guard-line",
+      "description": "Remove the refuted test from the editable decision.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
+          "find": "editable=not refuted and _fixable(",
+          "replace": "editable=_fixable(",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "FAILED|failed"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 3.14,
+        "matched": true,
+        "output_tail": "            \"quote\": \"your 145 mg/dL leads it\",\n        }\n        args, log = worker(tmp_path, ledger_fingerprint(ledger), [refuted, mismatch])\n        _wire(monkeypatch, SlotRealizer(), Judge())\n        review = json.dumps({\"path\": \"review/round-1.md\", \"start_line\": None, \"max_lines\": None})\n        fix = update(OVERVIEW_TEXT, \"Here is your plan.\", \"u1\", OVERVIEW)\n        rc, out, wiring = run_cli(\n            monkeypatch,\n            tmp_path,\n            \"uap\",\n            FIXTURE_MEMBER,\n            *args,\n            checkpoint=crp,\n            editor=[[function_call_item(\"read_file\", review, \"r1\")], [fix, finish_call()]],\n        )\n        assert rc == 0\n        second = requests(log)[1][\"cartridge_ids\"]\n        assert second == [\"grounding.patient-record\", \"result.lab-fidelity\"]\n        trace = as_dict(read(out / \"trace.json\"))\n        found = {\n            as_dict(f)[\"key\"]: as_dict(f) for f in as_list(as_dict(trace[\"reflection\"])[\"findings\"])\n        }\n        got = {k: (f[\"where\"], f[\"blocking\"], f[\"decided\"], f[\"editable\"]) for k, f in found.items()}\n>       assert got == {\n            \"unsupported_patient_specific_claim\": (path, False, \"model\", False),\n            \"value_mismatch\": (OVERVIEW, True, \"model\", True),\n        }\nE       AssertionError: assert {'unsupported...model', True)} == {'unsupported...model', True)}\nE         \nE         Omitting 1 identical items, use -vv to show\nE         Differing items:\nE         {'unsupported_patient_specific_claim': ('cards/01-card-sha256-e1b8fd288efa.md', False, 'model', True)} != {'unsupported_patient_specific_claim': ('cards/01-card-sha256-e1b8fd288efa.md', False, 'model', False)}\nE         Use -v to get more diff\n\ntests/test_docgen_uap.py:519: AssertionError\n----------------------------- Captured stdout call -----------------------------\ncr docgen: UAP released -> /private/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/pytest-of-clayton/pytest-2369/test_a_major_the_second_sample0/out\n=========================== short test summary info ============================\nFAILED tests/test_docgen_uap.py::test_a_major_the_second_sample_refutes_is_graded_but_never_sent_to_the_editor\n1 failed in 2.07s",
+        "ran_at": "2026-10-10T18:50:35+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K17",
+      "verifier": "V17",
+      "recipe": "remove-covered-code",
+      "description": "Make _claim drop the place, so a claim is only the cartridge and the key.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
+          "find": "    return cartridge, key, place\n",
+          "replace": "    return cartridge, key, \"\"\n",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "FAILED|failed"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 3.12,
+        "matched": true,
+        "output_tail": "    def test_a_finding_in_another_file_never_inherits_a_confirmation_of_its_key(\n        crp: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch\n    ) -> None:\n        \"\"\"H1 (patricia): round 0 confirms a value mismatch in the overview, which the editor fixes.\n        Round 1's first sample reports the same key in the card, and its second sample does not:\n        that claim was never confirmed, so it is refuted rather than riding the overview's\n        confirmation. The fix is kept, and the plan is released with the card unchanged.\"\"\"\n        ledger, _ = load_checkpoint(crp)\n        _, path = _card(_direct(crp, SlotRealizer(), Judge()))\n        mismatch = {\"cartridge\": \"result.lab-fidelity\", \"key\": \"value_mismatch\"}\n        rules = [\n            {**mismatch, \"when\": \"leads it\", \"quote\": \"your 145 mg/dL leads it\"},\n            {**mismatch, \"when\": \"more fiber can help\", \"on\": [3]},  # round 1's first sample\n        ]\n        args, log = worker(tmp_path, ledger_fingerprint(ledger), rules)\n        _wire(monkeypatch, SlotRealizer(), Judge())\n        fix = update(OVERVIEW_TEXT, \"Here is your plan.\", \"u1\", OVERVIEW)\n        rc, out, _ = run_cli(\n            monkeypatch,\n            tmp_path,\n            \"uap\",\n            FIXTURE_MEMBER,\n            *args,\n            checkpoint=crp,\n            editor=[[fix, finish_call()]],\n        )\n        assert rc == 0\n        second = [\"result.lab-fidelity\"]\n>       assert [r[\"cartridge_ids\"] for r in requests(log)][1::2] == [second, second]\nE       AssertionError: assert [['result.lab-fidelity']] == [['result.lab...ab-fidelity']]\nE         \nE         Right contains one more item: ['result.lab-fidelity']\nE         Use -v to get more diff\n\ntests/test_docgen_uap.py:620: AssertionError\n----------------------------- Captured stdout call -----------------------------\ncr docgen: UAP released -> /private/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/pytest-of-clayton/pytest-2370/test_a_finding_in_another_file0/out\n=========================== short test summary info ============================\nFAILED tests/test_docgen_uap.py::test_a_finding_in_another_file_never_inherits_a_confirmation_of_its_key\n1 failed in 2.06s",
+        "ran_at": "2026-10-10T18:50:41+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K18",
+      "verifier": "V18",
+      "recipe": "remove-covered-code",
+      "description": "Make _claim drop the place, so a claim is only the cartridge and the key.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
+          "find": "    return cartridge, key, place\n",
+          "replace": "    return cartridge, key, \"\"\n",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "FAILED|failed"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 2.81,
+        "matched": true,
+        "output_tail": "F                                                                        [100%]\n=================================== FAILURES ===================================\n__ test_a_model_finding_is_confirmed_only_by_a_confirmation_of_its_own_claim ___\n\ntmp_path = PosixPath('/private/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/pytest-of-clayton/pytest-2371/test_a_model_finding_is_confir0')\n\n    def test_a_model_finding_is_confirmed_only_by_a_confirmation_of_its_own_claim(\n        tmp_path: Path,\n    ) -> None:\n        \"\"\"The same key on another claim confirms nothing, whether the last kept reflection\n        confirmed it or the second sample reports it: the finding is sampled again and refuted.\"\"\"\n        rules = [\n            _rule(\"grounding.toy\", \"unsupported_claim\", \"magic cure\", on=[1]),\n            _rule(\"grounding.toy\", \"unsupported_claim\", \"magic cure\", quote=\"ApoB\", on=[2]),\n        ]\n        argv, log = _scenario(tmp_path, rules=rules)\n        other = (\"grounding.toy\", \"unsupported_claim\", \"ApoB\")\n        review = _review(argv, _case(\"A magic cure for ApoB.\"), {other})\n>       assert [(f.quote, f.blocking) for f in review.findings] == [(\"magic cure\", False)]\nE       AssertionError: assert [('magic cure', True)] == [('magic cure', False)]\nE         \nE         At index 0 diff: ('magic cure', True) != ('magic cure', False)\nE         Use -v to get more diff\n\ntests/test_docgen_judiciary.py:251: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_docgen_judiciary.py::test_a_model_finding_is_confirmed_only_by_a_confirmation_of_its_own_claim\n1 failed in 1.89s",
+        "ran_at": "2026-10-10T18:50:48+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K19",
+      "verifier": "V19",
+      "recipe": "remove-guard-line",
+      "description": "Remove the idle-round stop from the edit loop.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
+          "find": "        elif _idle(record):\n            break\n",
+          "replace": "",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "FAILED|failed"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 1.71,
+        "matched": true,
+        "output_tail": "F..                                                                      [100%]\n=================================== FAILURES ===================================\n_ test_a_finished_round_that_changed_no_file_ends_the_edit_rounds[strict-finished] _\n\naccept = <cr.docgen.accept.StrictImprovement object at 0x10a2b4ef0>\nturns = [[{'type': 'function_call', 'name': 'finish', 'arguments': '{\"summary\": \"done\"}', 'call_id': 'f1'}], [{'type': 'function_call', 'name': 'finish', 'arguments': '{\"summary\": \"done\"}', 'call_id': 'f2'}]]\nrounds = 1, reflected = 1\n\n    @pytest.mark.parametrize(\n        (\"accept\", \"turns\", \"rounds\", \"reflected\"),\n        [\n            (StrictImprovement(), UNCHANGED, 1, 1),\n            # The session never finished (its turns ran out), so a next round may still edit.\n            (StrictImprovement(), [], 3, 1),\n            # The note's rule reflects the unchanged draft again, as the note loop does, and edits on.\n            (LastClean(), UNCHANGED, 3, 4),\n        ],\n        ids=[\"strict-finished\", \"strict-unfinished\", \"last-clean\"],\n    )\n    def test_a_finished_round_that_changed_no_file_ends_the_edit_rounds(\n        accept: AcceptRule, turns: list[list[JsonObject]], rounds: int, reflected: int\n    ) -> None:\n        \"\"\"Round 1's editor finishes without changing a file while a floor finding remains. Under\n        StrictImprovement the round is not reflected and not kept, and no round 2 runs: it would start\n        from the same draft and findings. The floor then falls back as before.\"\"\"\n        seen = SeenReflector()\n        result, editor = _run(turns, accept=accept, reflectors=[seen])\n>       assert [e.changed for e in result.edits] == [False] * rounds\nE       assert [False, False, False] == [False]\nE         \nE         Left contains 2 more items, first extra item: False\nE         Use -v to get more diff\n\ntests/test_docgen_loop.py:357: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_docgen_loop.py::test_a_finished_round_that_changed_no_file_ends_the_edit_rounds[strict-finished]\n1 failed, 2 passed in 0.74s",
+        "ran_at": "2026-10-10T18:50:53+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K20",
+      "verifier": "V20",
+      "recipe": "remove-guard-line",
+      "description": "Remove the _unfixable stop from the edit loop.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
+          "find": "not editable(current.findings) or _unfixable(current):",
+          "replace": "not editable(current.findings):",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "FAILED|failed"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 1.7,
+        "matched": true,
+        "output_tail": "F                                                                        [100%]\n=================================== FAILURES ===================================\n___ test_an_unfixable_floor_finding_stops_editing_and_the_projection_stands ____\n\n    def test_an_unfixable_floor_finding_stops_editing_and_the_projection_stands() -> None:\n        \"\"\"No writable file holds the structural floor finding, so no edit can release the draft:\n        the editor is never asked, the fallback does not clear it, and the projection stands.\"\"\"\n        cr = ToyCR(required=CR.required, draft=DRAFT, broken=True)\n        result, editor = _run([[update(LINE, FIXED), finish_call()]], cr=cr)\n>       assert result.edits == () and editor.requests == []\nE       AssertionError: assert ((EditRecord(n...hanged=True),) == ()\nE         \nE         Left contains one more item: EditRecord(number=1, run=EditRun(stop_reason='no_tool_calls', turns=3, meter=<cr.metering.RoleMeter object at 0x10cbf0...code', floor=True),), not_evaluated=(), meter=<cr.metering.RoleMeter object at 0x10cbf0b90>, records=()), changed=True)\nE         Use -v to get more diff)\n\ntests/test_docgen_loop.py:255: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_docgen_loop.py::test_an_unfixable_floor_finding_stops_editing_and_the_projection_stands\n1 failed in 0.73s",
+        "ran_at": "2026-10-10T18:50:58+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K21",
+      "verifier": "V21",
+      "recipe": "remove-guard-line",
+      "description": "Remove the stop after a lost editor call.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
+          "find": "        if record.lost:\n            lost = record\n            break\n",
+          "replace": "",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "FAILED|failed"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 1.7,
+        "matched": true,
+        "output_tail": "                accept=accept,\n                limits=Limits(3),\n            )\n        )\n>       (edit,) = result.edits\n        ^^^^^^^\nE       ValueError: too many values to unpack (expected 1)\n\ntests/test_docgen_loop.py:389: ValueError\n_ test_a_lost_editor_call_never_reflects_or_releases_its_partial_edit[strict_improvement] _\n\naccept = <cr.docgen.accept.StrictImprovement object at 0x1084046e0>\n\n    @pytest.mark.parametrize(\"accept\", [LastClean(), StrictImprovement()], ids=lambda a: a.name)\n    def test_a_lost_editor_call_never_reflects_or_releases_its_partial_edit(\n        accept: AcceptRule,\n    ) -> None:\n        \"\"\"The editor fixes the plan, then loses its model call before it finishes. The partial edit\n        would pass, but nothing reflects it: it is reverted to the last accepted draft, no later round\n        runs, and the floor blocks, with no fallback, whatever the accept rule.\"\"\"\n        seen = SeenReflector()\n        result = asyncio.run(\n            run_document(\n                ToyAdapter(CR),\n                fixture_cr(),\n                editor_client=ScriptedResponsesClient(losing([[update(LINE, FIXED)]])),\n                reflectors=[seen],\n                accept=accept,\n                limits=Limits(3),\n            )\n        )\n>       (edit,) = result.edits\n        ^^^^^^^\nE       ValueError: too many values to unpack (expected 1)\n\ntests/test_docgen_loop.py:389: ValueError\n=========================== short test summary info ============================\nFAILED tests/test_docgen_loop.py::test_a_lost_editor_call_never_reflects_or_releases_its_partial_edit[last_clean]\nFAILED tests/test_docgen_loop.py::test_a_lost_editor_call_never_reflects_or_releases_its_partial_edit[strict_improvement]\n2 failed in 0.76s",
+        "ran_at": "2026-10-10T18:51:03+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K22",
+      "verifier": "V22",
+      "recipe": "invert-condition",
+      "description": "Invert the blocking test in _finish.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/session.py",
+          "find": "if blocking and self.run.finish_refusals",
+          "replace": "if not blocking and self.run.finish_refusals",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "FAILED|failed"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 1.74,
+        "matched": true,
+        "output_tail": "F                                                                        [100%]\n=================================== FAILURES ===================================\n________________ test_finish_is_refused_while_a_finding_blocks _________________\n\n    def test_finish_is_refused_while_a_finding_blocks() -> None:\n        result, editor = _run(\n            [[finish_call(\"f1\")], [update(LINE, FIXED), finish_call(\"f2\")]],\n            accept=StrictImprovement(),\n        )\n        run = result.edits[0].run\n>       assert (run.finish_refusals, run.finished, run.finished_with_blocking) == (1, True, False)\nE       assert (0, True, True) == (1, True, False)\nE         \nE         At index 0 diff: 0 != 1\nE         Use -v to get more diff\n\ntests/test_docgen_loop.py:218: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_docgen_loop.py::test_finish_is_refused_while_a_finding_blocks\n1 failed in 0.72s",
+        "ran_at": "2026-10-10T18:51:08+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K23",
+      "verifier": "V23",
+      "recipe": "remove-guard-line",
+      "description": "Let delete_file remove the file, not refuse it.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/workspace.py",
+          "find": "                raise WorkspaceError(\n                    f\"{norm} may not be deleted; send update_file with a diff instead\"\n                )\n",
+          "replace": "                self._files.pop(norm, None)\n                return f\"delete_file {norm}: ok\"\n",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "FAILED|failed"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 2.78,
+        "matched": true,
+        "output_tail": "        \"\"\"A delete_file patch is refused as a failed tool output, so no card loses its prose: the\n        pipeline's plan stands.\"\"\"\n        hurry = \"Do this right away.\"\n        realizer = SlotRealizer(GOOD_BODY, hurry)\n        direct = _direct(crp, realizer, Judge())\n        _, path = _card(direct)\n        _wire(monkeypatch, realizer, Judge(flag=\"right away\"))\n        edits = [[apply_patch_call_item(\"delete_file\", path, None, \"d1\")], [finish_call()]]\n        rc, out, wiring = run_cli(\n            monkeypatch,\n            tmp_path,\n            \"uap\",\n            FIXTURE_MEMBER,\n            \"--reflection\",\n            \"cr\",\n            checkpoint=crp,\n            editor=edits,\n        )\n        assert rc == 0 and direct.plan is not None\n        second = wiring.editor.requests[1].input\n        outputs = [item for item in second if item.get(\"type\") == \"apply_patch_call_output\"]\n>       assert outputs == [\n            {\n                \"type\": \"apply_patch_call_output\",\n                \"call_id\": \"d1\",\n                \"status\": \"failed\",\n                \"output\": f\"{path} may not be deleted; send update_file with a diff instead\",\n            }\n        ]\nE       AssertionError: assert [{'type': 'ap...8efa.md: ok'}] == [{'type': 'ap...iff instead'}]\nE         \nE         At index 0 diff: {'type': 'apply_patch_call_output', 'call_id': 'd1', 'status': 'completed', 'output': 'delete_file cards/01-card-sha256-e1b8fd288efa.md: ok'} != {'type': 'apply_patch_call_output', 'call_id': 'd1', 'status': 'failed', 'output': 'cards/01-card-sha256-e1b8fd288efa.md may not be deleted; send update_file with a diff instead'}\nE         Use -v to get more diff\n\ntests/test_docgen_uap.py:317: AssertionError\n----------------------------- Captured stdout call -----------------------------\ncr docgen: UAP released -> /private/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/pytest-of-clayton/pytest-2372/test_the_editor_can_never_dele0/out\n=========================== short test summary info ============================\nFAILED tests/test_docgen_uap.py::test_the_editor_can_never_delete_a_prose_file\n1 failed in 1.87s",
+        "ran_at": "2026-10-10T18:51:15+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K24",
+      "verifier": "V24",
+      "recipe": "invert-condition",
+      "description": "Make LastClean.settle pick the first clean draft, not the last.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/accept.py",
+          "find": "return clean[-1] if clean else None",
+          "replace": "return clean[0] if clean else None",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "FAILED|failed"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 1.67,
+        "matched": true,
+        "output_tail": "F                                                                        [100%]\n=================================== FAILURES ===================================\n_________ test_last_clean_restores_the_last_clean_draft_not_the_first __________\n\n    def test_last_clean_restores_the_last_clean_draft_not_the_first() -> None:\n        \"\"\"The note loop's rule: every edit is kept, and a final blocking finding rolls back to the\n        last draft that had none.\"\"\"\n        result, _ = _run(\n            [\n                [update(LINE, f\"{LINE}\\n{LONG}\"), finish_call(\"f1\")],\n                [update(LONG, CALM, \"u2\"), finish_call(\"f2\")],\n                [update(CALM, \"- We guarantee fasting glucose improves.\", \"u3\"), finish_call(\"f3\")],\n                [finish_call(\"f4\")],\n            ],\n            accept=LastClean(),\n        )\n        assert [e.kept for e in result.edits] == [True, True, True]\n        assert [sorted({f.key for f in e.after.findings}) for e in result.edits] == [\n            [\"long_line\"],\n            [\"exclamation\"],\n            [\"overclaim\"],\n        ]\n>       assert result.restored_to == 2\nE       AssertionError: assert 1 == 2\nE        +  where 1 = DocumentResult(kind=<Kind.UAP: 'uap'>, document='# Plan\\n- Discuss ApoB with your clinician.\\n- Repeat fasting glucose..., file_evidence=None), meters={'editor': <cr.metering.RoleMeter object at 0x109b1b6e0>}, seconds=0.0002847500145435333).restored_to\n\ntests/test_docgen_loop.py:286: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_docgen_loop.py::test_last_clean_restores_the_last_clean_draft_not_the_first\n1 failed in 0.72s",
+        "ran_at": "2026-10-10T18:51:20+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K25",
+      "verifier": "V25",
+      "recipe": "remove-guard-line",
+      "description": "Remove the synthetic-only check of the ready line.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
+          "find": "    if ready.get(\"synthetic_only\") is not True:\n        raise JudiciaryWorkerError(\"the worker is not synthetic-only\")\n",
+          "replace": "",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "synthetic-only|synthetic_only"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 3.77,
+        "matched": true,
+        "output_tail": "            ({\"mutate\": [[1, \"result.bound_cartridge_count\", True]]}, \"bound_cartridge_count\"),\n            ({\"refuse\": {\"1\": \"request_id_reused\"}}, \"request_id_reused\"),\n            ({\"refuse\": {\"1\": \"execution_failed\"}}, \"execution_failed: refused: execution_failed\"),\n            ({\"mutate\": [[1, \"result.judge.version\", \"9.9.9\"]]}, \"another Judge\"),\n            ({\"mutate\": [[1, \"result.findings\", None]]}, \"findings is not a list\"),\n            ({\"mutate\": [[1, \"result.not_evaluated\", \"x\"]]}, \"not_evaluated is not a list\"),\n            ({\"mutate\": [[1, \"result.usage\", \"none\"]]}, \"usage is not an object\"),\n            ({\"mutate\": [[1, \"result.findings\", [{\"cartridge_id\": \"other.toy\"}]]]}, \"unrequested\"),\n            ({\"rules\": [_rule(\"structure.toy\", \"k\", \"Plan\", treatment=\"fatal\")]}, \"treatment\"),\n            ({\"rules\": [_rule(\"structure.toy\", \"\", \"Plan\")]}, \"key is not a non-empty\"),\n            ({\"errors\": [\"grounding.toy\"]}, \"blocking cartridges failed to run: grounding.toy\"),\n            ({\"mutate\": [[1, \"finding_hazards\", None]]}, \"finding_hazards is not a list\"),\n            ({\"mutate\": [[1, \"finding_hazards\", NO_HAZARDS]]}, \"not one entry per finding\"),\n            ({\"mutate\": [[1, \"finding_hazards\", [\"S5\"]]]}, \"finding_hazards is not an object\"),\n            (\n                {\"mutate\": [[1, \"finding_hazards\", [_hazards(key=\"another_key\")]]]},\n                \"does not follow the findings\",\n            ),\n            (\n                {\"mutate\": [[1, \"finding_hazards\", [_hazards(cartridge=\"grounding.toy\")]]]},\n                \"does not follow the findings\",\n            ),\n            ({\"mutate\": [[1, \"finding_hazards\", [_hazards(severity=\"S6\")]]]}, \"unknown severity\"),\n            ({\"mutate\": [[1, \"finding_hazards\", [_hazards(severity=5)]]]}, \"unknown severity\"),\n            ({\"mutate\": [[1, \"finding_hazards\", [_hazards(ids=\"H1\")]]]}, \"hazard_ids is not a list\"),\n            ({\"mutate\": [[1, \"finding_hazards\", [_hazards(ids=[7])]]]}, \"hazard_ids is not a list\"),\n        ],\n    )\n    def test_the_worker_fails_closed(\n        tmp_path: Path, overrides: dict[str, object], message: str\n    ) -> None:\n        argv, _ = _scenario(tmp_path, **overrides)\n>       with pytest.raises(JudiciaryWorkerError, match=message):\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       Failed: DID NOT RAISE JudiciaryWorkerError\n\ntests/test_docgen_judiciary.py:302: Failed\n=========================== short test summary info ============================\nFAILED tests/test_docgen_judiciary.py::test_the_worker_fails_closed[overrides1-synthetic-only]\n1 failed, 31 passed in 2.86s",
+        "ran_at": "2026-10-10T18:51:27+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K26",
+      "verifier": "V26",
+      "recipe": "corrupt-golden-byte",
+      "description": "Flip one bit of the first hash in the golden file.",
+      "edits": [
+        {
+          "op": "corrupt-byte",
+          "path": "projects/clinical-reasoning/tests/data/docgen_parity.json",
+          "offset": 68
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "AssertionError"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 3.65,
+        "matched": true,
+        "output_tail": ".....F........                                                           [100%]\n=================================== FAILURES ===================================\n_____________ test_docgen_sends_the_golden_requests[4h-judiciary] ______________\n\nscenario = '4h-judiciary'\ngood_state = ReasoningState(summary='Elevated atherogenic burden is the leading cardiometabolic concern.', claims=[StateClaim(key='...rationale='Proactive, not alarmist.'), evidence_needs=[], dismissed_alternatives=[], unresolved_questions=[], trace=[])\ntmp_path = PosixPath('/private/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/pytest-of-clayton/pytest-2374/test_docgen_sends_the_golden_r5')\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10946c6b0>\n\n    @pytest.mark.parametrize(\"scenario\", list(SCENARIOS))\n    def test_docgen_sends_the_golden_requests(\n        scenario: str, good_state: ReasoningState, tmp_path: Path, monkeypatch: pytest.MonkeyPatch\n    ) -> None:\n        capture = SCENARIOS[scenario](monkeypatch, tmp_path, good_state)\n        assert capture, f\"{scenario} sent no request\"\n        got = _summary(capture)\n        golden = as_dict(json.loads(GOLDEN.read_text(encoding=\"utf-8\"))) if GOLDEN.exists() else {}\n        if UPDATE:\n            golden[scenario] = got\n            GOLDEN.write_text(_golden_text(golden), encoding=\"utf-8\")\n            return\n        assert scenario in golden, f\"no golden for {scenario}; run with CR_DOCGEN_PARITY_UPDATE=1\"\n>       assert _differences(as_dict(golden[scenario]), got) == []\nE       AssertionError: assert ['judiciary[0...hema_version'] == []\nE         \nE         Left contains one more item: 'judiciary[0]: schema_version'\nE         Use -v to get more diff\n\ntests/test_docgen_parity.py:566: AssertionError\n----------------------------- Captured stdout call -----------------------------\ncr docgen: 4H released -> /private/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/pytest-of-clayton/pytest-2374/test_docgen_sends_the_golden_r5/out\n=========================== short test summary info ============================\nFAILED tests/test_docgen_parity.py::test_docgen_sends_the_golden_requests[4h-judiciary]\n1 failed, 13 passed in 2.41s",
+        "ran_at": "2026-10-10T18:51:36+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K27",
+      "verifier": "V27",
+      "recipe": "remove-covered-code",
+      "description": "Change the prompt cache key of NoteAuthorEditor from author to harness.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/clinician_note.py",
+          "find": "cache_key=f\"{_cache_key(d.cr)}:author\",",
+          "replace": "cache_key=f\"{_cache_key(d.cr)}:harness\",",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "FAILED|failed"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 4.29,
+        "matched": true,
+        "output_tail": "                clock=lambda: 0.0,\n            )\n        )\n        harness = ScriptedResponsesClient(NOTE_SESSIONS[session]())\n        adapter = ClinicianNoteAdapter(harness, policy=policy, clock=lambda: 0.0)\n        review = CrCartridgesReflector(harness, policy, load_cartridges(policy.follow_up_rule))\n        result = asyncio.run(\n            run_document(\n                adapter,\n                finished_cr(ledger, packet),\n                editor_client=harness,\n                reflectors=[review] if reflection == \"cr\" else [],\n                release=[CrReleaseAudit(review)] if reflection == \"cr\" else [],\n                accept=LastClean(),\n                limits=review_limits(policy),\n                clock=lambda: 0.0,\n            )\n        )\n>       assert _bodies(harness.requests) == _bodies(note_loop.requests)\nE       assert ['{\"model\": \"...rness\"}', ...] == ['{\"model\": \"...uthor\"}', ...]\nE         \nE         At index 5 diff: '{\"model\": \"gpt-6.1-sol\", \"instructions\": \"You write and revise one Function Health member\\'s clinician note by editing files in a workspace. The clinical reasoning is already done: a clinical reasoning packet (CRP) states the member\\'s findings, how they connect, and what matters most. Your job is to turn that reasoning and the member\\'s results into the note the member reads, in the house style, so that it passes every rubric check it will be judged by.\\\\n\\\\n# Done means\\\\n\\\\nWhen this session owns the whole note, it is done when every section file li...\nE         \nE         ...Full output truncated (2 lines hidden), use '-vv' to show\n\ntests/test_docgen_parity.py:745: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_docgen_parity.py::test_the_harness_note_path_sends_the_note_loops_requests[cr-clean]\nFAILED tests/test_docgen_parity.py::test_the_harness_note_path_sends_the_note_loops_requests[cr-code-revision]\nFAILED tests/test_docgen_parity.py::test_the_harness_note_path_sends_the_note_loops_requests[cr-minor-cartridge]\nFAILED tests/test_docgen_parity.py::test_the_harness_note_path_sends_the_note_loops_requests[cr-quarantined]\nFAILED tests/test_docgen_parity.py::test_the_harness_note_path_sends_the_note_loops_requests[cr-release-audit]\nFAILED tests/test_docgen_parity.py::test_the_harness_note_path_sends_the_note_loops_requests[cr-lost-reviser]\nFAILED tests/test_docgen_parity.py::test_the_harness_note_path_sends_the_note_loops_requests[cr-draft-patched-twice]\nFAILED tests/test_docgen_parity.py::test_the_harness_note_path_sends_the_note_loops_requests[cr-release-revision]\nFAILED tests/test_docgen_parity.py::test_the_harness_note_path_sends_the_note_loops_requests[cr-release-quarantined]\nFAILED tests/test_docgen_parity.py::test_the_harness_note_path_sends_the_note_loops_requests[cr-rollback-then-release]\nFAILED tests/test_docgen_parity.py::test_the_harness_note_path_sends_the_note_loops_requests[none-code-revision]\nFAILED tests/test_docgen_parity.py::test_the_harness_note_path_sends_the_note_loops_requests[none-draft-patched-twice]\n12 failed, 2 passed in 3.27s",
+        "ran_at": "2026-10-10T18:51:45+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K28",
+      "verifier": "V28",
+      "recipe": "invert-condition",
+      "description": "Make cr uap and cr fmm pass --reflection cr.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/cli.py",
+          "find": "\"--reflection\", \"none\", *argv[1:]",
+          "replace": "\"--reflection\", \"cr\", *argv[1:]",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "FAILED|failed"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 3.48,
+        "matched": true,
+        "output_tail": "\n~/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/argparse.py:2637: SystemExit\n----------------------------- Captured stderr call -----------------------------\nusage: cr docgen [-h] --kind {note,uap,fmm,4h} --member MEMBER\n                 [--crp-checkpoint CRP_CHECKPOINT] --out OUT\n                 [--reflection {none,cr,judiciary}]\n                 [--judiciary-worker JUDICIARY_WORKER]\n                 [--judiciary-persona-id JUDICIARY_PERSONA_ID]\n                 [--personas-dir PERSONAS_DIR] [--catalog-dir CATALOG_DIR]\ncr docgen: error: --reflection cr: --kind fmm has no CR reflection; use none or judiciary\n_ test_cr_uap_and_cr_fmm_send_the_requests_of_docgen_with_reflection_none[uap-none] _\n\nscenario = 'uap-none'\ngood_state = ReasoningState(summary='Elevated atherogenic burden is the leading cardiometabolic concern.', claims=[StateClaim(key='...rationale='Proactive, not alarmist.'), evidence_needs=[], dismissed_alternatives=[], unresolved_questions=[], trace=[])\ntmp_path = PosixPath('/private/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/pytest-of-clayton/pytest-2375/test_cr_uap_and_cr_fmm_send_th2')\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1084bb170>\n\n    @pytest.mark.parametrize(\"scenario\", list(ALIASES))\n    def test_cr_uap_and_cr_fmm_send_the_requests_of_docgen_with_reflection_none(\n        scenario: str, good_state: ReasoningState, tmp_path: Path, monkeypatch: pytest.MonkeyPatch\n    ) -> None:\n        capture = ALIASES[scenario](monkeypatch, tmp_path, good_state)\n        golden = as_dict(json.loads(GOLDEN.read_text(encoding=\"utf-8\")))\n        assert _differences(as_dict(golden[scenario]), _summary(capture)) == []\n        # The UAP judge's cache makes --reflection cr send these requests too: the trace tells.\n        trace = as_dict(json.loads((tmp_path / \"out\" / \"trace.json\").read_text(encoding=\"utf-8\")))\n>       assert as_dict(trace[\"identity\"])[\"reflectors\"] == []\nE       AssertionError: assert [{'provider':...king': False}] == []\nE         \nE         Left contains one more item: {'provider': 'cr', 'reflector': 'uap_judge', 'blocking': False}\nE         Use -v to get more diff\n\ntests/test_docgen_parity.py:587: AssertionError\n----------------------------- Captured stdout call -----------------------------\ncr docgen: UAP released -> /private/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/pytest-of-clayton/pytest-2375/test_cr_uap_and_cr_fmm_send_th2/out\n=========================== short test summary info ============================\nFAILED tests/test_docgen_parity.py::test_cr_uap_and_cr_fmm_send_the_requests_of_docgen_with_reflection_none[fmm-none]\nFAILED tests/test_docgen_parity.py::test_cr_uap_and_cr_fmm_send_the_requests_of_docgen_with_reflection_none[fmm-none-edit]\nFAILED tests/test_docgen_parity.py::test_cr_uap_and_cr_fmm_send_the_requests_of_docgen_with_reflection_none[uap-none]\n3 failed in 2.31s",
+        "ran_at": "2026-10-10T18:51:52+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K29",
+      "verifier": "V29",
+      "recipe": "remove-guard-line",
+      "description": "Remove the CR-33 refusal from check_finished.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/finished_cr.py",
+          "find": "    if issues:\n        raise CrRefused(\"cr33\", [f\"CRP failed CR-33 acceptance: {issue}\" for issue in issues])\n",
+          "replace": "",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "FAILED|failed"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 3.17,
+        "matched": true,
+        "output_tail": "tests/_docgen_cli.py:95: in run_cli\n    return cli.main(argv), out, wiring\n           ^^^^^^^^^^^^^^\nsrc/cr/cli.py:685: in main\n    return _cmd_docgen(argv[1:])\n           ^^^^^^^^^^^^^^^^^^^^^\nsrc/cr/cli.py:234: in _cmd_docgen\n    return docgen_main(argv)\n           ^^^^^^^^^^^^^^^^^\nsrc/cr/docgen/cli.py:571: in main\n    return spec.run(Run(member, name, cr, reflection, out, catalog_dir))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/cr/docgen/cli.py:448: in <lambda>\n    return lambda run: _run_kind(run, spec.kind, setup)\n                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/cr/docgen/cli.py:391: in _run_kind\n    wiring = setup(generation, meters)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/cr/docgen/cli.py:445: in setup\n    client = MeteredModelClient(_model_client(spec.role), meter)\n                                ^^^^^^^^^^^^^^^^^^^^^^^^\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nrole = RoleConfig(provider='openai', model='gpt-6.1-sol', params=mappingproxy({'reasoning_effort': 'high'}), prompt_version='4h-v3')\n\n    def build(role: object) -> ModelClient:\n        _ = role\n        if model is None:\n>           raise AssertionError(\"no projection client was scripted\")\nE           AssertionError: no projection client was scripted\n\ntests/_docgen_cli.py:83: AssertionError\n----------------------------- Captured stderr call -----------------------------\n4H failed: AssertionError('no projection client was scripted')\n=========================== short test summary info ============================\nFAILED tests/test_finished_cr.py::test_every_kind_refuses_a_cr_that_fails_cr33[note]\nFAILED tests/test_finished_cr.py::test_every_kind_refuses_a_cr_that_fails_cr33[uap]\nFAILED tests/test_finished_cr.py::test_every_kind_refuses_a_cr_that_fails_cr33[fmm]\nFAILED tests/test_finished_cr.py::test_every_kind_refuses_a_cr_that_fails_cr33[4h]\n4 failed in 2.11s",
+        "ran_at": "2026-10-10T18:52:00+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K35",
+      "verifier": "V35",
+      "recipe": "remove-type-pin",
+      "description": "Widen the editor contract, as in K01b. Project-wide basedpyright must go red in the editors.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/adapter.py",
+          "find": "        findings: Sequence[EditableFinding],\n",
+          "replace": "        findings: Sequence[Finding],\n",
+          "count": 1
+        },
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/session.py",
+          "find": "        findings: Sequence[EditableFinding],\n",
+          "replace": "        findings: Sequence[Finding],\n",
+          "count": 1
+        },
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/clinician_note.py",
+          "find": "        findings: Sequence[EditableFinding],\n",
+          "replace": "        findings: Sequence[Finding],\n",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "docgen/(session|clinician_note)\\.py:\\d+:"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "seconds": 8.26,
+        "matched": true,
+        "output_tail": "<worktree>/projects/clinical-reasoning/src/cr/docgen/adapter.py\n  <worktree>/projects/clinical-reasoning/src/cr/docgen/adapter.py:24:32 - error: Import \"EditableFinding\" is not accessed (reportUnusedImport)\n<worktree>/projects/clinical-reasoning/src/cr/docgen/clinician_note.py\n  <worktree>/projects/clinical-reasoning/src/cr/docgen/clinician_note.py:333:65 - error: Argument of type \"Sequence[Finding]\" cannot be assigned to parameter \"findings\" of type \"Sequence[EditableFinding]\" in function \"_review_round\"\n    \"Sequence[Finding]\" is not assignable to \"Sequence[EditableFinding]\"\n      Type parameter \"_T_co@Sequence\" is covariant, but \"Finding\" is not a subtype of \"EditableFinding\"\n        \"Finding\" is not assignable to \"EditableFinding\" (reportArgumentType)\n<worktree>/projects/clinical-reasoning/src/cr/docgen/session.py\n  <worktree>/projects/clinical-reasoning/src/cr/docgen/session.py:45:23 - error: Import \"EditableFinding\" is not accessed (reportUnusedImport)\n  <worktree>/projects/clinical-reasoning/src/cr/docgen/session.py:90:53 - error: Argument of type \"Sequence[Finding]\" cannot be assigned to parameter \"findings\" of type \"Sequence[EditableFinding]\" in function \"review_file\"\n    \"Sequence[Finding]\" is not assignable to \"Sequence[EditableFinding]\"\n      Type parameter \"_T_co@Sequence\" is covariant, but \"Finding\" is not a subtype of \"EditableFinding\"\n        \"Finding\" is not assignable to \"EditableFinding\" (reportArgumentType)\n4 errors, 0 warnings, 0 notes",
+        "ran_at": "2026-10-10T18:53:34+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    },
+    {
+      "id": "K36",
+      "verifier": "V36",
+      "recipe": "plant-violation",
+      "description": "Change the protocol name that CR sends to the worker, so the real worker must refuse it.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
+          "find": "PROTOCOL = \"cr-reflection-protocol.v1\"\n",
+          "replace": "PROTOCOL = \"cr-reflection-protocol.v0\"\n",
+          "count": 1
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "FAILED|failed"
+      },
+      "result": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 2.68,
+        "matched": null,
+        "output_tail": "ss                                                                       [100%]\n=========================== short test summary info ============================\nSKIPPED [1] tests/test_docgen_judiciary_worker.py:147: judiciary is not built: run pnpm install --frozen-lockfile && pnpm build in projects/judiciary, with node on PATH\nSKIPPED [1] tests/test_docgen_judiciary_worker.py:184: judiciary is not built: run pnpm install --frozen-lockfile && pnpm build in projects/judiciary, with node on PATH\n2 skipped in 1.76s",
+        "ran_at": "2026-10-10T18:54:29+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+      }
+    }
+  ],
+  "notes": [
+    "E2E driver: cr docgen is a CLI. Close the CLI Gaps with /pstack:create-verification-skill, which the user must start. No web or mobile surface, so tester-army e2e does not apply.",
+    "Lean candidates: LastClean.settle and _stalled are small, pure and high-stakes. No proof written.",
+    "Candidate verifier for C31: a boundary rule that cr_service never imports cr.docgen. A grep at the head finds no such import. Offer it to the author as a patch.",
+    "Model-free run: no model verifier ran. Recorded evals stay Backed.",
+    "V36 skips because judiciary is not built in the scratch worktree, and the PR says it skips in CI too. Building judiciary needs pnpm install, which this run did not do."
+  ],
+  "flags": [
+    {
+      "flag": "control-missed",
+      "subject": "V01",
+      "loud": false,
+      "detail": "V01 stayed green on control K01b. It does not see that defect."
+    },
+    {
+      "flag": "same-family",
+      "subject": "V30",
+      "loud": false,
+      "detail": "V30 uses the anthropic family, the same family as the author."
+    },
+    {
+      "flag": "same-family",
+      "subject": "V31",
+      "loud": false,
+      "detail": "V31 uses the anthropic family, the same family as the author."
+    },
+    {
+      "flag": "same-family",
+      "subject": "V32",
+      "loud": false,
+      "detail": "V32 uses the anthropic family, the same family as the author."
+    },
+    {
+      "flag": "cannot-fail",
+      "subject": "V36",
+      "loud": true,
+      "detail": "V36 stayed green on control K36. It checks nothing that the control broke."
+    }
+  ],
+  "summary": {
+    "Proven": 25,
+    "Backed": 5,
+    "Asserted": 5,
+    "Gap": 3
+  }
+}

@@ -1,0 +1,197 @@
+{
+  "architecture": {
+    "description": "One run of cr docgen, from the finished CR to the written document. Names are modules and functions at the head.",
+    "nodes": [
+      {
+        "id": "cr",
+        "label": "load_finished_cr",
+        "shape": "oval"
+      },
+      {
+        "id": "proj",
+        "label": "adapter.project"
+      },
+      {
+        "id": "reflect",
+        "label": "reflect: code checks + reflectors"
+      },
+      {
+        "id": "edit",
+        "label": "Editor.edit"
+      },
+      {
+        "id": "accept",
+        "label": "AcceptRule.keep / settle"
+      },
+      {
+        "id": "floor",
+        "label": "_floor"
+      },
+      {
+        "id": "out",
+        "label": "write_outputs"
+      },
+      {
+        "id": "judges",
+        "label": "Judiciary Judges",
+        "shape": "oval"
+      }
+    ],
+    "edges": [
+      {
+        "from": "cr",
+        "to": "proj",
+        "label": "F1 to F4 pass"
+      },
+      {
+        "from": "proj",
+        "to": "reflect",
+        "label": "round 0"
+      },
+      {
+        "from": "reflect",
+        "to": "edit",
+        "label": "EditableFinding only"
+      },
+      {
+        "from": "edit",
+        "to": "accept",
+        "label": "reflect again"
+      },
+      {
+        "from": "accept",
+        "to": "reflect",
+        "label": "next round"
+      },
+      {
+        "from": "accept",
+        "to": "floor",
+        "label": "loop stops"
+      },
+      {
+        "from": "floor",
+        "to": "out",
+        "label": "released or fallback"
+      },
+      {
+        "from": "out",
+        "to": "judges",
+        "label": "grade"
+      }
+    ]
+  },
+  "codepath": {
+    "description": "The stop rules of run_document in the order the loop tests them, with the claim that each rule backs.",
+    "nodes": [
+      {
+        "id": "round",
+        "label": "edit round n"
+      },
+      {
+        "id": "q1",
+        "label": "EditableFinding left? (C11-C13)",
+        "shape": "diamond"
+      },
+      {
+        "id": "q2",
+        "label": "floor fixable? (C16)",
+        "shape": "diamond"
+      },
+      {
+        "id": "edit",
+        "label": "Editor.edit"
+      },
+      {
+        "id": "q3",
+        "label": "call lost? (C17)",
+        "shape": "diamond"
+      },
+      {
+        "id": "q4",
+        "label": "kept, or idle? (C15)",
+        "shape": "diamond"
+      },
+      {
+        "id": "settle",
+        "label": "settle (C20), then _floor"
+      },
+      {
+        "id": "block",
+        "label": "_floor blocks",
+        "shape": "oval"
+      }
+    ],
+    "edges": [
+      {
+        "from": "round",
+        "to": "q1"
+      },
+      {
+        "from": "q1",
+        "to": "q2",
+        "label": "yes"
+      },
+      {
+        "from": "q2",
+        "to": "edit",
+        "label": "yes"
+      },
+      {
+        "from": "edit",
+        "to": "q3"
+      },
+      {
+        "from": "q3",
+        "to": "q4",
+        "label": "no"
+      },
+      {
+        "from": "q4",
+        "to": "round",
+        "label": "kept: next round"
+      },
+      {
+        "from": "q4",
+        "to": "settle",
+        "label": "idle: stop"
+      },
+      {
+        "from": "q1",
+        "to": "settle",
+        "label": "no: stop"
+      },
+      {
+        "from": "q2",
+        "to": "settle",
+        "label": "no: stop"
+      },
+      {
+        "from": "q3",
+        "to": "block",
+        "label": "yes"
+      }
+    ]
+  },
+  "bullets": [
+    "**Control missed:** pin L36 stayed green when K01b widened Editor.edit, EditorSpec.edit and NoteAuthorEditor.edit. Project-wide basedpyright (V35) went red on the same edit.",
+    "**Not run:** the evals and the Opus audit are recorded, not run again. Three of them use the author's model family."
+  ],
+  "tradeoffs": [
+    "The run uses the PR's own tests as verifiers. It adds no new test to the PR.",
+    "Each control runs only the one test or check that backs its claim. A full CI run can see more, but it costs more time.",
+    "The run records the evals and does not run them again, so their verdict stays Backed."
+  ],
+  "concerns": [
+    "V36 skips without a judiciary build, here and in CI. So C38 has no live verifier.",
+    "Pin L36 (V01) checks that a Finding is not an EditableFinding. It does not check the parameter type of Editor.edit. V35 covers that edit.",
+    "C31 has no verifier. A boundary rule that cr_service never imports cr.docgen would back it.",
+    "C35, C36 and C37 are changes that the PR text does not name, and no test names their module.",
+    "V30, V31 and V32 use Opus, the same model family as the author."
+  ],
+  "verifications": [
+    "Each verdict comes from scripts/verdicts.py, and the e2e test on the fixture checks that script.",
+    "Each control ran in a new scratch worktree of a local clone. The run removed each worktree after the control.",
+    "Each red control matched its expected pattern, except K01b. K01b stayed green, and the map flags it.",
+    "No model call and no paid step ran. The env file set a dummy key and an unreachable base URL."
+  ]
+}
