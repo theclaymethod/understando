@@ -1,29 +1,53 @@
 {/* understando three-level explainer. scripts/explain.py fills each slot from trust-map.json and explain.json. Edit the generated copy, not this template, to tune one PR. */}
-import { ExplainerShell, Section, DiagramCanvas, CodeBlock, TerminalBlock, Callout } from '{{REPO}}/visual-explainer-mdx/components';
+import { ExplainerShell, Section, DiagramCanvas, DataTable, StatusPill, CodeBlock, DiffBlock, TerminalBlock, Callout } from '{{REPO}}/visual-explainer-mdx/components';
 
-<ExplainerShell title={{{TITLE}}} summary={{{SUMMARY}}} reviewTools={false}>
+<style>{`
+  .ve-section-body > h3 { margin: 2.5rem 0 0.5rem; color: var(--ve-heading); font-size: 1.25rem; font-weight: 600; }
+  .ve-section-body > h3:first-child { margin-top: 0; }
+  .ve-section-body > [data-ve-anchor] > h3 { margin: 2.5rem 0 1rem; color: var(--ve-heading); font-size: 1.25rem; font-weight: 600; }
+  .ve-section-body > * + * { margin-top: 1rem; }
+  .ux-pills { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .ux-glossary, .ux-plain { display: grid; grid-template-columns: minmax(7rem, max-content) minmax(0, 1fr); gap: 0.5rem 1.5rem; max-width: 72ch; margin: 0; }
+  .ux-glossary dt, .ux-plain dt { color: var(--ve-heading); font-weight: 600; }
+  .ux-glossary dd, .ux-plain dd { margin: 0; line-height: 1.55; }
+  .ux-plain { padding: 1rem 0; border-block: 1px solid var(--ve-rule); }
+  .ux-plain .ux-warning { color: var(--ve-status-warn); }
+  .ux-claim { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--ve-rule); }
+  .ux-claim > * + * { margin-top: 1rem; }
+  .ux-claim h4 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; margin: 0; color: var(--ve-heading); font-size: 1.125rem; font-weight: 600; line-height: 1.4; }
+  .ux-drill { display: flex; flex-wrap: wrap; gap: 0 1.5rem; }
+  .ux-drill a, .ux-claim-links a { display: inline-flex; align-items: center; min-height: 44px; }
+  .ux-claim-links { display: grid; gap: 0.25rem; padding-left: 1.25rem; }
+  @media (max-width: 640px) { .ux-glossary, .ux-plain { grid-template-columns: minmax(0, 1fr); gap: 0.25rem; } .ux-glossary dd, .ux-plain dd { margin-bottom: 0.5rem; } }
+`}</style>
 
-<Section title="High: every claim and its verdict">
+<ExplainerShell title={{{TITLE}}} summary={{{SUMMARY}}} chapterNav appearance="auto">
+
+<Section id="words" title="Words to know" navLabel="Words to know">
+{{GLOSSARY}}
+</Section>
+
+<Section id="high" title="High: every claim and its verdict" navLabel="High: verdicts" anchors={{HIGH_ANCHORS}}>
 {{HIGH}}
 </Section>
 
-<Section title="Medium: architecture, code path and the verifier map">
+<Section id="medium" title="Medium: architecture, code path and the verifier map" navLabel="Medium: diagrams" anchors={{MEDIUM_ANCHORS}}>
 {{MEDIUM}}
 </Section>
 
-<Section title="Low: code and evidence per claim">
+<Section id="low" title="Low: code and evidence per claim" navLabel="Low: evidence" anchors={{LOW_ANCHORS}}>
 {{LOW}}
 </Section>
 
-<Section title="Trade-offs">
+<Section id="tradeoffs" title="Trade-offs">
 {{TRADEOFFS}}
 </Section>
 
-<Section title="Concerns">
+<Section id="concerns" title="Concerns">
 {{CONCERNS}}
 </Section>
 
-<Section title="Verifications of this explainer">
+<Section id="verifications" title="Verifications of this explainer">
 {{VERIFICATIONS}}
 </Section>
 
