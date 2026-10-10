@@ -5,9 +5,12 @@
         [--extra explain.json] [--runtime REPO] [--explainer-url URL]
 
 Writes:
-  DIR/pr-section.md    the short PR-body section: one diagram, the claims-and-verdicts table,
-                       and short bullets
-  DIR/explainer.mdx    the three-level explainer source (templates/three-level.mdx, filled)
+  DIR/pr-section.md        the short PR-body section: one diagram, the claims-and-verdicts table,
+                           and short bullets
+  DIR/explainer.mdx        the explainer entry (templates/three-level.mdx, filled): the shell, the
+                           chapter rail, and one Section for each chapter file
+  DIR/chapters/NN-*.mdx    one self-contained MDX unit for each chapter: orientation, guided tour,
+                           confidence, evidence, trade-offs, exercises (a placeholder)
 
 --runtime is the Artifacture checkout. $UNDERSTANDO_VE_RUNTIME sets it too. The default asks the
 visual-explainer CLI:
@@ -15,10 +18,19 @@ visual-explainer CLI:
 Export the HTML after this script with the visual-explainer CLI (see commands/explain.md).
 
 explain.json (optional, written by the agent) holds what the trust map does not:
-  {"architecture": {"description": str, "nodes": [...], "edges": [...]},
-   "codepath": {"description": str, "nodes": [...], "edges": [...]},
+  {"orientation": [str],                      about five STE sentences: what the PR does and why
+   "architecture": {"description", "nodes", "edges"},
+   "tour": [{"id", "title", "text": [str], "code": [codeRef], "claims": [claim id],
+             "diagram"?: name, "walkthrough"?: name}],   in execution order; each claim once or more
+   "diagrams": {name: {"title", "description", "nodes", "edges"}},           static
+   "walkthroughs": {name: {"title", "description", "nodes", "edges", "steps"}},   animated
+   "control_walkthroughs": [{"title", "description", "controls": [control id]}],
+   "risks": [{"claims": [claim id], "why": str, "fix": str}],   the weakest high-stakes claims first
    "tradeoffs": [str], "concerns": [str], "verifications": [str], "bullets": [str]}
-Nodes and edges use the DiagramCanvas shape: {id, label} and {from, to, label?}.
+Nodes and edges use the DiagramCanvas shape: {id, label} and {from, to, label?}. A node label that
+names claim IDs (C05, or C11-C14) takes the colour and the word of the weakest of their verdicts.
+Without a tour, the tour has one stop per claim layer. Without risks, it lists the Gap and
+Asserted claims.
 """
 
 from __future__ import annotations
@@ -135,12 +147,8 @@ def claim_anchor(cid: str) -> str:
     return f"claim-{slug(cid)}"
 
 
-def row_anchor(cid: str) -> str:
-    return f"verdict-{slug(cid)}"
 
 
-def layer_anchor(layer: str) -> str:
-    return f"layer-{slug(layer)}"
 
 
 def glyph(kind: str) -> str:
@@ -162,12 +170,6 @@ def table(columns: list[dict], rows: list[dict], label: str) -> str:
     return f"<DataTable label={js(label)} columns={js(columns)} rows={js(rows)} />"
 
 
-def diagram(spec: dict | None, title: str, anchor: str, legend: list[dict]) -> str:
-    if not spec:
-        return ""
-    return (f"<div id={js(anchor)} data-ve-anchor=\"true\"><h3>{js(title)}</h3>"
-            f"<DiagramCanvas layout=\"flow\" title={js(title)} description={js(spec.get('description', title))} "
-            f"nodes={js(spec['nodes'])} edges={js(spec['edges'])} legend={js(legend)} /></div>")
 
 
 def flags_by_claim(data: dict) -> dict[str, list[dict]]:
@@ -199,35 +201,6 @@ def glossary(data: dict) -> str:
     return f"<dl className=\"ux-glossary\">{body}</dl>"
 
 
-def high(data: dict) -> str:
-    s = data["summary"]
-    parts = [f"<p>{js(str(len(data['claims'])) + ' claims. Each verdict links to its diagram and its evidence.')}</p>",
-             "<p className=\"ux-pills\">" + " ".join(
-                 f"<StatusPill tone=\"{TONE[v]}\">{js(str(s[v]) + ' ' + v)}</StatusPill>" for v in VERDICTS) + "</p>"]
-    loud = [f for f in data["flags"] if f.get("loud")]
-    if loud:
-        parts.append("<Callout>" + "".join(f"<p><strong>{js(f['flag'] + ':')}</strong>{js(' ' + f['detail'])}</p>" for f in loud) + "</Callout>")
-    flags = flags_by_claim(data)
-    columns = [{"key": "id", "label": "ID", "kind": "id", "width": "4.5rem"},
-               {"key": "claim", "label": "Claim"},
-               {"key": "layer", "label": "Layer", "width": "9.5rem"},
-               {"key": "verdict", "label": "Verdict", "kind": "status", "width": "7.5rem"},
-               {"key": "flags", "label": "Flags", "kind": "tags", "width": "10.5rem"}]
-    for verdict, claims in by_verdict(data):
-        parts.append(f"<h3 id={js('high-' + slug(verdict))} data-ve-anchor=\"true\">{js(f'{verdict} ({len(claims)})')}</h3>")
-        parts.append(intro(data, verdict))
-        rows = [{"id": row_anchor(c["id"]), "cells": {
-            "id": {"text": c["id"], "href": "#" + claim_anchor(c["id"])},
-            "claim": {"text": c["text"], **({"note": c["plain"]["what"]} if c.get("plain") else {})},
-            "layer": {"text": c.get("layer", ""), "href": "#" + layer_anchor(c.get("layer", "Claims"))},
-            "verdict": {"text": c["verdict"], "status": TONE[c["verdict"]]},
-            "flags": {"badges": flags.get(c["id"], [])} if flags.get(c["id"]) else None}}
-            for c in claims]
-        parts.append(table(columns, rows, f"{verdict} claims"))
-    parts.append(f"<p>{js('Select an ID to see its code and evidence. Select a layer to see its row in the verdict map.')}</p>")
-    return "\n".join(p for p in parts if p)
-
-
 def weakest(cids: list[str], verdict_of: dict[str, str]) -> str | None:
     found = [verdict_of[c] for c in cids if c in verdict_of]
     return max(found, key=VERDICTS.index) if found else None
@@ -240,10 +213,8 @@ def expand_ids(label: str) -> list[str]:
     return out
 
 
-def toned(spec: dict | None, verdict_of: dict[str, str]) -> tuple[dict | None, set[str]]:
+def toned(spec: dict, verdict_of: dict[str, str]) -> tuple[dict, list[str]]:
     """Colour each node that names claims by the weakest verdict among them, with the verdict as text."""
-    if not spec:
-        return None, set()
     used, nodes = set(), []
     for n in spec["nodes"]:
         v = weakest(expand_ids(n["label"]), verdict_of)
@@ -251,77 +222,229 @@ def toned(spec: dict | None, verdict_of: dict[str, str]) -> tuple[dict | None, s
             used.add(v)
             n = {**n, "tone": TONE[v], "detail": n.get("detail") or v}
         nodes.append(n)
-    return {**spec, "nodes": nodes}, used
+    return {**spec, "nodes": nodes}, [v for v in VERDICTS if v in used]
 
 
-def medium(data: dict, extra: dict) -> str:
+def glyph_legend(spec: dict, names: dict[str, str]) -> list[dict]:
+    glyphs = sorted({n.get("shape", "rect") for n in spec["nodes"]}, key=["rect", "oval", "diamond", "dot"].index)
+    return [{"label": names.get(g, g), "glyph": g} for g in glyphs if g in names]
+
+
+SHAPE_NAMES = {"rect": "module or function", "oval": "input or outside system", "diamond": "decision"}
+
+
+def walkthrough(spec: dict, anchor: str, legend: list[dict]) -> str:
+    return (f"<div id={js(anchor)} data-ve-anchor=\"true\"><h4>{js(spec['title'])}</h4>"
+            f"<DiagramWalkthrough layout=\"flow\" title={js(spec['title'])} description={js(spec['description'])} "
+            f"nodes={js(spec['nodes'])} edges={js(spec['edges'])} steps={js(spec['steps'])} legend={js(legend)} /></div>")
+
+
+def claim_rows(data: dict, cids: list[str]) -> list[dict]:
+    claims = {c["id"]: c for c in data["claims"]}
+    flags = flags_by_claim(data)
+    rows = []
+    for cid in cids:
+        c = claims[cid]
+        what = (c.get("plain") or {}).get("what") or c["text"]
+        rows.append({"cells": {
+            "id": {"text": cid, "href": "#" + claim_anchor(cid)},
+            "what": {"text": what, "note": c["text"]} if c.get("plain") else what,
+            "verdict": {"text": c["verdict"], "status": TONE[c["verdict"]]},
+            "flags": {"badges": flags[cid]} if flags.get(cid) else None}})
+    return rows
+
+
+CLAIM_COLUMNS = [{"key": "id", "label": "ID", "kind": "id", "width": "4.5rem"},
+                 {"key": "what", "label": "What it protects"},
+                 {"key": "verdict", "label": "Verdict", "kind": "status", "width": "7.5rem"},
+                 {"key": "flags", "label": "Flags", "kind": "tags", "width": "10.5rem"}]
+
+
+def chips(data: dict, cids: list[str]) -> str:
     verdict_of = {c["id"]: c["verdict"] for c in data["claims"]}
     parts = []
+    for v in VERDICTS:
+        ids = [c for c in cids if verdict_of.get(c) == v]
+        if ids:
+            parts.append(f"<StatusPill tone=\"{TONE[v]}\">{js(v + ': ' + ', '.join(ids))}</StatusPill>")
+    return "<p className=\"ux-pills\">" + " ".join(parts) + "</p>" if parts else ""
+
+
+# ---- Chapter 1: orientation ---------------------------------------------------------------
+
+def orientation(data: dict, extra: dict) -> str:
+    lines = extra.get("orientation") or [s.strip() + "." for s in data.get("narrative", "").split(". ")[:5] if s.strip()]
+    parts = ["<div className=\"ux-lede\">" + "".join(f"<p>{inline(t)}</p>" for t in lines) + "</div>"]
     if extra.get("architecture"):
         arch = extra["architecture"]
-        glyphs = sorted({n.get("shape", "rect") for n in arch["nodes"]})
-        names = {"rect": "module or function", "oval": "input or outside system", "diamond": "decision"}
-        parts.append(diagram(arch, "Architecture", "medium-architecture",
-                             [{"label": names.get(g, g), "glyph": g} for g in glyphs]))
-    if extra.get("codepath"):
-        spec, used = toned(extra["codepath"], verdict_of)
-        legend = [i for i in VERDICT_LEGEND if i["label"] in used] + [{"label": "decision", "glyph": "diamond"}]
-        parts.append(diagram(spec, "Code path", "medium-codepath", legend))
-        parts.append(f"<p>{js('A coloured step names claims. Its colour and its word are the weakest verdict among those claims.')}</p>")
+        parts.append(f"<div id=\"orientation-architecture\" data-ve-anchor=\"true\"><h3>{js('Architecture')}</h3>"
+                     f"<DiagramCanvas layout=\"flow\" title={js('Architecture')} description={js(arch.get('description', 'Architecture'))} "
+                     f"nodes={js(arch['nodes'])} edges={js(arch['edges'])} legend={js(glyph_legend(arch, SHAPE_NAMES))} /></div>")
+    parts.append(f"<div id=\"orientation-words\" data-ve-anchor=\"true\"><h3>{js('Words to know')}</h3>{glossary(data)}</div>")
+    return "\n".join(parts)
 
-    layers: dict[str, dict[str, list[str]]] = {}
-    for c in data["claims"]:
-        layers.setdefault(c.get("layer", "Claims"), {v: [] for v in VERDICTS})[c["verdict"]].append(c["id"])
-    nodes = [{"id": f"l{i}", "label": layer, "detail": f"{sum(map(len, n.values()))} claims"}
-             for i, (layer, n) in enumerate(layers.items())]
-    nodes += [{"id": v, "label": v, "shape": "oval", "tone": TONE[v], "detail": f"{data['summary'][v]} claims"}
-              for v in VERDICTS if data["summary"][v]]
-    edges = [{"from": f"l{i}", "to": v, "label": str(len(ids))}
-             for i, (layer, n) in enumerate(layers.items()) for v, ids in n.items() if ids]
-    parts.append(diagram({"description": "Each claim layer, with an edge to each verdict. The edge label is the claim count.",
-                          "nodes": nodes, "edges": edges},
-                         "Verdicts by layer", "medium-verdicts", VERDICT_LEGEND))
-    columns = ([{"key": "layer", "label": "Layer", "width": "11rem"}]
-               + [{"key": v, "label": v, "kind": "number", "width": "5.5rem"} for v in VERDICTS]
-               + [{"key": "claims", "label": "Claims"}])
-    rows = [{"id": layer_anchor(layer), "cells": {
-        "layer": layer, **{v: len(n[v]) for v in VERDICTS},
-        "claims": {"badges": [{"label": cid, "tone": TONE[v]} for v in VERDICTS for cid in n[v]]}}}
-        for layer, n in layers.items()]
-    parts.append(table(columns, rows, "Claims by layer and verdict"))
-    parts.append(f"<p>{js('Each claim ID in the table links to its code and evidence below.')}</p>")
-    parts.append(claim_links(layers))
 
+# ---- Chapter 2: guided tour ---------------------------------------------------------------
+
+def tour_steps(data: dict, extra: dict) -> list[dict]:
+    """The tour from explain.json, else one stop per claim layer. Each claim must appear at a stop."""
+    steps = extra.get("tour") or [
+        {"id": slug(layer), "title": layer, "text": [], "claims": [c["id"] for c in data["claims"] if c.get("layer", "Claims") == layer]}
+        for layer in dict.fromkeys(c.get("layer", "Claims") for c in data["claims"])]
+    seen = {cid for s in steps for cid in s.get("claims", [])}
+    missing = [c["id"] for c in data["claims"] if c["id"] not in seen]
+    unknown = sorted(seen - {c["id"] for c in data["claims"]})
+    if missing or unknown:
+        tm.fail(f"the tour must show each claim at a step: missing {missing}, unknown {unknown}", 1)
+    return steps
+
+
+def tour(data: dict, extra: dict, repo: str) -> str:
+    verdict_of = {c["id"]: c["verdict"] for c in data["claims"]}
+    steps = tour_steps(data, extra)
+    parts = [f"<p>{js('The tour follows one run in execution order. At each step, the table shows the claims that protect it, and each ID links to its evidence.')}</p>",
+             "<ol className=\"ux-steps\">" + "".join(f"<li><a href={js('#tour-' + s['id'])}>{js(s['title'].split(':')[0])}</a></li>" for s in steps) + "</ol>"]
+    for i, s in enumerate(steps, 1):
+        parts.append(f"<div className=\"ux-stop\" id={js('tour-' + s['id'])} data-ve-anchor=\"true\">")
+        parts.append(f"<h3><span className=\"ux-step\">{js(str(i))}</span>{js(s['title'])}</h3>")
+        parts += [f"<p>{inline(t)}</p>" for t in s.get("text", [])]
+        name = s.get("diagram")
+        if name and name in (extra.get("diagrams") or {}):
+            spec, used = toned(extra["diagrams"][name], verdict_of)
+            legend = ([i for i in VERDICT_LEGEND if i["label"] in used] + glyph_legend(spec, SHAPE_NAMES)
+                      + ([{"label": "refused import", "stroke": "dashed"}] if any(e.get("style") == "dashed" for e in spec["edges"]) else []))
+            parts.append(f"<h4>{js(spec['title'])}</h4><DiagramCanvas layout=\"flow\" title={js(spec['title'])} "
+                         f"description={js(spec['description'])} nodes={js(spec['nodes'])} edges={js(spec['edges'])} legend={js(legend)} />")
+        name = s.get("walkthrough")
+        if name and name in (extra.get("walkthroughs") or {}):
+            spec, used = toned(extra["walkthroughs"][name], verdict_of)
+            legend = [i for i in VERDICT_LEGEND if i["label"] in used] + glyph_legend(spec, SHAPE_NAMES)
+            parts.append(walkthrough(spec, f"tour-{s['id']}-motion", legend))
+        for ref in s.get("code", []):
+            got = snippet(repo, data["head"], ref)
+            if got:
+                code, start = got
+                parts.append(f"<CodeBlock language={js(LANG.get(Path(ref['path']).suffix, 'text'))} "
+                             f"filename={js(ref['path'] + ':' + str(start))} code={js(code)} />")
+        if s.get("claims"):
+            parts.append(f"<p><strong>{js('Claims at this step: ')}</strong></p>" + chips(data, s["claims"]))
+            parts.append(table(CLAIM_COLUMNS, claim_rows(data, s["claims"]), f"Claims at step {i}"))
+        else:
+            parts.append(f"<p className=\"ux-none\">{js('No claim in this trust map protects this step.')}</p>")
+        parts.append("</div>")
+    return "\n".join(parts)
+
+
+# ---- Chapter 3: confidence ----------------------------------------------------------------
+
+def control_walkthrough(data: dict, spec: dict) -> dict:
+    controls = {k["id"]: k for k in data["controls"]}
+    verifiers = {v["id"]: v for v in data["verifiers"]}
+    nodes, edges, steps, seen = [], [], [], set()
+    for kid in spec["controls"]:
+        k = controls[kid]
+        v = verifiers[k["verifier"]]
+        r = k.get("result") or {}
+        status = r.get("status", "not run")
+        caught = status == (k.get("expect") or {}).get("status", "red")
+        nodes.append({"id": f"plant-{kid}", "label": f"{kid}: {k['recipe']}", "shape": "oval"})
+        if v["id"] not in seen:
+            seen.add(v["id"])
+            argv = (v.get("command") or {}).get("argv", [])
+            target = argv[-1] if argv and ("/" in argv[-1] or "." in argv[-1]) else "the whole project"
+            nodes.append({"id": f"run-{v['id']}", "label": f"{v['id']}: {(v.get('independence') or {}).get('tool', v['kind'])}",
+                          "detail": target})
+        nodes.append({"id": f"out-{kid}", "label": f"{'caught' if caught else 'missed'}: {status}",
+                      "tone": "ok" if caught else "warn", "detail": f"{kid} on {v['id']}"})
+        edges += [{"id": f"{kid}-run", "from": f"plant-{kid}", "to": f"run-{v['id']}", "label": "plant, then run"},
+                  {"id": f"{kid}-out", "from": f"run-{v['id']}", "to": f"out-{kid}", "label": status}]
+        steps += [{"edgeId": f"{kid}-run", "caption": f"{kid} plants a bug in a scratch worktree. {k['description']}"},
+                  {"edgeId": f"{kid}-out", "caption": f"{v['id']} went {status}. " + ("The check found the bug." if caught else "The check did not find the bug.")}]
+    return {"title": spec["title"], "description": spec["description"], "nodes": nodes, "edges": edges, "steps": steps}
+
+
+def confidence(data: dict, extra: dict) -> str:
+    claims = {c["id"]: c for c in data["claims"]}
+    verdict_of = {c["id"]: c["verdict"] for c in data["claims"]}
+    parts = [f"<p>{js('This chapter ranks the claims by risk, not by count. The weakest claims with the highest stakes come first, each with the cheapest fix.')}</p>"]
+    risks = extra.get("risks") or [{"claims": [c["id"]], "why": c["reason"], "fix": ""}
+                                   for c in data["claims"] if c["verdict"] in ("Gap", "Asserted")]
+    parts.append(f"<div id=\"confidence-weak\" data-ve-anchor=\"true\"><h3>{js('The weakest claims first')}</h3><ol className=\"ux-risks\">")
+    for r in risks:
+        head = "".join(f"<a href={js('#' + claim_anchor(cid))}><code>{js(cid)}</code></a> <StatusPill tone=\"{TONE[verdict_of[cid]]}\">{js(verdict_of[cid])}</StatusPill> "
+                       for cid in r["claims"])
+        text = " ".join(claims[cid]["text"] for cid in r["claims"])
+        what = " ".join((claims[cid].get("plain") or {}).get("what", "") for cid in r["claims"]).strip()
+        body = f"<dt>{js('Why it is weak')}</dt><dd>{inline(r['why'])}</dd>"
+        if r.get("fix"):
+            body += f"<dt>{js('Cheapest fix')}</dt><dd>{inline(r['fix'])}</dd>"
+        parts.append(f"<li className=\"ux-risk\"><h4>{head}{js(text)}</h4>" + (f"<p>{inline(what)}</p>" if what else "")
+                     + f"<dl className=\"ux-plain\">{body}</dl></li>")
+    parts.append("</ol></div>")
+
+    for i, spec in enumerate(extra.get("control_walkthroughs") or []):
+        motion = control_walkthrough(data, spec)
+        legend = [{"label": "caught: the check went red", "tone": "ok"}, {"label": "missed: the check stayed green", "tone": "warn"},
+                  {"label": "planted bug", "glyph": "oval"}, {"label": "check", "glyph": "rect"}]
+        parts.append(f"<div id={js('confidence-controls' + (str(i) if i else ''))} data-ve-anchor=\"true\"><h3>{js('Verify the verifiers')}</h3>"
+                     f"<p>{inline(spec['description'])}</p>"
+                     + walkthrough(motion, f"confidence-controls-motion{i}", legend) + "</div>")
+
+    s = data["summary"]
+    proven = [c for c in data["claims"] if c["verdict"] == "Proven"]
+    by_layer: dict[str, int] = {}
+    for c in proven:
+        by_layer[c.get("layer", "Claims")] = by_layer.get(c.get("layer", "Claims"), 0) + 1
+    ran = [k for k in data["controls"] if k.get("result")]
+    red = [k for k in ran if k["result"].get("status") == "red"]
+    solid = [f"{s['Proven']} of {len(data['claims'])} claims are Proven. For each, a control planted a bug and the check went red.",
+             "By layer: " + ", ".join(f"{layer} {n}" for layer, n in by_layer.items()) + ".",
+             f"{len(red)} of {len(ran)} controls went red in scratch worktrees, with no model call and no cost."]
+    if s["Backed"]:
+        solid.append(f"{s['Backed']} claims are Backed: the evidence is a record of a past run, and this run did not repeat it.")
+    parts.append(f"<div id=\"confidence-solid\" data-ve-anchor=\"true\"><h3>{js('What is solid')}</h3>"
+                 + "<ul>" + "".join(f"<li>{js(t)}</li>" for t in solid) + "</ul></div>")
+    parts.append(verifier_map(data))
+    return "\n".join(parts)
+
+
+def verifier_map(data: dict) -> str:
+    verdict_of = {c["id"]: c["verdict"] for c in data["claims"]}
+    layer_of = {c["id"]: c.get("layer", "Claims") for c in data["claims"]}
     kinds: dict[str, dict] = {}
-    claim_verdicts: dict[str, dict[str, int]] = {}
+    links: dict[tuple[str, str], set[str]] = {}
     for v in data["verifiers"]:
         k = kinds.setdefault(v["kind"], {"n": 0, "guess": False})
         k["n"] += 1
         k["guess"] |= v["tier"] == "guess"
         for cid in v["claims"]:
-            if cid in verdict_of:
-                claim_verdicts.setdefault(v["kind"], {}).setdefault(verdict_of[cid], 0)
-                claim_verdicts[v["kind"]][verdict_of[cid]] += 1
-    knodes = [{"id": f"k{i}", "label": f"{kind} ({k['n']})", "shape": glyph(kind),
-               "detail": "guess tier" if k["guess"] else "fact tier", **({"stroke": "dashed"} if k["guess"] else {})}
-              for i, (kind, k) in enumerate(kinds.items())]
-    vused = sorted({v for counts in claim_verdicts.values() for v in counts}, key=VERDICTS.index)
-    knodes += [{"id": v, "label": v, "shape": "oval", "tone": TONE[v]} for v in vused]
-    kedges = [{"from": f"k{i}", "to": v, "label": str(n)}
-              for i, kind in enumerate(kinds) for v, n in sorted(claim_verdicts.get(kind, {}).items(), key=lambda x: VERDICTS.index(x[0]))]
-    glyphs_used = sorted({glyph(k) for k in kinds}, key=list(GLYPH_FAMILY).index)
-    klegend = ([i for i in VERDICT_LEGEND if i["label"] in vused]
-               + [{"label": GLYPH_FAMILY[g], "glyph": g} for g in glyphs_used]
-               + [{"label": "fact tier", "stroke": "solid"}]
-               + ([{"label": "guess tier", "stroke": "dashed"}] if any(k["guess"] for k in kinds.values()) else []))
-    parts.append(diagram({"description": "Each verifier kind, with an edge to the verdicts of the claims that it backs. The edge label is the claim count.",
-                          "nodes": knodes, "edges": kedges},
-                         "Verifier kinds and the verdicts they back", "medium-kinds", klegend))
-
+            if cid in layer_of:
+                links.setdefault((v["kind"], layer_of[cid]), set()).add(cid)
+    layers = list(dict.fromkeys(layer_of.values()))
+    layer_verdict = {layer: weakest([c for c, lay in layer_of.items() if lay == layer], verdict_of) for layer in layers}
+    kind_ids = {kind: f"k{i}" for i, kind in enumerate(kinds)}
+    layer_ids = {layer: f"l{i}" for i, layer in enumerate(layers)}
+    nodes = [{"id": kind_ids[kind], "label": f"{kind} ({k['n']})", "shape": glyph(kind),
+              "detail": "guess tier" if k["guess"] else "fact tier", **({"stroke": "dashed"} if k["guess"] else {})}
+             for kind, k in kinds.items()]
+    covered = {layer for _, layer in links}
+    nodes += [{"id": layer_ids[layer], "label": layer, "tone": TONE[layer_verdict[layer]], "detail": f"weakest: {layer_verdict[layer]}"}
+              for layer in layers if layer in covered]
+    edges = [{"from": kind_ids[kind], "to": layer_ids[layer], "label": f"{len(cids)} claims" if len(cids) > 1 else "1 claim"}
+             for (kind, layer), cids in links.items()]
+    used = [v for v in VERDICTS if v in {layer_verdict[layer] for layer in covered}]
+    glyphs = sorted({glyph(k) for k in kinds}, key=list(GLYPH_FAMILY).index)
+    legend = ([i for i in VERDICT_LEGEND if i["label"] in used] + [{"label": GLYPH_FAMILY[g], "glyph": g} for g in glyphs]
+              + [{"label": "fact tier", "stroke": "solid"}]
+              + ([{"label": "guess tier", "stroke": "dashed"}] if any(k["guess"] for k in kinds.values()) else []))
+    uncovered = [layer for layer in layers if layer not in covered]
+    parts = [f"<div id=\"confidence-map\" data-ve-anchor=\"true\"><h3>{js('From verifiers to claims')}</h3>"
+             f"<p>{js('Each verifier kind, with an edge to each claim layer that it backs. A layer takes the colour and the word of its weakest verdict.' + (' No verifier backs: ' + ', '.join(uncovered) + '.' if uncovered else ''))}</p>"
+             f"<DiagramCanvas layout=\"flow\" title={js('From verifiers to claims')} description={js('Verifier kinds and the claim layers they back.')} "
+             f"nodes={js(nodes)} edges={js(edges)} legend={js(legend)} />"]
     controls: dict[str, list[str]] = {}
     for k in data["controls"]:
-        status = (k.get("result") or {}).get("status", "not run")
-        controls.setdefault(k["verifier"], []).append(f"{k['id']} {k['recipe']}: {status}")
+        controls.setdefault(k["verifier"], []).append(f"{k['id']} {k['recipe']}: {(k.get('result') or {}).get('status', 'not run')}")
     vflags: dict[str, list[dict]] = {}
     for f in data["flags"]:
         vflags.setdefault(f["subject"], []).append({"label": f["flag"], "tone": FLAG_TONE.get(f["flag"], "warn")})
@@ -338,19 +461,11 @@ def medium(data: dict, extra: dict) -> str:
         "state": {"text": v.get("state", "unknown"), "status": STATE_TONE.get(v.get("state", ""), "neutral")},
         "claims": {"badges": [{"label": cid, "tone": TONE.get(verdict_of.get(cid, ""), "neutral")} for cid in v["claims"]]},
         "controls": "; ".join(controls.get(v["id"], [])) or None}} for v in data["verifiers"]]
-    parts.append(f"<div id=\"medium-verifiers\" data-ve-anchor=\"true\"><h3>{js('Verifier map')}</h3>"
-                 f"<p>{js('Each verifier, its kind, its tier, its state, the claims it backs and its controls. Kind uses the glyph of the diagram above. A dashed, hatched tier is a guess.')}</p>"
-                 + table(columns, rows, "Verifier map") + "</div>")
-    return "\n".join(p for p in parts if p)
+    parts.append(f"<h4>{js('Verifier map')}</h4>" + table(columns, rows, "Verifier map") + "</div>")
+    return "".join(parts)
 
 
-def claim_links(layers: dict[str, dict[str, list[str]]]) -> str:
-    items = "".join(
-        f"<li><strong>{js(layer + ':')}</strong> " + ", ".join(
-            f"<a href={js('#' + claim_anchor(cid))}>{js(cid)}</a>" for v in VERDICTS for cid in n[v]) + "</li>"
-        for layer, n in layers.items())
-    return f"<ul className=\"ux-claim-links\">{items}</ul>"
-
+# ---- Chapter 4: evidence ------------------------------------------------------------------
 
 def edit_block(edit: dict) -> str:
     lang = LANG.get(Path(edit["path"]).suffix, "text")
@@ -363,7 +478,8 @@ def edit_block(edit: dict) -> str:
     return f"<p><code>{js(edit['op'])}</code>{js(' ' + edit['path'] + (': ' + detail if detail else ''))}</p>"
 
 
-def low(data: dict, repo: str) -> str:
+def evidence(data: dict, repo: str, steps: list[dict]) -> str:
+    step_of = {cid: s for s in steps for cid in s.get("claims", [])}
     by_claim: dict[str, list[dict]] = {}
     for v in data["verifiers"]:
         for cid in v["claims"]:
@@ -371,19 +487,21 @@ def low(data: dict, repo: str) -> str:
     controls: dict[str, list[dict]] = {}
     for k in data["controls"]:
         controls.setdefault(k["verifier"], []).append(k)
-    parts = []
+    parts = [f"<p>{js('Each claim with its plain text, its code at the head, each verifier, and each control with its edit and its output.')}</p>",
+             f"<div id=\"evidence-index\" data-ve-anchor=\"true\"><h3>{js('Claim index')}</h3>"
+             + table(CLAIM_COLUMNS, claim_rows(data, [c["id"] for c in data["claims"]]), "Claim index") + "</div>"]
     for verdict, claims in by_verdict(data):
-        parts.append(f"<h3 id={js('low-' + slug(verdict))} data-ve-anchor=\"true\">{js(f'{verdict} ({len(claims)})')}</h3>")
+        parts.append(f"<h3 id={js('evidence-' + slug(verdict))} data-ve-anchor=\"true\">{js(f'{verdict} ({len(claims)})')}</h3>")
         parts.append(intro(data, verdict))
         for c in claims:
             parts.append(f"<article className=\"ux-claim\" id={js(claim_anchor(c['id']))} data-ve-anchor=\"true\">")
             parts.append(f"<h4><code>{js(c['id'])}</code> <StatusPill tone=\"{TONE[c['verdict']]}\">{js(c['verdict'])}</StatusPill> {js(c['text'])}</h4>")
-            parts.append(f"<p className=\"ux-drill\"><a href={js('#' + row_anchor(c['id']))}>{js('Verdict row')}</a>"
-                         f"<a href={js('#' + layer_anchor(c.get('layer', 'Claims')))}>{js('Layer in the verdict map')}</a></p>")
+            step = step_of.get(c["id"])
+            if step:
+                parts.append(f"<p className=\"ux-drill\"><a href={js('#tour-' + step['id'])}>{js('Tour step: ' + step['title'].split(':')[0])}</a></p>")
             plain = c.get("plain")
             if plain:
-                rows = [("What it is", plain["what"]), ("How it is proven", plain["proof"])]
-                body = "".join(f"<dt>{js(k)}</dt><dd>{inline(t)}</dd>" for k, t in rows)
+                body = "".join(f"<dt>{js(k)}</dt><dd>{inline(t)}</dd>" for k, t in [("What it is", plain["what"]), ("How it is proven", plain["proof"])])
                 if plain.get("warning"):
                     body += f"<dt className=\"ux-warning\">{js('Warning')}</dt><dd className=\"ux-warning\">{inline(plain['warning'])}</dd>"
                 parts.append(f"<dl className=\"ux-plain\">{body}</dl>")
@@ -415,14 +533,37 @@ def low(data: dict, repo: str) -> str:
     return "\n".join(p for p in parts if p)
 
 
-def anchors(items: list[tuple[str, str]]) -> str:
-    return js([{"id": i, "label": label} for i, label in items])
-
+# ---- Chapters 5 and 6 ---------------------------------------------------------------------
 
 def bullets(items: list[str], empty: str) -> str:
     if not items:
         return f"<p>{js(empty)}</p>"
-    return "<ul>" + "".join(f"<li>{js(i)}</li>" for i in items) + "</ul>"
+    return "<ul>" + "".join(f"<li>{inline(i)}</li>" for i in items) + "</ul>"
+
+
+def tradeoffs(extra: dict) -> str:
+    return "\n".join([
+        f"<div id=\"tradeoffs-list\" data-ve-anchor=\"true\"><h3>{js('Trade-offs')}</h3>{bullets(extra.get('tradeoffs', []), 'No trade-offs recorded.')}</div>",
+        f"<div id=\"tradeoffs-concerns\" data-ve-anchor=\"true\"><h3>{js('Concerns')}</h3>{bullets(extra.get('concerns', []), 'No concerns recorded.')}</div>",
+        f"<div id=\"tradeoffs-verifications\" data-ve-anchor=\"true\"><h3>{js('Verifications of this explainer')}</h3>{bullets(extra.get('verifications', []), 'No verifications recorded.')}</div>"])
+
+
+def exercises() -> str:
+    return f"<p className=\"ux-none\">{js('This chapter is a placeholder. The learning app fills it.')}</p>"
+
+
+def anchors(items: list[tuple[str, str]]) -> str:
+    return js([{"id": i, "label": label} for i, label in items])
+
+
+CHAPTERS = ["orientation", "tour", "confidence", "evidence", "tradeoffs", "exercises"]
+CHAPTER_COMPONENTS = "DiagramCanvas, DiagramWalkthrough, DataTable, StatusPill, CodeBlock, DiffBlock, TerminalBlock"
+
+
+def chapter_file(repo_path: str, name: str, body: str) -> str:
+    """One self-contained MDX unit: its own imports and its content, so an app can embed it."""
+    return (f"{{/* understando chapter: {name}. scripts/explain.py writes it from trust-map.json and explain.json. */}}\n"
+            f"import {{ {CHAPTER_COMPONENTS} }} from '{repo_path}/visual-explainer-mdx/components';\n\n{body}\n")
 
 
 def main() -> int:
@@ -440,32 +581,35 @@ def main() -> int:
         tm.fail("run scripts/verdicts.py first; the map is invalid or has no verdicts", 1)
     extra = tm.load(args.extra) if args.extra else {}
     out = Path(args.out)
-    out.mkdir(parents=True, exist_ok=True)
+    (out / "chapters").mkdir(parents=True, exist_ok=True)
     (out / "pr-section.md").write_text(pr_section(data, extra, args.explainer_url), encoding="utf-8")
-    template = (tm.ROOT / "templates" / "three-level.mdx").read_text(encoding="utf-8")
-    title = f"Trust map for #{data.get('pr')}"
-    s = data["summary"]
-    summary = (f"{data['repo']}: {data.get('title', '')}. " if data.get("title") else f"{data['repo']}. ")
-    summary += ", ".join(f"{s[v]} {v}" for v in VERDICTS) + f". Head {data['head'][:10]}."
+    runtime = runtime_path(args.runtime)
+    steps = tour_steps(data, extra)
+    bodies = {"orientation": orientation(data, extra), "tour": tour(data, extra, args.repo),
+              "confidence": confidence(data, extra), "evidence": evidence(data, args.repo, steps),
+              "tradeoffs": tradeoffs(extra), "exercises": exercises()}
+    for i, name in enumerate(CHAPTERS, 1):
+        (out / "chapters" / f"{i:02d}-{name}.mdx").write_text(chapter_file(runtime, name, bodies[name]), encoding="utf-8")
     groups = [(slug(v), f"{v} ({len(cs)})") for v, cs in by_verdict(data)]
-    high_anchors = [("high-" + i, label) for i, label in groups]
-    low_anchors = [("low-" + i, label) for i, label in groups]
-    medium_anchors = [(i, label) for i, label in [("medium-architecture", "Architecture"), ("medium-codepath", "Code path")]
-                      if extra.get(i.split("-")[1])]
-    medium_anchors += [("medium-verdicts", "Verdicts by layer"), ("medium-kinds", "Verifier kinds"), ("medium-verifiers", "Verifier map")]
-    filled = (template.replace("{{REPO}}", runtime_path(args.runtime))
-              .replace("{{TITLE}}", json.dumps(title)).replace("{{SUMMARY}}", json.dumps(summary))
-              .replace("{{HIGH_ANCHORS}}", anchors(high_anchors)).replace("{{MEDIUM_ANCHORS}}", anchors(medium_anchors))
-              .replace("{{LOW_ANCHORS}}", anchors(low_anchors))
-              .replace("{{GLOSSARY}}", glossary(data))
-              .replace("{{HIGH}}", high(data)).replace("{{MEDIUM}}", medium(data, extra))
-              .replace("{{LOW}}", low(data, args.repo))
-              .replace("{{TRADEOFFS}}", bullets(extra.get("tradeoffs", []), "No trade-offs recorded."))
-              .replace("{{CONCERNS}}", bullets(extra.get("concerns", []), "No concerns recorded."))
-              .replace("{{VERIFICATIONS}}", bullets(extra.get("verifications", []), "No verifications recorded.")))
+    nav = {
+        "ORIENTATION_ANCHORS": [("orientation-architecture", "Architecture")] * bool(extra.get("architecture")) + [("orientation-words", "Words to know")],
+        "TOUR_ANCHORS": [("tour-" + s["id"], s["title"].split(":")[0]) for s in steps],
+        "CONFIDENCE_ANCHORS": [("confidence-weak", "Weakest claims")] + [("confidence-controls", "Verify the verifiers")] * bool(extra.get("control_walkthroughs"))
+                              + [("confidence-solid", "What is solid"), ("confidence-map", "Verifiers to claims")],
+        "EVIDENCE_ANCHORS": [("evidence-index", "Claim index")] + [("evidence-" + i, label) for i, label in groups],
+        "TRADEOFFS_ANCHORS": [("tradeoffs-list", "Trade-offs"), ("tradeoffs-concerns", "Concerns"), ("tradeoffs-verifications", "Verifications")],
+    }
+    title = f"PR #{data.get('pr')}: " + (data.get("title") or data["repo"])
+    s = data["summary"]
+    summary = (f"{data['repo']}, head {data['head'][:10]}. A guided tour of the change, then how far to trust it: "
+               + ", ".join(f"{s[v]} {v}" for v in VERDICTS) + ".")
+    filled = (tm.ROOT / "templates" / "three-level.mdx").read_text(encoding="utf-8")
+    filled = filled.replace("{{REPO}}", runtime).replace("{{TITLE}}", json.dumps(title)).replace("{{SUMMARY}}", json.dumps(summary))
+    for key, items in nav.items():
+        filled = filled.replace("{{" + key + "}}", anchors(items))
     (out / "explainer.mdx").write_text(filled, encoding="utf-8")
     print(f"wrote {out / 'pr-section.md'}")
-    print(f"wrote {out / 'explainer.mdx'}")
+    print(f"wrote {out / 'explainer.mdx'} and {len(CHAPTERS)} chapters in {out / 'chapters'}")
     return 0
 
 

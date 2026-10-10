@@ -83,6 +83,26 @@ if missing:
     sys.exit(f"FAIL: the explainer has no plain.what text for {missing}")
 print(f"the explainer shows plain.what for all {len(claims)} claims")
 PY
+python3 - "$MAP" "$WORK/explain" <<'PY'
+# One self-contained MDX unit per chapter, and the guided tour shows each claim at a step.
+import json, pathlib, re, sys
+claims = json.load(open(sys.argv[1]))["claims"]
+chapters = pathlib.Path(sys.argv[2]) / "chapters"
+names = ["01-orientation", "02-tour", "03-confidence", "04-evidence", "05-tradeoffs", "06-exercises"]
+missing = [n for n in names if not (chapters / f"{n}.mdx").is_file()]
+if missing:
+    sys.exit(f"FAIL: missing chapter files {missing}")
+entry = (pathlib.Path(sys.argv[2]) / "explainer.mdx").read_text()
+for n in names:
+    text = (chapters / f"{n}.mdx").read_text()
+    if "visual-explainer-mdx/components" not in text.split("\n", 2)[1] or f"./chapters/{n}.mdx" not in entry:
+        sys.exit(f"FAIL: chapter {n} does not import its components, or the entry does not import it")
+tour = (chapters / "02-tour.mdx").read_text()
+absent = [c["id"] for c in claims if not re.search(r'"text":\s*"' + c["id"] + '"', tour)]
+if absent:
+    sys.exit(f"FAIL: the guided tour does not show {absent}")
+print(f"{len(names)} chapter units; the guided tour shows all {len(claims)} claims")
+PY
 LINT="$(find "$HOME/.claude/skills/asd-ste100/scripts" "$HOME/.agents/skills/asd-ste100/scripts" -name ste-lint.py 2>/dev/null | head -1)"
 python3 -I "$LINT" "$WORK/explain/pr-section.md" | tail -2
 
