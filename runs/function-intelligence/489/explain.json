@@ -193,5 +193,434 @@
     "Each control ran in a new scratch worktree of a local clone. The run removed each worktree after the control.",
     "Each red control matched its expected pattern, except K01b. K01b stayed green, and the map flags it.",
     "No model call and no paid step ran. The env file set a dummy key and an unreachable base URL."
+  ],
+  "orientation": [
+    "This PR replaces four document pipelines with one harness, `cr docgen --kind {note,uap,fmm,4h}`.",
+    "Before this PR, each pipeline had its own CR loader, checks, repair and judge wiring.",
+    "The harness runs one loop for each kind. It projects a draft and reflects on it. An editor repairs the findings, and the loop keeps or reverts each round.",
+    "Type pins and a boundary script make the pipeline rules static, and anti-gaming rules stop the editor from hiding a problem without a repair.",
+    "The result is one set of contracts and fewer failures in the note, at a higher cost for each document."
+  ],
+  "tour": [
+    {
+      "id": "project",
+      "title": "Project: load the CR and make the first draft",
+      "text": [
+        "`main` gets a `KindSpec` from `KINDS`, loads the `FinishedCR` and calls the kind's `run`. Only `load_finished_cr` makes a `FinishedCR`, after the checks F1 to F4.",
+        "`run_document` makes one document from one `FinishedCR`. `adapter.project` calls the existing generator of the kind. The `Workspace` holds the seeds and the writable files.",
+        "`scripts/check_docgen_boundary.py` reads the AST in the CI `seam` job. A docgen module imports only the modules that its `DOCGEN_IMPORTS` row lists. No adapter imports another, and the core imports no CLI, FMM, 4H, refine or `cr.uap_*` module."
+      ],
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
+          "start": 139,
+          "end": 143
+        }
+      ],
+      "claims": [
+        "C09",
+        "C25",
+        "C35",
+        "C02",
+        "C03",
+        "C24",
+        "C05",
+        "C06",
+        "C07",
+        "C08",
+        "C36",
+        "C22",
+        "C23"
+      ],
+      "diagram": "boundary"
+    },
+    {
+      "id": "reflect",
+      "title": "Reflect: find the problems, and gate what the editor can see",
+      "text": [
+        "Reflection is the adapter's code checks plus each configured reflector. `classify` is the only maker of an `EditableFinding`. It needs its producer's word that the files can repair the finding.",
+        "`JudiciaryReflector._reflect` applies the anti-gaming rules. A key in `not_editable` is never editable. A key in `evidence_bound` is editable only in a card file whose `file_evidence` holds its `input_fact`. A model major blocks only when a second sample reports the same claim again.",
+        "The judiciary worker must start with `synthetic_only: true`. A refusal, a bad line, a timeout or an exit raises `JudiciaryWorkerError`."
+      ],
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
+          "start": 161,
+          "end": 180
+        }
+      ],
+      "claims": [
+        "C10",
+        "C11",
+        "C12",
+        "C13",
+        "C14",
+        "C21",
+        "C38"
+      ]
+    },
+    {
+      "id": "edit",
+      "title": "Edit rounds: the editor repairs the gated findings",
+      "text": [
+        "A round is one editor session, then reflection, then the accept rule. `Editor.edit` takes only `EditableFinding`s.",
+        "`Workspace.apply_patch` refuses a read-only path, each delete, and a patch after which the file's parser fails. `finish` refuses while the code checks report a blocking finding, up to 3 times.",
+        "A lost call sets `model_error`. The loop treats the round as lost: `edit` restores the files, and no later round, `settle` or release step runs. The edit rounds also stop when a floor finding remains that no writable file holds."
+      ],
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
+          "start": 227,
+          "end": 242
+        }
+      ],
+      "claims": [
+        "C01",
+        "C16",
+        "C17",
+        "C18",
+        "C19",
+        "C37"
+      ],
+      "walkthrough": "loop"
+    },
+    {
+      "id": "accept",
+      "title": "Accept: keep the round, or put the files back",
+      "text": [
+        "`score` counts the code-decided blocking, the model-decided blocking and the minor findings.",
+        "`StrictImprovement` keeps a round only for a lower score with no new blocking key. `LastClean` keeps each edit. Then `settle` restores the last kept draft that has no blocking finding.",
+        "The loop stops after a round that the accept rule did not keep and that changed no file."
+      ],
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
+          "start": 210,
+          "end": 219
+        },
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
+          "start": 243,
+          "end": 247
+        }
+      ],
+      "claims": [
+        "C15",
+        "C20",
+        "C28"
+      ]
+    },
+    {
+      "id": "release",
+      "title": "Release audit: check the fired majors again",
+      "text": [
+        "Under `--reflection cr`, the note runs `CrReleaseAudit`. It runs the fired major cartridges again on the draft that stands. Each blocking finding that it reports becomes a floor finding.",
+        "The other kinds have no release step. No claim in this trust map protects this step. The floor below still applies."
+      ],
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
+          "start": 248,
+          "end": 261
+        }
+      ],
+      "claims": []
+    },
+    {
+      "id": "floor",
+      "title": "Floor: release, fall back, or block",
+      "text": [
+        "`_floor` releases the draft only when no floor finding remains. Else it restores the adapter's fallback, which stands only when the code checks find no floor finding on it. Else it puts the draft back and blocks.",
+        "The result is `released`, `fallback` or `blocked`. No judiciary finding sets `floor`."
+      ],
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
+          "start": 79,
+          "end": 98
+        }
+      ],
+      "claims": [
+        "C33"
+      ]
+    },
+    {
+      "id": "render",
+      "title": "Render: write the document and the results",
+      "text": [
+        "`adapter.render` makes the document. `write_outputs` writes the record views, `generation.json` and `trace.json`. It writes the document only when the floor did not block.",
+        "The exit code is 0 for a released document or a fallback, 1 for a block or a failed call, and 2 for bad input. The recorded evals and cost meters describe what this step gives."
+      ],
+      "code": [
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
+          "start": 262,
+          "end": 289
+        }
+      ],
+      "claims": [
+        "C04",
+        "C26",
+        "C27",
+        "C29",
+        "C30",
+        "C31",
+        "C32",
+        "C34"
+      ]
+    }
+  ],
+  "diagrams": {
+    "boundary": {
+      "title": "The import boundary",
+      "description": "What the boundary script and the constructor rules permit. A dashed edge is an import that the script refuses.",
+      "nodes": [
+        {
+          "id": "cli",
+          "label": "cr.docgen.cli"
+        },
+        {
+          "id": "adapters",
+          "label": "adapters: clinician_note, uap, fmm, four_horsemen (C05)"
+        },
+        {
+          "id": "other",
+          "label": "another adapter (C06)"
+        },
+        {
+          "id": "core",
+          "label": "core: adapter, findings, workspace, accept, session, loop (C07)"
+        },
+        {
+          "id": "kinds",
+          "label": "CLI, FMM, 4H, refine, cr.uap_*",
+          "shape": "oval"
+        },
+        {
+          "id": "note",
+          "label": "cr.note.author, cr.note.loop (C08)"
+        },
+        {
+          "id": "loader",
+          "label": "finished_cr.py: FinishedCR(...) (C09)"
+        },
+        {
+          "id": "gate",
+          "label": "findings.py: EditableFinding(...) (C10)"
+        }
+      ],
+      "edges": [
+        {
+          "from": "cli",
+          "to": "adapters",
+          "label": "imports"
+        },
+        {
+          "from": "adapters",
+          "to": "core",
+          "label": "imports"
+        },
+        {
+          "from": "adapters",
+          "to": "other",
+          "label": "refused",
+          "style": "dashed"
+        },
+        {
+          "from": "core",
+          "to": "kinds",
+          "label": "refused",
+          "style": "dashed"
+        },
+        {
+          "from": "adapters",
+          "to": "note",
+          "label": "clinician_note only"
+        },
+        {
+          "from": "core",
+          "to": "loader",
+          "label": "only maker"
+        },
+        {
+          "from": "core",
+          "to": "gate",
+          "label": "only maker"
+        }
+      ]
+    }
+  },
+  "walkthroughs": {
+    "loop": {
+      "title": "One finding through the loop",
+      "description": "A finding goes through the gate, the editor, reflection and the accept rule. The labels name the functions at the head.",
+      "nodes": [
+        {
+          "id": "finding",
+          "label": "a reflection finding",
+          "shape": "oval"
+        },
+        {
+          "id": "gate",
+          "label": "classify: EditableFinding? (C10-C14)",
+          "shape": "diamond"
+        },
+        {
+          "id": "held",
+          "label": "not editable: the judge grades it",
+          "shape": "oval"
+        },
+        {
+          "id": "edit",
+          "label": "Editor.edit (C01, C18, C19)"
+        },
+        {
+          "id": "again",
+          "label": "reflect again (C17)"
+        },
+        {
+          "id": "keep",
+          "label": "AcceptRule.keep (C15, C20)",
+          "shape": "diamond"
+        },
+        {
+          "id": "kept",
+          "label": "kept: next round"
+        },
+        {
+          "id": "restore",
+          "label": "reverted: restore the files"
+        }
+      ],
+      "edges": [
+        {
+          "id": "in",
+          "from": "finding",
+          "to": "gate",
+          "label": "each finding"
+        },
+        {
+          "id": "no",
+          "from": "gate",
+          "to": "held",
+          "label": "no"
+        },
+        {
+          "id": "yes",
+          "from": "gate",
+          "to": "edit",
+          "label": "yes"
+        },
+        {
+          "id": "patch",
+          "from": "edit",
+          "to": "again",
+          "label": "apply_patch"
+        },
+        {
+          "id": "score",
+          "from": "again",
+          "to": "keep",
+          "label": "score"
+        },
+        {
+          "id": "keepit",
+          "from": "keep",
+          "to": "kept",
+          "label": "lower score"
+        },
+        {
+          "id": "revert",
+          "from": "keep",
+          "to": "restore",
+          "label": "not better"
+        }
+      ],
+      "steps": [
+        {
+          "edgeId": "in",
+          "caption": "Reflection reports a finding. The gate decides if the editor can see it."
+        },
+        {
+          "edgeId": "no",
+          "caption": "A not_editable key, a fact outside its card, or a major that the second sample did not repeat stays with the judge."
+        },
+        {
+          "edgeId": "yes",
+          "caption": "Only an EditableFinding reaches the editor. classify is its only maker."
+        },
+        {
+          "edgeId": "patch",
+          "caption": "The editor patches writable files only. It cannot delete a file, and finish refuses while a blocking code finding remains."
+        },
+        {
+          "edgeId": "score",
+          "caption": "Reflection runs again on the patched draft and gives a score."
+        },
+        {
+          "edgeId": "keepit",
+          "caption": "A lower score keeps the round, and the next round starts from the new draft."
+        },
+        {
+          "edgeId": "revert",
+          "caption": "Else the files go back. A round that changed nothing ends the edit rounds."
+        }
+      ]
+    }
+  },
+  "control_walkthroughs": [
+    {
+      "title": "Verify the verifiers: plant a bug, watch the check",
+      "controls": [
+        "K01",
+        "K01b",
+        "K35"
+      ],
+      "description": "Each control plants one bug in a scratch worktree and runs one check. K01b shows a pin that stayed green, and K35 shows the project-wide check that went red on the same edit."
+    }
+  ],
+  "risks": [
+    {
+      "claims": [
+        "C31"
+      ],
+      "why": "If `cr_service` imports `cr.docgen`, the new code can change production. Only the PR text says that it does not.",
+      "fix": "Add a `cr_service` rule to `scripts/check_docgen_boundary.py` that refuses an import of `cr.docgen`. Then plant the import as a control."
+    },
+    {
+      "claims": [
+        "C38"
+      ],
+      "why": "V36 skips when judiciary is not built, and it skips in CI. The control K36 stayed green, so the test cannot fail now.",
+      "fix": "Build judiciary in the CI test job, or make V36 fail, not skip, when the build is missing."
+    },
+    {
+      "claims": [
+        "C01"
+      ],
+      "why": "Pin V01 stayed green on K01b, which widened the editor contract. Only the project-wide check V35 went red.",
+      "fix": "Add a pin that calls each editor with a plain `Finding` list, so that the pin file goes red on K01b."
+    },
+    {
+      "claims": [
+        "C35"
+      ],
+      "why": "A packet and a ledger of different members could reach one document. No test gives `require_same_scope` a mismatched pair.",
+      "fix": "Add a test that gives `require_same_scope` a packet and a ledger of different members, and expects a refusal."
+    },
+    {
+      "claims": [
+        "C36"
+      ],
+      "why": "A caller of the deleted `sheet_names` fails at run time. The PR assumes that no caller exists.",
+      "fix": "Record the project-wide type check, or a repo search for `sheet_names`, as a verifier for this claim."
+    },
+    {
+      "claims": [
+        "C37"
+      ],
+      "why": "In diagnose mode, an unexpected tool call could give an empty error body. No test sends one.",
+      "fix": "Add a test that sends unexpected tool calls in diagnose mode, and checks that `submission_text` names them."
+    }
   ]
 }
