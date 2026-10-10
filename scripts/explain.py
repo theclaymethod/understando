@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -37,9 +38,17 @@ LANG = {".py": "python", ".ts": "ts", ".tsx": "tsx", ".js": "js", ".mjs": "js", 
         ".md": "markdown", ".sh": "bash", ".toml": "toml", ".yml": "yaml", ".yaml": "yaml"}
 
 
-def js(value) -> str:
-    """A JSX expression that holds `value` as data, so MDX never parses it as markup."""
-    return "{" + json.dumps(value, ensure_ascii=False) + "}"
+def js(value, escape: bool = True) -> str:
+    """A JSX expression that holds `value` as data, so MDX never parses it as markup.
+
+    CodeBlock reads its `code` prop as raw text, so a `\\u003c` escape would show. Pass
+    escape=False for code. The MDX preflight still needs the escape before a capital letter."""
+    text = json.dumps(value, ensure_ascii=False)
+    if not escape and not re.search(r"<[A-Z]", text):
+        return "{" + text + "}"
+    # Escape < and >. JSON syntax holds them only inside strings, and the MDX preflight
+    # must never read code text as a component tag.
+    return "{" + text.replace("<", "\\u003c").replace(">", "\\u003e") + "}"
 
 
 def snippet(repo: str, head: str, ref: dict) -> tuple[str, int] | None:
@@ -104,10 +113,19 @@ def pr_section(data: dict, extra: dict, explainer_url: str | None) -> str:
     return "\n".join(out) + "\n"
 
 
-def table(rows: list[list[str]], head: list[str]) -> str:
-    cells = "".join(f"<th>{js(h)}</th>" for h in head)
-    body = "".join("<tr>" + "".join(f"<td>{js(c)}</td>" for c in r) + "</tr>" for r in rows)
-    return f"<table><thead><tr>{cells}</tr></thead><tbody>{body}</tbody></table>"
+CELL = "{{padding: '6px 10px', borderBottom: '1px solid var(--ve-border, #ddd)', verticalAlign: 'top', textAlign: 'left'}}"
+TIGHT = "{{padding: '6px 10px', borderBottom: '1px solid var(--ve-border, #ddd)', verticalAlign: 'top', textAlign: 'left', whiteSpace: 'nowrap'}}"
+
+
+def table(rows: list[list[str]], head: list[str], nowrap: tuple[int, ...] = (0,)) -> str:
+    def style(i: int) -> str:
+        return TIGHT if i in nowrap else CELL
+    cells = "".join(f"<th style={style(i)}>{js(h)}</th>" for i, h in enumerate(head))
+    body = "".join("<tr>" + "".join(f"<td style={style(i)}>{js(c)}</td>" for i, c in enumerate(r)) + "</tr>"
+                   for r in rows)
+    return (f"<div style={{{{overflowX: 'auto', maxWidth: '100%'}}}}>"
+            f"<table style={{{{width: '100%', borderCollapse: 'collapse'}}}}>"
+            f"<thead><tr>{cells}</tr></thead><tbody>{body}</tbody></table></div>")
 
 
 def diagram(spec: dict | None, title: str) -> str:
@@ -123,9 +141,9 @@ def high(data: dict) -> str:
     parts = [f"<p>{js(str(len(data['claims'])) + ' claims: ' + counts + '.')}</p>"]
     loud = [f for f in data["flags"] if f.get("loud")]
     if loud:
-        parts.append("<Callout>" + "".join(f"<p><strong>{js(f['flag'])}</strong> {js(f['detail'])}</p>" for f in loud) + "</Callout>")
+        parts.append("<Callout>" + "".join(f"<p><strong>{js(f['flag'] + ':')}</strong>{js(' ' + f['detail'])}</p>" for f in loud) + "</Callout>")
     parts.append(table([[c["id"], c.get("layer", ""), c["text"], c["verdict"]] for c in data["claims"]],
-                       ["ID", "Layer", "Claim", "Verdict"]))
+                       ["ID", "Layer", "Claim", "Verdict"], nowrap=(0, 1, 3)))
     parts.append(f"<p>{js('Proven: a fact-tier verifier went red on a planted defect. Backed: a verifier exists, but no control went red, or a model judged it. Asserted: only the PR text says so. Gap: no verifier and no statement.')}</p>")
     return "\n".join(parts)
 
@@ -136,29 +154,20 @@ def medium(data: dict, extra: dict) -> str:
         parts.append(diagram(extra["architecture"], "Architecture"))
     if extra.get("codepath"):
         parts.append(diagram(extra["codepath"], "Code path"))
-    layer_nodes, edges, seen = [], [], set()
+    layers: dict[str, dict[str, int]] = {}
     for c in data["claims"]:
-        layer = c.get("layer", "Claims")
-        if layer not in seen:
-            seen.add(layer)
-            layer_nodes.append({"id": f"l{len(seen)}", "label": layer})
-    lid = {n["label"]: n["id"] for n in layer_nodes}
-    counts: dict[tuple[str, str], int] = {}
-    for c in data["claims"]:
-        key = (lid[c.get("layer", "Claims")], c["verdict"])
-        counts[key] = counts.get(key, 0) + 1
-    verdict_nodes = [{"id": v.lower(), "label": v, "shape": "oval"} for v in VERDICTS
-                     if any(k[1] == v for k in counts)]
-    edges = [{"from": a, "to": v.lower(), "label": str(n)} for (a, v), n in counts.items()]
-    parts.append(diagram({"description": "Each layer of claims, and how many claims get each verdict.",
-                          "nodes": layer_nodes + verdict_nodes, "edges": edges}, "Claims by layer and verdict"))
+        layers.setdefault(c.get("layer", "Claims"), {v: 0 for v in VERDICTS})[c["verdict"]] += 1
+    parts.append(f"<p>{js('Claims by layer and verdict.')}</p>")
+    parts.append(table([[layer] + [str(n[v]) for v in VERDICTS] for layer, n in layers.items()],
+                       ["Layer"] + VERDICTS, nowrap=(0, 1, 2, 3, 4)))
     controls: dict[str, list[str]] = {}
     for k in data["controls"]:
         status = (k.get("result") or {}).get("status", "not run")
         controls.setdefault(k["verifier"], []).append(f"{k['id']} {k['recipe']}: {status}")
     rows = [[v["id"], v["kind"], v["tier"], v.get("state", ""), ", ".join(v["claims"]),
              "; ".join(controls.get(v["id"], [])) or "none"] for v in data["verifiers"]]
-    parts.append(table(rows, ["Verifier", "Kind", "Tier", "State", "Claims", "Controls"]))
+    parts.append(f"<p>{js('The verifier map: each verifier, its state, the claims it backs and its controls.')}</p>")
+    parts.append(table(rows, ["Verifier", "Kind", "Tier", "State", "Claims", "Controls"], nowrap=(0, 1, 2, 3, 4)))
     return "\n".join(p for p in parts if p)
 
 
@@ -180,9 +189,9 @@ def low(data: dict, repo: str) -> str:
                 code, start = got
                 name = f"{ref['path']}:{start}"
                 parts.append(f"<CodeBlock language={js(LANG.get(Path(ref['path']).suffix, 'text'))} "
-                             f"filename={js(name)} code={js(code)} />")
+                             f"filename={js(name)} code={js(code, escape=False)} />")
         for v in by_claim.get(c["id"], []):
-            parts.append(f"<p><strong>{js(v['id'])}</strong> {js(v['description'] + ' Provenance: ' + v['provenance'])}</p>")
+            parts.append(f"<p><strong>{js(v['id'] + ':')}</strong>{js(' ' + v['description'] + ' Provenance: ' + v['provenance'])}</p>")
             if "recorded" in v:
                 parts.append(f"<TerminalBlock title={js('Recorded: ' + v['recorded']['source'])} content={js(v['recorded']['result'])} />")
             if "command" in v:
@@ -223,9 +232,10 @@ def main() -> int:
     out.mkdir(parents=True, exist_ok=True)
     (out / "pr-section.md").write_text(pr_section(data, extra, args.explainer_url), encoding="utf-8")
     template = (tm.ROOT / "templates" / "three-level.mdx").read_text(encoding="utf-8")
-    title = f"Trust map: {data['repo']} #{data.get('pr')}" + (f", {data['title']}" if data.get("title") else "")
+    title = f"Trust map for #{data.get('pr')}"
     s = data["summary"]
-    summary = ", ".join(f"{s[v]} {v}" for v in VERDICTS) + f". Head {data['head'][:10]}."
+    summary = (f"{data['repo']}: {data.get('title', '')}. " if data.get("title") else f"{data['repo']}. ")
+    summary += ", ".join(f"{s[v]} {v}" for v in VERDICTS) + f". Head {data['head'][:10]}."
     filled = (template.replace("{{REPO}}", runtime_path(args.runtime))
               .replace("{{TITLE}}", json.dumps(title)).replace("{{SUMMARY}}", json.dumps(summary))
               .replace("{{HIGH}}", high(data)).replace("{{MEDIUM}}", medium(data, extra))

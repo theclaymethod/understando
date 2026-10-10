@@ -7,7 +7,7 @@ Standard library only. The schema in ../schema/trust-map.schema.json is the sour
 - every verifier backs only claims that exist;
 - every control names a verifier that exists;
 - a verifier has a command, or recorded evidence, or both;
-- a model verifier names its family and its context.
+- a verifier judged by a model names its family and its context, and kind `model` is guess tier.
 """
 
 from __future__ import annotations
@@ -139,7 +139,7 @@ def validate(data: dict) -> list[str]:
         ind = v["independence"]
         if ind["by"] == "model" and ("family" not in ind or "context" not in ind):
             errors.append(f"verifier {v['id']}: a model verifier names its family and context")
-        if ind["by"] == "model" and v["tier"] != "guess":
+        if v["kind"] == "model" and v["tier"] != "guess":
             errors.append(f"verifier {v['id']}: a model verifier is guess tier")
     for k in data["controls"]:
         if k["verifier"] not in verifier_ids:

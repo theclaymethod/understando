@@ -11,6 +11,7 @@ Output: verifier `state`, the `flags` list, claim `verdict` and `reason`, and `s
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -74,6 +75,11 @@ def verifier_state(v: dict, controls: list[dict], flags: list[dict]) -> str:
     return "untested"
 
 
+def families(text: str | None) -> set[str]:
+    """`openai, anthropic` -> {openai, anthropic}: a verifier can use more than one family."""
+    return {f for f in re.split(r"[\s,+]+", text or "") if f}
+
+
 def can_prove(v: dict, author_family: str | None) -> bool:
     if v["tier"] == "fact":
         return True
@@ -81,8 +87,8 @@ def can_prove(v: dict, author_family: str | None) -> bool:
     return (
         ind["by"] == "model"
         and ind.get("context") == "fresh"
-        and ind.get("family") is not None
-        and ind.get("family") != author_family
+        and bool(families(ind.get("family")))
+        and author_family not in families(ind.get("family"))
     )
 
 
@@ -95,7 +101,7 @@ def apply(data: dict) -> dict:
     for v in data["verifiers"]:
         v["state"] = verifier_state(v, controls_by_verifier.get(v["id"], []), flags)
         ind = v["independence"]
-        if ind["by"] == "model" and author and ind.get("family") == author:
+        if ind["by"] == "model" and author and author in families(ind.get("family")):
             flags.append({
                 "flag": "same-family", "subject": v["id"], "loud": False,
                 "detail": f"{v['id']} uses the {author} family, the same family as the author.",
