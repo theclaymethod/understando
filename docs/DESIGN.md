@@ -10,11 +10,12 @@ understando helps a reviewer decide what to trust in a large PR without reading 
 ## Output (per PR)
 
 1. **PR-body section.** It is short: a diagram, the headline claims-and-verdicts table, and short bullets. No long samples.
-2. **Three-level explainer.** Editable source plus HTML, built with the visual-explainer runtime and cards. It has a layer overview plus a drill-down per claim:
-   - **High:** every claim with its verdict, one screen.
-   - **Medium:** the architecture and codepath diagrams, and the map from each verifier to its claims.
-   - **Low:** for each claim, the exact code snippet and the verifier's evidence: the command, its output, and its control result.
-   - **Meta sections:** trade-offs, concerns, and verifications.
+2. **Explainer.** Editable source plus HTML, built with the visual-explainer runtime and cards. It is teaching material: it gets a developer up to speed on the PR, then shows how strong the verification is. One self-contained MDX unit per chapter:
+   - **Orientation:** what the PR does and why, and one architecture diagram.
+   - **Guided tour:** the code path in execution order, with each claim at the step that it protects.
+   - **Confidence:** the claims ranked by risk, each weak claim with its cheapest fix, then what is solid, and the map from each verifier to its claims.
+   - **Evidence:** for each claim, the exact code snippet and the verifier's evidence: the command, its output, and its control result.
+   - **Trade-offs and concerns,** and the verifications of the explainer. **Exercises** is a placeholder for the learning app.
 3. **`trust-map.json`:** claims, verifiers, controls and verdicts, so a later run can diff against an earlier one.
 4. **Storage:** everything lives under `~/dev/understando/runs/<repo>/<pr>/`, outside the repo under review.
 
