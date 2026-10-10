@@ -1,0 +1,157 @@
+"""Shared helpers for the understando scripts: load, save and validate a trust map.
+
+Standard library only. The schema in ../schema/trust-map.schema.json is the source of truth.
+`validate` applies the subset of JSON Schema that file uses, then the cross-reference rules:
+
+- every id is unique across claims, verifiers and controls;
+- every verifier backs only claims that exist;
+- every control names a verifier that exists;
+- a verifier has a command, or recorded evidence, or both;
+- a model verifier names its family and its context.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+SCHEMA_PATH = ROOT / "schema" / "trust-map.schema.json"
+
+_SECRET_PATTERNS = [
+    re.compile(r"sk-[A-Za-z0-9_-]{16,}"),
+    re.compile(r"(?i)\b(api[_-]?key|token|secret|password)\b(\s*[=:]\s*)\S+"),
+    re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}"),
+]
+
+
+def now() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def redact(text: str) -> str:
+    """Mask values that look like credentials before output goes into a trust map."""
+    text = _SECRET_PATTERNS[0].sub("sk-REDACTED", text)
+    text = _SECRET_PATTERNS[1].sub(lambda m: f"{m.group(1)}{m.group(2)}REDACTED", text)
+    return _SECRET_PATTERNS[2].sub("gh_REDACTED", text)
+
+
+def load(path: str | Path) -> dict:
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def save(data: dict, path: str | Path) -> None:
+    tmp = Path(str(path) + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(data, fh, indent=2, ensure_ascii=False)
+        fh.write("\n")
+    tmp.replace(path)
+
+
+def _type_ok(value, expected) -> bool:
+    names = expected if isinstance(expected, list) else [expected]
+    for name in names:
+        if name == "null" and value is None:
+            return True
+        if name == "boolean" and isinstance(value, bool):
+            return True
+        if name == "integer" and isinstance(value, int) and not isinstance(value, bool):
+            return True
+        if name == "number" and isinstance(value, (int, float)) and not isinstance(value, bool):
+            return True
+        if name == "string" and isinstance(value, str):
+            return True
+        if name == "array" and isinstance(value, list):
+            return True
+        if name == "object" and isinstance(value, dict):
+            return True
+    return False
+
+
+def _resolve(schema: dict, root: dict) -> dict:
+    while "$ref" in schema:
+        ref = schema["$ref"]
+        assert ref.startswith("#/"), ref
+        node = root
+        for part in ref[2:].split("/"):
+            node = node[part]
+        schema = node
+    return schema
+
+
+def _check(value, schema: dict, root: dict, where: str, errors: list[str]) -> None:
+    schema = _resolve(schema, root)
+    if "type" in schema and not _type_ok(value, schema["type"]):
+        errors.append(f"{where}: expected {schema['type']}, got {type(value).__name__}")
+        return
+    if "enum" in schema and value not in schema["enum"]:
+        errors.append(f"{where}: {value!r} is not one of {schema['enum']}")
+    if isinstance(value, str):
+        if len(value) < schema.get("minLength", 0):
+            errors.append(f"{where}: empty string")
+        if "pattern" in schema and not re.search(schema["pattern"], value):
+            errors.append(f"{where}: {value!r} does not match {schema['pattern']}")
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if "minimum" in schema and value < schema["minimum"]:
+            errors.append(f"{where}: {value} < {schema['minimum']}")
+    if isinstance(value, list):
+        if len(value) < schema.get("minItems", 0):
+            errors.append(f"{where}: needs at least {schema['minItems']} items")
+        if "items" in schema:
+            for i, item in enumerate(value):
+                _check(item, schema["items"], root, f"{where}[{i}]", errors)
+    if isinstance(value, dict):
+        props = schema.get("properties", {})
+        for key in schema.get("required", []):
+            if key not in value:
+                errors.append(f"{where}: missing {key!r}")
+        for key, item in value.items():
+            if key in props:
+                _check(item, props[key], root, f"{where}.{key}", errors)
+            elif schema.get("additionalProperties", True) is False:
+                errors.append(f"{where}: unknown key {key!r}")
+
+
+def validate(data: dict) -> list[str]:
+    root = load(SCHEMA_PATH)
+    errors: list[str] = []
+    _check(data, root, root, "$", errors)
+    if errors:
+        return errors
+    seen: set[str] = set()
+    for section in ("claims", "verifiers", "controls"):
+        for item in data[section]:
+            if item["id"] in seen:
+                errors.append(f"{section}: duplicate id {item['id']}")
+            seen.add(item["id"])
+    claim_ids = {c["id"] for c in data["claims"]}
+    verifier_ids = {v["id"] for v in data["verifiers"]}
+    for v in data["verifiers"]:
+        for cid in v["claims"]:
+            if cid not in claim_ids:
+                errors.append(f"verifier {v['id']}: unknown claim {cid}")
+        if "command" not in v and "recorded" not in v:
+            errors.append(f"verifier {v['id']}: needs a command or recorded evidence")
+        ind = v["independence"]
+        if ind["by"] == "model" and ("family" not in ind or "context" not in ind):
+            errors.append(f"verifier {v['id']}: a model verifier names its family and context")
+        if ind["by"] == "model" and v["tier"] != "guess":
+            errors.append(f"verifier {v['id']}: a model verifier is guess tier")
+    for k in data["controls"]:
+        if k["verifier"] not in verifier_ids:
+            errors.append(f"control {k['id']}: unknown verifier {k['verifier']}")
+        for e in k["edits"]:
+            if e["op"] == "replace" and ("find" not in e or "replace" not in e):
+                errors.append(f"control {k['id']}: replace needs find and replace")
+            if e["op"] == "append" and "text" not in e:
+                errors.append(f"control {k['id']}: append needs text")
+    return errors
+
+
+def fail(message: str, code: int = 2) -> None:
+    print(message, file=sys.stderr)
+    sys.exit(code)

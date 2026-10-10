@@ -1,0 +1,30 @@
+{/* understando three-level explainer. scripts/explain.py fills each slot from trust-map.json and explain.json. Edit the generated copy, not this template, to tune one PR. */}
+import { ExplainerShell, Section, DiagramCanvas, CodeBlock, TerminalBlock, Callout } from '{{REPO}}/visual-explainer-mdx/components';
+
+<ExplainerShell title={{{TITLE}}} summary={{{SUMMARY}}}>
+
+<Section title="High: every claim and its verdict">
+{{HIGH}}
+</Section>
+
+<Section title="Medium: architecture, code path and the verifier map">
+{{MEDIUM}}
+</Section>
+
+<Section title="Low: code and evidence per claim">
+{{LOW}}
+</Section>
+
+<Section title="Trade-offs">
+{{TRADEOFFS}}
+</Section>
+
+<Section title="Concerns">
+{{CONCERNS}}
+</Section>
+
+<Section title="Verifications of this explainer">
+{{VERIFICATIONS}}
+</Section>
+
+</ExplainerShell>
