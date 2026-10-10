@@ -3262,5 +3262,88 @@
     "Backed": "For each claim here, evidence exists, but we did not run it again. It is a record of a past run.",
     "Asserted": "For each claim here, only the PR text says it. No check proves it.",
     "Gap": "For each claim here, no check exists, and the PR does not state the claim. You must decide if it is important."
-  }
+  },
+  "exercises": [
+    {
+      "id": "X01",
+      "kind": "trace",
+      "claim": "C15",
+      "title": "Trace it: when do the edit rounds stop?",
+      "scenario": "cr docgen runs the edit loop on a UAP draft. Step the draft through the end of the loop in projects/clinical-reasoning/src/cr/docgen/loop.py.",
+      "steps": [
+        {
+          "prompt": "Round 2: the editor finishes its session, but it changes no file. The accept rule does not keep the round. What does the loop do next?",
+          "choices": [
+            "It starts round 3 from the same draft.",
+            "It ends the edit rounds.",
+            "It restores the first draft."
+          ],
+          "answer": 1,
+          "why": "_idle (loop.py:101-107) ends the rounds. Another round starts from the same draft and the same findings, so it cannot help (C15)."
+        },
+        {
+          "prompt": "A floor finding remains, and no writable file holds it. Can a further edit release the draft?",
+          "choices": [
+            "Yes. The editor can fix it in a different file.",
+            "No. The edit rounds stop.",
+            "Yes. The judge removes the finding."
+          ],
+          "answer": 1,
+          "why": "_unfixable (loop.py:69-71) is true, so the rounds stop. No edit can release the draft (C16)."
+        },
+        {
+          "prompt": "The loop stops with a floor finding in the final draft. The adapter has a fallback, and the code checks find no floor finding on it. What does _floor release?",
+          "choices": [
+            "The draft with the floor finding.",
+            "Nothing. The result is blocked.",
+            "The fallback."
+          ],
+          "answer": 2,
+          "why": "_floor restores the fallback. The fallback stands because the code checks find no floor finding on it."
+        }
+      ]
+    },
+    {
+      "id": "X02",
+      "kind": "close-gap",
+      "claim": "C35",
+      "title": "Close a gap: require_same_scope",
+      "brief": "No test gives require_same_scope a packet and a ledger of different scopes. Write a test that calls it with two different scopes and expects ValueError. The function reads only the scope attribute, so a types.SimpleNamespace is enough.",
+      "test_path": "projects/clinical-reasoning/tests/test_learn_same_scope.py",
+      "starter": "from types import SimpleNamespace\n\nimport pytest\n\nfrom cr.generation_util import require_same_scope\n\n\ndef test_require_same_scope_refuses_a_different_scope() -> None:\n    packet = SimpleNamespace(scope=(\"member-a\", \"snapshot-1\"))\n    ledger = SimpleNamespace(scope=(\"member-b\", \"snapshot-1\"))\n    # TODO: expect ValueError from require_same_scope(packet, ledger)\n",
+      "command": {
+        "cwd": "projects/clinical-reasoning",
+        "argv": [
+          "uv",
+          "run",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "tests/test_learn_same_scope.py"
+        ],
+        "env_file": true,
+        "timeout_s": 300,
+        "red_exits": [
+          1
+        ]
+      },
+      "bug": {
+        "description": "Remove the scope check, so require_same_scope accepts any pair.",
+        "edits": [
+          {
+            "op": "replace",
+            "path": "projects/clinical-reasoning/src/cr/generation_util.py",
+            "find": "    if packet.scope != ledger.scope:\n",
+            "replace": "    if False:\n",
+            "count": 1
+          }
+        ]
+      },
+      "expect": {
+        "pattern": "DID NOT RAISE|failed"
+      }
+    }
+  ]
 }
