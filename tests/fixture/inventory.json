@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "repo": "fixture/wallet",
+  "pr": 1,
+  "title": "Refuse overdrafts in the wallet",
+  "base": "BASE_SHA",
+  "head": "HEAD_SHA",
+  "author_family": "anthropic",
+  "narrative": "tests/fixture/PR.md",
+  "setup": [],
+  "claims": [
+    {
+      "id": "C01",
+      "cc_id": "no-overdraft",
+      "text": "The withdraw function refuses an amount that is more than the balance.",
+      "stated": true,
+      "source": "PR.md bullet 1 and the no-overdraft contract",
+      "layer": "Wallet core",
+      "code": [{"path": "wallet/core.py", "start": 8, "end": 15}]
+    },
+    {
+      "id": "C02",
+      "cc_id": null,
+      "text": "The withdraw function returns the balance minus the amount.",
+      "stated": true,
+      "source": "PR.md bullet 2",
+      "layer": "Wallet core",
+      "code": [{"path": "wallet/core.py", "start": 15, "end": 15}]
+    },
+    {
+      "id": "C04",
+      "cc_id": null,
+      "text": "Many threads can call the wallet module at the same time.",
+      "stated": true,
+      "source": "PR.md bullet 3",
+      "layer": "Wallet core"
+    },
+    {
+      "id": "C05",
+      "cc_id": null,
+      "text": "A denial message does not show the account number.",
+      "stated": true,
+      "source": "PR.md bullet 4",
+      "layer": "Messages",
+      "code": [{"path": "wallet/messages.py", "start": 4, "end": 5}]
+    }
+  ],
+  "verifiers": [
+    {
+      "id": "V01",
+      "kind": "unit",
+      "claims": ["C01"],
+      "tier": "fact",
+      "description": "OverdraftTest calls withdraw with an amount above the balance and expects OverdraftError.",
+      "command": {"argv": ["python3", "-m", "unittest", "-q", "tests.test_core.OverdraftTest"], "timeout_s": 60},
+      "independence": {"by": "tool", "tool": "unittest"},
+      "cost": {"usd": 0, "seconds": 1},
+      "provenance": "tests/test_core.py in the PR"
+    },
+    {
+      "id": "V02",
+      "kind": "unit",
+      "claims": ["C02"],
+      "tier": "fact",
+      "description": "BalanceTest calls withdraw and expects an int.",
+      "command": {"argv": ["python3", "-m", "unittest", "-q", "tests.test_core.BalanceTest"], "timeout_s": 60},
+      "independence": {"by": "tool", "tool": "unittest"},
+      "cost": {"usd": 0, "seconds": 1},
+      "provenance": "tests/test_core.py in the PR"
+    },
+    {
+      "id": "V03",
+      "kind": "contract-format",
+      "claims": ["C01"],
+      "tier": "fact",
+      "description": "cc-check format reads the @cc syntax in wallet/core.py.",
+      "command": {"argv": ["npx", "--no-install", "@spolu/cc-check@0.2.0", "format", "wallet/core.py"], "timeout_s": 120},
+      "independence": {"by": "tool", "tool": "cc-check"},
+      "cost": {"usd": 0, "seconds": 2},
+      "provenance": "Code Contracts cc-check 0.2.0"
+    },
+    {
+      "id": "V05",
+      "kind": "model",
+      "claims": ["C05"],
+      "tier": "guess",
+      "description": "A gpt reviewer read each denial message in a fresh context and looked for an account number.",
+      "recorded": {
+        "source": "PR.md bullet 4",
+        "result": "No finding. The reviewer found no account number in the denial messages.",
+        "at": "2026-10-09"
+      },
+      "independence": {"by": "model", "family": "openai", "context": "fresh"},
+      "cost": {"usd": 0.01, "note": "recorded, not run again"},
+      "provenance": "The PR author ran the reviewer. understando recorded the result and did not run it."
+    }
+  ],
+  "controls": [
+    {
+      "id": "K01",
+      "verifier": "V01",
+      "recipe": "remove-guard-line",
+      "description": "Remove the line that raises OverdraftError.",
+      "edits": [{"op": "replace", "path": "wallet/core.py", "find": "        raise OverdraftError(f\"{amount} is above the balance\")\n", "replace": "        pass\n"}],
+      "expect": {"status": "red", "pattern": "OverdraftError not raised"}
+    },
+    {
+      "id": "K02",
+      "verifier": "V02",
+      "recipe": "invert-condition",
+      "description": "Add the amount to the balance, not take it away.",
+      "edits": [{"op": "replace", "path": "wallet/core.py", "find": "    return balance - amount\n", "replace": "    return balance + amount\n"}],
+      "expect": {"status": "red", "pattern": "AssertionError"}
+    },
+    {
+      "id": "K03",
+      "verifier": "V03",
+      "recipe": "plant-violation",
+      "description": "Put a colon into the contract ID, which the grammar does not permit.",
+      "edits": [{"op": "replace", "path": "wallet/core.py", "find": "] no-overdraft\n", "replace": "] no-over:draft\n"}],
+      "expect": {"status": "red", "pattern": "Invalid @cc directive"}
+    }
+  ]
+}

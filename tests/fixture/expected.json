@@ -1,0 +1,17 @@
+{
+  "verdicts": {
+    "C01": "Proven",
+    "C02": "Asserted",
+    "C03": "Gap",
+    "C04": "Asserted",
+    "C05": "Backed"
+  },
+  "states": {
+    "V01": "proven",
+    "V02": "cannot-fail",
+    "V03": "proven",
+    "V05": "recorded"
+  },
+  "loud_flags": [["cannot-fail", "V02"]],
+  "summary": {"Proven": 1, "Backed": 1, "Asserted": 2, "Gap": 1}
+}
