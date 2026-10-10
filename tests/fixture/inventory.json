@@ -16,7 +16,17 @@
       "stated": true,
       "source": "PR.md bullet 1 and the no-overdraft contract",
       "layer": "Wallet core",
-      "code": [{"path": "wallet/core.py", "start": 8, "end": 15}]
+      "code": [
+        {
+          "path": "wallet/core.py",
+          "start": 8,
+          "end": 15
+        }
+      ],
+      "plain": {
+        "what": "The withdraw function stops when the amount is more than the balance. It raises OverdraftError.",
+        "proof": "A unit test (V01) calls withdraw with a large amount. We deleted the guard line, and the test went red."
+      }
     },
     {
       "id": "C02",
@@ -25,7 +35,18 @@
       "stated": true,
       "source": "PR.md bullet 2",
       "layer": "Wallet core",
-      "code": [{"path": "wallet/core.py", "start": 15, "end": 15}]
+      "code": [
+        {
+          "path": "wallet/core.py",
+          "start": 15,
+          "end": 15
+        }
+      ],
+      "plain": {
+        "what": "The withdraw function gives the balance minus the amount.",
+        "proof": "It is not proven. A test (V02) exists, but it checks only the type of the result. We changed the result, and the test stayed green.",
+        "warning": "The test cannot find a wrong result. Thus, it is weaker than it looks."
+      }
     },
     {
       "id": "C04",
@@ -33,7 +54,11 @@
       "text": "Many threads can call the wallet module at the same time.",
       "stated": true,
       "source": "PR.md bullet 3",
-      "layer": "Wallet core"
+      "layer": "Wallet core",
+      "plain": {
+        "what": "Many threads can use the wallet at the same time.",
+        "proof": "It is not proven. Only the PR text says it."
+      }
     },
     {
       "id": "C05",
@@ -42,47 +67,110 @@
       "stated": true,
       "source": "PR.md bullet 4",
       "layer": "Messages",
-      "code": [{"path": "wallet/messages.py", "start": 4, "end": 5}]
+      "code": [
+        {
+          "path": "wallet/messages.py",
+          "start": 4,
+          "end": 5
+        }
+      ],
+      "plain": {
+        "what": "A denial message does not show the account number.",
+        "proof": "A model reviewer (V05) read each message. This is a model opinion, not a tool check."
+      }
     }
   ],
   "verifiers": [
     {
       "id": "V01",
       "kind": "unit",
-      "claims": ["C01"],
+      "claims": [
+        "C01"
+      ],
       "tier": "fact",
       "description": "OverdraftTest calls withdraw with an amount above the balance and expects OverdraftError.",
-      "command": {"argv": ["python3", "-m", "unittest", "-q", "tests.test_core.OverdraftTest"], "timeout_s": 60},
-      "independence": {"by": "tool", "tool": "unittest"},
-      "cost": {"usd": 0, "seconds": 1},
+      "command": {
+        "argv": [
+          "python3",
+          "-m",
+          "unittest",
+          "-q",
+          "tests.test_core.OverdraftTest"
+        ],
+        "timeout_s": 60
+      },
+      "independence": {
+        "by": "tool",
+        "tool": "unittest"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 1
+      },
       "provenance": "tests/test_core.py in the PR"
     },
     {
       "id": "V02",
       "kind": "unit",
-      "claims": ["C02"],
+      "claims": [
+        "C02"
+      ],
       "tier": "fact",
       "description": "BalanceTest calls withdraw and expects an int.",
-      "command": {"argv": ["python3", "-m", "unittest", "-q", "tests.test_core.BalanceTest"], "timeout_s": 60},
-      "independence": {"by": "tool", "tool": "unittest"},
-      "cost": {"usd": 0, "seconds": 1},
+      "command": {
+        "argv": [
+          "python3",
+          "-m",
+          "unittest",
+          "-q",
+          "tests.test_core.BalanceTest"
+        ],
+        "timeout_s": 60
+      },
+      "independence": {
+        "by": "tool",
+        "tool": "unittest"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 1
+      },
       "provenance": "tests/test_core.py in the PR"
     },
     {
       "id": "V03",
       "kind": "contract-format",
-      "claims": ["C01"],
+      "claims": [
+        "C01"
+      ],
       "tier": "fact",
       "description": "cc-check format reads the @cc syntax in wallet/core.py.",
-      "command": {"argv": ["npx", "--no-install", "@spolu/cc-check@0.2.0", "format", "wallet/core.py"], "timeout_s": 120},
-      "independence": {"by": "tool", "tool": "cc-check"},
-      "cost": {"usd": 0, "seconds": 2},
+      "command": {
+        "argv": [
+          "npx",
+          "--no-install",
+          "@spolu/cc-check@0.2.0",
+          "format",
+          "wallet/core.py"
+        ],
+        "timeout_s": 120
+      },
+      "independence": {
+        "by": "tool",
+        "tool": "cc-check"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 2
+      },
       "provenance": "Code Contracts cc-check 0.2.0"
     },
     {
       "id": "V05",
       "kind": "model",
-      "claims": ["C05"],
+      "claims": [
+        "C05"
+      ],
       "tier": "guess",
       "description": "A gpt reviewer read each denial message in a fresh context and looked for an account number.",
       "recorded": {
@@ -90,8 +178,15 @@
         "result": "No finding. The reviewer found no account number in the denial messages.",
         "at": "2026-10-09"
       },
-      "independence": {"by": "model", "family": "openai", "context": "fresh"},
-      "cost": {"usd": 0.01, "note": "recorded, not run again"},
+      "independence": {
+        "by": "model",
+        "family": "openai",
+        "context": "fresh"
+      },
+      "cost": {
+        "usd": 0.01,
+        "note": "recorded, not run again"
+      },
       "provenance": "The PR author ran the reviewer. understando recorded the result and did not run it."
     }
   ],
@@ -101,24 +196,70 @@
       "verifier": "V01",
       "recipe": "remove-guard-line",
       "description": "Remove the line that raises OverdraftError.",
-      "edits": [{"op": "replace", "path": "wallet/core.py", "find": "        raise OverdraftError(f\"{amount} is above the balance\")\n", "replace": "        pass\n"}],
-      "expect": {"status": "red", "pattern": "OverdraftError not raised"}
+      "edits": [
+        {
+          "op": "replace",
+          "path": "wallet/core.py",
+          "find": "        raise OverdraftError(f\"{amount} is above the balance\")\n",
+          "replace": "        pass\n"
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "OverdraftError not raised"
+      }
     },
     {
       "id": "K02",
       "verifier": "V02",
       "recipe": "invert-condition",
       "description": "Add the amount to the balance, not take it away.",
-      "edits": [{"op": "replace", "path": "wallet/core.py", "find": "    return balance - amount\n", "replace": "    return balance + amount\n"}],
-      "expect": {"status": "red", "pattern": "AssertionError"}
+      "edits": [
+        {
+          "op": "replace",
+          "path": "wallet/core.py",
+          "find": "    return balance - amount\n",
+          "replace": "    return balance + amount\n"
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "AssertionError"
+      }
     },
     {
       "id": "K03",
       "verifier": "V03",
       "recipe": "plant-violation",
       "description": "Put a colon into the contract ID, which the grammar does not permit.",
-      "edits": [{"op": "replace", "path": "wallet/core.py", "find": "] no-overdraft\n", "replace": "] no-over:draft\n"}],
-      "expect": {"status": "red", "pattern": "Invalid @cc directive"}
+      "edits": [
+        {
+          "op": "replace",
+          "path": "wallet/core.py",
+          "find": "] no-overdraft\n",
+          "replace": "] no-over:draft\n"
+        }
+      ],
+      "expect": {
+        "status": "red",
+        "pattern": "Invalid @cc directive"
+      }
     }
-  ]
+  ],
+  "glossary": [
+    {
+      "term": "Overdraft",
+      "meaning": "an amount that is more than the balance."
+    },
+    {
+      "term": "Control",
+      "meaning": "a bug that we put in the code on purpose, to see if a check finds it."
+    }
+  ],
+  "verdict_intros": {
+    "Proven": "For each claim here, a tool check went red on a planted bug.",
+    "Backed": "For each claim here, evidence exists, but no control went red.",
+    "Asserted": "For each claim here, only the PR text says it.",
+    "Gap": "For each claim here, no check exists, and the PR does not state the claim."
+  }
 }

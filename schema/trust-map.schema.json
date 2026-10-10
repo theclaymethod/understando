@@ -35,7 +35,31 @@
         "Gap": {"type": "integer"}
       }
     },
-    "notes": {"type": "array", "items": {"type": "string"}}
+    "notes": {"type": "array", "items": {"type": "string"}},
+    "glossary": {
+      "type": "array",
+      "description": "Strict STE. The words a reader must know to read the plain text of the claims.",
+      "items": {
+        "type": "object",
+        "required": ["term", "meaning"],
+        "additionalProperties": false,
+        "properties": {
+          "term": {"type": "string", "minLength": 1},
+          "meaning": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "verdict_intros": {
+      "type": "object",
+      "description": "Strict STE. One line for each verdict group in the explainer.",
+      "additionalProperties": false,
+      "properties": {
+        "Proven": {"type": "string", "minLength": 1},
+        "Backed": {"type": "string", "minLength": 1},
+        "Asserted": {"type": "string", "minLength": 1},
+        "Gap": {"type": "string", "minLength": 1}
+      }
+    }
   },
   "$defs": {
     "id": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9_.-]*$"},
@@ -64,7 +88,18 @@
         "layer": {"type": "string", "description": "Group name for the explainer overview."},
         "code": {"type": "array", "items": {"$ref": "#/$defs/codeRef"}},
         "verdict": {"$ref": "#/$defs/verdict"},
-        "reason": {"type": "string"}
+        "reason": {"type": "string"},
+        "plain": {
+          "type": "object",
+          "description": "Strict STE for a reader who does not know the code.",
+          "required": ["what", "proof"],
+          "additionalProperties": false,
+          "properties": {
+            "what": {"type": "string", "minLength": 1, "description": "What it is: the rule that the claim states."},
+            "proof": {"type": "string", "minLength": 1, "description": "How it is proven: the check and the control result."},
+            "warning": {"type": "string", "minLength": 1, "description": "A limit on the proof, when one exists."}
+          }
+        }
       }
     },
     "command": {

@@ -37,6 +37,16 @@ BEFORE_TREES="$(g worktree list | wc -l | tr -d ' ')"
 
 step "map: scan the PR, add contract claims and Gap candidates, validate"
 python3 "$S/scan.py" --repo "$REPO" --base "$BASE" --head "$HEAD" --src-prefix wallet/ --test-prefix tests/ --add "$MAP"
+python3 - "$MAP" "$FIX/plain.json" <<'PY'
+# The map step writes plain text for each claim. scan.py adds claims without it, so the
+# fixture holds the agent's plain text for those claims.
+import json, sys
+data, plain = json.load(open(sys.argv[1])), json.load(open(sys.argv[2]))
+for claim in data["claims"]:
+    if "plain" not in claim and claim["id"] in plain:
+        claim["plain"] = plain[claim["id"]]
+json.dump(data, open(sys.argv[1], "w"), indent=2)
+PY
 python3 "$S/validate.py" "$MAP"
 
 step "controls: baseline at the head, then one scratch worktree per control"
@@ -55,9 +65,24 @@ grep -q "No verdict, state or control result changed." "$WORK/rerun.md"
 
 step "explain: PR-body section, three-level source, HTML"
 python3 "$S/explain.py" --map "$MAP" --repo "$REPO" --out "$WORK/explain"
-VE="$(dirname "$(readlink -f "$HOME/.claude/skills/visual-explainer/SKILL.md" 2>/dev/null || echo "$HOME/.claude/skills/visual-explainer/SKILL.md")")"
+# UNDERSTANDO_VE_RUNTIME pins an Artifacture checkout. explain.py reads it too.
+if [ -n "${UNDERSTANDO_VE_RUNTIME:-}" ]; then
+  VE="$UNDERSTANDO_VE_RUNTIME"
+else
+  VE="$(dirname "$(readlink -f "$HOME/.claude/skills/visual-explainer/SKILL.md" 2>/dev/null || echo "$HOME/.claude/skills/visual-explainer/SKILL.md")")"
+fi
 node "$VE/scripts/artifacture.mjs" export "$WORK/explain/explainer.mdx" --out "$WORK/explain/explainer.html"
 test -s "$WORK/explain/explainer.html"
+python3 - "$MAP" "$WORK/explain/explainer.html" <<'PY'
+import json, sys
+claims = json.load(open(sys.argv[1]))["claims"]
+html = open(sys.argv[2], encoding="utf-8").read()
+missing = [c["id"] for c in claims
+           if not c.get("plain") or (c["plain"]["what"] not in html and json.dumps(c["plain"]["what"])[1:-1] not in html)]
+if missing:
+    sys.exit(f"FAIL: the explainer has no plain.what text for {missing}")
+print(f"the explainer shows plain.what for all {len(claims)} claims")
+PY
 LINT="$(find "$HOME/.claude/skills/asd-ste100/scripts" "$HOME/.agents/skills/asd-ste100/scripts" -name ste-lint.py 2>/dev/null | head -1)"
 python3 -I "$LINT" "$WORK/explain/pr-section.md" | tail -2
 
