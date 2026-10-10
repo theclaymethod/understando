@@ -36,6 +36,7 @@ impl Workspace {
         git(repo, &["cat-file", "-e", &format!("{head}^{{commit}}")])
             .map_err(|_| format!("The repo at {} does not hold the head commit {head}.", repo.display()))?;
         std::fs::create_dir_all(root).map_err(|e| format!("could not make {}: {e}", root.display()))?;
+        let root = &root.canonicalize().map_err(|e| e.to_string())?;
         let clone = root.join("clone");
         let worktree = root.join("worktree");
         let out = Command::new("git")

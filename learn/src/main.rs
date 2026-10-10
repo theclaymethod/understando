@@ -147,7 +147,8 @@ async fn main() {
     } else {
         Ok(CodexAuth::OwnLogin)
     };
-    let mut deny_read = vec![repo.display().to_string(), FI_ENV.to_string()];
+    let fi_env = std::env::var("UNDERSTANDO_FI_ENV").unwrap_or_else(|_| FI_ENV.to_string());
+    let mut deny_read = vec![repo.display().to_string(), FI_ENV.to_string(), fi_env];
     deny_read.extend(home_paths(&[".ssh", ".aws", ".gnupg", ".netrc", ".config/gh", ".codex", ".claude", ".docker", ".npmrc", ".pypirc", ".kube"]));
     let (sandbox_ready, sandbox_detail) = doctor::os_sandbox(&ws.worktree).await;
 

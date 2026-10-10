@@ -42,12 +42,6 @@ impl Provider {
             Self::Codex => "codex",
         }
     }
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Claude => "Claude Code",
-            Self::Codex => "Codex",
-        }
-    }
 }
 
 /// How the Codex process gets its account.

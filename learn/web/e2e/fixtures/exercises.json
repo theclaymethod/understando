@@ -1,0 +1,25 @@
+[
+  {
+    "id": "X01",
+    "kind": "trace",
+    "claim": "C01",
+    "title": "Trace it: one withdraw call",
+    "scenario": "A caller has a balance of 10. Step two calls through wallet/core.py.",
+    "steps": [
+      {"prompt": "The caller calls withdraw(10, 11). What happens?", "choices": ["It returns -1.", "It raises OverdraftError.", "It returns 10."], "answer": 1, "why": "11 is more than 10, so the guard raises OverdraftError (C01)."},
+      {"prompt": "The caller calls withdraw(10, 3). What does BalanceTest check about the result?", "choices": ["That it is 7.", "That it is an int.", "That it is less than 10."], "answer": 1, "why": "BalanceTest checks only the type. That is why V02 cannot fail."}
+    ]
+  },
+  {
+    "id": "X02",
+    "kind": "close-gap",
+    "claim": "C03",
+    "title": "Close a gap: the fee function",
+    "brief": "No test calls fee(). Write a test that checks fee(250) is 3.",
+    "test_path": "tests/test_fees.py",
+    "starter": "import unittest\n\nfrom wallet.fees import fee\n\n\nclass FeeTest(unittest.TestCase):\n    def test_fee(self) -> None:\n        pass  # TODO: check fee(250)\n",
+    "command": {"argv": ["python3", "-m", "unittest", "-q", "tests.test_fees"], "timeout_s": 60},
+    "bug": {"description": "Drop the + 1 from the fee.", "edits": [{"op": "replace", "path": "wallet/fees.py", "find": "    return amount // 100 + 1\n", "replace": "    return amount // 100\n"}]},
+    "expect": {"pattern": "AssertionError"}
+  }
+]

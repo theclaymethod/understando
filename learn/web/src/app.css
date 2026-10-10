@@ -49,7 +49,8 @@
 .learn-refused { color: var(--ve-warn, #b7791f); font-size: 0.85rem; }
 .learn-pill { border: 1px solid var(--ve-rule); border-radius: 999px; padding: 3px 10px; font-size: 0.85rem; cursor: pointer; }
 .learn-pill.on { border-color: var(--ve-accent); color: var(--ve-heading); font-weight: 600; }
-.learn-pill input { position: absolute; opacity: 0; pointer-events: none; }
+.learn-pill { position: relative; }
+.learn-pill input { position: absolute; opacity: 0; inset: 0; margin: 0; }
 .learn-file { list-style: none; margin: 0; padding: 0; max-height: 360px; overflow: auto; font-family: var(--ve-font-mono); font-size: 0.78rem; border: 1px solid var(--ve-rule); border-radius: 8px; }
 .learn-file li button { all: unset; display: flex; gap: 10px; width: 100%; padding: 0 8px; cursor: pointer; white-space: pre; }
 .learn-file li button:hover { background: var(--ve-panel); }
@@ -61,3 +62,5 @@
 .learn-table td, .learn-table th { border-bottom: 1px solid var(--ve-rule); padding: 6px 8px; text-align: left; vertical-align: top; }
 .learn-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .learn-compose { display: grid; gap: 6px; }
+.learn-chapter[data-chapter="exercises"] .ux-none { display: none; }
+.learn-hub { border: 1px solid var(--ve-rule); border-radius: 12px; padding: 14px 16px; margin-top: 16px; }

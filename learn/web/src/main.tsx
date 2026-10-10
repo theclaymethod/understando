@@ -3,7 +3,7 @@ import "./app.css";
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { getJson, type Session } from "./api";
-import { ChapterView, useChapters } from "./ChapterView";
+import { ChapterView, chapterOfAnchor, useChapters } from "./ChapterView";
 import { EXERCISE_KINDS, ExercisesView, KIND_LABEL } from "./Exercises";
 import { SetupView } from "./SetupView";
 import { TutorPanel } from "./TutorPanel";
@@ -18,13 +18,28 @@ function useRoute() {
   return hash;
 }
 
+function ExerciseHub() {
+  return (
+    <div className="learn-hub" data-testid="exercise-hub">
+      <h3>Exercises in this app</h3>
+      <p className="learn-muted">Code grades the first four kinds with server runs and the answer key. A model grades the fifth, so its grade is a guess.</p>
+      <ul>{EXERCISE_KINDS.map((k) => <li key={k}><a href={`#exercises/${k}`}>{KIND_LABEL[k]}</a></li>)}</ul>
+    </div>
+  );
+}
+
 function App() {
   const route = useRoute();
   const { data, error } = useChapters();
   const [session, setSession] = useState<Session | null>(null);
   useEffect(() => { getJson<Session>("/api/session").then(setSession).catch(() => undefined); }, []);
-  const [section, id] = route.split("/");
-  const chapterId = section === "chapter" ? id : data?.chapters[0]?.id ?? "";
+  const [lastChapter, setLastChapter] = useState("");
+  const routed = /^(chapter|exercises|setup)(\/|$)/.test(route);
+  // A link inside a chapter, such as #claim-c01, opens the chapter that holds that id.
+  const anchorChapter = !routed && route && data ? chapterOfAnchor(data, route)?.id : undefined;
+  const [section, id] = routed ? route.split("/") : ["chapter", anchorChapter ?? lastChapter];
+  const chapterId = (section === "chapter" && id) || data?.chapters[0]?.id || "";
+  useEffect(() => { if (section === "chapter" && id) setLastChapter(id); }, [section, id]);
   const s = session?.summary ?? {};
   return (
     <div data-ve-preset="iso" className="learn-app">
@@ -51,7 +66,7 @@ function App() {
           {section === "exercises" && <ExercisesView kind={id || "predict"} />}
           {section === "setup" && <SetupView />}
           {section !== "exercises" && section !== "setup" && (
-            error ? <p role="alert" className="learn-error">{error}</p> : data ? <ChapterView data={data} id={chapterId} /> : <p role="status">Loading the chapters.</p>
+            error ? <p role="alert" className="learn-error">{error}</p> : data ? <ChapterView data={data} id={chapterId} anchor={routed ? undefined : route}>{chapterId === "exercises" && <ExerciseHub />}</ChapterView> : <p role="status">Loading the chapters.</p>
           )}
         </main>
         <TutorPanel />

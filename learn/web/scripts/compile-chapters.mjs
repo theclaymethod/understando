@@ -3,16 +3,16 @@
 //
 //   node learn/web/scripts/compile-chapters.mjs <run-dir>
 //
-// Input: <run-dir>/chapters/*.mdx when that folder exists (one file per chapter, in name
-// order), else <run-dir>/explainer.mdx split at each top-level <Section title=...>.
+// Input: <run-dir>/explainer.mdx. When it imports one MDX unit per chapter from chapters/, each
+// <Section> of the entry is one chapter. Else the file is split at each top-level <Section>.
 // Output: <run-dir>/learn/chapters.json. Each chapter holds MDX compiled to a function body.
 // The app runs it with the Artifacture components that it embeds, so the learner needs no Node.
 import { compile } from "@mdx-js/mdx";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { veRuntime } from "./ve-runtime.mjs";
 
 const runDir = process.argv[2] && resolve(process.argv[2]);
 if (!runDir) {
@@ -20,16 +20,10 @@ if (!runDir) {
   process.exit(2);
 }
 
-function artifacture() {
-  const candidates = [process.env.UNDERSTANDO_VE_RUNTIME, "/Users/clayton/dev/artifacture", join(homedir(), ".artifacture", "runtime")];
-  for (const dir of candidates) if (dir && existsSync(join(dir, "scripts", "ve-mdx", "integrity.mjs"))) return resolve(dir);
-  return null;
-}
-
 // Artifacture's preflight checks the diagrams and adds the highlighted HTML to each CodeBlock,
 // as its HTML export does. Without it the chapters still compile, with plain code blocks.
 async function preflight(code, id) {
-  const ve = artifacture();
+  const ve = veRuntime();
   if (!ve) return code;
   const { preflightSource } = await import(pathToFileURL(join(ve, "scripts", "ve-mdx", "integrity.mjs")).href);
   return (await preflightSource(code, { id, draft: true })).code;
@@ -79,34 +73,56 @@ function splitSections(source) {
   return chapters;
 }
 
-async function loadChapters() {
-  const dir = join(runDir, "chapters");
-  if (existsSync(dir)) {
-    const files = (await readdir(dir)).filter((f) => f.endsWith(".mdx")).sort();
-    const out = [];
-    for (const f of files) {
-      const text = (await readFile(join(dir, f), "utf8")).replace(IMPORT, "");
-      const title = SECTION_OPEN.exec(text.split("\n").find((l) => SECTION_OPEN.test(l)) ?? "")?.slice(1).find(Boolean) ?? basename(f, ".mdx");
-      out.push({ title, mdx: text.replace(/^<\/?ExplainerShell\b.*$/gm, "") });
-    }
-    return { source: "chapters/", shell: {}, chapters: out };
-  }
-  const file = join(runDir, "explainer.mdx");
-  const text = await readFile(file, "utf8");
-  return { source: "explainer.mdx", shell: shellProps(text), chapters: splitSections(text) };
+const CHAPTER_IMPORT = /^import\s+([A-Z][A-Za-z0-9]*)\s+from\s+['"](\.\/chapters\/[^'"]+\.mdx)['"];?\s*$/gm;
+const SECTION_LINE = /^<Section\b[^>]*>\s*$/;
+
+function attr(tag, name) {
+  const m = new RegExp(`\\b${name}=(?:"([^"]*)"|\\{"((?:[^"\\\\]|\\\\.)*)"\\})`).exec(tag);
+  return m ? (m[1] ?? JSON.parse(`"${m[2]}"`)) : "";
 }
 
-const { source, shell, chapters } = await loadChapters();
+/** The explainer entry imports one MDX file per chapter and wraps each in a Section. */
+async function entryChapters(text) {
+  const imports = new Map([...text.matchAll(CHAPTER_IMPORT)].map((m) => [m[1], m[2]]));
+  if (!imports.size) return null;
+  const css = /<style>\{`([\s\S]*?)`\}<\/style>/.exec(text)?.[1] ?? "";
+  const lines = text.split("\n");
+  const chapters = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (!SECTION_LINE.test(lines[i])) continue;
+    const open = lines[i];
+    const body = [];
+    for (i++; i < lines.length && !/^<\/Section>\s*$/.test(lines[i]); i++) body.push(lines[i]);
+    const parts = [];
+    for (const line of body) {
+      const m = /^<([A-Z][A-Za-z0-9]*)\s*\/>\s*$/.exec(line.trim());
+      if (m && imports.has(m[1])) parts.push((await readFile(join(runDir, imports.get(m[1])), "utf8")).replace(IMPORT, "").replace(/^\{\/\*.*\*\/\}\s*$/gm, ""));
+      else parts.push(line);
+    }
+    chapters.push({ id: attr(open, "id"), title: attr(open, "navLabel") || attr(open, "title"), heading: attr(open, "title"),
+      mdx: [open, ...parts, "</Section>"].join("\n") });
+  }
+  return { css, chapters };
+}
+
+async function loadChapters() {
+  const text = await readFile(join(runDir, "explainer.mdx"), "utf8");
+  const entry = await entryChapters(text);
+  if (entry) return { source: "explainer.mdx + chapters/", shell: shellProps(text), css: entry.css, chapters: entry.chapters };
+  return { source: "explainer.mdx", shell: shellProps(text), css: "", chapters: splitSections(text) };
+}
+
+const { source, shell, css, chapters } = await loadChapters();
 if (!chapters.length) throw new Error("No chapters found.");
 const compiled = [];
 for (const [index, chapter] of chapters.entries()) {
-  const id = slug(chapter.title, index);
+  const id = chapter.id || slug(chapter.title, index);
   // The preflight checks that each component is imported, so give it the import line, then drop it.
   const names = [...new Set([...chapter.mdx.matchAll(/<([A-Z][A-Za-z0-9]*)/g)].map((m) => m[1]))];
   const header = names.length ? `import { ${names.join(", ")} } from 'visual-explainer-mdx/components';\n\n` : "";
   const prepared = (await preflight(header + chapter.mdx, `${basename(runDir)}/${id}`)).replace(IMPORT, "");
   const code = String(await compile(prepared, { outputFormat: "function-body", development: false }));
-  compiled.push({ id, title: chapter.title, code });
+  compiled.push({ id, title: chapter.title, heading: chapter.heading || chapter.title, code });
 }
 const trustMap = JSON.parse(await readFile(join(runDir, "trust-map.json"), "utf8"));
 const out = {
@@ -115,6 +131,7 @@ const out = {
   summary: shell.summary || "",
   head: trustMap.head,
   source,
+  css,
   compiledAt: new Date().toISOString(),
   chapters: compiled,
 };
