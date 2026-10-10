@@ -18,8 +18,9 @@ Set `U` to the directory of this file. Every script is stdlib Python or bash und
 | `controls` | Run model-free controls in scratch worktrees. | The user only | [commands/controls.md](commands/controls.md) |
 | `explain` | Build the explainer (a guided tour, then how far to trust each claim) and the PR-body section. | You or the user | [commands/explain.md](commands/explain.md) |
 | `rerun` | Diff a new trust map against the previous one. | You or the user | [commands/rerun.md](commands/rerun.md) |
+| `learn` | Open the learn app: chapters, exercises and a sandboxed tutor. | The user only | [commands/learn.md](commands/learn.md) |
 
-Read the file of the sub-command before you act. Start `controls` and per-repo setup only on an explicit request from the user in this conversation. A `map` without controls rates no claim Proven, and that is a valid result.
+Read the file of the sub-command before you act. Start `controls`, `learn` and per-repo setup only on an explicit request from the user in this conversation. A `map` without controls rates no claim Proven, and that is a valid result.
 
 ## Rules for every sub-command
 

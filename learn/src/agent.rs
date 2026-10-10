@@ -116,7 +116,8 @@ pub fn claude_args(call: &Call) -> Vec<String> {
     .collect();
     match call.role {
         Role::Tutor { shell: true } => {
-            a.extend(["--restricted", "--tools", "Bash,Read,Grep,Glob,Edit,Write", "--allowedTools", "Read,Grep,Glob,Edit,Write"].map(String::from));
+            // Bash is allowed because the sandbox settings below wrap every command; dontAsk denies the rest.
+            a.extend(["--restricted", "--tools", "Bash,Read,Grep,Glob,Edit,Write", "--allowedTools", "Bash,Read,Grep,Glob,Edit,Write"].map(String::from));
             a.push("--settings".into());
             a.push(claude_settings(&call.deny_read).to_string());
         }

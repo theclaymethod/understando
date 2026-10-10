@@ -60,6 +60,7 @@ for (const provider of ["claude", "codex"] as const) {
       const argv = c.argv!;
       const arg = (f: string) => argv[argv.indexOf(f) + 1];
       expect(arg("--tools")).toBe("Bash,Read,Grep,Glob,Edit,Write");
+      expect(arg("--allowedTools")).toBe("Bash,Read,Grep,Glob,Edit,Write");
       expect(arg("--permission-mode")).toBe("dontAsk");
       expect(arg("--setting-sources")).toBe("");
       expect(arg("--mcp-config")).toBe('{"mcpServers":{}}');
