@@ -6,7 +6,7 @@ The explainer is a **level ladder**. Each level is one screen deep, and detail w
 
 ## Steps
 
-1. **Rate first.** Run `python3 $U/scripts/mechanical.py --map $M --repo <repo>`, then `python3 $U/scripts/verdicts.py $M`.
+1. **Rate first.** Run `understando map`.
    - **Done when** each claim has a `verdict` and a `reason`, and each promise in `M` has its claims.
 2. **Write `$R/explain.json`.** Its fields are in the docstring of `scripts/explain.py`. Write all text in strict STE.
    - **`story`:** three ideas, one sentence or two each: the problem, the change, and why the reader can trust it. No code name, no ID and no count. Name the before-and-after picture in `picture`.
@@ -21,7 +21,7 @@ The explainer is a **level ladder**. Each level is one screen deep, and detail w
    - **Detailed:** the same node ids, each named by its real module or function at the head, for example `load_finished_cr` or `Editor.edit`. Add a few nodes at most: 1.5 times the ELI5 count or fewer.
    - **The identifier rule for levels 1 to 3:** an identifier (a code name or an ID) is visible only in the Detailed mode of a diagram, in a table, or in a collapsed block. `explain.py` fails on any other one.
    - **Done when** each diagram that `story.picture`, `loop.diagram` or `change.diagrams` names has both modes, and the Detailed mode matches the code at the head.
-4. **Generate.** Run `python3 $U/scripts/explain.py --map $M --repo <repo> --out $R --extra $R/explain.json`. It writes `$R/pr-section.md`, `$R/explainer.mdx` and one MDX file per level in `$R/chapters/`. It fails when an identifier shows in levels 1 to 3 outside the places that step 3 allows, when a diagram lacks a mode, when a claim has no single block or a link has no target, when a weak promise has no reviewer action, when the page uses a term that the glossary does not define, or when a mechanical check gives a new result.
+4. **Generate.** Run `understando explain`. It runs `scripts/explain.py` with `$R/explain.json`, the journal and `ready.json`. The journal gives the level that tells why the author made each choice. `ready.json` gives the checklist at the top. It also writes `$R/GLOSSARY.md`. It writes `$R/pr-section.md`, `$R/explainer.mdx` and one MDX file per level in `$R/chapters/`. It fails when an identifier shows in levels 1 to 3 outside the places that step 3 allows, when a diagram lacks a mode, when a claim has no single block or a link has no target, when a weak promise has no reviewer action, when the page uses a term that the glossary does not define, or when a mechanical check gives a new result.
    - **Done when** it prints the glossary size and the promise strengths. Fix a failure in the data, not in the generated files.
 5. **Export the HTML.** Run `node <visual-explainer>/scripts/artifacture.mjs export $R/explainer.mdx --out $R/explainer.html`. Fix an export failure in the MDX, not in the HTML.
    - **Done when** `$R/explainer.html` exists.

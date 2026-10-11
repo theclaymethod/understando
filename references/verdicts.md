@@ -7,6 +7,20 @@
 - **Fact tier:** a tool observed it. Examples: a test run, type-checker output, a golden test, a boundary check, a fuzz result and a recorded eval. An e2e transcript or a replay against the real app also counts, and so does `cc-check format`.
 - **Guess tier:** a model judged it, or only text says it. Examples: model judgements, PR narrative, repros and `$code-contracts verify`.
 
+## The verification ladder
+
+Each claim gets `tier`: the highest rung of a verifier that went red on a control and can prove the claim. The rung comes from the verifier's `ladder`, else from its kind.
+
+| Rung | Checks |
+|---|---|
+| 1 | e2e and integration tests (unit, golden, parity, eval and measurement also sit here) |
+| 2 | property tests and fuzzing |
+| 3 | type pins, `@cc` contracts, contract-format checks and static boundary rules |
+| 4 | model checking (TLA+). It needs a passing conformance link. |
+| 5 | a Lean proof. It needs a passing conformance link. |
+
+A rung 4 or 5 verifier without a passing conformance link cannot prove its claim, so the claim stays Backed. A recorded proof control (`result.recorded: true`) counts as a control that went red.
+
 ## Verifier states
 
 The script sets `state` on each verifier from its baseline and its control results.
@@ -30,12 +44,15 @@ The script applies the first rule that holds.
 
 | Verdict | Rule |
 |---|---|
+| **Formal** | A backing verifier on ladder rung 4 or 5 is `proven`: a control broke the proof or the model. Its `formal.conformance` link passes. |
 | **Proven** | A backing verifier is `proven`, and it is fact tier. A model verifier also qualifies when its family is not the author's family, its context is fresh, and it went red on a control. |
 | **Backed** | A backing verifier is `proven`, `untested`, `recorded` or `checked`. A same-family model verifier stays here, also after a control. |
 | **Asserted** | No backing verifier counts, and the PR narrative states the claim. |
 | **Gap** | No backing verifier counts, and the PR does not state the claim. The reviewer decides. |
 
-A verifier that is `cannot-fail`, `failing` or `broken` backs nothing. Its claim falls to Asserted or Gap, and the reason names the verifier.
+Intent gate: a claim that the PR does not state reaches Proven or Formal only when its `invariant` names an invariant with `author: user` and `status: accepted`. Else it stays Backed, and the reason says why.
+
+A verifier that is `cannot-fail`, `failing`, `broken` or `stale` backs nothing. Its claim falls to Asserted or Gap, and the reason names the verifier.
 
 ## Flags
 

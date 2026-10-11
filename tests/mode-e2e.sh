@@ -46,6 +46,8 @@ env -i HOME="$FH" PATH="$NOCLAUDE" UNDERSTANDO_HOME="$WORK/uhome" UNDERSTANDO_OF
 python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["trust_map"]["present"], d' "$O/signals-noclaude.json"
 echo "the CLI runs with no claude binary and no Claude variable"
 
+python3 "$ROOT/scripts/gen_router.py" --check
+
 step "mode: off, then on, then status"
 "$U" mode status > "$O/mode0.txt"; has "$O/mode0.txt" "understando mode: off"
 "$U" --run "$RUN" --repo "$REPO" --pr 1 mode on > "$O/mode1.txt"; has "$O/mode1.txt" "understando mode: on"

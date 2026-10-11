@@ -1,4 +1,6 @@
-# learn
+# learn (paused)
+
+The learn app is paused. It stays merged and its tests stay green, but it gets no new features, and the menu does not offer it. `ready` and `explain` do not need it.
 
 Open the **learn app** for one run folder: the chapters, five exercise kinds and a tutor. The design is [../docs/LEARN-APP.md](../docs/LEARN-APP.md). Start this sub-command only on an explicit request from the user. A tutor answer costs money on the learner's account. A control costs compute only.
 

@@ -1,6 +1,6 @@
 # Working rules
 
-understando works on its own. When an original skill is installed, understando routes to it. Otherwise it uses the adapted copy under `references/adapted/`, which is usable alone. Sources and licences are in `../THIRD_PARTY_NOTICES.md`, and `adapted/manifest.json` lists every copy.
+understando works on its own. When you install an original skill, understando routes to it. Otherwise it uses the adapted copy under `references/adapted/`, which is usable alone. Sources and licences are in `../THIRD_PARTY_NOTICES.md`, and `adapted/manifest.json` lists every copy.
 
 When Poteto Mode is active, it owns reply style, subagent rules and autonomy. understando keeps only its exceptions. `discover`, claim wording and waivers stop for the user, even under full autonomy.
 
@@ -38,13 +38,13 @@ When the original is missing, the step uses the built-in rule that `understando 
 
 | Skill | Used for |
 |---|---|
-| code-contracts | `@cc` contracts at tier 3; else write the contract by hand, and `cc-check format` checks it |
-| create-verification-skill | e2e drivers for a CLI, TUI or service; the user starts it |
-| expect | e2e checks of a web UI; else tester-army `npx e2e` with `E2E_TELEMETRY_DISABLED=1` |
+| code-contracts | `@cc` contracts at tier 3. Else write the contract by hand, and `cc-check format` checks it |
+| create-verification-skill | e2e drivers for a CLI, TUI or service. The user starts it |
+| expect | e2e checks of a web UI. Else tester-army `npx e2e` with `E2E_TELEMETRY_DISABLED=1` |
 | lean-formal-feedback-loop | formalize at tier 5 |
-| interrogate, nemesis-review | the independent review in `ready`; else `adapted/code-review.md` |
-| show-me-your-work | the decision log; `understando note --export-tsv` writes the same columns |
-| simplify, ultra-clean, deslop | trim gate 2; else the built-in pass: probe-proven deletion plus a dead-code tool |
-| no-comments | comment cleanup; it keeps each `@cc` contract comment |
-| technical-writing | docs and PR text; else the reply rules and the STE lint |
-| asd-ste100, visual-explainer | required: the STE lint and the explainer runtime. setup installs them |
+| interrogate, nemesis-review | the independent review in `ready`. Else `adapted/code-review.md` |
+| show-me-your-work | the decision log. `understando note --export-tsv` writes the same columns |
+| simplify, ultra-clean, deslop | trim gate 2. Else the built-in pass: probe-proven deletion plus a dead-code tool |
+| no-comments | comment cleanup. It keeps each `@cc` contract comment |
+| technical-writing | docs and PR text. Else the reply rules and the STE lint |
+| asd-ste100, visual-explainer | required. They are the STE lint and the explainer runtime, and setup installs them |

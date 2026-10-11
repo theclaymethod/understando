@@ -19,7 +19,7 @@
     {
       "id": "discover",
       "category": "Understand",
-      "line": "Find the invariants with the user: mine candidates, ask edge-case questions, and record only what the user confirms.",
+      "line": "Find the invariants with the user: mine candidates, ask edge-case questions, and record only the rules that the user accepts.",
       "args": "[mine | questions | answer --answers FILE | status] [--paths P] [--claim C01]",
       "invoke": "user",
       "doc": "commands/discover.md"
@@ -43,7 +43,7 @@
     {
       "id": "import",
       "category": "Understand",
-      "line": "Record outside evidence (evo, impeccable, Lean, nemesis-review, show-me-your-work, verify feature files). It checks the format; a mismatch is stale.",
+      "line": "Record outside evidence (evo, impeccable, Lean, nemesis-review, show-me-your-work, `verify-<app>` feature files). A file with a wrong format is stale.",
       "args": "KIND FILE --claim C01 --description TEXT",
       "invoke": "model",
       "doc": "commands/import.md"

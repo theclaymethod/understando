@@ -111,17 +111,39 @@ understando helps a reviewer decide what to trust in a large PR without reading 
 - The old quiz skill is preserved as tag `quiz-v1`.
 - Replace its files with a normal commit. Never force-push.
 
-**Router skill `understando`** with five sub-commands, each a separate file the router points to:
+**The mode `understando`** (`/understando` in Claude Code, `$understando` in Codex). `SKILL.md` is a short router: a bare invocation turns the mode on (`understando mode on`), runs `understando menu` (two or three verbs from `signals`, with reasons, then the verb table), and never runs a verb by itself. `commands.json` is the one source for the verb table, `--help` and the menu; `scripts/gen_router.py` writes the table into `SKILL.md`.
 
-| Sub-command | Job |
-|---|---|
-| `setup` | Global installs plus doctor |
-| `map` | Build the claim ledger and the verifier inventory |
-| `controls` | Run the model-free controls in a scratch worktree |
-| `explain` | Build the three-level explainer and the PR-body section |
-| `rerun` | Diff against the previous `trust-map.json` |
+**One CLI.** `bin/understando <verb>`, linked into `~/.local/bin` by setup, runs every verb from any agent's shell. Each verb takes `--repo`, `--pr`, `--run` and `--json`. The skill text names no tool of one agent, so Claude Code, Codex, Cursor and any agent that reads `~/.agents/skills` work the same way.
 
-**Invocation.** The model may invoke `map` and `explain`. `controls` and per-repo setup run only on explicit user request.
+| Verb | Category | Who starts it |
+|---|---|---|
+| `map` | Understand | the agent or the user (it always diffs against the previous map; it replaces `rerun`) |
+| `discover` | Understand | the user (invariants with the user, before any verifier) |
+| `probe` | Understand | the user (the controls; it replaces `controls`) |
+| `formalize` | Understand | the user (tiers 4 and 5; a router stub) |
+| `import` | Understand | the agent or the user (outside evidence, with a format check) |
+| `close`, `trim` | Get ready | the user |
+| `explain` | Share | the agent or the user |
+| `learn` | Share | the user (paused) |
+| `ready` | Run all | the user; `ready --report` also the agent |
+| `build` | Run all | the user |
+| `setup`, `doctor` | Maintain | setup the user; doctor the agent or the user |
+
+**The verification ladder,** per claim as `tier`: 1 e2e or integration; 2 property or fuzz; 3 types, `@cc` contracts and static rules; 4 model checking (TLA+); 5 a Lean proof with conformance. A rung counts only after a control shows that its check can fail. Rungs 4 and 5 also need a passing conformance link to the real code. The verdict **Formal** sits above Proven for such a claim.
+
+**Intent.** A claim reaches Proven or Formal only when the PR states it, or when it links to an invariant that the user confirmed in `discover`. An invariant that the agent picks alone is `author: agent` and caps its claim at Backed.
+
+**The intent ledger.** `runs/<repo>/<pr>/journal.jsonl`, append-only and local only, with the columns of the show-me-your-work decision log (what, why, evidence, result). `understando note` is its only writer, and it redacts secrets. While the mode is on, the agent notes each user prompt. An optional prompt hook (Claude Code `UserPromptSubmit`, and the Codex hooks file when the installed Codex has hooks) calls the same CLI, and only while the mode is on. `explain` turns the journal into the "Why it was built this way" level.
+
+**Writes into the reviewed repo** go only to the branch `understando/<pr>-ready`: a drafted check after probe sees it go red, and trim's deletions. Never into the PR's own commits.
+
+**Standalone first, mesh when present.** understando installs and works with no other skill pack. `references/working-rules.md` indexes its adapted copies of the reply rules, the subagent rules, the principles and the playbook steps that it uses, from pstack (Poteto Mode) and the Matt Pocock skills (MIT, see `THIRD_PARTY_NOTICES.md`). When an original skill is installed, understando routes to it (`understando routes`). `doctor` reports a missing optional skill, or an adapted copy older than the installed original, as a mention.
+
+**Works with:**
+- **Poteto Mode (pstack):** when it is active, it owns the reply style, the subagent rules and autonomy. understando keeps its exceptions: discover, claim wording and waivers stop for the user. The principle skills and the review skills (interrogate) replace the adapted copies.
+- **impeccable:** its snapshots import as evidence (`understando import impeccable`), and its UI checks serve as e2e drivers for a web surface.
+- **Matt Pocock skills:** grilling runs the question rounds of discover; tdd, to-spec, domain-modeling, code-review and handoff replace their adapted copies.
+- **The Lean skill (lean-formal-feedback-loop):** formalize routes tier 5 work to it, and its proofs import as Lean evidence.
 
 **`setup.sh`.** It is idempotent and ends with `doctor`, which prints what is present and what is missing. It:
 - symlinks the skill into `~/.agents/skills/understando`, `~/.claude/skills/understando`, `~/.codex/skills/understando` and `~/.cursor/skills/understando`;
