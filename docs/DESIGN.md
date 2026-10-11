@@ -20,7 +20,7 @@ understando helps a reviewer decide what to trust in a large PR without reading 
    - **Trade-offs and concerns,** and the verifications of the explainer. **Exercises** is a placeholder for the learning app.
    - Levels 1 to 3 show no ID and no code name, except in the Detailed mode of a two-mode architecture diagram, in a table, or in a collapsed block. Each architecture diagram has a Simple (ELI5) and a Detailed mode.
 3. **`trust-map.json`:** claims, verifiers, controls and verdicts, so a later run can diff against an earlier one.
-4. **Storage:** everything lives under `~/dev/understando/runs/<repo>/<pr>/`, outside the repo under review.
+4. **Storage:** run state lives under `~/.understando/runs/<repo>/<pr>/`: local, outside the repo under review, and never in a git repo. `UNDERSTANDO_RUNS`, `runs_root` in `~/.understando/config.toml` or `runs_dir` in the per-repo config moves it. Every verb refuses to write a run folder inside a git repo, and doctor flags run output that any repo tracks. understando's own repo keeps only the test fixture (`tests/fixture`). A review is shared on purpose only: `understando publish` (commands/publish.md).
 
 **Style.**
 - Prose is STE-flavoured.
@@ -133,7 +133,7 @@ understando helps a reviewer decide what to trust in a large PR without reading 
 
 **Intent.** A claim reaches Proven or Formal only when the PR states it, or when it links to an invariant that the user confirmed in `discover`. An invariant that the agent picks alone is `author: agent` and caps its claim at Backed.
 
-**The intent ledger.** `runs/<repo>/<pr>/journal.jsonl`, append-only and local only, with the columns of the show-me-your-work decision log (what, why, evidence, result). `understando note` is its only writer, and it redacts secrets. While the mode is on, the agent notes each user prompt. An optional prompt hook (Claude Code `UserPromptSubmit`, and the Codex hooks file when the installed Codex has hooks) calls the same CLI, and only while the mode is on. `explain` turns the journal into the "Why it was built this way" level.
+**The intent ledger.** `~/.understando/runs/<repo>/<pr>/journal.jsonl`, append-only and local only, with the columns of the show-me-your-work decision log (what, why, evidence, result). `understando note` is its only writer, and it redacts secrets. While the mode is on, the agent notes each user prompt. An optional prompt hook (Claude Code `UserPromptSubmit`, and the Codex hooks file when the installed Codex has hooks) calls the same CLI, and only while the mode is on. `explain` turns the journal into the "Why it was built this way" level.
 
 **Writes into the reviewed repo** go only to the branch `understando/<pr>-ready`: a drafted check after probe sees it go red, and trim's deletions. Never into the PR's own commits.
 
@@ -174,3 +174,17 @@ understando helps a reviewer decide what to trust in a large PR without reading 
 - no no-ops.
 
 Keep the router's description short.
+
+## Share a review
+
+`understando publish <pr>` writes the explainer, `trust-map.json`, `pr-section.md` and a README to the orphan branch `understando/<pr>-review` of the reviewed repo, after a clear yes. It never writes the journal, discover, history, CI or key files, and the branch has no `.github/`, so no CI runs. A reviewer opens it with one line:
+
+```bash
+git fetch origin understando/489-review && git worktree add /tmp/review-489 FETCH_HEAD && open /tmp/review-489/explainer.html
+```
+
+Or `understando open 489`. `publish --feedback` sends a reviewer's confusion rows back to `feedback/<reviewer>.jsonl` on the branch. The details are in commands/publish.md.
+
+## Machine config
+
+`~/.understando/config.toml` holds `ve_runtime`, the visual-explainer runtime (an Artifacture checkout). setup asks for it once; doctor checks that it has `visual-explainer-mdx/components.tsx`, `scripts/artifacture.mjs` and Playwright. `UNDERSTANDO_VE_RUNTIME` overrides it for one command. The formal steps find java at `$JAVA_HOME/bin/java` or Homebrew's `/opt/homebrew/opt/openjdk/bin/java` without a PATH edit, and TLC at `~/.understando/tools/tla2tools.jar`.

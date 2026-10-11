@@ -69,7 +69,7 @@ Run `lake build` in that directory. Add `.lake/` to `.gitignore`.
 | `cargo test --test refinement_conformance` | the project's own pytest or unittest command, from its reviewed CI profile |
 | `ProofWitness` const in `src/formal/witnesses.rs` | the artifact record in the sidecar; the reviewed repo gets only the model, the vectors and the tests |
 | proptest variants in `tests/lean_generated/` | the Python property test against the vectors and the `--oracle` executable |
-| `evidence_ledger.jsonl` | the sidecar `runs/<repo>/<pr>/formal/verifiers.json`, one record per frog |
+| `evidence_ledger.jsonl` | the sidecar `~/.understando/runs/<repo>/<pr>/formal/verifiers.json`, one record per frog |
 | staleness by `git log` timestamps | `formal_record.py drift`: blob of each code file and sha256 of each model file |
 | lab seeds and interleaving traces as witnesses | a counterexample input from a Lean `witness` search, written into a regression test by `formal_witness.py test` |
 | target tiers C + E | ladder tiers 4 + 5 for loops and rules; tier 2 when no cheap model exists |

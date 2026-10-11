@@ -3,6 +3,7 @@
 #
 #   scripts/setup.sh [--scope project|global]   install what is missing, then run doctor
 #   scripts/setup.sh --links-only               only the skill links and the CLI link
+#   scripts/setup.sh --ve-runtime PATH          pin the visual-explainer runtime in ~/.understando/config.toml
 #   scripts/setup.sh doctor                     only report what is present and what is missing
 #
 # The optional external skills (Code Contracts, the pstack verification skills, asd-ste100,
@@ -16,6 +17,8 @@
 #
 # Global writes, each one listed by doctor:
 #   0. the CLI: a link ~/.local/bin/understando -> bin/understando, made only when the name is free.
+#      When ~/.local/bin is not on PATH, setup prints the one line to add to the shell rc.
+#   0b. ve_runtime in ~/.understando/config.toml: the visual-explainer runtime. setup asks once.
 #   1. symlinks named understando in ~/.agents/skills, ~/.claude/skills, ~/.codex/skills and
 #      ~/.cursor/skills. The script makes a link only when the name is free, or when the name is
 #      already a link to this repo. It never replaces another skill.
@@ -80,8 +83,9 @@ link_cli() {
   if [ -L "$target" ] && [ "$(readlink "$target")" = "$ROOT/bin/understando" ]; then return 0; fi
   if [ -e "$target" ] || [ -L "$target" ]; then echo "refuse: $target exists and is not the understando CLI" >&2; return 1; fi
   ln -s "$ROOT/bin/understando" "$target" && echo "linked $target -> $ROOT/bin/understando"
-  case ":$PATH:" in *":$bin:"*) ;; *) echo "note: add $bin to PATH" ;; esac
 }
+
+path_hint() { python3 "$ROOT/scripts/setup.py" path-hint; }
 
 offer_hook() { # settings file
   local file="$1"
@@ -112,10 +116,12 @@ links() {
   local d
   for d in "${SKILL_DIRS[@]}"; do link_skill "$d"; done
   link_cli
+  path_hint
 }
 
 install() {
   links
+  python3 "$ROOT/scripts/setup.py" ve-runtime ${VE_RUNTIME:+--set "$VE_RUNTIME"}
   ask_scope
   if ! find_skill code-contracts >/dev/null; then
     skills_add https://github.com/spolu/code-contracts -s code-contracts
@@ -155,10 +161,15 @@ doctor() {
   else bad "ste-lint.py" "not found"; fi
   if npx --no-install "$CC_CHECK_SPEC" --help >/dev/null 2>&1; then ok "cc-check" "npx $CC_CHECK_SPEC (npm cache)"
   else bad "cc-check" "run scripts/setup.sh"; fi
-  if d="$(find_skill visual-explainer)" && p="$(node "$d/scripts/artifacture.mjs" path 2>/dev/null | tail -1)" && [ -d "$p/visual-explainer-mdx" ]
-  then ok "visual-explainer runtime" "$p"; else bad "visual-explainer runtime" "artifacture.mjs path failed"; fi
+  if p="$(python3 "$ROOT/scripts/config.py" ve-runtime)" && [ -f "$p/visual-explainer-mdx/components.tsx" ] && [ -f "$p/scripts/artifacture.mjs" ] && [ -d "$p/node_modules/playwright" ]
+  then ok "visual-explainer runtime" "$p"; else bad "visual-explainer runtime" "ve_runtime unset or incomplete: setup --ve-runtime PATH"; fi
   if [ -L "$HOME/.local/bin/understando" ] && [ "$(readlink "$HOME/.local/bin/understando")" = "$ROOT/bin/understando" ]; then ok "cli ~/.local/bin/understando" "-> $ROOT/bin/understando"
   else bad "cli ~/.local/bin/understando" "absent"; fi
+  case ":$PATH:" in *":$HOME/.local/bin:"*) ok "PATH" "holds ~/.local/bin" ;; *) bad "PATH" "lacks ~/.local/bin"; path_hint ;; esac
+  if p="$(python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import ctx; print(ctx.java_bin() or "")' "$ROOT/scripts")" && [ -n "$p" ]
+  then ok "java (formalize only)" "$p"; else warn "java (formalize only)" "no JAVA_HOME, no Homebrew openjdk, no java on PATH"; fi
+  if [ -f "$HOME/.understando/tools/tla2tools.jar" ]; then ok "tla2tools.jar (formalize only)" "$HOME/.understando/tools/tla2tools.jar"
+  else warn "tla2tools.jar (formalize only)" "put it at ~/.understando/tools/tla2tools.jar"; fi
   if command -v gh >/dev/null; then ok "gh (optional)" "$(command -v gh)"; else warn "gh (optional)" "needed to read a PR"; fi
   if command -v uv >/dev/null; then ok "uv (optional)" "$(command -v uv)"; else warn "uv (optional)" "needed by Python targets"; fi
   warn "tester-army e2e" "per repo only, after approval: E2E_TELEMETRY_DISABLED=1 npx e2e init"
@@ -167,17 +178,20 @@ doctor() {
 }
 
 ACTION=install
+VE_RUNTIME=""
 while [ $# -gt 0 ]; do
   case "$1" in
     doctor) ACTION=doctor ;;
     --links-only) ACTION=links ;;
     --scope) SCOPE="$2"; shift ;;
-    *) echo "usage: scripts/setup.sh [doctor | --links-only | --scope project|global]" >&2; exit 2 ;;
+    --ve-runtime) VE_RUNTIME="$2"; ACTION=ve; shift ;;
+    *) echo "usage: scripts/setup.sh [doctor | --links-only | --scope project|global | --ve-runtime PATH]" >&2; exit 2 ;;
   esac
   shift
 done
 case "$ACTION" in
   doctor) doctor ;;
   links) links ;;
+  ve) python3 "$ROOT/scripts/setup.py" ve-runtime --set "$VE_RUNTIME" ;;
   install) install; doctor ;;
 esac

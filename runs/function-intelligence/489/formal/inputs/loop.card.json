@@ -1,6 +1,0 @@
-{"frog": "docgen.loop.stops", "ev": {"impact": 5, "bug_prior": 3, "reach": 5, "proof_cost": 3, "model_cost": 3, "ev": 8.3},
- "history": "git log -S '_idle' / -S '_unfixable' on loop.py: introduced in this PR stack; the trust map's C15-C18 rest on one integration test each (V19-V22).",
- "surface": "projects/clinical-reasoning/src/cr/docgen/loop.py:65-116, 185-265; session.py:102-138, 255-265",
- "failure_class": "loop stop rules: an extra round, a missed stop, a lost call that is reflected or released, a release of a floor finding",
- "math": "TLA+ state machine with an event log; TLC safety invariants, Termination under WF; the finish gate as a second spec",
- "artifact": "formal/tla/{DocLoop,Finish}.tla + cfgs; TLC terminal-state vectors replayed by tests/test_formal_{docloop,finish}_replay.py"}

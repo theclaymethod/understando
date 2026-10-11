@@ -1,7 +1,11 @@
 """The per-repo config: <runs root>/<repo name>/understando.toml. It never lives in the reviewed repo.
+The runs root is ~/.understando/runs (UNDERSTANDO_RUNS or runs_root in ~/.understando/config.toml
+overrides it). ~/.understando/config.toml also holds ve_runtime, the visual-explainer runtime.
 
     understando setup --repo [DIR] [--answers FILE]   write the file (asks each item on a terminal)
     python3 scripts/config.py deny-globs --repo DIR   the read-deny globs for the learn sandbox
+    python3 scripts/config.py runs-root               print the runs root
+    python3 scripts/config.py ve-runtime              print the visual-explainer runtime (exit 1 when unset)
 
 Keys (all optional; the defaults are below):
 
@@ -10,6 +14,7 @@ Keys (all optional; the defaults are below):
     budget_usd = 0                      # paid steps need a shown cost and a clear yes from the user
     ready_branch = "understando/{pr}-ready"
     worktree_root = ".claude/worktrees" # relative to the repo root; the worktree is understando-{pr}-ready
+    runs_dir = "/abs/path"              # optional: the run folders of this repo (default <runs root>/<repo>)
     secret_paths = ["**/.env*"]         # globs; understando never reads a matching file
     [[protected_paths]]                 # findings only: understando never edits a matching file
     path = "src/x/"  owner = "X team"  reason = "..."
@@ -31,7 +36,10 @@ import json
 import os
 import re
 import sys
-import tomllib
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python < 3.11: the global config falls back to its key = "value" lines
+    tomllib = None
 from functools import lru_cache
 from pathlib import Path
 
@@ -45,8 +53,73 @@ DEFAULTS = {"schema": SCHEMA, "budget_usd": 0, "ready_branch": "understando/{pr}
             "llm": {}, "deferred_owners": {}}
 
 
+# ---- the global config and the runs root -------------------------------------------------------
+#
+# ~/.understando/config.toml ($UNDERSTANDO_HOME/config.toml) holds the machine settings:
+#
+#     ve_runtime = "/abs/path/to/artifacture"   # the visual-explainer runtime; setup asks once
+#     runs_root = "/abs/path"                   # optional; the default is ~/.understando/runs
+#
+# Run state lives at <runs root>/<repo name>/<pr>/. It is local, and it is never a git repo.
+
+GLOBAL_KEYS = ("ve_runtime", "runs_root")
+VE_PARTS = ("visual-explainer-mdx/components.tsx", "scripts/artifacture.mjs", "node_modules/playwright")
+
+
+def understando_home() -> Path:
+    return Path(os.environ.get("UNDERSTANDO_HOME") or Path.home() / ".understando")
+
+
+def global_path() -> Path:
+    return understando_home() / "config.toml"
+
+
+def load_global() -> dict:
+    p = global_path()
+    if not p.is_file():
+        return {}
+    text = p.read_text(encoding="utf-8")
+    if tomllib is None:
+        return {m.group(1): json.loads(m.group(2)) for m in re.finditer(r'(?m)^\s*(\w+)\s*=\s*("(?:[^"\\]|\\.)*")\s*$', text)}
+    try:
+        return tomllib.loads(text)
+    except tomllib.TOMLDecodeError as exc:
+        return {"error": f"{p}: {exc}"}
+
+
+def save_global(updates: dict) -> Path:
+    """Write the keys in `updates` into config.toml and keep the other keys."""
+    cur = {k: v for k, v in load_global().items() if k in GLOBAL_KEYS}
+    cur.update({k: v for k, v in updates.items() if k in GLOBAL_KEYS and v is not None})
+    p = global_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    lines = ["# understando machine config. `understando setup` writes it; edit it by hand when you must."]
+    lines += [f"{k} = {json.dumps(str(cur[k]))}" for k in GLOBAL_KEYS if k in cur]
+    p.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return p
+
+
+def ve_runtime() -> str | None:
+    """The visual-explainer runtime: $UNDERSTANDO_VE_RUNTIME (an override), else ve_runtime."""
+    return os.environ.get("UNDERSTANDO_VE_RUNTIME") or load_global().get("ve_runtime") or None
+
+
+def ve_missing(path: str | Path) -> list[str]:
+    """The parts of a visual-explainer runtime that understando needs and that are absent."""
+    return [x for x in VE_PARTS if not (Path(path) / x).exists()]
+
+
 def runs_root() -> Path:
-    return Path(os.environ.get("UNDERSTANDO_RUNS") or tm.ROOT / "runs")
+    """$UNDERSTANDO_RUNS, else runs_root of config.toml, else ~/.understando/runs."""
+    raw = os.environ.get("UNDERSTANDO_RUNS") or load_global().get("runs_root")
+    return Path(raw).expanduser() if raw else understando_home() / "runs"
+
+
+def run_dir(repo_name: str, pr: str | int) -> Path:
+    """The run folder of one PR: <runs root>/<repo>/<pr>, or <runs_dir>/<pr> when the per-repo
+    config sets runs_dir (an absolute path outside every git repo)."""
+    own = load(repo_name).get("runs_dir")
+    return (Path(own).expanduser() if own else runs_root() / repo_name) / str(pr)
 
 
 def path_for(repo_name: str) -> Path:
@@ -59,6 +132,8 @@ def load(repo_name: str | None) -> dict:
     if not repo_name:
         return {**cfg, "present": False, "path": None}
     p = path_for(repo_name)
+    if p.is_file() and tomllib is None:
+        return {**cfg, "present": True, "path": str(p), "error": f"{p}: reading it needs Python 3.11 or later (tomllib)"}
     if p.is_file():
         try:
             raw = tomllib.loads(p.read_text(encoding="utf-8"))
@@ -321,7 +396,17 @@ def main(argv: list[str]) -> int:
     d.add_argument("--name")
     s = sub.add_parser("show")
     s.add_argument("--name", required=True)
+    sub.add_parser("runs-root")
+    sub.add_parser("ve-runtime")
     args = ap.parse_args(argv)
+    if args.cmd == "runs-root":
+        print(runs_root())
+        return 0
+    if args.cmd == "ve-runtime":
+        ve = ve_runtime()
+        if ve:
+            print(ve)
+        return 0 if ve else 1
     if args.cmd == "deny-globs":
         import repoinfo
         root = Path(args.repo).resolve()

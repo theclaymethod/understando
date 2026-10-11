@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Model-free smoke run of understando learn on runs/function-intelligence/489:
+# Model-free smoke run of understando learn on <runs root>/function-intelligence/489:
 # start, load the chapters, run one control, stop. It makes no tutor call.
 set -euo pipefail
 L="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-RUN="$(cd "$L/../runs/function-intelligence/489" && pwd)"
+RUNS="$(python3 "$L/../scripts/config.py" runs-root)"
+[ -d "$RUNS/function-intelligence/489" ] || { echo "SKIP: no run folder at $RUNS/function-intelligence/489"; exit 0; }
+RUN="$(cd "$RUNS/function-intelligence/489" && pwd)"
 REPO="${FI_REPO:-$HOME/dev/function-intelligence}"
 CONTROL="${SMOKE_CONTROL:-K08}"
 [ -d "$REPO/.git" ] || { echo "SKIP: no clone at $REPO"; exit 0; }

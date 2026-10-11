@@ -13,3 +13,6 @@
 - review chains its steps into four stops: map + probe on the changed code, close (one claim per question), trim, and ready + explain.
 - A possible bug whose code changed on the ready branch asks for a re-check (map + probe), not for discover.
 - `ci --approve --project NAME` approves only the commands of one catalog project.
+- Run state lives under `~/.understando/runs/<repo>/<pr>/`, never in a git repo. Every verb refuses a run folder inside one, and doctor flags tracked run output. understando's repo no longer tracks `runs/`.
+- `publish <pr>` shares a review on the orphan branch `understando/<pr>-review` after a clear yes; `publish --feedback` sends a reviewer's confusion rows back. `fetch_review_branch()` gives `open` a read-only checkout.
+- setup pins `ve_runtime` in `~/.understando/config.toml` and prints the PATH line for `~/.local/bin`. java is found from `$JAVA_HOME` or Homebrew's openjdk without a PATH edit.

@@ -21,7 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import tm  # noqa: E402
 
-KINDS = ("prompt", "decision", "verifier-choice", "waiver", "result", "invariant")
+KINDS = ("prompt", "decision", "verifier-choice", "waiver", "result", "invariant", "confusion")
 DEDUPE_SECONDS = 120
 MASK = "[REDACTED]"
 

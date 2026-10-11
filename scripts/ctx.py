@@ -2,7 +2,9 @@
 
 Standard library only. The mode state file is $UNDERSTANDO_HOME/mode.json (default ~/.understando).
 A verb finds its run folder in this order: --run, then the active run in the mode state, then
-runs/<repo folder name>/<pr> when --repo and --pr are given.
+<runs root>/<repo name>/<pr> when --repo and --pr are given. The runs root is ~/.understando/runs
+(scripts/config.py: UNDERSTANDO_RUNS, runs_root in ~/.understando/config.toml, or runs_dir in the
+per-repo config override it). Run state is local: refuse_run_write() keeps it out of every git repo.
 """
 
 from __future__ import annotations
@@ -100,7 +102,8 @@ def resolve(run: str | None, repo: str | None, pr: str | None, as_json: bool) ->
     elif state.get("run") and not (pr and state.get("pr") and str(state["pr"]) != str(pr)):
         run_p = Path(state["run"])
     elif repo_p and pr_s:
-        run_p = Path(os.environ.get("UNDERSTANDO_RUNS") or ROOT / "runs") / repoinfo.repo_name(repo_p) / pr_s
+        import config
+        run_p = config.run_dir(repoinfo.repo_name(repo_p), pr_s)
     else:
         run_p = None
     if run_p and not pr_s and (run_p / "trust-map.json").is_file():
@@ -115,27 +118,86 @@ def git(repo: Path, *args: str, check: bool = True) -> str:
     return out.stdout.strip()
 
 
+JAVA_HOMES = ("/opt/homebrew/opt/openjdk", "/usr/local/opt/openjdk")
+
+
+def _java_ok(path: str) -> bool:
+    try:
+        return subprocess.run([path, "-version"], capture_output=True, timeout=30).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def java_bin() -> str | None:
+    """A java that runs, without a PATH edit: $UNDERSTANDO_JAVA, $JAVA_HOME/bin/java, Homebrew's
+    openjdk (/opt/homebrew/opt/openjdk/bin, /usr/local/opt/openjdk/bin), then java on PATH. The
+    macOS stub /usr/bin/java prints an install prompt and fails, so it never counts. A formal step
+    passes the returned path to its command explicitly."""
+    cands = [os.environ.get("UNDERSTANDO_JAVA")]
+    if os.environ.get("JAVA_HOME"):
+        cands.append(str(Path(os.environ["JAVA_HOME"]) / "bin" / "java"))
+    cands += [f"{h}/bin/java" for h in JAVA_HOMES] + [shutil.which("java")]
+    for c in cands:
+        if c and Path(c).is_file() and os.access(c, os.X_OK) and _java_ok(c):
+            return c
+    return None
+
+
+def tla2tools_jar() -> str | None:
+    """$UNDERSTANDO_TLA2TOOLS, $TLA2TOOLS_JAR, then ~/.understando/tools/tla2tools.jar."""
+    for c in (os.environ.get("UNDERSTANDO_TLA2TOOLS"), os.environ.get("TLA2TOOLS_JAR"),
+              str(home() / "tools" / "tla2tools.jar"), str(Path.home() / ".understando" / "tools" / "tla2tools.jar")):
+        if c and Path(c).is_file():
+            return c
+    return None
+
+
 def tool_status() -> dict:
     """Which formal and contract tools are on this machine. understando never installs them."""
     def on_path(name: str) -> str | None:
         return shutil.which(name)
 
-    jar = os.environ.get("TLA2TOOLS_JAR")
-    if not jar:
-        for d in (Path.home() / ".tla", Path.home() / "lib", Path("/usr/local/lib"), Path("/opt/homebrew/lib")):
-            if (d / "tla2tools.jar").is_file():
-                jar = str(d / "tla2tools.jar")
-                break
     cc = None
     if on_path("npx"):
         probe = subprocess.run(["npx", "--no-install", "@spolu/cc-check@0.2.0", "--help"], capture_output=True, text=True,
                                env={**os.environ, "DO_NOT_TRACK": "1"}, timeout=60)
         cc = "npx @spolu/cc-check@0.2.0" if probe.returncode == 0 else None
-    java = on_path("java")
-    if java and subprocess.run(["java", "-version"], capture_output=True).returncode != 0:
-        java = None  # the macOS stub prints an install prompt and fails
-    return {"lean": on_path("lean"), "lake": on_path("lake"), "java": java, "tla2tools": jar,
+    return {"lean": on_path("lean"), "lake": on_path("lake"), "java": java_bin(), "tla2tools": tla2tools_jar(),
             "apalache": on_path("apalache-mc") or on_path("apalache"), "cc-check": cc}
+
+
+# ---- the run-state guard -----------------------------------------------------------------------
+
+def git_toplevel(path: Path) -> Path | None:
+    """The work tree of the git repo that holds `path` (or its nearest folder that exists), else None."""
+    p = Path(path).expanduser().resolve()
+    while not p.exists() and p != p.parent:
+        p = p.parent
+    if p.is_file():
+        p = p.parent
+    out = subprocess.run(["git", "-C", str(p), "rev-parse", "--show-toplevel"], capture_output=True, text=True)
+    return Path(out.stdout.strip()).resolve() if out.returncode == 0 and out.stdout.strip() else None
+
+
+def refuse_run_write(run: Path | None, repo: Path | None = None) -> str | None:
+    """None when a verb may write run output into `run`; else the refusal text.
+
+    Run output never goes into the reviewed repo's working tree, nor into any git repo (also
+    understando's own checkout). The ready branch worktree and the publish branch are written
+    through git, not as run output, so this guard does not cover them. Stable for other verbs."""
+    if not run:
+        return None
+    r = Path(run).expanduser().resolve()
+    if repo:
+        rr = Path(repo).expanduser().resolve()
+        if r == rr or rr in r.parents:
+            return (f"refuse: the run folder {r} is inside the reviewed repo {rr}. Run state stays out of it; "
+                    "use the default runs root (~/.understando/runs) or --run DIR outside every git repo.")
+    top = git_toplevel(r)
+    if top:
+        return (f"refuse: the run folder {r} is inside the git repo {top}. Run state is local and never in a git repo; "
+                "use the default runs root (~/.understando/runs) or --run DIR outside every git repo.")
+    return None
 
 
 def emit(ctx: Ctx, payload: dict, text: str) -> None:

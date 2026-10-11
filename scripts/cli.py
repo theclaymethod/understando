@@ -217,9 +217,16 @@ def do_explain(c: context.Ctx, argv: list[str]) -> int:
         args += ["--journal", str(c.journal)]
     if (c.run / "ready.json").is_file():
         args += ["--ready", str(c.run / "ready.json")]
+    import config
+    import publish
+    ve = config.ve_runtime()
+    if ve and "--runtime" not in argv:
+        args += ["--runtime", ve]
+    map_sha = publish._sha256(c.map)
     code = py("explain.py", *args, *argv)
     if code == 0:
         write_glossary(data, c.run / "GLOSSARY.md")
+        publish.write_stamp(c.run, map_sha)
     return code
 
 
@@ -311,7 +318,7 @@ def do_hook(c: context.Ctx, argv: list[str]) -> int:
     """The prompt hook. It prints nothing and always exits 0, so a hook can never block a prompt."""
     try:
         state = context.load_mode()
-        if not state.get("on") or not state.get("run"):
+        if not state.get("on") or not state.get("run") or context.refuse_run_write(Path(state["run"]), Path(state["repo"]) if state.get("repo") else None):
             return 0
         raw = sys.stdin.read()
         payload = json.loads(raw) if raw.strip() else {}
@@ -345,7 +352,7 @@ def lock_paths(verb: str, argv: list[str]) -> list[str]:
     if verb == "import":
         return ["run:trust-map.json"]
     if verb == "explain":
-        return ["run:explainer.mdx", "run:chapters/", "run:pr-section.md", "run:GLOSSARY.md"]
+        return ["run:explainer.mdx", "run:chapters/", "run:pr-section.md", "run:GLOSSARY.md", "run:explain.stamp.json"]
     if verb == "ready":
         return ["run:ready.json"]
     if verb == "ci":
@@ -362,6 +369,11 @@ def run_verb(verb: str, argv: list[str], c: context.Ctx) -> int:
         print(f"understando {verb} is deprecated: use `understando {new}`.", file=sys.stderr)
         verb = new
     paths = lock_paths(verb, argv)
+    writes_run = bool(paths) or verb == "note" or (verb == "mode" and argv[:1] == ["on"])
+    refusal = context.refuse_run_write(c.run, c.repo) if writes_run and "--help" not in argv and "-h" not in argv else None
+    if refusal:
+        print(refusal)
+        return 1
     if paths and c.run:
         import lock
         try:
@@ -438,6 +450,9 @@ def dispatch(verb: str, argv: list[str], c: context.Ctx) -> int:
     if verb == "ready":
         import ready
         return ready.main(c, argv, lambda v, a: run_verb(v, a, c))
+    if verb == "publish":
+        import publish
+        return publish.main(c, argv)
     print(f"understando: unknown verb {verb!r}. Run `understando help`.", file=sys.stderr)
     return 2
 

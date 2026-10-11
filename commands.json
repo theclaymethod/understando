@@ -81,6 +81,14 @@
       "doc": "commands/explain.md"
     },
     {
+      "id": "publish",
+      "category": "Share",
+      "line": "Share the review on the orphan branch understando/<pr>-review of the reviewed repo, after a clear yes. --feedback: a reviewer shares their confusion rows.",
+      "args": "[<pr>] [--dry-run] [--answers FILE] [--feedback [--reviewer NAME]]",
+      "invoke": "user",
+      "doc": "commands/publish.md"
+    },
+    {
       "id": "learn",
       "category": "Share",
       "line": "Paused. The learn app (chapters, exercises, a sandboxed tutor) stays merged and tested, but gets no new features.",
