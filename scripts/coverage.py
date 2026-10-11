@@ -5,7 +5,7 @@
 For each check with a command (a test, a golden or a parity test, a boundary script), coverage
 runs the command one time in a scratch worktree of a private clone at the check's commit, with
 the line tracer of scripts/coverage_site (Python, standard library). It records the changed code
-files that the run touched in $R/coverage.json:
+files of which the run executed a line inside a function body (an import alone does not count) in $R/coverage.json:
 
     {"schema": 1, "head": <map head>, "ran_at": ..., "checks": {"V14": {"status": "green", "files": [paths]}}}
 
@@ -35,15 +35,39 @@ import tm  # noqa: E402
 COV_SITE = Path(__file__).resolve().parent / "coverage_site"
 
 
+def body_lines(path: Path) -> set[int]:
+    """The lines inside function bodies. An import runs each def line and each module-level
+    statement, so only a body line shows that a check ran the code."""
+    import ast
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+    except (OSError, SyntaxError, UnicodeDecodeError):
+        return set()
+    out: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for stmt in node.body:
+                out.update(range(stmt.lineno, (stmt.end_lineno or stmt.lineno) + 1))
+    return out
+
+
 def touched(cov_dir: Path, root: Path) -> set[str]:
-    files: set[str] = set()
+    """The files of which the run executed a line inside a function body."""
+    hits: dict[str, set[int]] = {}
     for f in cov_dir.glob("*.json"):
         try:
-            files |= set(json.loads(f.read_text(encoding="utf-8")))
+            for p, lines in json.loads(f.read_text(encoding="utf-8")).items():
+                hits.setdefault(p, set()).update(lines)
         except (OSError, json.JSONDecodeError):
             continue
-    real = os.path.realpath(root)
-    return {p for p in files if not p.startswith("..") and not os.path.isabs(p) and (Path(real) / p).is_file()}
+    real = Path(os.path.realpath(root))
+    out = set()
+    for p, lines in hits.items():
+        if p.startswith("..") or os.path.isabs(p) or not (real / p).is_file():
+            continue
+        if not p.endswith(".py") or lines & body_lines(real / p):
+            out.add(p)
+    return out
 
 
 def run(data: dict, repo: Path, only: set[str] | None, changed: set[str]) -> dict[str, dict]:

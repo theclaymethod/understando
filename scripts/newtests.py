@@ -101,8 +101,10 @@ def proposals(c, data: dict, tip: str | None, base: str | None = None) -> list[d
                 s += 0.5
             if s > score:
                 best, score = cl, s
-        sib = next((v for v in data["verifiers"] if "command" in v and any(t["file"].endswith(a.split("::")[0]) for a in v["command"]["argv"])), None) \
-            or next((v for v in data["verifiers"] if "command" in v and _selector(t, v["command"]["argv"], v["command"].get("cwd", ".").strip("./"))), None)
+        # A test check is the best model for the command of a new test; a static check comes last.
+        ordered = sorted((v for v in data["verifiers"] if "command" in v), key=lambda v: v["kind"] not in ("unit", "integration", "e2e", "property", "fuzz"))
+        sib = next((v for v in ordered if any(t["file"].endswith(a.split("::")[0]) for a in v["command"]["argv"])), None) \
+            or next((v for v in ordered if _selector(t, v["command"]["argv"], v["command"].get("cwd", ".").strip("./"))), None)
         cwd = (sib or {}).get("command", {}).get("cwd", ".")
         argv = _selector(t, sib["command"]["argv"], cwd.strip("./")) if sib else None
         out.append({"test": t["name"], "file": t["file"], "words": t["name"].removeprefix("test_").replace("_", " "),
@@ -136,7 +138,8 @@ def link(data: dict, p: dict, by: str) -> dict:
          "command": {"argv": p["argv"], "cwd": p["cwd"], "timeout_s": 900},
          "independence": {"by": "tool", "tool": p["argv"][0]}, "cost": {"usd": 0},
          "provenance": f"{p['file']} on the ready branch; linked in review by {by}", "at": p["tip"],
-         "link": {"source": p["file"], "by": by, "at": tm.now(), "fix_from": p["from"]}}
+         "link": {"source": p["file"], "by": by, "at": tm.now(), "fix_from": p["from"]},
+         "name": "the new " + " ".join(re.sub(r"(?<!^)(?=[A-Z])", " ", p["test"].removeprefix("test_")).replace("_", " ").lower().replace(" test", "").split()[:3]) + " test"}
     sib = next((x for x in data["verifiers"] if x["id"] == p.get("sibling")), None)
     if sib and (sib.get("command") or {}).get("env_file"):
         v["command"]["env_file"] = True

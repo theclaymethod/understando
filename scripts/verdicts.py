@@ -37,6 +37,8 @@ def verifier_state(v: dict, controls: list[dict], flags: list[dict]) -> str:
     def flag(name: str, detail: str, loud: bool = False) -> None:
         flags.append({"flag": name, "subject": v["id"], "loud": loud, "detail": detail})
 
+    if v["kind"] == "none":
+        return "absent"  # a placeholder: no tool checks the claim
     if (v.get("import") or {}).get("status") == "stale":
         flag("stale-import", f"{v['id']}: the imported evidence failed its format check or changed: {v['import'].get('detail', '')}")
         return "stale"

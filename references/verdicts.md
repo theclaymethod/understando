@@ -35,6 +35,7 @@ The script sets `state` on each verifier from its baseline and its control resul
 | `failing` | Red at the head with no control, or a mechanical check that failed. | No |
 | `broken` | The baseline did not complete. | No |
 | `stale` | Imported evidence (`understando import`) failed its format check, or the file changed after the import. | No |
+| `absent` | A check of kind `none`: no tool checks the claim. | No |
 
 A red result counts as caught only when the exit code is in `red_exits` (default `[1]`) and the output holds `expect.pattern`. A red for a different reason (an import error, a syntax error) is an error, not a catch.
 

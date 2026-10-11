@@ -92,6 +92,8 @@ def sync(c: context.Ctx, path: str) -> dict:
         add_verifier(data, rec, idmap, side_path)
 
     side_path.write_text(json.dumps(side, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    import onto
+    onto.reconcile(data)  # shape 2: each new claim lists its checks
     verdicts.apply(data)
     errors = tm.validate(data, promises=False)
     if errors:

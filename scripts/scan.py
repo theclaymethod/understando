@@ -152,6 +152,8 @@ def main() -> int:
     if args.add:
         data = tm.load(args.add)
         report["claims_added"] = add(data, found, gaps)
+        import onto
+        onto.reconcile(data)  # shape 2: each new claim lists its checks
         errors = tm.validate(data, promises=False)
         if errors:
             tm.fail("invalid trust map after scan:\n" + "\n".join(errors), 1)

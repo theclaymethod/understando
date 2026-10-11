@@ -699,7 +699,8 @@
             "failing",
             "broken",
             "checked",
-            "stale"
+            "stale",
+            "absent"
           ]
         },
         "mechanical": {

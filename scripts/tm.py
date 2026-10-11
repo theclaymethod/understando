@@ -64,6 +64,9 @@ def load(path: str | Path) -> dict:
 
 
 def save(data: dict, path: str | Path) -> None:
+    if data.get("schema_version") == 2 and "claims" in data and "verifiers" in data:
+        import onto
+        onto.reconcile(data)
     tmp = Path(str(path) + ".tmp")
     with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(data, fh, indent=2, ensure_ascii=False)

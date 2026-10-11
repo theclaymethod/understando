@@ -144,8 +144,8 @@ def check_action(data: dict, v: dict, claim: dict, result: str, fix: str | None)
         return "No action: it caught its planted bug."
     if result == "none":
         base = ("Only the PR text states it. Add a check (understando close), or accept the risk." if claim.get("stated")
-                else "No check exists, and the PR text does not state it. Decide if it matters; to close it, add a check (understando close).")
-        return base + (f" The cheapest fix: {fix}" if fix else "")
+                else "No check exists, and the PR text does not state it. Decide if it matters. To close it, add a check (understando close).")
+        return base + (f" The cheapest way: {fix}" if fix else "")
     if result == "missed":
         other = same_bug_catcher(data, v)
         if other:
@@ -156,13 +156,13 @@ def check_action(data: dict, v: dict, claim: dict, result: str, fix: str | None)
         return "Its formal record is not Formal yet. Finish its conformance run (understando formalize)."
     if v.get("formal_record") and (v["formal_record"].get("formal") or {}).get("verdict") != "Formal":
         return "Its formal record is not Formal yet. Finish its conformance run (understando formalize)."
-    base = {"missed": "Add a check that fails on this bug, or fix this check so that it does.",
-            "cannot-fail": "Fix this check so that it can fail, or replace it (understando close).",
-            "broken": "Fix this check: it fails or does not complete at the PR head.",
+    base = {"missed": "Add a check that fails on this bug, or change this check so that it does.",
+            "cannot-fail": "Change this check so that it can fail, or replace it (understando close).",
+            "broken": "Repair this check: it fails or does not complete at the PR head.",
             "no-bug": "Plant a bug for this check (understando probe), or accept the claim as it stands.",
             "recorded": "It is a record of a past run. Run it again, or accept the record as it stands.",
             "checked": "Plant a bug for this mechanical check, or add a CI rule that keeps it true."}[result]
-    return base + (f" The cheapest fix: {fix}" if fix and result != "recorded" else "")
+    return base + (f" The cheapest way: {fix}" if fix and result != "recorded" else "")
 
 
 def claim_rows(data: dict, explain: dict | None = None) -> dict[str, dict]:
@@ -205,7 +205,7 @@ def claim_rows(data: dict, explain: dict | None = None) -> dict[str, dict]:
             bug = next((b for b in (verdicts.disagreeing(data, i) for i in onto.invariants_of(c)) if b), None)
             if bug:
                 said = (f"The code disagrees with a rule that the user confirmed: {names.of(data, bug['id'])}. " + said)
-                action = "Do not trust this claim until the fix lands: see the bugs found." + (" Then " + action[0].lower() + action[1:] if result != "caught" else "")
+                action = "Do not trust this claim until the code change lands: see the bugs found." + (" Then " + action[0].lower() + action[1:] if result != "caught" else "")
             w = {"id": weak["id"], "name": name, "result": result, "strength": strength, "text": said, "action": action}
         out[c["id"]] = {"strength": c.get("verdict") or strength, "tier": c.get("tier"), "checks": rows, "n": len(tools),
                         "counts": counts, "summary": summary, "weakest": w}
@@ -437,10 +437,14 @@ def unclaimed(data: dict, refs: dict, spec: dict | None = None, coverage: dict |
                 "change": change, "added": plus, "removed": minus, "created": new, "note": notes.get(path),
                 "main": (symbols.get(path) or {}).get("main"), "claims": len(claims), "cited": share, "total": total, "by": by}
         other = by["named"] or by["exercised"] or by["edited"]
-        if is_core(path) and claims:
+        only_run = by["exercised"] and not (by["cited"] or by["named"] or by["edited"])
+        if (is_core(path) and claims) or (only_run and plus >= SMALL):
+            # A file that a check only runs is covered in part: no claim says what it must do.
+            touch = [word for pattern, word in TOUCHES if pattern.search(path) or any(pattern.search(n) for n in names_)] if plus >= SMALL else []
             text = ("Read the lines that no claim cites." if share else
-                    "A check runs it or a claim names it, but no claim cites its lines. Read the lines that no claim cites.")
-            core_rows.append({**base, "risks": [], "action": {"kind": "read", "text": text}})
+                    "A check runs it, but no claim says what it must do. Read it, or ask the author for a claim." if only_run else
+                    "A claim names it or a control edits it, but no claim cites its lines. Read the lines that no claim cites.")
+            core_rows.append({**base, "risks": touch, "action": {"kind": "read", "text": text}})
             continue
         if other or (entry and (plus < LARGE or share >= 0.1 * max(total, 1))):
             continue
@@ -454,23 +458,32 @@ def unclaimed(data: dict, refs: dict, spec: dict | None = None, coverage: dict |
                   else {"kind": "read", "text": "Read it."} if plus >= LARGE else {"kind": "skim", "text": "Low risk: skim."})
         rows.append(({**base, "risks": risks, "action": action}, total - share))
     rows.sort(key=lambda r: (not r[0]["risks"], -r[1], r[0]["path"]))
-    core_rows.sort(key=lambda f: (f["cited"] / max(f["total"], 1), f["path"]))
+    core_rows.sort(key=lambda f: (not f["risks"], f["cited"] / max(f["total"], 1), f["path"]))
     out = [r for r, _ in rows]
-    return {"files": out, "core": core_rows, "summary": unclaimed_summary(out)}
+    return {"files": out, "core": core_rows, "summary": unclaimed_summary(out, core_rows)}
 
 
-def unclaimed_summary(files: list[dict]) -> dict:
-    """The risky files first: "12 risky files have no claim. Read these first." Then a quieter line
-    with the count of the other files."""
+def unclaimed_summary(files: list[dict], partial: list[dict] | None = None) -> dict:
+    """The risky files first: "12 risky files have no claim. Read these first." A risky file that a
+    check only runs, with no claim about it, joins the lead. Then a quieter line with the count of
+    the other files."""
     risky = sum(1 for f in files if f["risks"])
+    half = sum(1 for f in partial or [] if f["risks"] and not f["by"]["cited"])
     rest = len(files) - risky
-    if not files:
-        return {"risky": 0, "rest": 0, "lead": "Each changed source file has a claim.", "quiet": ""}
-    lead = (f"{risky} risky {'file has' if risky == 1 else 'files have'} no claim. Read {'it' if risky == 1 else 'these'} first." if risky
-            else "No risky file is without a claim.")
+    if not files and not half:
+        return {"risky": 0, "partial_risky": 0, "rest": 0, "lead": "Each changed source file has a claim.", "quiet": ""}
+    if risky and half:
+        lead = (f"{risky} risky {'file has' if risky == 1 else 'files have'} no claim, and a check only runs {half} more risky "
+                f"{'file' if half == 1 else 'files'}. Read these first.")
+    elif risky or half:
+        n = risky or half
+        lead = (f"{n} risky {'file has' if n == 1 else 'files have'} no claim. Read {'it' if n == 1 else 'these'} first." if risky else
+                f"A check only runs {n} risky {'file' if n == 1 else 'files'}, and no claim says what {'it' if n == 1 else 'they'} must do. Read {'it' if n == 1 else 'these'} first.")
+    else:
+        lead = "No risky file is without a claim."
     quiet = (f"{rest} other changed {'file has' if rest == 1 else 'files have'} no claim. {'It is' if rest == 1 else 'They are'} low risk: skim {'it' if rest == 1 else 'them'}."
              if rest else "")
-    return {"risky": risky, "rest": rest, "lead": lead, "quiet": quiet}
+    return {"risky": risky, "partial_risky": half, "rest": rest, "lead": lead, "quiet": quiet}
 
 
 def _key(ref: dict) -> tuple:
@@ -498,7 +511,8 @@ def derive(data: dict, refs: dict, extra: dict | None = None, ready: dict | None
     risky = sum(1 for f in u["files"] if f["risks"])
     form, items = merge_verdict(data, ready, risky)
     verdict_of = {c["id"]: c["verdict"] for c in data["claims"]}
-    promises = [{"id": p["id"], "strength": s, "claims": cids, "count": len(cids), "tally": tally([verdict_of[c] for c in cids])}
+    promises = [{"id": p["id"], "strength": s, "claims": cids, "count": len(cids), "tally": tally([verdict_of[c] for c in cids]),
+                 "tier": max([t for c in data["claims"] if c["id"] in cids for t in [c.get("tier")] if t] or [0]) or None}
                 for p, s, cids in promises_in_order(data)]
     return {"schema": SCHEMA, "head": data["head"], "promises": promises, "claims": claim_rows(data, extra),
             "verify": verify(data, promises, extra),

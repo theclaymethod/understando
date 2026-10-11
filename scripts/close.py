@@ -31,7 +31,7 @@ commit go to understando/<pr>-ready in the reviewed repo. A check for a claim th
 not state needs a user-confirmed invariant (understando discover); close refuses it otherwise.
 
 Answer file: {"answers": [{"claim": "C03", "choice": "e2e", "invariant"?: "I01",
-  "files": {path: text}, "verifier": {"description", "command": {"argv": [...]}, "kind"?, "test"?},
+  "files": {path: text}, "verifier": {"name", "description", "command": {"argv": [...]}, "kind"?, "test"?},
   "control": {"description", "recipe"?, "edits": [...], "expect": {"status": "red", "pattern"}}},
   {"claim": "C04", "choice": "waive", "reason": "..."},
   {"claim": "C02", "choice": "mechanical", "check": {"op", "pattern", "paths"}, "description"},
@@ -106,6 +106,8 @@ def add_check(c: context.Ctx, data: dict, claim: dict, a: dict, kind: str, repla
          "provenance": f"Drafted by understando close on {ops.ready_branch(data)}, with the user."}
     if spec.get("test"):
         v["test"] = spec["test"]
+    if spec.get("name"):
+        v["name"] = spec["name"]
     k = {"id": kid, "verifier": vid, "recipe": a["control"].get("recipe", "plant-violation"),
          "description": a["control"]["description"], "edits": a["control"]["edits"], "expect": a["control"]["expect"]}
     with ops.scratch_clone(repo) as (clone, wt):
@@ -177,7 +179,8 @@ def apply_answer(c: context.Ctx, data: dict, a: dict) -> str:
         data["verifiers"].append({"id": vid, "kind": "boundary", "claims": [claim["id"]], "tier": "fact",
                                   "description": a["description"], "mechanical": a["check"],
                                   "independence": {"by": "tool", "tool": "git grep"}, "cost": {"usd": 0},
-                                  "provenance": "Added by understando close; scripts/mechanical.py runs it at the PR head."})
+                                  "provenance": "Added by understando close; scripts/mechanical.py runs it at the PR head.",
+                                  **({"name": a["name"]} if a.get("name") else {})})
         v = data["verifiers"][-1]
         v["mechanical"]["result"] = {**mechanical.run(str(c.need_repo()), data["base"], data["head"], v["mechanical"]), "ran_at": tm.now()}
         attach(data, claim, vid)
@@ -198,7 +201,8 @@ def apply_answer(c: context.Ctx, data: dict, a: dict) -> str:
         data["verifiers"].append({"id": vid, "kind": a.get("kind", "measurement"), "claims": [claim["id"]], "tier": "fact",
                                   "description": a["description"], "recorded": a["recorded"],
                                   "independence": {"by": "tool", "tool": a.get("tool", "recorded run")}, "cost": {"usd": 0},
-                                  "provenance": a.get("provenance", "Recorded by understando close from the user's evidence.")})
+                                  "provenance": a.get("provenance", "Recorded by understando close from the user's evidence."),
+                                  **({"name": a["name"]} if a.get("name") else {})})
         attach(data, claim, vid)
         verdicts.apply(data)
         return f"{claim['id']}: recorded evidence {vid}; the claim is {claim['verdict']}."
@@ -424,7 +428,7 @@ def add_claim(c: context.Ctx, data: dict, path: str, a: argparse.Namespace) -> i
     journal.append(c.journal, "decision", f"close --add-claim {path}: {a.text}", c.repo, result=f"claim {cid}", claims=[cid])
     q = question({**data, "claims": [claim]})
     lines = [f"Added the claim '{a.name}' to the promise '{promise.get('name') or promise['label']}'. It is {claim['verdict']}." + names.ref([cid]),
-             (f"It has {len(checks)} {'check' if len(checks) == 1 else 'checks'} that run the file: {who}." if checks else "No check runs the file yet."),
+             (f"It has {len(checks)} {'check that runs' if len(checks) == 1 else 'checks that run'} the file: {who}." if checks else "No check runs the file yet."),
              "Next: add a check. Run understando close --next; it offers a test, a mechanical check or recorded evidence for this claim."]
     if not claim.get("invariant"):
         lines.append("The PR text does not state this claim, so it can reach Proven only with an invariant that you confirm (understando discover).")

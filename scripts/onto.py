@@ -136,6 +136,19 @@ def upgrade(data: dict) -> int:
     return n
 
 
+def reconcile(data: dict) -> None:
+    """Shape 2, before a save: a verb that links a verifier to a claim through `verifier.claims`
+    (import, trim, formalize) also puts it in `claims[].checks`. A check that no longer exists
+    leaves the claim. Then the none checks and the mirror follow (upgrade)."""
+    if data.get("schema_version") != SHAPE:
+        return
+    vids = [v["id"] for v in data.get("verifiers", [])]
+    for c in data.get("claims", []):
+        linked = [v["id"] for v in data["verifiers"] if c["id"] in v.get("claims", [])]
+        c["checks"] = [x for x in dict.fromkeys([*(c.get("checks") or []), *linked]) if x in vids]
+    upgrade(data)
+
+
 def shape_errors(data: dict) -> list[str]:
     """Shape 2 rules: each claim lists checks that exist, each check backs a claim, and the
     verifier lists mirror the claim lists."""

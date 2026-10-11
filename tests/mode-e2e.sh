@@ -143,12 +143,12 @@ if "$U" formalize --invariant "$AGENT_INV" > "$O/refuse2.txt" 2>&1; then fail "f
 has "$O/refuse2.txt" "refuse:"
 echo "build and formalize refuse the unconfirmed invariant $AGENT_INV"
 
-step "close: an e2e test closes the Gap, a property test closes an Asserted claim, one waiver"
+step "close: an e2e test closes the Gap, a property test replaces the weak check of an Asserted claim, one waiver"
 "$U" close --list > "$O/queue.txt"
 test "$(head -1 "$O/queue.txt" | cut -d' ' -f1-2)" = "C03 Gap:" || fail "the riskiest claim is not first"
 "$U" close --answers "$FIX/ready/close-answers.json" > "$O/close.txt"
-has "$O/close.txt" "C03: V09 goes green, and red on control K09"
-has "$O/close.txt" "C02: V10 goes green, and red on control K10"
+has "$O/close.txt" "C03: V11 goes green, and red on control K09"
+has "$O/close.txt" "C02: V12 goes green, and red on control K10. It replaces V02."
 has "$O/close.txt" "C04: waived"
 has "$O/close.txt" "DONE: every claim is Formal, Proven, Backed or waived."
 git -C "$REPO" rev-parse -q --verify refs/heads/understando/1-ready > /dev/null || fail "no ready branch"
@@ -299,7 +299,8 @@ python3 - "$RUN2/trust-map.json" "$SIDE" <<'PY'
 import json, sys
 d, side = json.load(open(sys.argv[1])), json.load(open(sys.argv[2]))
 c = {x["id"]: x for x in d["claims"]}
-assert c["C01"]["verdict"] == "Formal" and c["C01"]["tier"] == 5, c["C01"]
+# A claim is as strong as its weakest check: the Formal record lifts the tier to 5, and the test checks keep the verdict at Proven.
+assert c["C01"]["verdict"] == "Proven" and c["C01"]["tier"] == 5 and "FW1" in c["C01"]["checks"], c["C01"]
 dup = [x for x in d["claims"] if x["source"].endswith("(formal FCW1)")]
 assert not dup, "the duplicate proposed claim was added"
 assert any(x["source"].endswith("(formal FCW2)") for x in d["claims"]), "the new proposed claim is missing"
@@ -516,7 +517,7 @@ json.dump({"go": "run through", "ci": "approve", "close": json.load(open(sys.arg
 PY
 (cd "$CL" && "$U" review 1 --verbose --answers "$WORK/through.json") > "$O/through.txt" 2>&1 || { tail -40 "$O/through.txt"; fail "the run through failed"; }
 for s in "== review: close --answers" "== review: trim" "== review: ready --report" "== review: explain" \
-         "C03: V09 goes green, and red on control K09" "### Ready checklist" "understando never edits the PR" "review: every step is done."; do
+         "C03: V11 goes green, and red on control K09" "### Ready checklist" "understando never edits the PR" "review: every step is done."; do
   has "$O/through.txt" "$s"
 done
 lacks "$O/through.txt" "STOP:"

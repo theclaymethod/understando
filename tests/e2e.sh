@@ -212,7 +212,7 @@ const url = 'file://' + path.resolve(html);
     const still = await off.newPage();
     await still.goto(url + '#claim-c02', { waitUntil: 'load' });
     const text = await still.innerText('main');
-    for (const want of ['Can you merge it?', data.promises[0].label, data.claims[0].plain.what.split('`')[0].trim()]) if (!text.includes(want)) fail(`without JavaScript the page lacks "${want}"`);
+    for (const want of ['Can you merge it?', data.promises[0].label, data.claims[0].name ?? data.claims[0].plain.what.split('`')[0].trim()]) if (!text.toLowerCase().includes(want.toLowerCase())) fail(`without JavaScript the page lacks "${want}"`);
     if (!(await still.$eval('#claim-c02 .ve-disclosure-body', (b) => b.getBoundingClientRect().height > 0))) fail('without JavaScript the deep link does not show claim C02');
     await off.close();
     console.log('without JavaScript the page shows the merge verdict, the promises and the claims, and a deep link shows its claim');
@@ -330,7 +330,7 @@ python3 - "$MAP" "$FIX/expected.json" <<'PY'
 import json, sys
 got, want = json.load(open(sys.argv[1])), json.load(open(sys.argv[2]))
 verdicts = {c["id"]: c["verdict"] for c in got["claims"]}
-states = {v["id"]: v["state"] for v in got["verifiers"]}
+states = {v["id"]: v["state"] for v in got["verifiers"] if v["kind"] != "none"}
 loud = sorted([f["flag"], f["subject"]] for f in got["flags"] if f.get("loud"))
 print(f"{'claim':<6}{'expected':<10}{'actual':<10}text")
 for cid in sorted(set(verdicts) | set(want["verdicts"])):
