@@ -487,6 +487,11 @@ def main(c, argv: list[str]) -> int:
     if args.pr and not c.pr:
         import ctx as context
         c = context.resolve(None if not c.run else str(c.run), str(c.repo) if c.repo else None, args.pr, c.json)
+    import offline
+    refused = offline.refusal(c.run, "publish")
+    if refused:
+        print(refused)
+        return 1
     try:
         if args.feedback:
             return publish_feedback(c, args.reviewer, args.answers, args.dry_run)

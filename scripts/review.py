@@ -47,6 +47,7 @@ import config  # noqa: E402
 import ctx as context  # noqa: E402
 import journal  # noqa: E402
 import lock  # noqa: E402
+import offline  # noqa: E402
 import repoinfo  # noqa: E402
 import tm  # noqa: E402
 
@@ -78,20 +79,33 @@ def resolve(pr: str, repo_opt: Path | None, head_opt: str | None) -> dict:
     url = repoinfo.origin_url(repo)
     slug = repoinfo.slug(url)
     name = repoinfo.repo_name(repo)
-    info = repoinfo.gh_pr(pr, slug)
-    head = (info or {}).get("headRefOid") or head_opt
-    if not head:
-        tm.fail("review: no PR head. gh is missing or failed; pass --head SHA", 2)
-    if head_opt and info and info.get("headRefOid") and head_opt != info["headRefOid"]:
-        print(f"review: --head {head_opt[:10]} differs from gh ({info['headRefOid'][:10]}); using gh", file=sys.stderr)
-    base_name = (info or {}).get("baseRefName") or "main"
     cfg = config.load(name)
     run = config.runs_root() / name / str(pr)
+    info = repoinfo.gh_pr(pr, slug, "headRefOid,baseRefName,headRefName,state,title")
+    head = (info or {}).get("headRefOid")
+    off: dict = {}
+    base_name = (info or {}).get("baseRefName")
+    if head_opt:
+        if head and head != head_opt:
+            print(f"review: --head {head_opt[:10]} overrides GitHub ({head[:10]})", file=sys.stderr)
+        head = head_opt
+    elif not head:
+        head = offline.ls_remote_head(repo, str(pr))
+    if not head:
+        known = offline.last_known(run, repo)
+        if not known:
+            tm.fail(f"review: I can't reach GitHub and there is no earlier review of PR {pr}. "
+                    "Run this where the network is available, or pass --head <sha>.", 2)
+        head, base_name = known["head"], base_name or known["base"]
+        off = {"offline": True, "offline_when": known["when"], "head_source": known["source"],
+               "offline_reason": f"GitHub could not be reached (gh and git ls-remote both failed); the head is from {known['source']}"}
+    base_name = base_name or "main"
     branch = cfg["ready_branch"].format(pr=pr)
     wt = repo / cfg["worktree_root"] / f"understando-{pr}-ready"
     return {"pr": str(pr), "repo": str(repo), "slug": slug or name, "name": name, "head": head, "base_name": base_name,
             "run": str(run), "branch": branch, "worktree": str(wt), "config": cfg.get("path"), "config_present": cfg["present"],
-            "gh": bool(info), "state": (info or {}).get("state")}
+            "gh": bool(info), "state": (info or {}).get("state"), "head_branch": (info or {}).get("headRefName") or (load_state(run).get("head_branch")),
+            "offline": bool(off), "offline_when": off.get("offline_when"), "offline_reason": off.get("offline_reason"), "head_source": off.get("head_source")}
 
 
 def git_q(repo: Path, *args: str) -> subprocess.CompletedProcess:
@@ -217,7 +231,10 @@ def summary(c: context.Ctx, st: dict, sig: dict, doc: list[dict], prof: dict | N
                  "branch": st["branch"], "ready_tip": st.get("tip"), "pulled": st.get("pulled"),
                  "ci": {"present": bool(prof), "approved": ci.approved(prof), "commands": len((prof or {}).get("commands", []))},
                  "doctor": {sev: [f["id"] for f in doc if f["severity"] == sev] for sev in ("auto", "mention", "route")},
-                 "locks": lock.live(Path(st["run"]))}
+                 "locks": lock.live(Path(st["run"])), "offline": bool(st.get("offline"))}
+    if st.get("offline"):
+        out["offline_reason"] = st.get("offline_reason")
+        out["merge_question"] = "skipped (offline)"
     if not data:
         out["trust_map"] = None
         return out
@@ -602,6 +619,9 @@ def situation(c: context.Ctx, s: dict, st: dict, sig: dict, doc: list[dict]) -> 
     import names
     import prompt
     lines, details = [], []
+    if st.get("offline"):
+        lines.append(f"I can't reach GitHub, so I can't see new PR commits. I'm using the last known PR head (from {st.get('offline_when')}).")
+        details.append(f"offline: {st.get('offline_reason')}; head {st['head'][:10]}; the merge question was skipped; publish is refused")
     data = c.data() or {}
     new = st.get("pr_new") or {}
     merged = (st.get("merge") or {}).get("head") == st["head"]
@@ -1128,6 +1148,9 @@ def _main(c: context.Ctx, argv: list[str], capture: bool = False):
     if not st.get("started_at") or st.get("head_at_start") != ctx["head"]:
         st.update(started_at=tm.now(), head_at_start=ctx["head"], done=[], teach=None, failed=None, opened=None)
     st.update(setup_worktree(ctx))
+    if ctx["offline"] and (st.get("pr_new") or {}).get("commits") and (st.get("merge") or {}).get("head") != ctx["head"]:
+        st["merge"] = {"head": ctx["head"], "decision": "skipped", "offline": True, "at": tm.now()}
+        journal.append(Path(ctx["run"]) / "journal.jsonl", "decision", "review: the merge question is skipped, GitHub is not reachable", Path(ctx["repo"]))
     cfg = config.load(ctx["name"])
     dropped = config.drop_inherited_key(cfg)
     c = context.Ctx(run, Path(ctx["repo"]), ctx["pr"], c.json)
