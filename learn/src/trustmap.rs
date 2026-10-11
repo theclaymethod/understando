@@ -56,6 +56,39 @@ fn valid_command(c: &Value) -> bool {
         .unwrap_or(false)
 }
 
+/// A code anchor ({path, symbol, match}) has no line numbers in the data. `explain` writes the lines
+/// that it resolved at the head to refs.resolved.json; copy them onto the refs in memory only.
+fn resolve_anchors(raw: &mut Value, cache: &Path) {
+    let Some(table) = std::fs::read_to_string(cache).ok().and_then(|t| serde_json::from_str::<Value>(&t).ok()) else {
+        return;
+    };
+    if table.get("head") != raw.get("head") {
+        return;
+    }
+    let rows = table.get("refs").and_then(Value::as_array).cloned().unwrap_or_default();
+    let strip = |v: &Value| {
+        let mut v = v.clone();
+        if let Some(o) = v.as_object_mut() {
+            o.remove("note");
+        }
+        v
+    };
+    for claim in raw.get_mut("claims").and_then(Value::as_array_mut).into_iter().flatten() {
+        for r in claim.get_mut("code").and_then(Value::as_array_mut).into_iter().flatten() {
+            if r.get("start").is_some() {
+                continue;
+            }
+            let key = strip(r);
+            if let Some(row) = rows.iter().find(|row| row.get("ref").map(strip).as_ref() == Some(&key)) {
+                if let Some(o) = r.as_object_mut() {
+                    o.insert("start".into(), row["start"].clone());
+                    o.insert("end".into(), row["end"].clone());
+                }
+            }
+        }
+    }
+}
+
 impl TrustMap {
     pub fn load(path: &Path) -> Result<Self, String> {
         let text = std::fs::read_to_string(path).map_err(|e| format!("could not read {}: {e}", path.display()))?;
@@ -69,6 +102,8 @@ impl TrustMap {
         if !(7..=40).contains(&head.len()) || !head.chars().all(|c| c.is_ascii_hexdigit()) {
             return Err("the trust map head is not a commit SHA".into());
         }
+        let mut raw = raw;
+        resolve_anchors(&mut raw, &path.with_file_name("refs.resolved.json"));
         Ok(Self { raw })
     }
 

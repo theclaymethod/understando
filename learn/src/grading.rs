@@ -53,7 +53,17 @@ fn s<'a>(v: &'a Value, key: &str) -> &'a str {
 fn apply_edit(ws: &Workspace, edit: &Value) -> Result<(), String> {
     let rel = s(edit, "path");
     let path = ws.inside(rel)?;
-    match s(edit, "op") {
+    let op = s(edit, "op");
+    let anchored = edit.get("symbol").is_some() || edit.get("match").is_some();
+    if matches!(op, "delete-line" | "invert-condition" | "replace-with" | "drop-allowlist-row") || (op == "corrupt-byte" && anchored) {
+        // An anchor op resolves in scripts/coderef.py, the same code that the probe runs.
+        let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("../scripts/coderef.py");
+        let out = std::process::Command::new("python3")
+            .arg("-I").arg(&script).arg("--apply-edit").arg(&path).arg(edit.to_string())
+            .output().map_err(|e| format!("{rel}: {e}"))?;
+        return if out.status.success() { Ok(()) } else { Err(format!("{rel}: {}", String::from_utf8_lossy(&out.stderr).trim())) };
+    }
+    match op {
         "delete-file" => std::fs::remove_file(&path).map_err(|e| format!("{rel}: {e}")),
         "corrupt-byte" => {
             let mut data = std::fs::read(&path).map_err(|e| format!("{rel}: {e}"))?;
