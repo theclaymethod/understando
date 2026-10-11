@@ -120,6 +120,14 @@ def resolve_refs(repo: str, data: dict, refs: list[dict]) -> list[dict]:
     return out
 
 
+def export(runtime: str, mdx: Path, html: Path, *extra: str) -> int:
+    """Export the explainer MDX to HTML with the source script of the Artifacture checkout
+    (scripts/ve-mdx/export.mjs); the `artifacture export` command is gone from the CLI. The script
+    resolves its package from the working directory, so it runs in the checkout, with absolute paths."""
+    script = Path(runtime) / "scripts" / "ve-mdx" / "export.mjs"
+    return subprocess.run(["node", str(script), str(mdx.resolve()), "--out", str(html.resolve()), *extra], cwd=runtime).returncode
+
+
 def formal_roots(v: dict) -> list[str]:
     """The folders that the edit paths of a formal control can be relative to: the repo root, then
     each folder above the formal artifact (projects/x/formal/lean/, ..., projects/x/)."""
@@ -192,6 +200,43 @@ def diff_data(repo: str, base: str, head: str) -> dict:
                 added[current].append([start, start + count - 1])
     names = lambda f: git(repo, "diff", "--name-only", "--no-renames", f"--diff-filter={f}", base, head).split()  # noqa: E731
     return {"files": files, "deleted": names("D"), "created": names("A"), "added": added}
+
+
+def diff_hunks(repo: str, base: str, head: str) -> dict[str, list[tuple[int, list[str], int, int]]]:
+    """Per file, each hunk of `git diff -U0` base to head: (its first base line, the removed lines,
+    its first head line, the number of added lines). A hunk with no added line starts after its head line."""
+    hunks: dict[str, list[tuple[int, list[str], int, int]]] = {}
+    current, removed = None, None
+    for line in git(repo, "diff", "-U0", "--no-renames", base, head).splitlines():
+        if line.startswith("diff --git "):
+            current, removed = None, None
+        elif line.startswith("+++ "):
+            current = None if line == "+++ /dev/null" else line[6:]
+        elif line.startswith("@@") and current:
+            m = re.match(r"@@ -(\d+)(?:,\d+)? \+(\d+)(?:,(\d+))? @@", line)
+            removed = []
+            hunks.setdefault(current, []).append((int(m.group(1)), removed, int(m.group(2)), int(m.group(3) if m.group(3) is not None else 1)))
+        elif removed is not None and line.startswith("-"):
+            removed.append(line[1:])
+    return hunks
+
+
+def line_changes(hunks: list[tuple[int, list[str], int, int]], start: int, end: int) -> dict:
+    """The diff status of the head lines start..end: the added lines, the modified lines (the first
+    added lines of a hunk, one per removed line) and the removed base lines that show inline, each
+    before the head line `at`."""
+    out: dict = {"added": [], "modified": [], "removed": []}
+    for base, removed, first, count in hunks:
+        new = range(first, first + count)
+        at = first if count else first + 1
+        inside = any(start <= n <= end for n in new) if count else start < at <= end
+        if not inside:
+            continue
+        # The first added lines of a hunk replace its removed lines (modified); the rest are new.
+        out["modified"] += [n for n in new[:len(removed)] if start <= n <= end]
+        out["added"] += [n for n in new[len(removed):] if start <= n <= end]
+        out["removed"] += [{"at": at, "base": base + i, "text": text} for i, text in enumerate(removed)]
+    return out
 
 
 JS_DEF = re.compile(r"^\s*(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function\*?|class)\s+([A-Za-z_$][\w$]*)"
@@ -330,12 +375,15 @@ def main() -> int:
             body["refs"] += resolve_refs(args.repo, data, [ref])
         except SystemExit:
             pass  # a test that the command names but the file does not hold as a symbol: the row shows its path
+    # Each excerpt gets the diff status of its lines, so the page can mark the added, modified and removed lines.
+    hunks = diff_hunks(args.repo, data["base"], data["head"])
+    for r in body["refs"]:
+        if r.get("excerpt") and not r.get("link_only"):
+            r["changes"] = line_changes(hunks.get(r["path"], []), r["start"], r["end"])
     (out / coderef.CACHE_NAME).write_text(json.dumps(body, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     runtime = runtime_path(args.runtime)
     if not args.no_html:
-        cli = [str(Path(runtime) / "scripts" / "artifacture.mjs"), "export", str(out / "explainer.mdx"), "--out", str(out / "explainer.html"),
-               "--guard-repo", str(args.repo), "--guard-head", data["head"]]
-        if subprocess.run(["node", *cli]).returncode != 0:
+        if export(runtime, out / "explainer.mdx", out / "explainer.html", "--guard-repo", str(Path(args.repo).resolve()), "--guard-head", data["head"]) != 0:
             fail("the export failed. Fix the MDX or the data, not the HTML.")
     section = ["node", str(Path(runtime) / "scripts" / "ve-mdx" / "trust-map.mjs"), "pr-section", "--map", str(out / "trust-map.json"),
                "--refs", str(out / coderef.CACHE_NAME), "--explain", str(out / "explain.json"), "--out", str(out / "pr-section.md")]
