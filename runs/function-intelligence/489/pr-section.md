@@ -16,7 +16,8 @@ flowchart LR
   L5["Recorded results"]
   L5 -->|5| Backed
   L6["Narrative only"]
-  L6 -->|4| Asserted
+  L6 -->|2| Backed
+  L6 -->|2| Asserted
   L7["Unstated changes"]
   L7 -->|3| Gap
   Proven(["Proven"])
@@ -62,15 +63,16 @@ flowchart LR
 | C28: An Opus audit found no gaming in the kept edits. | **Backed** | V32 backs this claim, but the evidence is recorded, not run again. |
 | C29: The cost per document goes up: UAP $0.75 to $1.30, FMM $0.34 to $0.38, 4H $0.24 to $0.32. | **Backed** | V33 backs this claim, but the evidence is recorded, not run again. |
 | C30: 4,249 CR tests, 1,272 harness tests and 74 root tests pass. Ruff, basedpyright and the boundary checks are clean. | **Backed** | V34 backs this claim, but the evidence is recorded, not run again. |
-| C31: Production does not change, because cr_service does not import cr.docgen. | **Asserted** | Only the PR text states this claim. |
-| C32: The source code is 47 lines smaller than main. | **Asserted** | Only the PR text states this claim. |
+| C31: Production does not change, because cr_service does not import cr.docgen. | **Backed** | V37, V38 backs this claim, but it is a mechanical check (a grep or a line count) with no control. |
+| C32: The source code is 47 lines smaller than main. | **Backed** | V39 backs this claim, but it is a mechanical check (a grep or a line count) with no control. |
 | C33: The UAP trace label released, on a plan that needs clinician review, is a label error and not a floor gap. | **Asserted** | Only the PR text states this claim. |
 | C34: Nobody measured the two folded defaults, #438 and #424, in production. | **Asserted** | Only the PR text states this claim. |
 | C35: require_same_scope refuses a packet and a ledger of different members or snapshots. | **Gap** | No verifier backs this claim, and the PR text does not state it. |
 | C36: No caller uses sheet_names, which the PR deletes from guidance/_xlsx.py. | **Gap** | No verifier backs this claim, and the PR text does not state it. |
 | C37: With diagnose, submission_text names the unexpected tool calls, not an empty body. | **Gap** | No verifier backs this claim, and the PR text does not state it. |
 
-- **Verdicts:** 25 Proven, 5 Backed, 5 Asserted, 3 Gap.
+- **Verdicts:** 25 Proven, 7 Backed, 3 Asserted, 3 Gap.
+- **Promises:** Checked input, separate lanes: Gap. Bad edits never ship: Gap. Same requests, working commands: Gap. Better notes, no production change: Asserted. No gaming the Judge: Backed.
 - **Cannot fail:** V36 stayed green on control K36. It checks nothing that the control broke.
 - **Controls:** 32 ran in scratch worktrees. Cost: $0, with no model call.
 - **Control missed:** pin L36 stayed green when K01b widened Editor.edit, EditorSpec.edit and NoteAuthorEditor.edit. Project-wide basedpyright (V35) went red on the same edit.
