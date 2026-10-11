@@ -121,26 +121,11 @@ def git(repo: Path, *args: str, check: bool = True) -> str:
 JAVA_HOMES = ("/opt/homebrew/opt/openjdk", "/usr/local/opt/openjdk")
 
 
-def _java_ok(path: str) -> bool:
-    try:
-        return subprocess.run([path, "-version"], capture_output=True, timeout=30).returncode == 0
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-
-
 def java_bin() -> str | None:
-    """A java that runs, without a PATH edit: $UNDERSTANDO_JAVA, $JAVA_HOME/bin/java, Homebrew's
-    openjdk (/opt/homebrew/opt/openjdk/bin, /usr/local/opt/openjdk/bin), then java on PATH. The
-    macOS stub /usr/bin/java prints an install prompt and fails, so it never counts. A formal step
-    passes the returned path to its command explicitly."""
-    cands = [os.environ.get("UNDERSTANDO_JAVA")]
-    if os.environ.get("JAVA_HOME"):
-        cands.append(str(Path(os.environ["JAVA_HOME"]) / "bin" / "java"))
-    cands += [f"{h}/bin/java" for h in JAVA_HOMES] + [shutil.which("java")]
-    for c in cands:
-        if c and Path(c).is_file() and os.access(c, os.X_OK) and _java_ok(c):
-            return c
-    return None
+    """A java that runs, without a PATH edit (see toolprobe.java_bin). A formal step passes the
+    returned path to its command explicitly."""
+    import toolprobe
+    return toolprobe.java_bin()
 
 
 def tla2tools_jar() -> str | None:
@@ -157,13 +142,11 @@ def tool_status() -> dict:
     def on_path(name: str) -> str | None:
         return shutil.which(name)
 
-    cc = None
-    if on_path("npx"):
-        probe = subprocess.run(["npx", "--no-install", "@spolu/cc-check@0.2.0", "--help"], capture_output=True, text=True,
-                               env={**os.environ, "DO_NOT_TRACK": "1"}, timeout=60)
-        cc = "npx @spolu/cc-check@0.2.0" if probe.returncode == 0 else None
+    import toolprobe
+    cc, cc_note = toolprobe.cc_check()
     return {"lean": on_path("lean"), "lake": on_path("lake"), "java": java_bin(), "tla2tools": tla2tools_jar(),
-            "apalache": on_path("apalache-mc") or on_path("apalache"), "cc-check": cc}
+            "apalache": on_path("apalache-mc") or on_path("apalache"), "cc-check": cc,
+            "probe_notes": {"cc-check": cc_note} if cc_note else {}}
 
 
 # ---- the run-state guard -----------------------------------------------------------------------

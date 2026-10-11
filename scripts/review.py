@@ -434,7 +434,14 @@ def probe_done_outside(c: context.Ctx, st: dict, scope: list[str] | None) -> boo
 
 
 def run_step(c: context.Ctx, st: dict, step: str, answers: dict) -> tuple[int, str | None]:
-    """(exit, stop reason). A stop reason ends the run, also under "run through"."""
+    """(exit, stop reason). A stop reason ends the run, also under "run through". A long step prints
+    a heartbeat line every 30 seconds ($UNDERSTANDO_HEARTBEAT changes the interval)."""
+    import heartbeat
+    with heartbeat.beat(f"review {step}"):
+        return _run_step(c, st, step, answers)
+
+
+def _run_step(c: context.Ctx, st: dict, step: str, answers: dict) -> tuple[int, str | None]:
     if step in ("close", "trim", "formal"):
         n = unpulled(st)
         if n:
