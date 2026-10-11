@@ -7,8 +7,10 @@
 The explainer is a level ladder. Each level is one screen deep, and detail waits in collapsed
 blocks, so a newcomer never meets an ID or a code name before the big picture:
 
-  1 story       the problem, the change and why to trust it; one before-and-after picture; one
+  1 story       the ready checklist (when ready.json exists), the problem, the change and why to trust it; one before-and-after picture; one
                 chip for each promise with its weakest verdict; the glossary (collapsed)
+  1a why        only with a journal: each user request as a short quote, linked to its claims, then
+                the decisions that followed (what, why, evidence, result)
   2 loop        the run steps, one plain sentence each, each tagged with its promise
   3 change      a before-and-after diagram and a "replaced by" table, both from git diff --numstat
   4 promises    one block per promise, weakest first: its sentence, its strength, a reviewer action
@@ -71,18 +73,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import mechanical  # noqa: E402
 import tm  # noqa: E402
 
-VERDICTS = ["Proven", "Backed", "Asserted", "Gap"]
+VERDICTS = ["Formal", "Proven", "Backed", "Asserted", "Gap"]
+STRONG = ("Formal", "Proven")
 MAX_SNIPPET = 30
 LANG = {".py": "python", ".ts": "ts", ".tsx": "tsx", ".js": "js", ".mjs": "js", ".json": "json",
         ".md": "markdown", ".sh": "bash", ".toml": "toml", ".yml": "yaml", ".yaml": "yaml"}
 CODE_EXT = {".py", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".jsx", ".sh", ".go", ".rs", ".java", ".kt",
             ".rb", ".swift", ".c", ".h", ".cc", ".cpp", ".cs", ".php", ".scala"}
-TONE = {"Proven": "ok", "Backed": "info", "Asserted": "warn", "Gap": "err"}
+TONE = {"Formal": "ok", "Proven": "ok", "Backed": "info", "Asserted": "warn", "Gap": "err"}
 STATE_TONE = {"proven": "ok", "recorded": "info", "checked": "info", "cannot-fail": "err", "failing": "err", "broken": "err"}
 FLAG_TONE = {"cannot-fail": "err", "control-missed": "warn", "same-family": "warn"}
 KIND_GLYPH = {"type-pin": "rect", "boundary": "rect", "parity": "rect", "golden": "rect",
               "contract-format": "rect", "integration": "oval", "unit": "oval", "e2e": "oval",
-              "eval": "oval", "measurement": "oval", "model": "diamond"}
+              "eval": "oval", "measurement": "oval", "model": "diamond", "property": "oval", "fuzz": "oval",
+              "contract": "rect", "static": "rect", "lean": "rect", "tla": "rect"}
 GLYPH_FAMILY = {"rect": "static check", "oval": "run check", "diamond": "model judge"}
 VISIBLE_UNCLAIMED = 12
 
@@ -93,7 +97,10 @@ BUILTIN_GLOSSARY = [
     ("Promise", "a plain sentence that groups the claims about one property of the PR.", []),
     ("Verifier", "a check that backs a claim, for example a test, a type check or an eval.", ["check"]),
     ("Control", "a bug that we put in a scratch copy of the code on purpose, to see if a verifier finds it.", []),
+    ("Formal", "a proof or a model check backs the claim, a planted bug broke it, and a conformance run ties it to the code.", []),
     ("Proven", "a tool check backs the claim, and the check went red on a planted bug.", []),
+    ("Tier", "the rung of the strongest check that went red on a planted bug: 1 an end-to-end test, 2 a property test, 3 a type or contract check, 4 a model check, 5 a proof.", []),
+    ("Waived", "the author chose not to verify the claim, and wrote the reason.", []),
     ("Backed", "evidence backs the claim, but no planted bug made the evidence go red.", []),
     ("Asserted", "only the PR text says the claim. No check backs it.", []),
     ("Gap", "no check backs the claim, and the PR text does not state it. You decide if it is important.", []),
@@ -327,9 +334,20 @@ def promises_in_order(data: dict) -> list[tuple[dict, str, list[str]]]:
     return sorted(rows, key=lambda r: -VERDICTS.index(r[1]))
 
 
-def story(data: dict, extra: dict, glossary_used: list[tuple[str, str]]) -> str:
+def ready_block(ready: dict) -> str:
+    """The ready checklist at the top of the page. Gate details are plain; the items with IDs stay collapsed."""
+    gates = definitions((f"Gate {g['n']}: {g['name']}", ("Pass. " if g["pass"] else "Fail. ") + g["detail"], "ok" if g["pass"] else "err")
+                        for g in ready["gates"])
+    items = [f"<li>{js(f'Gate {g[chr(110)]}: ' + item)}</li>" for g in ready["gates"] for item in g.get("items", [])]
+    body = para("Four gates decide if the PR is ready to review. Each gate passes or fails.") + "\n" + gates
+    if items:
+        body += "\n" + disclosure("Show what each gate found", "<ul>" + "".join(items) + "</ul>")
+    return subsection("story-ready", js("Ready checklist"), body)
+
+
+def story(data: dict, extra: dict, glossary_used: list[tuple[str, str]], ready: dict | None = None, next_level: str = "loop") -> str:
     s = extra.get("story") or {}
-    parts = []
+    parts = [ready_block(ready)] if ready else []
     ideas = [("The problem", s.get("problem")), ("The change", s.get("change")), ("Why you can trust it", s.get("trust"))]
     if any(text for _, text in ideas):
         parts.append(definitions(((term, text, None) for term, text in ideas if text), size="lead"))
@@ -344,6 +362,69 @@ def story(data: dict, extra: dict, glossary_used: list[tuple[str, str]]) -> str:
                             + f"\n<ChipLinks label={js('The promises, weakest first')} items={js(chips)} />"))
     words = definitions((term, meaning, None) for term, meaning in glossary_used)
     parts.append(disclosure("Words used on this page: the glossary", words, anchor="glossary"))
+    if next_level == "why":
+        parts.append(next_link("why", "see why it was built this way"))
+    else:
+        parts.append(next_link("loop", "see one run of the change, step by step"))
+    return "\n".join(parts)
+
+
+# ---- Level 1a: why it was built this way -----------------------------------------------------
+
+QUOTE_WORDS = 30
+ASKED: dict[str, int] = {}
+
+
+def load_journal(path: str | None) -> list[dict]:
+    if not path or not Path(path).is_file():
+        return []
+    rows = []
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            rows.append(json.loads(line))
+    return rows
+
+
+def short_quote(text: str) -> str:
+    words = text.split()
+    return " ".join(words[:QUOTE_WORDS]) + (" ..." if len(words) > QUOTE_WORDS else "")
+
+
+def why_level(data: dict, journal: list[dict]) -> str | None:
+    """The user's intent, from the journal: each request as a short quote, with the claims it asked for.
+
+    The quotes are the user's words, so the STE lint skips them (data-quote). The rest is strict STE."""
+    prompts = [r for r in journal if r.get("kind") == "prompt"]
+    invariants = [i for i in data.get("invariants", []) if i["status"] in ("accepted", "proposed")]
+    if not prompts and not invariants:
+        return None
+    claims = {c["id"]: c for c in data["claims"]}
+    parts = [para("This level shows what the user asked for, in order, in the user's own words. Each request links to the claims that it asked for. Then the decisions that followed show what was chosen and why.")]
+    for i, r in enumerate(prompts, 1):
+        linked = [cid for cid in r.get("claims", []) if cid in claims]
+        for cid in linked:
+            ASKED.setdefault(cid, i)
+        body = f"<blockquote data-quote=\"user\"><p>{js(short_quote(r['text']))}</p></blockquote>"
+        if linked:
+            links = "".join(f"<li><a href={js('#' + claim_anchor(cid))}>{js(cid + ': ' + (claims[cid].get('plain') or {}).get('what', claims[cid]['text']))}</a></li>" for cid in linked)
+            body += "\n" + disclosure(f"Show the claims that this request asked for ({len(linked)})", "<ul>" + links + "</ul>")
+        else:
+            body += "\n" + none("No claim links to this request.")
+        parts.append(subsection(f"why-{i}", js(f"Request {i}"), body))
+    if invariants:
+        rows = "".join(f"<li>{js(('Confirmed by the user: ' if i['author'] == 'user' and i['status'] == 'accepted' else 'Proposed, not confirmed: ') + i['text'])}</li>"
+                       for i in invariants)
+        parts.append(subsection("why-invariants", js("The invariants"),
+                                para("An invariant is a rule that must always hold. Only a rule that the user confirmed can make a claim Proven or Formal.")
+                                + "\n" + disclosure(f"Show the {len(invariants)} invariants", "<ul>" + rows + "</ul>")))
+    decisions = [r for r in journal if r.get("kind") in ("decision", "verifier-choice", "waiver", "result")]
+    if decisions:
+        def row(r: dict) -> str:
+            cells = [r.get("text", "")] + [f"{k.capitalize()}: {r[k]}" for k in ("why", "evidence", "result") if r.get(k)]
+            if r.get("claims"):
+                cells.append("Claims: " + ", ".join(r["claims"]))
+            return f"<li>{js(r['kind'] + '. ' + ' '.join(cells))}</li>"
+        parts.append(disclosure(f"Show the {len(decisions)} decisions that followed", "<ul>" + "".join(row(r) for r in decisions) + "</ul>", anchor="why-decisions"))
     parts.append(next_link("loop", "see one run of the change, step by step"))
     return "\n".join(parts)
 
@@ -517,7 +598,11 @@ def promises(data: dict, extra: dict, repo: str) -> str:
     for i, (p, strength, cids) in enumerate(promises_in_order(data), 1):
         verdicts = [claims[c]["verdict"] for c in cids]
         word = "claim" if len(cids) == 1 else "claims"
-        head = f"<p>{pill(strength)}{js(f' This is the verdict of its weakest claim. Its {len(cids)} {word}: {tally(verdicts)}.')}</p>"
+        head = f"<p><strong>{js(strongest_tier(claims[c] for c in cids))}</strong></p>"
+        head += f"<p>{pill(strength)}{js(f' This is the verdict of its weakest claim. Its {len(cids)} {word}: {tally(verdicts)}.')}</p>"
+        waived = [claims[c] for c in cids if claims[c].get("waiver")]
+        if waived:
+            head += "".join(f"<p>{js('Waived: ' + (c.get('plain') or {}).get('what', c['text']) + ' Reason: ' + c['waiver']['reason'])}</p>" for c in waived)
         lines_ = []
         action = p.get("reviewer_action")
         if strength != "Proven" and not action:
@@ -537,6 +622,15 @@ def promises(data: dict, extra: dict, repo: str) -> str:
     return "\n".join(parts)
 
 
+def strongest_tier(claims) -> str:
+    """The first line of a promise: the strongest rung that a planted bug proved, over its claims."""
+    tiers = [c.get("tier") for c in claims if c.get("tier")]
+    if not tiers:
+        return "Strongest check: none. No check of this promise went red on a planted bug."
+    t = max(tiers)
+    return f"Strongest check: tier {t}, {tm.LADDER_NAMES[t]}."
+
+
 def claim_block(c: dict, risk: dict | None, verifiers: list[dict], controls: dict[str, list[dict]], data: dict, repo: str) -> str:
     plain = c.get("plain") or {"what": c["text"], "proof": c["reason"]}
     terms = [("How it is proven", plain["proof"], None)]
@@ -547,7 +641,19 @@ def claim_block(c: dict, risk: dict | None, verifiers: list[dict], controls: dic
         if risk.get("fix"):
             terms.append(("Cheapest fix", risk["fix"], None))
     terms.append(("Verdict", f"{c['verdict']}. {c['reason']}", None))
+    if c.get("tier"):
+        terms.append(("Tier", f"{c['tier']}: {tm.LADDER_NAMES[c['tier']]}.", None))
+    if c.get("waiver"):
+        terms.append(("Waived", c["waiver"]["reason"], "warn"))
     terms.append(("Source", c["source"], None))
+    inv = next((i for i in data.get("invariants", []) if i["id"] == c.get("invariant")), None)
+    if inv:
+        confirmed = inv["author"] == "user" and inv["status"] == "accepted"
+        terms.append(("Invariant", ("Confirmed by the user: " if confirmed else "Proposed, not confirmed by the user: ") + inv["text"],
+                      None if confirmed else "warn"))
+    if c["id"] in ASKED:
+        n = ASKED[c["id"]]
+        terms.append(("Asked for", f"<a href={js(f'#why-{n}')}>{js(f'Request {n}, in the user words')}</a>", None, True))
     body = [definitions(terms)]
     for ref in c.get("code", []):
         got = snippet(repo, data["head"], ref)
@@ -558,10 +664,14 @@ def claim_block(c: dict, risk: dict | None, verifiers: list[dict], controls: dic
         body.append(none("No verifier backs this claim."))
     for v in verifiers:
         state = v.get("state", "unknown")
-        label = "{}, {} check, {} tier, {}:".format(v["id"], v["kind"], v["tier"], state)
+        rung = tm.ladder(v)
+        label = "{}, {} check, {} tier{}, {}:".format(v["id"], v["kind"], v["tier"], f", rung {rung}" if rung else "", state)
         body.append(f"<p><strong>{js(label)}</strong>{js(' ' + v['description'] + ' Provenance: ' + v['provenance'])}</p>")
         if "recorded" in v:
             body.append(f"<TerminalBlock title={js('Recorded: ' + v['recorded']['source'])} content={js(v['recorded']['result'])} />")
+        if "formal" in v:
+            link = v["formal"]["conformance"]
+            body.append(f"<TerminalBlock title={js('Conformance link: ' + link['status'])} content={js(v['formal']['tool'] + ' ' + v['formal']['artifact'] + chr(10) + link['source'] + (chr(10) + link['detail'] if link.get('detail') else ''))} />")
         m = (v.get("mechanical") or {}).get("result")
         if m:
             body.append(f"<TerminalBlock title={js('Mechanical check at the PR head: ' + m['status'])} content={js('$ ' + m['command'] + chr(10) + m['detail'])} />")
@@ -959,14 +1069,31 @@ def mermaid(data: dict) -> str:
     return "\n".join(out)
 
 
-def pr_section(data: dict, extra: dict, explainer_url: str | None) -> str:
+def ready_lines(ready: dict) -> list[str]:
+    """The ready checklist, from ready.py: one line per gate."""
+    out = ["### Ready checklist", ""]
+    for g in ready["gates"]:
+        out.append(f"- [{'x' if g['pass'] else ' '}] **Gate {g['n']}, {g['name']}:** {'pass' if g['pass'] else 'fail'}. {g['detail']}")
+    return out
+
+
+def pr_section(data: dict, extra: dict, explainer_url: str | None, ready: dict | None = None) -> str:
     s = data["summary"]
-    out = ["## Trust map", "", mermaid(data), "", "| Claim | Verdict | Why |", "|---|---|---|"]
+    out = ["## Trust map", ""]
+    if ready:
+        out += ready_lines(ready) + [""]
+    out += [mermaid(data), "", "| Claim | Verdict | Tier | Why |", "|---|---|---|---|"]
+    esc = lambda t: t.replace("|", chr(92) + "|")  # noqa: E731
     for c in data["claims"]:
-        out.append(f"| {c['id']}: {c['text'].replace('|', chr(92) + '|')} | **{c['verdict']}** | {c['reason'].replace('|', chr(92) + '|')} |")
+        verdict = f"**{c['verdict']}**" + (f" (waived: {esc(c['waiver']['reason'])})" if c.get("waiver") else "")
+        out.append(f"| {c['id']}: {esc(c['text'])} | {verdict} | {c.get('tier') or '-'} | {esc(c['reason'])} |")
     out.append("")
-    out.append(f"- **Verdicts:** {s['Proven']} Proven, {s['Backed']} Backed, {s['Asserted']} Asserted, {s['Gap']} Gap.")
-    out.append("- **Promises:** " + " ".join(f"{p['label']}: {strength}." for p, strength, _ in promises_in_order(data)))
+    out.append("- **Verdicts:** " + ", ".join(f"{s.get(v, 0)} {v}" for v in VERDICTS) + ".")
+    claims = {c["id"]: c for c in data["claims"]}
+    out.append("- **Promises:** " + " ".join(f"{p['label']}: {strength}, {strongest_tier(claims[c] for c in cids)[0].lower()}{strongest_tier(claims[c] for c in cids)[1:]}" for p, strength, cids in promises_in_order(data)))
+    waived = [c for c in data["claims"] if c.get("waiver")]
+    if waived:
+        out.append("- **Waived:** " + " ".join(f"{c['id']}: {c['waiver']['reason']}" for c in waived))
     loud = [f for f in data["flags"] if f.get("loud")]
     dead = [f["detail"] for f in loud if f["flag"] == "cannot-fail"]
     out.append("- **Cannot fail:** " + (" ".join(dead) if dead else "none."))
@@ -1004,6 +1131,8 @@ def main() -> int:
     ap.add_argument("--extra")
     ap.add_argument("--runtime")
     ap.add_argument("--explainer-url")
+    ap.add_argument("--journal", help="journal.jsonl of the run: adds the 'Why it was built this way' level")
+    ap.add_argument("--ready", help="ready.json of the run: puts the ready checklist at the top")
     args = ap.parse_args()
     data = tm.load(args.map)
     errors = tm.validate(data)
@@ -1026,21 +1155,29 @@ def main() -> int:
     runtime = runtime_path(args.runtime)
     diff = Diff(args.repo, data["base"], data["head"])
     used_terms = build_glossary(data, extra)
-    bodies = {"story": story(data, extra, used_terms), "loop": loop(data, extra, args.repo),
+    ready = tm.load(args.ready) if args.ready and Path(args.ready).is_file() else None
+    if ready and ready.get("head") != data["head"]:
+        ready = None
+    why = why_level(data, load_journal(args.journal))
+    bodies = {"story": story(data, extra, used_terms, ready, "why" if why else "loop"), "loop": loop(data, extra, args.repo),
               "change": change(data, extra, diff), "promises": promises(data, extra, args.repo),
               "verifiers": verifiers_level(data, extra), "unclaimed": unclaimed(data, extra, diff),
               "tradeoffs": tradeoffs(extra), "exercises": exercises()}
     ids = {x["id"] for x in data["claims"] + data["verifiers"] + data["controls"]}
     problems = [e for name in ("story", "loop", "change") for e in leak_errors(name, bodies[name], ids)]
-    problems += link_errors(bodies, set(CHAPTERS), data)
+    chapters = [(f"{i:02d}-{name}", name) for i, name in enumerate(CHAPTERS, 1)]
+    if why:
+        bodies["why"] = why
+        chapters.insert(1, ("01a-why", "why"))
+    problems += link_errors(bodies, set(CHAPTERS) | {"why"}, data)
     if problems:
         fail("the levels break the ladder rules:\n  " + "\n  ".join(problems))
-    (out / "pr-section.md").write_text(pr_section(data, extra, args.explainer_url), encoding="utf-8")
-    for i, name in enumerate(CHAPTERS, 1):
-        (out / "chapters" / f"{i:02d}-{name}.mdx").write_text(chapter_file(runtime, name, bodies[name]), encoding="utf-8")
+    (out / "pr-section.md").write_text(pr_section(data, extra, args.explainer_url, ready), encoding="utf-8")
+    for stem, name in chapters:
+        (out / "chapters" / f"{stem}.mdx").write_text(chapter_file(runtime, name, bodies[name]), encoding="utf-8")
     order = promises_in_order(data)
     nav = {
-        "STORY_ANCHORS": [("story-promises", "What the PR promises")],
+        "STORY_ANCHORS": [("story-ready", "Ready checklist")] * bool(ready) + [("story-promises", "What the PR promises")],
         "CHANGE_ANCHORS": [("change-diagram", "Before and after"), ("change-table", "Deleted and replaced")]
                           + [("change-" + slug(n), diagram(extra, n)["title"]) for n in (extra.get("change") or {}).get("diagrams") or []],
         "PROMISE_ANCHORS": [(promise_anchor(p["id"]), p["label"]) for p, _, _ in order],
@@ -1053,9 +1190,11 @@ def main() -> int:
     filled = filled.replace("{{REPO}}", runtime).replace("{{TITLE}}", json.dumps(title)).replace("{{SUMMARY}}", json.dumps(summary))
     for key, items in nav.items():
         filled = filled.replace("{{" + key + "}}", anchors(items))
+    filled = filled.replace("{{WHY_IMPORT}}\n", "import Why from './chapters/01a-why.mdx';\n" if why else "")
+    filled = filled.replace("{{WHY_SECTION}}\n", ('<Section id="why" title="Why it was built this way" navLabel="Why it was built this way">\n<Why />\n</Section>\n\n') if why else "")
     (out / "explainer.mdx").write_text(filled, encoding="utf-8")
     print(f"wrote {out / 'pr-section.md'}")
-    print(f"wrote {out / 'explainer.mdx'} and {len(CHAPTERS)} levels in {out / 'chapters'}")
+    print(f"wrote {out / 'explainer.mdx'} and {len(chapters)} levels in {out / 'chapters'}")
     print(f"glossary: {len(used_terms)} terms; promises: " + ", ".join(f"{p['id']} {s}" for p, s, _ in order))
     return 0
 

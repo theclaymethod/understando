@@ -1,6 +1,7 @@
 {/* understando explainer entry: a level ladder. scripts/explain.py fills each slot and writes each level as its own MDX unit under chapters/. Levels 1-3 hold no ID and no code name outside a table, a collapsed block or the Detailed mode of a diagram. Edit the generated copy, not this template, to tune one PR. */}
 import { ExplainerShell, Section } from '{{REPO}}/visual-explainer-mdx/components';
 import Story from './chapters/01-story.mdx';
+{{WHY_IMPORT}}
 import Loop from './chapters/02-loop.mdx';
 import Change from './chapters/03-change.mdx';
 import Promises from './chapters/04-promises.mdx';
@@ -15,6 +16,7 @@ import Exercises from './chapters/08-exercises.mdx';
 <Story />
 </Section>
 
+{{WHY_SECTION}}
 <Section id="loop" title="The loop: one run, step by step" navLabel="The loop">
 <Loop />
 </Section>

@@ -10,7 +10,8 @@ Standard library only. The schema in ../schema/trust-map.schema.json is the sour
 - a mechanical check names a pattern (grep) or an expected net line count (net-lines);
 - with `promises=True` (validate.py, verdicts.py, explain.py): each claim is in exactly one
   promise, and each promise names only claims that exist;
-- a verifier judged by a model names its family and its context, and kind `model` is guess tier.
+- a verifier judged by a model names its family and its context, and kind `model` is guess tier;
+- a verifier on ladder rung 4 or 5 has a `formal` block (its proof or model, and its conformance link).
 """
 
 from __future__ import annotations
@@ -29,6 +30,19 @@ _SECRET_PATTERNS = [
     re.compile(r"(?i)\b(api[_-]?key|token|secret|password)\b(\s*[=:]\s*)\S+"),
     re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}"),
 ]
+
+
+# The verification ladder. A rung counts for a claim only after a control shows that the check can fail.
+KIND_LADDER = {"e2e": 1, "integration": 1, "unit": 1, "golden": 1, "parity": 1, "eval": 1, "measurement": 1,
+               "property": 2, "fuzz": 2, "type-pin": 3, "contract": 3, "contract-format": 3, "boundary": 3,
+               "static": 3, "tla": 4, "lean": 5}
+LADDER_NAMES = {1: "e2e or integration test", 2: "property or fuzz test", 3: "types, contracts or static rules",
+                4: "model checking", 5: "proof with conformance"}
+
+
+def ladder(v: dict) -> int | None:
+    """The ladder rung of a verifier: its own `ladder`, else the rung of its kind."""
+    return v.get("ladder") or KIND_LADDER.get(v["kind"])
 
 
 def now() -> str:
@@ -101,6 +115,8 @@ def _check(value, schema: dict, root: dict, where: str, errors: list[str]) -> No
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         if "minimum" in schema and value < schema["minimum"]:
             errors.append(f"{where}: {value} < {schema['minimum']}")
+        if "maximum" in schema and value > schema["maximum"]:
+            errors.append(f"{where}: {value} > {schema['maximum']}")
     if isinstance(value, list):
         if len(value) < schema.get("minItems", 0):
             errors.append(f"{where}: needs at least {schema['minItems']} items")
@@ -149,6 +165,12 @@ def validate(data: dict, promises: bool = True) -> list[str]:
             errors.append(f"verifier {v['id']}: a model verifier names its family and context")
         if v["kind"] == "model" and v["tier"] != "guess":
             errors.append(f"verifier {v['id']}: a model verifier is guess tier")
+        if ladder(v) and ladder(v) >= 4 and "formal" not in v:
+            errors.append(f"verifier {v['id']}: a tier {ladder(v)} verifier needs a formal block with its conformance link")
+    invariant_ids = {i["id"] for i in data.get("invariants", [])}
+    for c in data["claims"]:
+        if c.get("invariant") and c["invariant"] not in invariant_ids:
+            errors.append(f"claim {c['id']}: unknown invariant {c['invariant']}")
     for k in data["controls"]:
         if k["verifier"] not in verifier_ids:
             errors.append(f"control {k['id']}: unknown verifier {k['verifier']}")

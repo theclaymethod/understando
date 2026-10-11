@@ -18,7 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import tm  # noqa: E402
 
-ORDER = ["Proven", "Backed", "Asserted", "Gap"]
+ORDER = ["Formal", "Proven", "Backed", "Asserted", "Gap"]
 
 
 def control_outcome(control: dict) -> str:
@@ -53,6 +53,9 @@ def verifier_state(v: dict, controls: list[dict], flags: list[dict]) -> str:
         return "checked"
 
     if "command" not in v:
+        # A recorded proof or model can still show that it fails: a control result from a past run.
+        if any(control_outcome(k) == "caught" for k in controls if (k.get("result") or {}).get("recorded")):
+            return "proven"
         return "recorded"
 
     baseline = v.get("baseline")
@@ -90,7 +93,21 @@ def families(text: str | None) -> set[str]:
     return {f for f in re.split(r"[\s,+]+", text or "") if f}
 
 
+def conformant(v: dict) -> bool:
+    """A rung 4 or 5 check counts only with a passing conformance link to the real code."""
+    if (tm.ladder(v) or 0) < 4:
+        return True
+    return ((v.get("formal") or {}).get("conformance") or {}).get("status") == "pass"
+
+
+def user_confirmed(data: dict, inv_id: str | None) -> bool:
+    """Proven and Formal need intent: a stated claim, or a link to an invariant that the user confirmed."""
+    return any(i["id"] == inv_id and i["author"] == "user" and i["status"] == "accepted" for i in data.get("invariants", []))
+
+
 def can_prove(v: dict, author_family: str | None) -> bool:
+    if not conformant(v):
+        return False
     if v["tier"] == "fact":
         return True
     ind = v["independence"]
@@ -123,11 +140,24 @@ def apply(data: dict) -> dict:
         proven = [v for v in backing if v["state"] == "proven" and can_prove(v, author)]
         counted = [v for v in backing if v["state"] in ("proven", "untested", "recorded", "checked")]
         dead = [v for v in backing if v["state"] in ("cannot-fail", "failing", "broken")]
+        rungs = [tm.ladder(v) for v in proven if tm.ladder(v)]
+        c["tier"] = max(rungs) if rungs else None
+        formal = [v for v in proven if (tm.ladder(v) or 0) >= 4]
         if proven:
-            hit = proven[0]
+            hit = max(proven, key=lambda v: tm.ladder(v) or 0)
             ks = [k["id"] for k in controls_by_verifier.get(hit["id"], []) if control_outcome(k) == "caught"]
-            c["verdict"] = "Proven"
-            c["reason"] = f"{hit['id']} went red on control {', '.join(ks)}."
+            if formal:
+                link = hit["formal"]["conformance"]
+                c["verdict"] = "Formal"
+                c["reason"] = (f"{hit['id']} is a rung {tm.ladder(hit)} {hit['formal']['tool']} check. Its conformance link "
+                               f"({link['source']}) passes, and control {', '.join(ks)} broke it.")
+            else:
+                c["verdict"] = "Proven"
+                c["reason"] = f"{hit['id']} went red on control {', '.join(ks)}."
+            if not c["stated"] and not user_confirmed(data, c.get("invariant")):
+                c["verdict"] = "Backed"
+                c["reason"] += (" It stays Backed: the PR does not state it, and it links to no invariant that the user"
+                                " confirmed (understando discover).")
         elif counted:
             ids = ", ".join(v["id"] for v in counted)
             c["verdict"] = "Backed"
@@ -136,7 +166,7 @@ def apply(data: dict) -> dict:
                 "untested": "no control went red",
                 "recorded": "the evidence is recorded, not run again",
                 "checked": "it is a mechanical check (a grep or a line count) with no control",
-                "proven": "a model verifier from the author family went red",
+                "proven": "a model verifier from the author family went red, or a proof has no passing conformance link",
             }
             c["reason"] = f"{ids} backs this claim, but " + " and ".join(why[s] for s in kinds) + "."
         elif c["stated"]:
@@ -145,7 +175,7 @@ def apply(data: dict) -> dict:
         else:
             c["verdict"] = "Gap"
             c["reason"] = "No verifier backs this claim, and the PR text does not state it."
-        if dead and c["verdict"] != "Proven":
+        if dead and c["verdict"] not in ("Formal", "Proven"):
             c["reason"] += " " + " ".join(f"{v['id']} is {v['state']}." for v in dead)
         summary[c["verdict"]] += 1
 

@@ -11,7 +11,8 @@ Options:
     --only V01,V02    with --baseline: run only these verifiers
 
 For each control the script:
-  1. adds a detached scratch worktree of --repo at the trust map's `head`;
+  1. adds a detached scratch worktree of --repo at the trust map's `head`, or at the verifier's
+     `at` commit (a commit on the ready branch);
   2. runs the trust map's `setup` commands in it, without the env file;
   3. applies the control's edits, and refuses when an edit does not apply exactly;
   4. runs the verifier's command, and records green (exit 0), red (an exit in `red_exits`,
@@ -136,34 +137,40 @@ def scrub(text: str, root: Path) -> str:
     return text.replace(str(root), "<worktree>")
 
 
+def commit_of(v: dict, data: dict) -> str:
+    """A verifier runs at its own `at` commit (a ready-branch commit), else at the PR head."""
+    return v.get("at") or data["head"]
+
+
 def run_baseline(data: dict, repo: Path, scratch: Path, env_file: str | None, only: set[str]) -> None:
     targets = [v for v in data["verifiers"] if "command" in v and (not only or v["id"] in only)]
-    if not targets:
-        return
-    with Worktree(repo, data["head"], scratch, "baseline") as root:
-        prepare(root, data)
-        for v in targets:
-            code, output, seconds = run_command(root, v["command"], env_file)
-            v["baseline"] = {
-                "status": classify(code, v["command"]), "exit": code, "seconds": seconds,
-                "output_tail": tail(scrub(output, root)), "ran_at": tm.now(), "head": data["head"],
-            }
-            print(f"baseline {v['id']}: {v['baseline']['status']} (exit {code}, {seconds}s)")
+    for commit in dict.fromkeys(commit_of(v, data) for v in targets):
+        with Worktree(repo, commit, scratch, "baseline") as root:
+            prepare(root, data)
+            for v in (v for v in targets if commit_of(v, data) == commit):
+                code, output, seconds = run_command(root, v["command"], env_file)
+                v["baseline"] = {
+                    "status": classify(code, v["command"]), "exit": code, "seconds": seconds,
+                    "output_tail": tail(scrub(output, root)), "ran_at": tm.now(), "head": commit,
+                }
+                print(f"baseline {v['id']}: {v['baseline']['status']} (exit {code}, {seconds}s)")
 
 
 def run_one(data: dict, control: dict, repo: Path, scratch: Path, env_file: str | None) -> None:
     v = next(v for v in data["verifiers"] if v["id"] == control["verifier"])
     if "command" not in v:
-        control["result"] = {"status": "skipped", "note": "The verifier has no command.", "ran_at": tm.now()}
+        if not (control.get("result") or {}).get("recorded"):
+            control["result"] = {"status": "skipped", "note": "The verifier has no command.", "ran_at": tm.now()}
         return
-    with Worktree(repo, data["head"], scratch, control["id"].lower()) as root:
+    commit = commit_of(v, data)
+    with Worktree(repo, commit, scratch, control["id"].lower()) as root:
         try:
             prepare(root, data)
             for edit in control["edits"]:
                 apply_edit(root, edit)
         except (ValueError, RuntimeError, OSError) as exc:
             control["result"] = {"status": "error", "exit": None, "note": f"The control did not apply: {exc}",
-                                 "ran_at": tm.now(), "head": data["head"]}
+                                 "ran_at": tm.now(), "head": commit}
             print(f"control {control['id']}: error ({exc})")
             return
         code, output, seconds = run_command(root, v["command"], env_file)
@@ -174,7 +181,7 @@ def run_one(data: dict, control: dict, repo: Path, scratch: Path, env_file: str 
         matched = re.search(pattern, output, re.M) is not None
     control["result"] = {
         "status": status, "exit": code, "seconds": seconds, "matched": matched,
-        "output_tail": tail(scrub(output, root)), "ran_at": tm.now(), "head": data["head"],
+        "output_tail": tail(scrub(output, root)), "ran_at": tm.now(), "head": commit,
     }
     shown = status if matched is not False else "red, but the expected pattern is missing"
     print(f"control {control['id']} on {v['id']}: {shown} (exit {code}, {seconds}s)")

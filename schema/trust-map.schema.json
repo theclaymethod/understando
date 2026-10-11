@@ -93,6 +93,9 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "Formal": {
+          "type": "integer"
+        },
         "Proven": {
           "type": "integer"
         },
@@ -179,6 +182,36 @@
       "items": {
         "$ref": "#/$defs/exercise"
       }
+    },
+    "probed_at": {
+      "type": "string",
+      "description": "When probe last ran controls. understando signals reports it."
+    },
+    "ready": {
+      "type": "object",
+      "description": "The branch understando/<pr>-ready in the reviewed repo, where close and trim commit. Never the PR's own commits.",
+      "required": [
+        "branch",
+        "head"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "head": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "invariants": {
+      "type": "array",
+      "description": "Invariants from understando discover. journal.jsonl is the source of truth; discover copies each decision here. Only author user with status accepted can back Proven or Formal.",
+      "items": {
+        "$ref": "#/$defs/invariant"
+      }
     }
   },
   "$defs": {
@@ -189,6 +222,7 @@
     "verdict": {
       "type": "string",
       "enum": [
+        "Formal",
         "Proven",
         "Backed",
         "Asserted",
@@ -293,6 +327,43 @@
               "description": "A limit on the proof, when one exists."
             }
           }
+        },
+        "tier": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5,
+          "description": "verdicts.py writes it: the highest ladder rung of a verifier that went red on a control. A rung of 4 or 5 also needs a passing conformance link."
+        },
+        "tier_target": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "The strongest practical rung for this claim, chosen in build step 2 or by close."
+        },
+        "waiver": {
+          "type": "object",
+          "description": "close option 7. The claim stays open in the verdicts, and the ready checklist and the PR body show the reason.",
+          "required": [
+            "reason",
+            "at"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            },
+            "at": {
+              "type": "string"
+            }
+          }
+        },
+        "invariant": {
+          "$ref": "#/$defs/id",
+          "description": "The invariant that this claim states. Proven and Formal need a stated claim or a link to an invariant that the user confirmed."
         }
       }
     },
@@ -373,6 +444,10 @@
         },
         "note": {
           "type": "string"
+        },
+        "recorded": {
+          "type": "boolean",
+          "description": "The result comes from a past run, for example a proof control, and probe keeps it."
         }
       }
     },
@@ -396,20 +471,23 @@
         "kind": {
           "type": "string",
           "enum": [
-            "e2e",
-            "integration",
-            "unit",
-            "type-pin",
-            "golden",
-            "parity",
             "boundary",
-            "property",
-            "fuzz",
-            "lean",
+            "contract",
+            "contract-format",
+            "e2e",
             "eval",
+            "fuzz",
+            "golden",
+            "integration",
+            "lean",
             "measurement",
             "model",
-            "contract-format"
+            "parity",
+            "property",
+            "static",
+            "tla",
+            "type-pin",
+            "unit"
           ]
         },
         "claims": {
@@ -592,6 +670,124 @@
                   "type": "string"
                 }
               }
+            }
+          }
+        },
+        "ladder": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "Overrides the rung that verdicts.py takes from the kind."
+        },
+        "at": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The commit where the verifier runs, when it is not the PR head: a commit on the ready branch."
+        },
+        "test": {
+          "type": "object",
+          "description": "Where the test lives, so trim can delete or convert it. trim reads the unittest or pytest argv when this is absent.",
+          "required": [
+            "path"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "formal": {
+          "type": "object",
+          "description": "A tier 4 or 5 verifier: the model or proof, and its conformance link to the real code.",
+          "required": [
+            "tool",
+            "artifact",
+            "conformance"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "tool": {
+              "type": "string",
+              "enum": [
+                "lean",
+                "tla",
+                "apalache"
+              ]
+            },
+            "artifact": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The proof or model file, relative to the repo root."
+            },
+            "conformance": {
+              "type": "object",
+              "required": [
+                "status",
+                "source"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pass",
+                    "fail"
+                  ]
+                },
+                "source": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "detail": {
+                  "type": "string"
+                },
+                "verifier": {
+                  "$ref": "#/$defs/id"
+                },
+                "at": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "red_first": {
+          "type": "object",
+          "description": "build step 3: the verifier went red before the code existed, on the current code or a stub.",
+          "required": [
+            "status",
+            "at"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "green",
+                "red",
+                "error"
+              ]
+            },
+            "at": {
+              "type": "string"
+            },
+            "exit": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "output_tail": {
+              "type": "string"
+            },
+            "ran_at": {
+              "type": "string"
             }
           }
         }
@@ -881,6 +1077,102 @@
               "type": "string"
             }
           }
+        }
+      }
+    },
+    "invariant": {
+      "type": "object",
+      "required": [
+        "id",
+        "text",
+        "author",
+        "status",
+        "candidate"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "author": {
+          "type": "string",
+          "enum": [
+            "user",
+            "agent"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "accepted",
+            "proposed",
+            "rejected",
+            "deferred"
+          ]
+        },
+        "candidate": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source_prompt": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "tier": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "shape": {
+          "type": "string",
+          "enum": [
+            "rule",
+            "process",
+            "input-space",
+            "wiring",
+            "flow"
+          ]
+        },
+        "frog_ev": {
+          "type": "number"
+        },
+        "possible_bug": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "question",
+              "expected",
+              "got"
+            ],
+            "properties": {
+              "question": {
+                "type": "string"
+              },
+              "expected": {
+                "type": "string"
+              },
+              "got": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "at": {
+          "type": "string"
         }
       }
     }

@@ -47,7 +47,7 @@ function App() {
         <div>
           <p className="learn-kicker">understando learn</p>
           <h1>{data?.title || session?.title || "Trust map"}</h1>
-          {session && <p className="learn-muted">{session.repo} #{session.pr ?? "?"} at {session.head.slice(0, 10)}. {["Proven", "Backed", "Asserted", "Gap"].map((k) => `${s[k] ?? 0} ${k}`).join(", ")}.</p>}
+          {session && <p className="learn-muted">{session.repo} #{session.pr ?? "?"} at {session.head.slice(0, 10)}. {["Formal", "Proven", "Backed", "Asserted", "Gap"].map((k) => `${s[k] ?? 0} ${k}`).join(", ")}.</p>}
         </div>
       </header>
       <div className="learn-body">

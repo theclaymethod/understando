@@ -5,7 +5,7 @@
 
 Prints, in Markdown: the head change, claims that came or went, each verdict change, each
 verifier state change, and each control whose result changed. A drop is a verdict that moves
-down the order Proven > Backed > Asserted > Gap. With --fail-on-drop the exit code is 1 when a
+down the order Formal > Proven > Backed > Asserted > Gap. With --fail-on-drop the exit code is 1 when a
 drop exists, so CI or a hook can stop on it.
 """
 
@@ -17,7 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import tm  # noqa: E402
 
-RANK = {"Proven": 0, "Backed": 1, "Asserted": 2, "Gap": 3, None: 4}
+RANK = {"Formal": 0, "Proven": 1, "Backed": 2, "Asserted": 3, "Gap": 4, None: 5}
 
 
 def index(items: list[dict]) -> dict[str, dict]:

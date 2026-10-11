@@ -5,7 +5,8 @@
     "sentence": "The wallet never pays out more than the balance, and it gives the right new balance.",
     "claims": [
       "C01",
-      "C02"
+      "C02",
+      "C08"
     ],
     "reviewer_action": "Do not trust the new balance yet: its test cannot fail. Check the subtraction yourself."
   },
@@ -21,10 +22,11 @@
   {
     "id": "P3",
     "label": "No leaks",
-    "sentence": "A denial message shows no account number, and the wallet sends nothing over the network.",
+    "sentence": "A denial message names the amount and shows no account number, and the wallet sends nothing over the network.",
     "claims": [
       "C05",
-      "C06"
+      "C06",
+      "C07"
     ],
     "reviewer_action": "Treat the message check as one model opinion. No planted bug tested it."
   },
