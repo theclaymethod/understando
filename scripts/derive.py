@@ -15,10 +15,17 @@ not compute them again.
                one card for each check that missed its bug or cannot fail, the checks that caught
                their bug by promise, and the checks for each tier
   merge        the merge verdict: "not-ready" (with the blockers), "accept" (with the risks to
-               accept) or "ready"
+               accept) or "ready", and the risks to accept in each form (`accept`), for the checklist
+               of the guided review
   unclaimed    the changed source files outside the claims, with their risk and one action, the
                core files that claims cover in part, and the summary lines (risky files first)
   bugs         the possible bugs of the invariants, in the find-bugs heading format (findings.py)
+  spine        each changed file in its chapter of the change (explain.json change.chapters), with
+               its protection, its claims and its "look closely" flags (from verified sources only),
+               the imports between the chapters, and the files in GitHub's order
+  checks       each check with its result, the claims and parts that it backs and the test it runs;
+  tests        the changed test files as the checks they provide, and the changed tests that back
+               no claim
 
 A file is covered when a claim's code refs cite it, when a claim names it, when one of the
 claim's checks exercises it (the coverage record of the run: `understando coverage`), or when a
@@ -27,6 +34,7 @@ control of one of its checks edits it.
 
 from __future__ import annotations
 
+import hashlib
 import re
 import sys
 from pathlib import Path
@@ -75,6 +83,16 @@ def merge_verdict(data: dict, ready: dict | None = None, risky_unclaimed: int = 
     bar blocks (onto.bar). A Backed promise with a reviewer action, a waived claim, a claim below its
     bar that is not risky, and changed code with risk and no claim are risks to accept.
     Returns ("not-ready" | "accept" | "ready", items); each item has label, text and href."""
+    blocking, accept = merge_items(data, ready, risky_unclaimed, cfg)
+    if blocking:
+        return "not-ready", blocking
+    return ("accept", accept) if accept else ("ready", [])
+
+
+def merge_items(data: dict, ready: dict | None = None, risky_unclaimed: int = 0, cfg: dict | None = None) -> tuple[list[dict], list[dict]]:
+    """The blockers and the risks to accept of merge_verdict, each in the order of the review:
+    the failed gates, the promises weakest first, then the claims below their bar. The guided
+    review lists both, so a reviewer sees the risks to accept also while the PR is not ready."""
     claims = {c["id"]: c for c in data["claims"]}
     blocking, accept = [], []
     for g in (ready or {}).get("gates", []):
@@ -101,9 +119,7 @@ def merge_verdict(data: dict, ready: dict | None = None, risky_unclaimed: int = 
         n = risky_unclaimed
         accept.append({"label": "Unclaimed changes", "text": f"{n} changed {'file has' if n == 1 else 'files have'} risk and no claim. Read {'it' if n == 1 else 'them'} before you approve.",
                        "href": "#unclaimed"})
-    if blocking:
-        return "not-ready", blocking
-    return ("accept", accept) if accept else ("ready", [])
+    return blocking, accept
 
 
 # ---- Evidence bars (references/evidence-bars.md) ------------------------------------------
@@ -179,12 +195,18 @@ def fixes(data: dict, explain: dict | None) -> dict[str, str]:
 
 def same_bug_catcher(data: dict, v: dict) -> dict | None:
     """A check that caught a planted bug with the same edits as a bug that `v` missed."""
+    hit = same_bug(data, v)
+    return hit[0] if hit else None
+
+
+def same_bug(data: dict, v: dict) -> tuple[dict, dict, dict] | None:
+    """(the other check, its control, the control of `v`): one planted bug, two results."""
     import verdicts
     mine = [k for k in data["controls"] if k["verifier"] == v["id"] and verdicts.control_outcome(k) != "caught"]
     for k in mine:
         for o in data["controls"]:
             if o["verifier"] != v["id"] and verdicts.control_outcome(o) == "caught" and o.get("edits") == k.get("edits"):
-                return next(x for x in data["verifiers"] if x["id"] == o["verifier"])
+                return next(x for x in data["verifiers"] if x["id"] == o["verifier"]), o, k
     return None
 
 
@@ -352,8 +374,11 @@ def verify(data: dict, refs_promises: list[dict], explain: dict | None = None) -
         why = f"So this check does not protect {names.listing(protects)}." + (f" Only {check_name(data, other_v)} caught the same bug." if other_v else "")
         action = check_action(data, v, own[0] if own else {}, result[v["id"]], next((fx.get(c["id"]) for c in own if fx.get(c["id"])), None))
         happened = "The check passed on each planted bug, so it can fail on nothing." if result[v["id"]] == "cannot-fail" else "The check still passed."
+        pair = same_bug(data, v)
+        caught_by = {"check": pair[0]["id"], "name": check_name(data, pair[0]), "control": pair[1]["id"], "missed": pair[2]["id"]} if pair else None
         weak.append({"check": v["id"], "control": k["id"], "name": check_name(data, v), "broke": broke(k), "happened": happened, "why": why,
-                     "action": action, "ids": " · ".join([k["id"], v["id"], *[c["id"] for c in own]])})
+                     "action": action, "ids": " · ".join([k["id"], v["id"], *[c["id"] for c in own]]), "claims": [c["id"] for c in own],
+                     "caught_by": caught_by})
     by_promise = []
     for p in refs_promises:
         got = [{"check": vid, "name": check_name(data, v), "claim": names.of(data, cid),
@@ -595,6 +620,314 @@ def _key(ref: dict) -> tuple:
     return tuple(sorted((k, repr(v)) for k, v in ref.items() if k != "note"))
 
 
+# ---- The checks of the PR (verifiers, not tests) ---------------------------------------------
+
+def test_targets(v: dict, files) -> list[tuple[str, str | None]]:
+    """The test files (and the test in each, when the command names one) that a check runs, from its
+    command: a path with `::name` (pytest), or a dotted module (`python -m unittest tests.test_core.T`)."""
+    cmd = v.get("command") or {}
+    cwd = (cmd.get("cwd") or "").strip("/")
+    join = lambda p: f"{cwd}/{p}" if cwd else p  # noqa: E731
+    out: list[tuple[str, str | None]] = []
+    for tok in cmd.get("argv") or []:
+        path, _, sym = tok.partition("::")
+        if path.endswith(".py") and is_test(path):
+            out.append((join(path), sym.split("[")[0].replace("::", ".") or None))
+            continue
+        if re.fullmatch(r"[A-Za-z_][\w]*(\.[A-Za-z_]\w*)+", tok):
+            parts = tok.split(".")
+            # The module is the longest prefix that is a changed file, else the last part named test_*.
+            ks = [k for k in range(len(parts), 0, -1) if join("/".join(parts[:k]) + ".py") in files] or \
+                 [k for k in range(len(parts), 0, -1) if parts[k - 1].startswith("test")]
+            if ks and is_test(join("/".join(parts[:ks[0]]) + ".py")):
+                out.append((join("/".join(parts[:ks[0]]) + ".py"), ".".join(parts[ks[0]:]) or None))
+    return out
+
+
+def checks_view(data: dict, refs: dict, rows: dict[str, dict]) -> tuple[dict, dict]:
+    """Each check of the map, as the guided review shows it: its name, its kind, its result (caught,
+    missed, cannot fail ...), the claims and the parts that it backs, and the test that it runs. Then
+    the changed test files, each as the checks that it provides, and the changed tests that back no
+    claim (no check runs them), by file, with one action."""
+    diff = refs["diff"]
+    files, symbols, deleted = diff["files"], diff.get("symbols") or {}, set(diff["deleted"])
+    root = diff_root(files)
+    short = lambda p: p[len(root):] if root and p.startswith(root) else p  # noqa: E731
+    controls: dict[str, list[str]] = {}
+    for k in data["controls"]:
+        controls.setdefault(k["verifier"], []).append(k["id"])
+    out: dict[str, dict] = {}
+    runs: dict[str, list[tuple[str, str | None]]] = {}
+    for v in data["verifiers"]:
+        if not onto.is_tool(v):
+            continue
+        backs = []
+        for c in onto.claims_of(data, v):
+            parts = [p["text"] for p in onto.parts_of(data, c) if any(x["id"] == v["id"] for x in p["checks"])] if c.get("parts") else []
+            backs.append({"id": c["id"], "name": names.of(data, c["id"]), "parts": parts})
+        targets = test_targets(v, files)
+        for path, sym in targets:
+            runs.setdefault(path, []).append((v["id"], sym))
+        main = next(((p, s) for p, s in targets if s), None)
+        out[v["id"]] = {"id": v["id"], "name": check_name(data, v), "kind": v["kind"], "result": onto.check_result(data, v), "claims": backs,
+                        "tests": [{"path": p, "file": short(p), "symbol": s} for p, s in targets], "controls": controls.get(v["id"], []),
+                        "ref": {"path": main[0], "symbol": main[1]} if main else None}
+    test_files, orphans = [], []
+    for path in sorted(files):
+        if not is_test(path) or path in deleted or not path.endswith(".py"):
+            continue
+        mine = runs.get(path, [])
+        changed = [n for n in (symbols.get(path) or {}).get("names") or [] if n.split(".")[-1].startswith("test")]
+        whole = any(sym is None for _, sym in mine)
+        named = {sym for _, sym in mine if sym}
+        loose = [] if whole else [n for n in changed if not any(n == x or n.startswith(x + ".") or x.startswith(n + ".") for x in named)]
+        if mine:
+            test_files.append({"path": path, "file": short(path), "checks": sorted({vid for vid, _ in mine})})
+        if loose:
+            orphans.append({"path": path, "file": short(path), "tests": loose})
+    n = sum(len(o["tests"]) for o in orphans)
+    tests = {"files": test_files, "orphans": orphans, "orphan_tests": n,
+             "summary": (f"{n} changed {'test backs' if n == 1 else 'tests back'} no claim." if n else "Each changed test backs a claim."),
+             "action": "Link them to a claim, or delete them." if n else ""}
+    return out, tests
+
+
+# ---- The diff spine -----------------------------------------------------------------------
+
+# The protection of a changed file, riskiest first. The guided review shows each file with its kind.
+SPINE_KINDS = {
+    "check": "No claim, risky: add a check", "ask": "No claim: ask for one", "read": "No claim: read it",
+    "partial": "Covered in part", "protected": "Protected by {n}", "skim": "Low risk: skim",
+    "test": "A test or a check", "other": "Docs, data or config", "deleted": "Deleted",
+}
+SPINE_RANK = {"check": 0, "ask": 1, "read": 2, "partial": 3, "protected": 4, "skim": 6, "test": 7, "other": 8, "deleted": 9}
+# A file whose main change the guided review shows as code: the files that a reviewer must read.
+SPINE_READ = ("check", "ask", "read", "partial", "protected")
+# The reading order of the chapters of the change (explain.json change.chapters): the core change
+# first, then the code that supports it, the wiring and config, the data, the docs; generated files
+# and the tests come last.
+TIERS = ["core", "supporting", "wiring", "data", "docs", "generated"]
+FLAG_LEVELS = ("risk", "question", "nit")
+WINDOW = 3
+
+
+def _under(path: str, prefix: str) -> bool:
+    return path == prefix or path.startswith(prefix.rstrip("/") + "/")
+
+
+def _hunk_line(patch: str) -> int | None:
+    """The first line that a control's patch changes, as a line of the file at the head."""
+    old = None
+    for row in patch.splitlines():
+        m = re.match(r"@@ -(\d+)", row)
+        if m:
+            old = int(m.group(1))
+            continue
+        if old is None or row.startswith(("---", "+++")):
+            continue
+        if row.startswith("-"):
+            return old
+        if not row.startswith("+"):
+            old += 1
+    return None
+
+
+def look_closely(data: dict, refs: dict, u: dict) -> list[dict]:
+    """The "look closely" flags: each pinned to a line of a changed file at the head, each from a
+    verified source and with the condition that triggers it. A verified bug (find-bugs) is a risk and
+    a lead is a question; a check that cannot fail is a risk and one that missed its planted bug is a
+    question, at the line that the bug changed; a changed file with risk and no claim is a risk when it
+    touches money, safety or I/O and a question else, at its main change. No source, no flag."""
+    import verdicts
+    files = refs["diff"]["files"]
+    by_key = {_key(r["ref"]): r for r in refs["refs"]}
+    out: list[dict] = []
+    for f in findings.collect(data):
+        m = re.search(r"([\w./-]+\.\w+):(\d+)", f.get("ref") or "")
+        if not m or m.group(1) not in files:
+            continue
+        out.append({"level": "risk" if f["status"] == "verified" else "question", "source": "bug", "path": m.group(1), "line": int(m.group(2)),
+                    "text": capital(f["line"].replace(": the code does not do this", "")) + ": the code does not do this.",
+                    "trigger": (f.get("trigger") or "").rstrip("?") or None})
+    verifiers = {v["id"]: v for v in data["verifiers"]}
+    for k in data["controls"]:
+        v = verifiers.get(k["verifier"])
+        if not v or verdicts.control_outcome(k) == "caught":
+            continue
+        result = onto.check_result(data, v)
+        if result not in ("missed", "cannot-fail"):
+            continue
+        for e in (refs.get("controls") or {}).get(k["id"], [])[:1]:
+            line = _hunk_line(e.get("patch") or "")
+            if not line or e["path"] not in files:
+                continue
+            name = check_name(data, v)
+            out.append({"level": "risk" if result == "cannot-fail" else "question", "source": "check", "path": e["path"], "line": line,
+                        "text": (f"{capital(name)} passes on every planted bug, so it cannot protect this line." if result == "cannot-fail" else
+                                 f"{capital(name)} still passed when we changed this line. It does not see this bug."),
+                        "trigger": broke(k).rstrip(".")})
+    for f in u["files"] + [x for x in u["core"] if not x["by"]["cited"]]:
+        if not f["risks"] or not f.get("main"):
+            continue
+        r = by_key.get(_key(f["main"]))
+        if not r:
+            continue
+        money = any(w.startswith("touches") for w in f["risks"])
+        partly = f in u["core"]
+        out.append({"level": "risk" if money else "question", "source": "unclaimed", "path": f["path"], "line": r["start"],
+                    "text": (f"A check runs {f['role']}, but no claim says what it must do here. Read it, or ask the author for a claim." if partly
+                             else f"No claim covers {f['role']}. {f['action']['text']}"),
+                    "trigger": capital(", ".join(f["risks"]))})
+    for x in out:
+        x["ref"] = {"path": x["path"], "start": max(1, x["line"] - WINDOW), "end": x["line"] + WINDOW}
+    order = {lv: i for i, lv in enumerate(FLAG_LEVELS)}
+    return sorted(out, key=lambda x: (order[x["level"]], x["path"], x["line"]))
+
+
+def spine(data: dict, refs: dict, extra: dict | None, coverage: dict | None, u: dict, rows: dict[str, dict]) -> dict:
+    """Each changed file of the diff, grouped into the chapters of the change (explain.json
+    change.chapters: one idea each, in reading order; a file goes to the chapter with its longest
+    path or prefix), with the test files in an automatic Tests chapter (with their test names) and
+    each changed non-test file that no chapter holds in `unassigned`. Without chapters, the change
+    areas group the files. In each group, riskiest first: its line counts, its role, the claims that
+    protect it (weakest first), its main changed symbol, its "look closely" flags and its protection:
+    no claim (with the action of the unclaimed level), covered in part, protected by N claims, low
+    risk, or deleted. The page shows these values; it does not compute them."""
+    spec = (extra or {}).get("unclaimed") or {}
+    change = (extra or {}).get("change") or {}
+    chapters = change.get("chapters") or []
+    areas = [a for a in change.get("areas") or [] if a.get("paths")]
+    names_ = {a["id"]: a["name"] for a in change.get("areas") or []}
+    diff = refs["diff"]
+    files, deleted, created, symbols = diff["files"], set(diff["deleted"]), set(diff["created"]), diff.get("symbols") or {}
+    by_key = {_key(r["ref"]): r for r in refs["refs"]}
+    cited: dict[str, set[str]] = {}
+    for c in data["claims"]:
+        for ref in c.get("code", []):
+            if _key(ref) in by_key:
+                cited.setdefault(ref["path"], set()).add(c["id"])
+    named, ran, edited = named_files(data, files), exercised_files(data, coverage, files), edited_files(data, files)
+    loose = {f["path"]: f for f in u["files"]}
+    partial = {f["path"]: f for f in u["core"]}
+    root = diff_root(files)
+    order = {v: i for i, v in enumerate(VERDICTS)}
+    flags: dict[str, list[dict]] = {}
+    for x in look_closely(data, refs, u):
+        flags.setdefault(x["path"], []).append(x)
+
+    def entries(ch: dict) -> list[str]:
+        return [x if isinstance(x, str) else x["path"] for x in ch.get("files") or []]
+
+    def chapter_of(path: str) -> dict | None:
+        best = None
+        for ch in chapters:
+            for prefix in entries(ch):
+                if _under(path, prefix) and (best is None or len(prefix) > best[0]):
+                    best = (len(prefix), ch)
+        return best[1] if best else None
+
+    def area_of(path: str) -> dict | None:
+        return next((a for a in areas if any(_under(path, x) for x in a["paths"])), None)
+
+    groups: dict[str, dict] = {}
+    clash = [ch["id"] for ch in chapters if ch["id"] in ("code", "test", "other", "deleted", "unassigned")]
+    if clash:
+        tm.fail("derive: explain.json change.chapters uses a reserved id: " + ", ".join(clash) + " (code, test, other, deleted and unassigned name the automatic chapters)", 1)
+    if chapters:
+        ranked = sorted(enumerate(chapters), key=lambda t: (TIERS.index(t[1].get("tier", "core")) if t[1].get("tier", "core") in TIERS else 0, t[0]))
+        for _, ch in ranked:
+            groups[ch["id"]] = {"id": ch["id"], "name": ch["title"], "tier": ch.get("tier", "core"), "explain": ch.get("explain") or [],
+                                "note": ch.get("note"), "replaced_by": None, "files": []}
+    else:
+        for a in areas:
+            groups[a["id"]] = {"id": a["id"], "name": a["name"], "tier": "core", "explain": [], "note": a.get("note"),
+                               "replaced_by": {"id": a["replaced_by"], "name": names_.get(a["replaced_by"], a["replaced_by"])} if a.get("replaced_by") else None,
+                               "files": []}
+    rest = {"code": ("Other changed code", "supporting"), "test": ("Tests", "tests"), "other": ("Docs, data and config", "docs"),
+            "deleted": ("Other deleted files", "data"), "unassigned": ("Files that no chapter holds", "supporting")}
+    unassigned = []
+    for path, (plus, minus) in files.items():
+        claims = sorted(set().union(cited.get(path, set()), named.get(path, set()), ran.get(path, set()), edited.get(path, set())),
+                        key=lambda cid: (-order.get(rows[cid]["strength"], 0), cid))
+        if path in deleted:
+            kind, text = "deleted", None
+        elif path in loose:
+            kind, text = loose[path]["action"]["kind"], loose[path]["action"]["text"]
+        elif path in partial:
+            kind, text = "partial", partial[path]["action"]["text"]
+        elif is_test(path):
+            kind, text = "test", None
+        elif not is_code(path):
+            kind, text = "other", None
+        elif claims:
+            kind, text = "protected", None
+        else:
+            kind, text = "skim", "Low risk: skim." if plus else "It only removes lines."
+        label = SPINE_KINDS[kind].format(n=f"{len(claims)} {'claim' if len(claims) == 1 else 'claims'}")
+        test = is_test(path)
+        if chapters:
+            ch = chapter_of(path)
+            # A test file joins a chapter only when the chapter names it by its own path: the test is the change.
+            if ch and test and path not in entries(ch):
+                ch = None
+            gid = ch["id"] if ch else ("test" if test else "unassigned")
+            if gid == "unassigned":
+                unassigned.append(path)
+        else:
+            area = area_of(path)
+            gid = area["id"] if area else ("deleted" if kind == "deleted" else kind if kind in ("test", "other") else "code")
+        if gid not in groups:
+            groups[gid] = {"id": gid, "name": rest[gid][0], "tier": rest[gid][1], "explain": [], "note": None, "replaced_by": None, "files": []}
+        main = (symbols.get(path) or {}).get("main")
+        weakest_rank = order.get(rows[claims[0]]["strength"], 0) if claims else 0
+        entry = {
+            "path": path, "file": path[len(root):] if root and path.startswith(root) else path, "added": plus, "removed": minus,
+            "created": path in created, "deleted": path in deleted,
+            "role": (spec.get("roles") or {}).get(path) or (humanize(path) if is_code(path) else None),
+            "note": (spec.get("notes") or {}).get(path), "main": main, "claims": claims, "flags": flags.get(path, []),
+            # GitHub's anchor for the file in the PR's files view: the SHA-256 of the path.
+            "diff": hashlib.sha256(path.encode()).hexdigest(),
+            "status": {"kind": kind, "label": label, "text": text},
+            "_rank": (SPINE_RANK[kind] - (weakest_rank / 10 if kind == "protected" else 0), -(plus + minus), path)}
+        if test:
+            entry["tests"] = [n for n in (symbols.get(path) or {}).get("names") or [] if n.split(".")[-1].startswith("test")]
+        groups[gid]["files"].append(entry)
+    out = []
+    ids = [*groups.keys()]
+    # The automatic chapters: the unassigned files right after the chapters, the tests last.
+    tail = [g for g in ("code", "other", "deleted", "unassigned") if g in ids] + (["test"] if "test" in ids else [])
+    for gid in [g for g in ids if g not in tail] + tail:
+        g = groups[gid]
+        if not g["files"]:
+            continue
+        # A chapter keeps the reading order of its files as the explain step listed them; an automatic group goes riskiest first.
+        listed = {p: i for i, p in enumerate(entries(next((c for c in chapters if c["id"] == gid), {})))}
+        g["files"].sort(key=lambda f: (min([i for p, i in listed.items() if _under(f["path"], p)] or [len(listed)]), f["_rank"]))
+        for f in g["files"]:
+            f.pop("_rank")
+        g["added"] = sum(f["added"] for f in g["files"])
+        g["removed"] = sum(f["removed"] for f in g["files"])
+        g["unclaimed"] = sum(1 for f in g["files"] if f["status"]["kind"] in ("check", "ask", "read"))
+        g["flags"] = sum(len(f["flags"]) for f in g["files"])
+        g["reviewable"] = g["tier"] not in ("tests", "generated")
+        out.append(g)
+    allf = [f for g in out for f in g["files"]]
+    # How the changed files connect: the imports between them (explain.py), as links between chapters.
+    owner = {f["path"]: g["id"] for g in out for f in g["files"]}
+    weight: dict[tuple[str, str], int] = {}
+    for a_, b_ in diff.get("imports") or []:
+        x, y = owner.get(a_), owner.get(b_)
+        if x and y and x != y:
+            weight[(x, y)] = weight.get((x, y), 0) + 1
+    links = [{"from": x, "to": y, "n": n} for (x, y), n in sorted(weight.items())]
+    claimed = sum(1 for f in allf if f["status"]["kind"] == "protected")
+    half = sum(1 for f in allf if f["status"]["kind"] == "partial")
+    line = f"{claimed} of {len(allf)} changed files have a claim that protects them, and claims cover {half} more in part."
+    nflags = sum(len(f["flags"]) for f in allf)
+    return {"groups": out, "files": len(allf), "protected": claimed, "partial": half, "summary": line, "unassigned": unassigned,
+            "flags": nflags, "github": [f["path"] for f in sorted(allf, key=lambda f: f["path"])], "links": links}
+
+
 # ---- Bugs found ----------------------------------------------------------------------------
 
 def bugs(data: dict) -> list[dict]:
@@ -616,6 +949,8 @@ def derive(data: dict, refs: dict, extra: dict | None = None, ready: dict | None
     u = unclaimed(data, refs, (extra or {}).get("unclaimed"), coverage)
     risky = sum(1 for f in u["files"] if f["risks"])
     form, items = merge_verdict(data, ready, risky, cfg)
+    accept = merge_items(data, ready, risky, cfg)[1]
+    checks = checks_view(data, refs, claim_rows(data, extra, cfg))
     verdict_of = {c["id"]: c["verdict"] for c in data["claims"]}
     rows = claim_rows(data, extra, cfg)
     promises = [{"id": p["id"], "strength": s, "claims": cids, "count": len(cids), "tally": tally([verdict_of[c] for c in cids]),
@@ -624,8 +959,9 @@ def derive(data: dict, refs: dict, extra: dict | None = None, ready: dict | None
                 for p, s, cids in promises_in_order(data)]
     return {"schema": SCHEMA, "head": data["head"], "promises": promises, "claims": rows, "bars": bars_summary(data, rows),
             "verify": verify(data, promises, extra),
-            "merge": {"form": form, "items": items, "blockers": len(items) if form == "not-ready" else 0},
-            "ready": ready, "unclaimed": u, "risky_unclaimed": risky, "bugs": bugs(data)}
+            "merge": {"form": form, "items": items, "blockers": len(items) if form == "not-ready" else 0, "accept": accept},
+            "ready": ready, "unclaimed": u, "risky_unclaimed": risky, "bugs": bugs(data),
+            "spine": spine(data, refs, extra, coverage, u, rows), "checks": checks[0], "tests": checks[1]}
 
 
 def load_coverage(path: Path | None, head: str) -> dict | None:
