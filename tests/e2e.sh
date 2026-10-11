@@ -307,6 +307,8 @@ PY
 test "$(g status --porcelain)" = "$BEFORE_STATUS" || { echo "FAIL: the fixture checkout changed"; exit 1; }
 test "$(g worktree list | wc -l | tr -d ' ')" = "$BEFORE_TREES" || { echo "FAIL: a scratch worktree is left"; exit 1; }
 test -z "$(ls -A "$WORK/scratch")" || { echo "FAIL: scratch dir is not empty"; exit 1; }
+step "refs: symbol anchors, snippet, permalinks, anchor controls, the guard and drift (tests/refs-e2e.sh)"
+WORK="$WORK" REPO="$REPO" MAP="$MAP" HEAD="$HEAD" FIX="$FIX" bash "$ROOT/tests/refs-e2e.sh"
 step "mode: the CLI verbs, the gates and the ledger (tests/mode-e2e.sh)"
 WORK="$WORK" REPO="$REPO" MAP="$MAP" HEAD="$HEAD" FIX="$FIX" bash "$ROOT/tests/mode-e2e.sh"
 

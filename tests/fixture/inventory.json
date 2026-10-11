@@ -19,8 +19,7 @@
       "code": [
         {
           "path": "wallet/core.py",
-          "start": 8,
-          "end": 15
+          "symbol": "withdraw"
         }
       ],
       "plain": {
@@ -38,8 +37,8 @@
       "code": [
         {
           "path": "wallet/core.py",
-          "start": 15,
-          "end": 15
+          "symbol": "withdraw",
+          "match": "return balance - amount"
         }
       ],
       "plain": {
@@ -70,8 +69,7 @@
       "code": [
         {
           "path": "wallet/messages.py",
-          "start": 4,
-          "end": 5
+          "symbol": "denial"
         }
       ],
       "plain": {
@@ -101,8 +99,7 @@
       "code": [
         {
           "path": "wallet/messages.py",
-          "start": 4,
-          "end": 5
+          "symbol": "denial"
         }
       ],
       "plain": {
@@ -120,8 +117,12 @@
       "code": [
         {
           "path": "wallet/core.py",
-          "start": 13,
-          "end": 15
+          "symbol": "withdraw",
+          "match": "if amount > balance:",
+          "context": [
+            0,
+            2
+          ]
         }
       ],
       "plain": {
@@ -336,10 +337,12 @@
       "description": "Remove the line that raises OverdraftError.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "wallet/core.py",
-          "find": "        raise OverdraftError(f\"{amount} is above the balance\")\n",
-          "replace": "        pass\n"
+          "symbol": "withdraw",
+          "match": "raise OverdraftError",
+          "with": "pass",
+          "span": "statement"
         }
       ],
       "expect": {
@@ -354,10 +357,11 @@
       "description": "Add the amount to the balance, not take it away.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "wallet/core.py",
-          "find": "    return balance - amount\n",
-          "replace": "    return balance + amount\n"
+          "symbol": "withdraw",
+          "match": "/balance (-) amount/",
+          "with": "+"
         }
       ],
       "expect": {
@@ -372,10 +376,11 @@
       "description": "Put a colon into the contract ID, which the grammar does not permit.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "wallet/core.py",
-          "find": "] no-overdraft\n",
-          "replace": "] no-over:draft\n"
+          "symbol": "withdraw",
+          "match": "no-overdraft",
+          "with": "no-over:draft"
         }
       ],
       "expect": {
@@ -390,10 +395,11 @@
       "description": "Remove the amount from the denial message.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "wallet/messages.py",
-          "find": "We cannot pay out {amount}.",
-          "replace": "We cannot pay out."
+          "symbol": "denial",
+          "match": "/out( \\{amount\\})\\./",
+          "with": ""
         }
       ],
       "expect": {
@@ -408,10 +414,11 @@
       "description": "Remove the guard from the Lean model, so a withdrawal can go below zero.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "proofs/Withdraw.lean",
-          "find": "if a > b then none else ",
-          "replace": ""
+          "symbol": "withdraw",
+          "match": "if a > b then none else ",
+          "with": ""
         }
       ],
       "expect": {

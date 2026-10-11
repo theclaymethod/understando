@@ -163,8 +163,7 @@
     "code": [
      {
       "path": "wallet/core.py",
-      "start": 8,
-      "end": 15
+      "symbol": "withdraw"
      }
     ]
    },
