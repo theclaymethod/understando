@@ -53,6 +53,7 @@ These rules come from concisely ([adapted/concisely.md](adapted/concisely.md)). 
 - **Call out decisions, blockers and residual risk.**
 - **After each stop**, say what was checked, what passed and what changed for the reviewer. For example: "The idle stop is now proven: its new test catches the planted bug." Then ask one question. Link to the part of the explainer, for example "I opened its promise". Do not open a new page on each step.
 - **While a stop runs**, print one plain line for each finished item, with ✓ or ✗ and one plain reason. `--json` gives the same lines as NDJSON events with an `id`.
+- **To wait on a long `understando` step, wait for its output.** Do not poll processes. A long review step prints a progress line ("still running: review probe, 30s so far") at least every 30 seconds, so a quiet step is still alive.
 
 ## Findings
 

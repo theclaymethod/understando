@@ -254,7 +254,10 @@ def findings(c: context.Ctx, explicit_head: str | None, formal: bool = False) ->
     elif platform.system() == "Darwin" and not shutil.which("sandbox-exec"):
         add("learn-sandbox", "mention", "The learn app is paused; sandbox-exec is missing, so its tutor shell stays off.", "None needed while it is paused.")
     tools = context.tool_status()
-    if not tools["cc-check"]:
+    cc_note = tools.get("probe_notes", {}).get("cc-check")
+    if cc_note:
+        add("toolchain-cc-check", "mention", f"cc-check: {cc_note}.", "Run `understando doctor --refresh` when the network is back.")
+    elif not tools["cc-check"]:
         add("toolchain-cc-check", "route", "cc-check is not in the npm cache.", "Run setup.", "setup")
     wants_formal = bool(data) and any((cl.get("tier_target") or 0) >= 4 for cl in data["claims"]) or bool(data) and any("formal" in v for v in data["verifiers"])
     for name in ("lean", "lake", "java", "tla2tools", "apalache"):
@@ -365,8 +368,12 @@ def main(c: context.Ctx, argv: list[str]) -> int:
     ap = argparse.ArgumentParser(prog="understando doctor", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--fix", action="store_true")
     ap.add_argument("--pr-head")
+    ap.add_argument("--refresh", action="store_true", help="probe the external tools again (the results are cached for a day)")
     ap.add_argument("--formal", action="store_true", help="also generate each formal_tlc.py vectors file again (runs TLC)")
     args = ap.parse_args(argv)
+    if args.refresh:
+        import toolprobe
+        toolprobe.refresh()
     found, fixed = findings(c, args.pr_head, args.formal)
     moved = []
     if args.fix and fixed is not None:

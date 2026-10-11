@@ -48,7 +48,9 @@ The CLI enforces each rule that it can. The per-repo `understando.toml` (in the 
 - A claim reaches Proven or Formal only when the PR states it, or when it links to an invariant that the user accepted.
 - In chat, use plain names, never bare IDs, SHAs or `path:line` ([Reporting](references/working-rules.md#reporting)).
 - Write reviewer-facing prose in strict STE. Run `python3 -I <asd-ste100>/scripts/ste-lint.py <file>` until it reports 0 hard violations.
-- When the harness or the permission system refuses a step, stop and report the refusal word for word.
+- When the harness or the permission system refuses a step that the task needs, stop and report the refusal word for word.
+- When a refused command was only a diagnostic (a status check, a listing or a version probe), note it in one line and go on without it.
+- Never retry a refused command another way.
 
 ## Working rules and routes
 

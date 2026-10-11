@@ -932,4 +932,35 @@ NR="$WORK/norun"; mkdir -p "$NR/runs"; git clone -q "$RV/wallet.git" "$NR/clone"
 if (cd "$NR/clone" && PATH="$NO/bin:$PATH" UNDERSTANDO_RUNS="$NR/runs" "$U" review 4 --json) > "$O/review-norun.txt" 2>&1; then fail "review passed with no head"; fi
 has "$O/review-norun.txt" "I can't reach GitHub and there is no earlier review of PR 4. Run this where the network is available, or pass --head <sha>."
 
+step "tool probes: a hung npx never stops review or doctor, the result is cached, and refusal rules are in the router"
+TP="$WORK/toolprobe"; mkdir -p "$TP/bin" "$TP/uhome" "$TP/npm"
+printf '#!/bin/sh\necho called >> "%s/npx-calls"\nsleep 30\n' "$TP" > "$TP/bin/npx"; chmod +x "$TP/bin/npx"
+t0=$(date +%s)
+env -u UNDERSTANDO_OFFLINE PATH="$TP/bin:$PATH" UNDERSTANDO_HOME="$TP/uhome" npm_config_cache="$TP/npm" HOME="$TP/npm" \
+  "$U" --run "$RUN" --json doctor > "$O/doctor-hung.json"
+env -u UNDERSTANDO_OFFLINE PATH="$TP/bin:$PATH" UNDERSTANDO_HOME="$TP/uhome" npm_config_cache="$TP/npm" HOME="$TP/npm" \
+  "$U" --run "$RUN" signals > "$O/signals-hung.json"
+[ $(( $(date +%s) - t0 )) -lt 25 ] || fail "a hung npx held doctor and signals for 25 s or more"
+python3 - "$O/doctor-hung.json" <<'PY'
+import json, sys
+f = [x for x in json.load(open(sys.argv[1]))["findings"] if x["id"] == "toolchain-cc-check"]
+assert f and f[0]["severity"] == "mention" and "not checked (timed out)" in f[0]["summary"], f
+PY
+test ! -e "$TP/uhome/toolprobe.json" || python3 -c 'import json,sys; assert "cc-check" not in json.load(open(sys.argv[1]))' "$TP/uhome/toolprobe.json" \
+  || fail "a timed-out probe was cached"
+rm -f "$TP/npx-calls"
+python3 - "$TP/uhome/toolprobe.json" <<'PY'
+import json, sys, time
+json.dump({"cc-check": {"value": "npx @spolu/cc-check@0.2.0", "at": time.time()}}, open(sys.argv[1], "w"))
+PY
+env -u UNDERSTANDO_OFFLINE PATH="$TP/bin:$PATH" UNDERSTANDO_HOME="$TP/uhome" npm_config_cache="$TP/npm" HOME="$TP/npm" \
+  "$U" --run "$RUN" signals > "$O/signals-cached.json"
+python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["toolchains"]["cc-check"], "cache not used"' "$O/signals-cached.json"
+test ! -e "$TP/npx-calls" || fail "a cached probe result still called npx"
+has "$ROOT/SKILL.md" "refuses a step that the task needs, stop and report the refusal word for word"
+has "$ROOT/SKILL.md" "only a diagnostic"
+has "$ROOT/SKILL.md" "Never retry a refused command another way."
+has "$ROOT/references/working-rules.md" "Do not poll processes."
+echo "tool probes: timeout is a mention, the cache is reused, the router has the new rules"
+
 echo "PASS: mode e2e"
