@@ -1,7 +1,0 @@
-{"statement_parity": {"status": "pass", "note": "each theorem restates a rule of accept.py; settle theorems assume states != [] (Python raises IndexError on [], accept.py:68; the loop always passes the projection, loop.py:223)"},
- "state_parity": {"status": "pass", "note": "only key, blocking, decided, severity reach the rule; keys are Nat in Lean and 'k<n>' in Python; Python sets are List membership"},
- "transition_parity": {"status": "pass", "note": "every branch: LC keep/rejects_early/settle (both returns), SI keep (three returns), rejects_early (both disjuncts), SI settle"},
- "concurrency_parity": {"status": "n/a", "note": "pure functions"},
- "cancel_drain_parity": {"status": "n/a", "note": "no cancellation in the rule"},
- "runtime_evidence": {"status": "pass", "note": "501 committed vectors + 6000 random oracle requests green; 4 controls red"},
- "drift_gate": {"status": "pass", "note": "stamped: commit and blobs of accept.py and findings.py, sha256 of each Lean file and the vectors"}}
