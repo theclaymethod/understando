@@ -243,47 +243,6 @@ def changed_symbols(repo: str, head: str, diff: dict) -> tuple[dict, list[dict]]
     return out, mains
 
 
-def changed_imports(repo: str, head: str, diff: dict) -> list[list[str]]:
-    """The imports between the changed Python files at the head, as [importer, imported] path pairs:
-    the data of the guided review's map of how the changed files connect. A module name maps to a
-    changed file when exactly one changed file ends with its dotted path."""
-    import ast
-    code = [p for p in diff["files"] if p.endswith(".py") and p not in diff["deleted"]]
-    by_name: dict[str, set[str]] = {}
-    for p in code:
-        parts = p[:-3].split("/")
-        if parts[-1] == "__init__":
-            parts = parts[:-1]
-        for k in range(1, len(parts) + 1):
-            by_name.setdefault(".".join(parts[-k:]), set()).add(p)
-    find = lambda name: next(iter(by_name[name])) if len(by_name.get(name, ())) == 1 else None  # noqa: E731
-    edges: set[tuple[str, str]] = set()
-    for p in code:
-        text = coderef.show(repo, head, p)
-        if text is None:
-            continue
-        try:
-            tree = ast.parse(text)
-        except SyntaxError:
-            continue
-        pkg = p[:-3].split("/")[:-1] if not p.endswith("__init__.py") else p[:-3].split("/")[:-1]
-        for node in ast.walk(tree):
-            names: list[str] = []
-            if isinstance(node, ast.Import):
-                names = [a.name for a in node.names]
-            elif isinstance(node, ast.ImportFrom):
-                base = node.module or ""
-                if node.level:
-                    up = pkg[: len(pkg) - (node.level - 1)] if node.level > 1 else pkg
-                    base = ".".join(up[-2:] + ([base] if base else []))
-                names = [base] + [f"{base}.{a.name}" for a in node.names]
-            for name in names:
-                hit = find(name) if name else None
-                if hit and hit != p:
-                    edges.add((p, hit))
-    return sorted([list(e) for e in edges])
-
-
 def stage(src: Path, dest: Path) -> None:
     if src.resolve() != dest.resolve():
         shutil.copyfile(src, dest)
@@ -338,7 +297,6 @@ def main() -> int:
     refs += [c["ref"] for c in (extra.get("verdict") or {}).get("checks") or [] if c.get("ref")]
     diff = diff_data(args.repo, data["base"], data["head"])
     diff["symbols"], mains = changed_symbols(args.repo, data["head"], diff)
-    diff["imports"] = changed_imports(args.repo, data["head"], diff)
     resolved = resolve_refs(args.repo, data, refs)
     # The main changed symbol of a file is a link to read, not an excerpt.
     have = {coderef.ref_key(r["ref"]) for r in resolved}

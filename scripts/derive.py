@@ -21,11 +21,9 @@ not compute them again.
                core files that claims cover in part, and the summary lines (risky files first)
   bugs         the possible bugs of the invariants, in the find-bugs heading format (findings.py)
   spine        each changed file in its chapter of the change (explain.json change.chapters), with
-               its protection, its claims and its "look closely" flags (from verified sources only),
-               the imports between the chapters, and the files in GitHub's order
+               its protection, its claims and its "look closely" flags (from verified sources only)
   checks       each check with its result, the claims and parts that it backs and the test it runs;
-  tests        the changed test files as the checks they provide, and the changed tests that back
-               no claim
+  tests        the count of the changed tests that back no claim, with one action
 
 A file is covered when a claim's code refs cite it, when a claim names it, when one of the
 claim's checks exercises it (the coverage record of the run: `understando coverage`), or when a
@@ -674,7 +672,7 @@ def checks_view(data: dict, refs: dict, rows: dict[str, dict]) -> tuple[dict, di
         out[v["id"]] = {"id": v["id"], "name": check_name(data, v), "kind": v["kind"], "result": onto.check_result(data, v), "claims": backs,
                         "tests": [{"path": p, "file": short(p), "symbol": s} for p, s in targets], "controls": controls.get(v["id"], []),
                         "ref": {"path": main[0], "symbol": main[1]} if main else None}
-    test_files, orphans = [], []
+    orphans = []
     for path in sorted(files):
         if not is_test(path) or path in deleted or not path.endswith(".py"):
             continue
@@ -683,12 +681,10 @@ def checks_view(data: dict, refs: dict, rows: dict[str, dict]) -> tuple[dict, di
         whole = any(sym is None for _, sym in mine)
         named = {sym for _, sym in mine if sym}
         loose = [] if whole else [n for n in changed if not any(n == x or n.startswith(x + ".") or x.startswith(n + ".") for x in named)]
-        if mine:
-            test_files.append({"path": path, "file": short(path), "checks": sorted({vid for vid, _ in mine})})
         if loose:
             orphans.append({"path": path, "file": short(path), "tests": loose})
     n = sum(len(o["tests"]) for o in orphans)
-    tests = {"files": test_files, "orphans": orphans, "orphan_tests": n,
+    tests = {"orphan_tests": n,
              "summary": (f"{n} changed {'test backs' if n == 1 else 'tests back'} no claim." if n else "Each changed test backs a claim."),
              "action": "Link them to a claim, or delete them." if n else ""}
     return out, tests
@@ -914,20 +910,12 @@ def spine(data: dict, refs: dict, extra: dict | None, coverage: dict | None, u: 
         g["reviewable"] = g["tier"] not in ("tests", "generated")
         out.append(g)
     allf = [f for g in out for f in g["files"]]
-    # How the changed files connect: the imports between them (explain.py), as links between chapters.
-    owner = {f["path"]: g["id"] for g in out for f in g["files"]}
-    weight: dict[tuple[str, str], int] = {}
-    for a_, b_ in diff.get("imports") or []:
-        x, y = owner.get(a_), owner.get(b_)
-        if x and y and x != y:
-            weight[(x, y)] = weight.get((x, y), 0) + 1
-    links = [{"from": x, "to": y, "n": n} for (x, y), n in sorted(weight.items())]
     claimed = sum(1 for f in allf if f["status"]["kind"] == "protected")
     half = sum(1 for f in allf if f["status"]["kind"] == "partial")
     line = f"{claimed} of {len(allf)} changed files have a claim that protects them, and claims cover {half} more in part."
     nflags = sum(len(f["flags"]) for f in allf)
     return {"groups": out, "files": len(allf), "protected": claimed, "partial": half, "summary": line, "unassigned": unassigned,
-            "flags": nflags, "github": [f["path"] for f in sorted(allf, key=lambda f: f["path"])], "links": links}
+            "flags": nflags}
 
 
 # ---- Bugs found ----------------------------------------------------------------------------

@@ -253,7 +253,7 @@ const url = 'file://' + path.resolve(html);
       levels: [...document.querySelectorAll('main section.ve-section[id]')].map((s) => s.id).join(','),
     }));
     if (got.styles || got.presets.join() !== 'iso') fail(`the explainer has ${got.styles} page <style> elements and presets [${got.presets}]; want 0 and [iso]`);
-    if (got.levels !== 'ch-0,ch-1,ch-2,ch-3,ch-4,ch-5,ch-6,ch-7,ch-8,ch-9') fail(`the chapter ids are ${got.levels}`);
+    if (got.levels !== 'ch-0,ch-1,ch-2,ch-3,ch-4,ch-5,ch-6,ch-7,ch-8') fail(`the chapter ids are ${got.levels}`);
     // The old level anchors still land: each is an alias in the chapter that holds its level.
     for (const old of ['story', 'why', 'loop', 'changed', 'unclaimed', 'verifiers', 'promises', 'tradeoffs', 'exercises', 'glossary']) {
       if (!(await page.$(`section.ve-section > #${old}`))) fail(`the old anchor #${old} has no target`);
@@ -340,16 +340,16 @@ const url = 'file://' + path.resolve(html);
     await page.waitForFunction(() => document.getElementById('promise-p4')?.open);
     console.log(`a deep link opens claim C01 with its headline at ${Math.round(top)}px; an open block writes its link and stays open on reload`);
 
-    // What changed: the file that the fixture adds without a claim, with its status, and a file that a claim protects.
+    // What changed: the low-risk file that the fixture adds without a claim is one line of its chapter, and a file that a claim protects shows with its claim.
     await page.goto(url + '#ch-3', { waitUntil: 'load' });
     await page.waitForFunction(() => !document.getElementById('ch-3').hidden);
-    const report = await page.$eval('[data-ve-spine-file="bin/report.py"]', (s) => s.innerText);
-    if (!/Low risk: read it quickly|No claim/.test(report)) fail(`bin/report.py has no protection status: ${report}`);
+    const report = await page.$eval('[data-ve-change-chapter="report"] [data-ve-quiet-files]', (s) => s.innerText);
+    if (!/^Its file is low risk\./.test(report)) fail(`the chapter of bin/report.py does not say that its file is low risk: ${report}`);
     const fees = await page.$eval('[data-ve-spine-file="wallet/fees.py"]', (s) => s.innerText);
     if (!/Protected by 1 claim/.test(fees)) fail(`wallet/fees.py does not show the claim that protects it: ${fees}`);
     const spine = await page.$eval('#ch-3', (s) => s.innerText);
     if (!/changed files? ha(s|ve) no claim/.test(spine)) fail('what changed has no summary line of the unclaimed files');
-    console.log('what changed shows bin/report.py with its status, wallet/fees.py with its claim, and the summary');
+    console.log('what changed says that bin/report.py is low risk, shows wallet/fees.py with its claim, and the summary');
   } finally {
     await browser.close();
   }
