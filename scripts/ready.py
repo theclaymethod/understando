@@ -8,7 +8,7 @@ The gates:
   1 verified     each claim is Formal, Proven or Backed, or the user waived it
   2 no excess    trim found no deletable code, and the user decided each "excess or untested" item
   3 no doubles   trim found no unit test that an e2e test already covers
-  4 explainable  explain.py builds (glossary, level rules), each claim is in one promise, and the
+  4 explainable  explain.py builds the explainer MDX of the run (the export checks), each claim is in one promise, and the
                  STE lint of the PR section has 0 hard violations
 
 The checklist goes to $R/ready.json. explain puts it at the top of the explainer and of

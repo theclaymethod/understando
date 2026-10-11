@@ -22,6 +22,7 @@ export HOME="$FH" UNDERSTANDO_HOME="$WORK/uhome" UNDERSTANDO_OFFLINE=1 UNDERSTAN
 mkdir -p "$RUN"
 cp "$MAP" "$RUN/trust-map.json"
 cp "$FIX/explain.json" "$RUN/explain.json"
+cp "$FIX/explainer.mdx" "$RUN/explainer.mdx"
 O="$WORK/out"; mkdir -p "$O"
 
 step "setup: the skill links and the CLI link, in the fake HOME"
@@ -172,34 +173,15 @@ for g in "gate 1 verified: pass" "gate 2 no excess code: fail" "gate 3 no unit t
   has "$O/ready.txt" "$g"
 done
 
-step "explain: the why level from the journal, the checklist on top, the glossary file"
+step "explain: the checklist on top of the PR section, the glossary file, the pre-rendered page"
 "$U" explain > "$O/explain.txt"
-WHY="$RUN/chapters/01a-why.mdx"
-test -f "$WHY" || fail "no why level"
-has "$WHY" "Make sure the fee is right for each amount"
-has "$WHY" '#claim-c03'
-has "$WHY" "Confirmed by the user: The fee is one"
-has "$WHY" "Proposed, not confirmed"
-has "$RUN/explainer.mdx" "Why it was built this way"
+has "$RUN/explainer.html" 'data-ve-trust="merge"'
+has "$RUN/explainer.html" "Why it was built this way"
 has "$RUN/pr-section.md" "### Ready checklist"
 has "$RUN/pr-section.md" "**Formal**"
 has "$RUN/pr-section.md" "waived: The wallet keeps no shared state"
 has "$RUN/GLOSSARY.md" "**Overdraft**:"
-python3 - "$WHY" "$WORK/why-prose.md" <<'PY'
-# The STE lint covers the generated prose of the why level, not the user's quotes.
-import json, re, sys
-text = open(sys.argv[1]).read()
-text = re.sub(r'<blockquote data-quote="user">.*?</blockquote>', "", text, flags=re.S)
-out = []
-for m in re.finditer(r'\{(".*?(?<!\\)")\}', text):
-    s = json.loads(m.group(1))
-    if len(s.split()) > 3 and not re.match(r"[A-Z]\d\d: ", s):
-        out.append(s)
-open(sys.argv[2], "w").write("\n\n".join(out) + "\n")
-PY
-LINT="$(find "$FH/.agents/skills/asd-ste100/" -name ste-lint.py | head -1)"
-python3 -I "$LINT" "$WORK/why-prose.md" | tee "$O/lint.txt" | tail -1
-grep -q "(0 hard" "$O/lint.txt" || fail "the why level prose has hard STE violations"
+test -f "$RUN/explain.stamp.json" || fail "explain wrote no stamp"
 
 step "routes: no originals in the fake HOME, so each route uses an adapted copy or a built-in rule"
 "$U" --json routes > "$O/routes.json"
@@ -367,6 +349,7 @@ CL="$RV/wallet"; git clone -q "$RV/wallet.git" "$CL"
 R="$UNDERSTANDO_RUNS/wallet/1"; mkdir -p "$R"
 sed "s/$HEAD/$PR_HEAD/g" "$MAP" > "$R/trust-map.json"
 cp "$FIX/explain.json" "$R/explain.json"
+cp "$FIX/explainer.mdx" "$R/explainer.mdx"
 cat > "$UNDERSTANDO_RUNS/wallet/understando.toml" <<'TOML'
 schema = "understando.repo/1"
 repo = "fixture/wallet"

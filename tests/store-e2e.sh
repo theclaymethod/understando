@@ -51,10 +51,10 @@ echo "the guard refuses the reviewed repo, understando's checkout and a runs_dir
 
 step "publish: build the explainer through the CLI, then export it"
 R="$T/run"; mkdir -p "$R"
-cp "$MAP" "$R/trust-map.json"; cp "$FIX/explain.json" "$R/explain.json"
+cp "$MAP" "$R/trust-map.json"; cp "$FIX/explain.json" "$R/explain.json"; cp "$FIX/explainer.mdx" "$R/explainer.mdx"
 "$U" --run "$R" --repo "$A" explain > "$T/explain1.txt"
 test -f "$R/explain.stamp.json" || fail "explain wrote no stamp"
-node "$VE/scripts/artifacture.mjs" export "$R/explainer.mdx" --out "$R/explainer.html" > /dev/null
+test -s "$R/explainer.html" || fail "explain exported no explainer.html"
 printf '{"t": "planted"}\n' > "$R/journal.jsonl"; printf '{}\n' > "$R/discover.json"; printf '{}\n' > "$R/ci.json"
 mkdir -p "$R/history" "$R/my-work"; printf '{}\n' > "$R/history/old.json"; printf 'x\n' > "$R/my-work/n.md"
 printf 'export OPENAI_API_KEY=planted\n' > "$R/key-env.sh"
@@ -116,16 +116,12 @@ has "$T/fb.jsonl" "below zero"; lacks "$T/fb.jsonl" "not feedback"
 echo "feedback commit ${TIP2:0:10}: $(git -C "$T/wallet.git" log -1 --format=%s "$TIP2")"
 
 step "publish: a stale explainer is refused (the HTML is older than the MDX, then the map changed)"
-python3 - "$R/explain.json" <<'PY'
-import json, sys
-d = json.load(open(sys.argv[1])); d.setdefault("story", {})["summary"] = "What this PR changes in the wallet, and how far to trust it."
-json.dump(d, open(sys.argv[1], "w"), indent=2)
-PY
 sleep 1
-"$U" --run "$R" --repo "$A" explain > /dev/null
+# The agent edits its narrative after the build.
+printf '\n{/* A later edit of the narrative. */}\n' >> "$R/explainer.mdx"
 if "$U" --run "$R" --repo "$A" publish 1 --answers "$T/yes.json" > "$T/stale1.txt"; then fail "publish took an HTML older than the MDX"; fi
 has "$T/stale1.txt" "explainer.html is older than explainer.mdx"
-node "$VE/scripts/artifacture.mjs" export "$R/explainer.mdx" --out "$R/explainer.html" > /dev/null
+"$U" --run "$R" --repo "$A" explain > /dev/null
 cp "$R/trust-map.json" "$T/map.keep"
 python3 - "$R/trust-map.json" <<'PY'
 import json, sys

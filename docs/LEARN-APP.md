@@ -107,7 +107,7 @@ The tutor shell can edit the worktree, so its output can be wrong, and the tutor
 
 ## Chapters and the Artifacture components
 
-- `compile-chapters.mjs` reads `explainer.mdx`. When the file imports one MDX unit per chapter from `chapters/`, each `<Section>` of the entry is one chapter. Else the script splits the file at each top-level `<Section>`. It runs Artifacture's preflight (diagram checks and code colours), then compiles each chapter to an MDX function body.
+- `compile-chapters.mjs` reads `explainer.mdx`. When the file imports one MDX unit per chapter from `chapters/`, each `<Section>` of the entry is one chapter. Else the script splits the file at each top-level `<Section>`. Each JSON file that the explainer imports (the trust map, the resolved refs, `explain.json`) goes inline into each chapter that uses it, and `promiseAnchors(...)` becomes its value, because the app has no module loader. It runs Artifacture's preflight (diagram checks and code colours), then compiles each chapter to an MDX function body.
 - The UI imports `visual-explainer-mdx/components.tsx` from `UNDERSTANDO_VE_RUNTIME` and runs each chapter with those components. They import cleanly outside the Artifacture export. The import needs three settings: an alias to the checkout, a React `dedupe`, and the Tailwind v4 Vite plugin for `global.css`. The checkout must have its `node_modules`.
 - Build the UI against the checkout that the chapter MDX imports from. A chapter that names a component the build does not have shows an error, and the other chapters still show.
 - Mermaid ships inside the app. A Mermaid block in a tutor answer shows as a diagram with the label "Model-generated".

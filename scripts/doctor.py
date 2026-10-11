@@ -89,8 +89,8 @@ def code_ref_findings(repo: Path, data: dict, extra: dict, explicit_head: str | 
     """Pasted code in the inputs of the explainer, and anchors that drift: on a head, an anchor
     that resolves to no place or to more than one routes to map."""
     out = []
-    template = tm.ROOT / "templates" / "three-level.mdx"
-    pasted = coderef.pasted(repo, data["head"], coderef.guard_inputs(data, extra, [template]))
+    # The export guards the explainer MDX itself (the visual-explainer no-hand-copy guard).
+    pasted = coderef.pasted(repo, data["head"], coderef.guard_inputs(data, extra, []))
     if pasted:
         out.append(("pasted-code", "route", f"The explainer input holds pasted code: {pasted[0]}" + (f" (and {len(pasted) - 1} more)" if len(pasted) > 1 else ""),
                     "Replace the pasted code with a code ref; preview it with `understando snippet`.", "map"))

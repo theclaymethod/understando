@@ -352,7 +352,7 @@ def lock_paths(verb: str, argv: list[str]) -> list[str]:
     if verb == "import":
         return ["run:trust-map.json"]
     if verb == "explain":
-        return ["run:explainer.mdx", "run:chapters/", "run:pr-section.md", "run:GLOSSARY.md", "run:explain.stamp.json"]
+        return ["run:explainer.html", "run:refs.resolved.json", "run:pr-section.md", "run:GLOSSARY.md", "run:explain.stamp.json"]
     if verb == "ready":
         return ["run:ready.json"]
     if verb == "ci":

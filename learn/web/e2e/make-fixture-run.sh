@@ -4,7 +4,7 @@
 #   learn/web/e2e/make-fixture-run.sh <work dir>
 #
 # Writes <work>/repo (a git repo: base commit, then the PR commit) and <work>/run (the run
-# folder: trust-map.json with the learn exercises, explainer.mdx, chapters/, learn/chapters.json).
+# folder: trust-map.json with the learn exercises, explainer.mdx, explainer.html, learn/chapters.json).
 # No model call. The steps are those of tests/e2e.sh.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
@@ -40,6 +40,7 @@ python3 "$S/run_control.py" --map "$MAP" --repo "$REPO" --all --scratch "$WORK/s
 python3 "$S/mechanical.py" --map "$MAP" --repo "$REPO" >/dev/null
 python3 "$S/verdicts.py" "$MAP" >/dev/null
 python3 "$S/validate.py" "$MAP"
+cp "$FIX/explainer.mdx" "$RUN/explainer.mdx"
 python3 "$S/explain.py" --map "$MAP" --repo "$REPO" --out "$RUN" --extra "$FIX/explain.json" ${UNDERSTANDO_VE_RUNTIME:+--runtime "$UNDERSTANDO_VE_RUNTIME"} >/dev/null
 node "$ROOT/learn/web/scripts/compile-chapters.mjs" "$RUN"
 echo "fixture run: $RUN (head $HEAD)"

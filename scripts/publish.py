@@ -160,7 +160,7 @@ def checks(run: Path, repo: Path, data: dict, cfg: dict, files: dict[str, bytes]
     import journal
     out = [f"stale explainer: {r}" for r in stale_reasons(run, data)]
     extra = tm.load(run / "explain.json") if (run / "explain.json").is_file() else {}
-    pasted = coderef.pasted(repo, data["head"], coderef.guard_inputs(data, extra, [tm.ROOT / "templates" / "three-level.mdx"]))
+    pasted = coderef.pasted(repo, data["head"], coderef.guard_inputs(data, extra, [p for p in [run / "explainer.mdx"] if p.is_file()]))
     out += [f"no-hand-copy guard: {p}" for p in pasted[:5]]
     for rel, blob in files.items():
         top = rel.split("/", 1)[0]

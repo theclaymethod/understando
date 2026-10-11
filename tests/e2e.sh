@@ -119,7 +119,7 @@ cases = {
     "term": (mdx.replace(story, "The ZQX ledger lets a withdrawal take the balance below zero."), extra, data),
     "mode": (mdx, {**extra, "diagrams": {**extra["diagrams"], "loop": {k: v for k, v in extra["diagrams"]["loop"].items() if k != "detailed"}}}, data),
     "action": (mdx, extra, {**data, "promises": [{k: v for k, v in p.items() if k != "reviewer_action"} if p["id"] == "P4" else p for p in data["promises"]]}),
-    "pasted": (mdx.replace(story, "def withdraw(balance: int, amount: int) -> int:\n    if amount > balance:"), extra, data),
+    "pasted": (mdx.replace("Next: [see why it was built this way](#why).", "```python\nclass OverdraftError(ValueError):\n    pass\n```\n\nNext: [see why it was built this way](#why)."), extra, data),
 }
 for name, (m, e, d) in cases.items():
     out = work / f"bad-{name}"
@@ -139,7 +139,7 @@ echo "the export refuses a visible ID, an undefined term, a one-mode diagram, a 
 
 python3 - "$MAP" "$WORK/explain" <<'PY'
 # The refs, the stamp and the pre-render: each claim has one block, and the page names its map.
-import hashlib, json, pathlib, re, sys
+import hashlib, html as h, json, pathlib, re, sys
 data = json.load(open(sys.argv[1]))
 out = pathlib.Path(sys.argv[2])
 refs = json.loads((out / "refs.resolved.json").read_text())
@@ -149,12 +149,13 @@ html = (out / "explainer.html").read_text()
 assert f'<meta name="ve-trust-map-head" content="{data["head"]}">' in html, "no head stamp"
 assert f'<meta name="ve-trust-map-sha256" content="{hashlib.sha256((out / "trust-map.json").read_bytes()).hexdigest()}">' in html, "no map hash stamp"
 root = html.split('<div id="root">', 1)[1]
+text = h.unescape(re.sub(r"<[^>]+>", "", root))
 for c in data["claims"]:
     n = root.count(f'id="claim-{c["id"].lower()}"')
     if n != 1:
         sys.exit(f"FAIL: {c['id']} has {n} claim blocks in the pre-render")
 for p in data["promises"]:
-    assert p["sentence"].split(".")[0].replace("'", "&#x27;") in root, f"the pre-render lacks the promise {p['id']}"
+    assert " ".join(p["sentence"].split()[:4]) in text, f"the pre-render lacks the promise {p['id']}"
 print(f"refs at the head, the map stamped, and each of the {len(data['claims'])} claims in one pre-rendered block")
 PY
 # The rendered page: default themes only, and the level rules in a real browser.

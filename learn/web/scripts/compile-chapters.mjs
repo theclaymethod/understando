@@ -30,7 +30,7 @@ async function preflight(code, id) {
 }
 
 const IMPORT = /^import\s.+?from\s+['"][^'"]+['"];?\s*$/gm;
-const SECTION_OPEN = /^<Section\s+title=(?:"([^"]*)"|\{"((?:[^"\\]|\\.)*)"\})\s*>\s*$/;
+const SECTION_OPEN = /^<Section\b([^>]*)>\s*$/;
 
 function slug(text, index) {
   const s = text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
@@ -56,14 +56,13 @@ function splitSections(source) {
     if (/^<\/?ExplainerShell\b/.test(line) || /^\{\/\*.*\*\/\}\s*$/.test(line)) continue;
     const open = SECTION_OPEN.exec(line);
     if (open && !current) {
-      const title = open[1] ?? JSON.parse(`"${open[2]}"`);
-      current = { title, lines: [line] };
+      current = { id: attr(line, "id"), title: attr(line, "navLabel") || attr(line, "title"), heading: attr(line, "title"), lines: [line] };
       continue;
     }
     if (current) {
       current.lines.push(line);
       if (/^<\/Section>\s*$/.test(line)) {
-        chapters.push({ title: current.title, mdx: current.lines.join("\n") });
+        chapters.push({ id: current.id, title: current.title, heading: current.heading, mdx: current.lines.join("\n") });
         current = null;
       }
     } else if (line.trim()) intro.push(line);
@@ -105,6 +104,32 @@ async function entryChapters(text) {
   return { css, chapters };
 }
 
+// The data that an explainer imports (import trust from './trust-map.json'). The app has no module
+// loader for it, so each chapter that uses a name gets the data inline. A resolved-refs file gets
+// its code highlighted, as the HTML export does.
+const DATA_IMPORT = /^import\s+([A-Za-z_$][\w$]*)\s+from\s+['"](\.\/[^'"]+\.json)['"];?\s*$/gm;
+async function dataImports(text) {
+  const out = new Map();
+  for (const [, name, file] of text.matchAll(DATA_IMPORT)) {
+    let value = JSON.parse(await readFile(join(runDir, file), "utf8"));
+    const ve = veRuntime();
+    if (ve && value?.schema === 1 && Array.isArray(value.refs) && value.diff) {
+      const { highlightRefs } = await import(pathToFileURL(join(ve, "scripts", "ve-mdx", "integrity.mjs")).href);
+      value = await highlightRefs(value);
+    }
+    out.set(name, value);
+  }
+  return out;
+}
+
+/** The section anchors that a helper call computes from the data, for example anchors={promiseAnchors(trust)}. */
+async function inlineHelpers(mdx, data) {
+  const ve = veRuntime();
+  if (!ve || !/promiseAnchors\(/.test(mdx)) return mdx;
+  const { promiseAnchors } = await import(pathToFileURL(join(ve, "visual-explainer-mdx", "trust-map-rules.ts")).href);
+  return mdx.replace(/promiseAnchors\(([A-Za-z_$][\w$]*)\)/g, (_m, name) => JSON.stringify(promiseAnchors(data.get(name))));
+}
+
 async function loadChapters() {
   const text = await readFile(join(runDir, "explainer.mdx"), "utf8");
   const entry = await entryChapters(text);
@@ -113,6 +138,7 @@ async function loadChapters() {
 }
 
 const { source, shell, css, chapters } = await loadChapters();
+const data = await dataImports(await readFile(join(runDir, "explainer.mdx"), "utf8"));
 if (!chapters.length) throw new Error("No chapters found.");
 const compiled = [];
 for (const [index, chapter] of chapters.entries()) {
@@ -120,7 +146,9 @@ for (const [index, chapter] of chapters.entries()) {
   // The preflight checks that each component is imported, so give it the import line, then drop it.
   const names = [...new Set([...chapter.mdx.matchAll(/<([A-Z][A-Za-z0-9]*)/g)].map((m) => m[1]))];
   const header = names.length ? `import { ${names.join(", ")} } from 'visual-explainer-mdx/components';\n\n` : "";
-  const prepared = (await preflight(header + chapter.mdx, `${basename(runDir)}/${id}`)).replace(IMPORT, "");
+  const body = await inlineHelpers(chapter.mdx, data);
+  const inline = [...data].filter(([name]) => new RegExp(`\\b${name}\\b`).test(body)).map(([name, value]) => `export const ${name} = ${JSON.stringify(value)};\n\n`).join("");
+  const prepared = inline + (await preflight(header + body, `${basename(runDir)}/${id}`)).replace(IMPORT, "");
   const code = String(await compile(prepared, { outputFormat: "function-body", development: false }));
   compiled.push({ id, title: chapter.title, heading: chapter.heading || chapter.title, code });
 }

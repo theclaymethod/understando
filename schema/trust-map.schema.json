@@ -171,7 +171,7 @@
     },
     "promises": {
       "type": "array",
-      "description": "Strict STE. Three to six plain promises that the PR makes. Each claim belongs to exactly one promise. The strength of a promise is the verdict of its weakest claim; explain.py derives it, and the map never stores it.",
+      "description": "Strict STE. Three to six plain promises that the PR makes. Each claim belongs to exactly one promise. The strength of a promise is the verdict of its weakest claim; the trust-map rules of visual-explainer derive it, and the map never stores it.",
       "items": {
         "$ref": "#/$defs/promise"
       }

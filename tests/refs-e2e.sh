@@ -99,7 +99,7 @@ extra = json.load(open(sys.argv[1]))
 lines = open(sys.argv[3]).read().splitlines()
 start = next(i for i, l in enumerate(lines) if "if amount > balance" in l)
 # A model types the block again, with its own indentation: the guard normalises whitespace.
-extra["tradeoffs"].append("The guard is:\n" + "\n".join("  " + l.strip() for l in lines[start:start + 3]))
+extra["risks"][0]["why"] += "\nThe guard is:\n" + "\n".join("  " + l.strip() for l in lines[start:start + 3])
 json.dump(extra, open(sys.argv[2], "w"), indent=2)
 PY
 expect_fail pasted "pasted code from wallet/core.py:13" python3 "$S/explain.py" --map "$MAP" --repo "$REPO" --out "$WORK/bad-pasted" --extra "$WORK/pasted.json"

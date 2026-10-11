@@ -23,15 +23,14 @@ DIR gets explainer.html, refs.resolved.json and pr-section.md. The MDX imports .
 copies the map, explain.json and the MDX into DIR first. The default MDX is explainer.mdx next to
 the map. --no-html stops after step 2 and writes pr-section.md.
 
---runtime is the Artifacture checkout. $UNDERSTANDO_VE_RUNTIME sets it too. The default asks the
-visual-explainer CLI: `node ~/.claude/skills/visual-explainer/scripts/artifacture.mjs path`.
+--runtime is the Artifacture checkout. $UNDERSTANDO_VE_RUNTIME, then ve_runtime in
+~/.understando/config.toml, set it too. The default asks the visual-explainer CLI: `node ~/.claude/skills/visual-explainer/scripts/artifacture.mjs path`.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import shutil
 import subprocess
@@ -64,11 +63,11 @@ def git(repo: str, *args: str) -> str:
 
 
 def runtime_path(explicit: str | None) -> str:
-    """The Artifacture checkout: --runtime, then $UNDERSTANDO_VE_RUNTIME, then the visual-explainer CLI."""
-    if explicit:
-        return explicit
-    if os.environ.get("UNDERSTANDO_VE_RUNTIME"):
-        return os.environ["UNDERSTANDO_VE_RUNTIME"]
+    """The Artifacture checkout: --runtime, then $UNDERSTANDO_VE_RUNTIME or ve_runtime of
+    ~/.understando/config.toml, then the visual-explainer CLI."""
+    import config
+    if explicit or config.ve_runtime():
+        return explicit or config.ve_runtime()
     cli = Path.home() / ".claude/skills/visual-explainer/scripts/artifacture.mjs"
     out = subprocess.run(["node", str(cli), "path"], capture_output=True, text=True)
     if out.returncode != 0:

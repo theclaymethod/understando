@@ -1,6 +1,6 @@
 # explain
 
-Build the PR-body section and the explainer from `M`. Read [../cards/trust-map.md](../cards/trust-map.md) first. It says what each level holds and which components it uses.
+Build the explainer and the PR-body section from `M`. Read [../cards/trust-map.md](../cards/trust-map.md), then the visual-explainer card **`trust-map`** (`<visual-explainer>/cards/trust-map.md`). That card holds the data contract, the components and the export checks.
 
 Each stop of this playbook ends with one question to the user. Ask it as [Asking the user](../references/working-rules.md#asking-the-user) tells you: the situation, a Next line, and numbered options.
 
@@ -8,32 +8,27 @@ The explainer is a **level ladder**. Each level is one screen deep, and detail w
 
 ## Never paste code
 
-Do not type code, line numbers or a GitHub URL into `explain.json` or into the trust map. Write a code ref: `{"path", "symbol"}`, with `"match"` and `"context"` for a part of a symbol. Preview it with `understando snippet <path>::<symbol>`. The build copies the lines at the head, and it makes each permalink from the git remote and the head SHA. Typed code costs tokens to read and to write again, and it does not change when the code changes. A ref resolves again at each head.
+Do not type code, line numbers or a GitHub URL into `explain.json`, the trust map or `explainer.mdx`. Write a code ref: `{"path", "symbol"}`, with `"match"` and `"context"` for a part of a symbol; in the MDX, a `<CodeRef refs={refs} path="..." symbol="..." />`. Preview it with `understando snippet <path>::<symbol>`. The build copies the lines at the head and makes each permalink from the git remote and the head SHA. A ref resolves again at each head.
 
 ## Steps
 
 1. **Rate first.** Run `understando map`.
    - **Done when** each claim has a `verdict` and a `reason`, and each promise in `M` has its claims.
-2. **Write `$R/explain.json`.** Its fields are in the docstring of `scripts/explain.py`. Write all text in strict STE.
-   - **`story`:** three ideas, one sentence or two each: the problem, the change, and why the reader can trust it. No code name, no ID and no count. Name the before-and-after picture in `picture`.
-   - **`loop`:** the run steps in execution order, one plain sentence each, each with the `promise` that protects it. Put code refs (not code) in a step's `code`; the build copies the lines, and the page collapses them. Add a `walkthrough` (the animated loop) with plain labels.
-   - **`change`:** the `areas` of the diff: each a plain `name`, its path prefixes, and `replaced_by` (an area id) or a `note` for deleted code. Mark a large package `rollup` to show it as one row. `explain.py` takes every line count from `git diff --numstat`, so write no count by hand.
-   - **`unclaimed.notes`:** one plain line on why a risky unclaimed file matters, for example the exit codes.
-   - **`risks`:** the cheapest fix for each weak claim. The promises level shows it.
-   - Trade-offs, concerns and the verifications of this explainer, as short strict-STE sentences. At most three `bullets` for the PR-body section.
-   - **Done when** each diagram node names a real module or function at the head (Detailed mode), each loop step names a promise, and each concern cites a claim ID or a file.
-3. **Draw each architecture diagram in two modes.** In `diagrams`, give each one an `eli5` and a `detailed` node and edge set.
-   - **ELI5 (Simple, the default):** about four to six boxes in plain words, for example "The finished CR", "Make a draft", "Check it", "Repair it", "Keep or undo", "Release or block". Edge labels are plain verbs. No code name and no ID.
-   - **Detailed:** the same node ids, each named by its real module or function at the head, for example `load_finished_cr` or `Editor.edit`. Add a few nodes at most: 1.5 times the ELI5 count or fewer.
-   - **The identifier rule for levels 1 to 3:** an identifier (a code name or an ID) is visible only in the Detailed mode of a diagram, in a table, or in a collapsed block. `explain.py` fails on any other one.
-   - **Done when** each diagram that `story.picture`, `loop.diagram` or `change.diagrams` names has both modes, and the Detailed mode matches the code at the head.
-4. **Generate.** Run `understando explain`. It runs `scripts/explain.py` with `$R/explain.json`, the journal and `ready.json`. The journal gives the level that tells why the author made each choice. `ready.json` gives the checklist at the top. It also writes `$R/GLOSSARY.md`. It writes `$R/pr-section.md`, `$R/explainer.mdx` and one MDX file per level in `$R/chapters/`. It fails when an identifier shows in levels 1 to 3 outside the places that step 3 allows, when a diagram lacks a mode, when a claim has no single block or a link has no target, when a weak promise has no reviewer action, when the page uses a term that the glossary does not define, when a mechanical check gives a new result, when a code ref resolves to no place or to more than one, or when an input holds pasted code (two or more lines that are the same as a file at the head). It writes the resolved lines to `$R/refs.resolved.json`, not into the data. It passes `ve_runtime` from `~/.understando/config.toml` as `--runtime`, and after a good build it writes `$R/explain.stamp.json` (the map head and the hashes of the trust map, the MDX and `pr-section.md`); `understando publish` refuses an explainer that does not match it.
-   - **Done when** it prints the glossary size and the promise strengths. Fix a failure in the data, not in the generated files.
-5. **Export the HTML.** Run `node <visual-explainer>/scripts/artifacture.mjs export $R/explainer.mdx --out $R/explainer.html`. Fix an export failure in the MDX, not in the HTML.
-   - **Done when** `$R/explainer.html` exists.
-6. **Check the mechanics.** Run `node <visual-explainer>/scripts/artifacture.mjs verify $R/explainer.html --mechanics-only --json $R/ve-report.json`. The model review pass of visual-explainer is a paid step. Run it only after a yes from the user.
+2. **Write `$R/explain.json`: the data.** Write all text in strict STE.
+   - **`diagrams`:** each architecture diagram in two modes. **ELI5 (Simple, the default):** about four to six boxes in plain words and plain-verb edges, no code name and no ID. **Detailed:** the same node ids, each named by its real module or function at the head, 1.5 times the ELI5 boxes or fewer.
+   - **`walkthroughs`:** the animated loop, with plain labels.
+   - **`change.areas`:** the areas of the diff: each a plain `name`, its path prefixes, and `replaced_by` (an area id) or a `note` for deleted code. Mark a large package `rollup`. The page takes every line count from the diff, so write no count by hand.
+   - **`unclaimed`:** `notes` (why a risky file matters), `roles` (its job in plain words, for example "cost metering") and `core` (the path prefixes of the core harness files).
+   - **`risks`:** the cheapest fix for each weak claim. **`control_walkthroughs`:** the example of a planted bug. **`bullets`:** at most three, for the PR body.
+   - **Done when** each Detailed node names a real module or function at the head.
+3. **Write `$R/explainer.mdx`: the narrative.** Markdown in strict STE, as the visual-explainer card `trust-map` shows: the story (the problem, the change, why to trust it), why it was built this way (the user's requests from the journal, each a quote with its claims), the loop (five or six steps, each with its promise and its code as a `CodeRef`), and the trade-offs, concerns and verifications. Drop in the data components for the other levels. Keep the stable section ids of the card.
+   - **The identifier rule:** an ID or a backticked code name shows only in a table, in a collapsed block, in a `CodeRef` or in the Detailed mode of a diagram. The export fails on any other one.
+   - **Done when** each level of the card is a `Section` with its id.
+4. **Generate.** Run `understando explain`. It checks the data (the map, the mechanical checks again, pasted code in the data), resolves the code refs and the control patches into `$R/refs.resolved.json`, and exports `$R/explainer.html` through visual-explainer: a static pre-render that validates the data and runs the export checks, with the no-hand-copy guard for the MDX. It writes `$R/pr-section.md`, `$R/GLOSSARY.md` and `$R/explain.stamp.json` (the map head and the hashes of the trust map, the MDX and `pr-section.md`); `understando publish` refuses an explainer that does not match the stamp. It passes `ve_runtime` from `~/.understando/config.toml` as `--runtime`.
+   - **Done when** it prints the promise strengths. Fix a failure in the MDX or the data, not in the HTML.
+5. **Check the mechanics.** Run `node <visual-explainer>/scripts/artifacture.mjs verify $R/explainer.html --mechanics-only --json $R/ve-report.json`. The model review pass of visual-explainer is a paid step. Run it only after a yes from the user.
    - **Done when** the report has 0 errors, or you report each error.
-7. **Lint the text.** Run `python3 -I <asd-ste100>/scripts/ste-lint.py $R/pr-section.md`, and lint the strings of `explain.json` the same way. Rewrite each flagged sentence.
+6. **Lint the text.** Run `python3 -I <asd-ste100>/scripts/ste-lint.py $R/pr-section.md`, and lint the narrative of `explainer.mdx` and the strings of `explain.json` the same way. Rewrite each flagged sentence.
    - **Done when** the lint reports 0 hard violations.
-8. **Report.** Give the paths of `trust-map.json`, `pr-section.md`, `explainer.mdx` and `explainer.html`. Paste `pr-section.md` into the PR body only when the user asks.
+7. **Report.** Give the paths of `trust-map.json`, `pr-section.md`, `explainer.mdx` and `explainer.html`. Paste `pr-section.md` into the PR body only when the user asks.
    - **Done when** the user has the paths, the verdict counts and the promise strengths.
