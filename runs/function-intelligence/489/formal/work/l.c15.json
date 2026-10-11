@@ -1,0 +1,176 @@
+{
+  "status": "red",
+  "violation": {
+    "kind": "invariant",
+    "name": "IdleStops"
+  },
+  "trace": [
+    {
+      "n": 1,
+      "action": "<Initial predicate>",
+      "state": {
+        "phase": "review",
+        "B": [
+          "m"
+        ],
+        "C": [
+          "m"
+        ],
+        "D": [
+          "m"
+        ],
+        "log": [
+          {
+            "d": [
+              "m"
+            ],
+            "ev": "init"
+          }
+        ],
+        "n": 0,
+        "rn": 0,
+        "kept": [
+          {
+            "n": 0,
+            "c": [
+              "m"
+            ],
+            "d": [
+              "m"
+            ]
+          }
+        ],
+        "lost": false,
+        "edited": false
+      }
+    },
+    {
+      "n": 2,
+      "action": "<Next line 190, col 12 to line 190, col 96 of module DocLoop>",
+      "state": {
+        "phase": "review",
+        "B": [
+          "m"
+        ],
+        "C": [
+          "m"
+        ],
+        "D": [
+          "m"
+        ],
+        "log": [
+          {
+            "d": [
+              "m"
+            ],
+            "ev": "init"
+          },
+          {
+            "n": 1,
+            "kept": false,
+            "d": [
+              "m"
+            ],
+            "ev": "edit",
+            "o": "turn_limit",
+            "ch": false,
+            "stage": "review",
+            "todo": [
+              "m"
+            ]
+          }
+        ],
+        "n": 1,
+        "rn": 0,
+        "kept": [
+          {
+            "n": 0,
+            "c": [
+              "m"
+            ],
+            "d": [
+              "m"
+            ]
+          }
+        ],
+        "lost": false,
+        "edited": true
+      }
+    },
+    {
+      "n": 3,
+      "action": "<Next line 190, col 12 to line 190, col 96 of module DocLoop>",
+      "state": {
+        "phase": "floor",
+        "B": [
+          "m"
+        ],
+        "C": [
+          "m"
+        ],
+        "D": [
+          "m"
+        ],
+        "log": [
+          {
+            "d": [
+              "m"
+            ],
+            "ev": "init"
+          },
+          {
+            "n": 1,
+            "kept": false,
+            "d": [
+              "m"
+            ],
+            "ev": "edit",
+            "o": "turn_limit",
+            "ch": false,
+            "stage": "review",
+            "todo": [
+              "m"
+            ]
+          },
+          {
+            "n": 2,
+            "kept": false,
+            "d": [],
+            "ev": "edit",
+            "o": "lost",
+            "ch": true,
+            "stage": "review",
+            "todo": [
+              "m"
+            ]
+          }
+        ],
+        "n": 2,
+        "rn": 0,
+        "kept": [
+          {
+            "n": 0,
+            "c": [
+              "m"
+            ],
+            "d": [
+              "m"
+            ]
+          }
+        ],
+        "lost": true,
+        "edited": true
+      }
+    }
+  ],
+  "generated": 1027,
+  "distinct": 1010,
+  "exit": 12,
+  "seconds": 0.68,
+  "spec": "DocLoop.tla",
+  "spec_sha256": "sha256:902f92a6e563198ba3931a613d06217634bb74c133eb7c3857d14bcff7746c36",
+  "cfg": "DocLoopC15.cfg",
+  "cfg_sha256": "sha256:37c0e390ed9018127081ed834f00128ed8570f7be0cd3dcd0382cafeab7714e5",
+  "deadlock_checked": true,
+  "output_tail": "     stage |-> \"review\",\n     todo |-> {\"m\"} ] >>\n/\\ n = 1\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"m\"}, d |-> {\"m\"}]>>\n/\\ lost = FALSE\n/\\ edited = TRUE\n\nState 3: <Next line 190, col 12 to line 190, col 96 of module DocLoop>\n/\\ phase = \"floor\"\n/\\ B = {\"m\"}\n/\\ C = {\"m\"}\n/\\ D = {\"m\"}\n/\\ log = << [d |-> {\"m\"}, ev |-> \"init\"],\n   [ n |-> 1,\n     kept |-> FALSE,\n     d |-> {\"m\"},\n     ev |-> \"edit\",\n     o |-> \"turn_limit\",\n     ch |-> FALSE,\n     stage |-> \"review\",\n     todo |-> {\"m\"} ],\n   [ n |-> 2,\n     kept |-> FALSE,\n     d |-> {},\n     ev |-> \"edit\",\n     o |-> \"lost\",\n     ch |-> TRUE,\n     stage |-> \"review\",\n     todo |-> {\"m\"} ] >>\n/\\ n = 2\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"m\"}, d |-> {\"m\"}]>>\n/\\ lost = TRUE\n/\\ edited = TRUE\n\n1027 states generated, 1010 distinct states found, 829 states left on queue.\nThe depth of the complete state graph search is 7.\nThe average outdegree of the complete state graph is 6 (minimum is 0, the maximum 30 and the 95th percentile is 27).\nFinished in 00s at (2026-10-10 18:20:52)"
+}

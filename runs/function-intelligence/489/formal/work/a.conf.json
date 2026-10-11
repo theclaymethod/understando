@@ -1,0 +1,17 @@
+{
+  "status": "green",
+  "exit": 0,
+  "seconds": 0.76,
+  "matched": null,
+  "argv": [
+    "uv",
+    "run",
+    "--no-sync",
+    "pytest",
+    "-q",
+    "-rs",
+    "tests/test_formal_accept_conformance.py"
+  ],
+  "edits": [],
+  "output_tail": "...                                                                      [100%]\n3 passed in 0.20s"
+}

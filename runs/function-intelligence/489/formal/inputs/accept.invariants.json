@@ -1,0 +1,27 @@
+[
+ {"id": "A1", "sentence": "The accept score ranks a draft by its deterministic findings first, then its confirmed major findings, then its minor findings, and any two different scores compare one way.",
+  "checked_by": ["lexLt_irrefl", "lexLt_trans", "lexLt_asymm", "lexLt_total"],
+  "questions": [
+   {"ask": "What should happen if an edit removes one deterministic finding and adds ten minor findings?", "code_today": "The edit scores better, (0,0,10) < (1,0,0), so StrictImprovement keeps it.", "where": "src/cr/docgen/accept.py:22-26, 83", "looks": "intended (the docstring says lexicographic)"},
+   {"ask": "What should happen if an edit turns one confirmed major finding into two minor findings with new keys?", "code_today": "Kept: confirmed count drops; new minor keys are not checked.", "where": "src/cr/docgen/accept.py:78-83", "looks": "intended"}]},
+ {"id": "A2", "sentence": "StrictImprovement keeps an edit only when its score is strictly lower and it adds no new deterministic key and no new confirmed S5 or S4 key.",
+  "checked_by": ["keepSI_iff", "keepSI_no_new_severe", "keepSI_no_new_det", "keepSI_strict"],
+  "questions": [
+   {"ask": "What should happen if an edit raises a confirmed S3 finding to S4 under the same key?", "code_today": "Rejected: the key is new to the severe set.", "where": "src/cr/docgen/accept.py:81; src/cr/docgen/findings.py:100-101", "looks": "intended"},
+   {"ask": "What should happen if an edit adds an S5 finding that a model judge has not confirmed yet (not blocking)?", "code_today": "It counts only as one more minor finding; the edit can still be kept.", "where": "src/cr/docgen/findings.py:100-101; src/cr/docgen/accept.py:25", "looks": "unclear: ask"},
+   {"ask": "What should happen if an edit fixes one deterministic finding but adds a different deterministic key (same count)?", "code_today": "Rejected: a new deterministic key.", "where": "src/cr/docgen/accept.py:79-80", "looks": "intended"}]},
+ {"id": "A3", "sentence": "StrictImprovement never keeps an edit whose findings are the same as before.",
+  "checked_by": ["keepSI_unchanged"],
+  "questions": [
+   {"ask": "What should happen if the editor changes files but reflection reports exactly the same findings?", "code_today": "Not kept (a tie), the files are reverted, and the rounds go on (only an unchanged, finished round stops them).", "where": "src/cr/docgen/accept.py:83; src/cr/docgen/loop.py:216-218, 107", "looks": "intended"}]},
+ {"id": "A4", "sentence": "When rejects_early is true, keep reverts the edit whatever the reflectors add.",
+  "checked_by": ["rejectsEarlySI_sound"],
+  "questions": [
+   {"ask": "What should happen if a reflector should be able to clear a code-check finding?", "code_today": "It cannot: reflection always starts from the code checks and only appends, which the soundness proof needs.", "where": "src/cr/docgen/loop.py:164-175", "looks": "intended"}]},
+ {"id": "A5", "sentence": "When the edit rounds end and the last kept draft has a blocking finding, LastClean restores the last kept draft that has none; when no kept draft is clean, the last kept draft stands.",
+  "checked_by": ["settleLC_stands", "settleLC_some", "settleLC_none", "keepLC_always", "settleSI_none"],
+  "questions": [
+   {"ask": "What should happen if only the unedited projection is clean and every later round blocks: go back to the projection?", "code_today": "Yes: restored_to = 0.", "where": "src/cr/docgen/accept.py:67-71; src/cr/docgen/loop.py:244-247", "looks": "intended"},
+   {"ask": "What should happen if a draft has no blocking finding but has a non-blocking floor finding?", "code_today": "settle counts it as clean (it reads only blocking); the floor then judges it by floor and can block or fall back.", "where": "src/cr/docgen/accept.py:68-70; src/cr/docgen/loop.py:88-98", "looks": "unclear: ask (can a code check emit floor=True, blocking=False?)"},
+   {"ask": "What should happen if settle gets no kept state?", "code_today": "IndexError on states[-1]; the loop never passes an empty list.", "where": "src/cr/docgen/accept.py:68; src/cr/docgen/loop.py:223", "looks": "precondition, not a bug"}]}
+]

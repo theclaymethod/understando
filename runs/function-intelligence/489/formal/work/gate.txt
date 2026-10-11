@@ -1,0 +1,11 @@
+[0] 0s uv run --no-sync ruff check . :: All checks passed!
+[0] 0s uv run --no-sync ruff format --check . :: 918 files already formatted
+[0] 1s uv run --no-sync python scripts/check_library_boundary.py :: OK: no service-shaped imports under src/cr
+[0] 0s uv run --no-sync python scripts/check_checkpoint_boundary.py :: OK: checkpoint boundary clean under ~/dev/function-intelligence/.claude/worktrees/understando-489-ready/projects/clinical-reasoning
+[0] 1s uv run --no-sync python scripts/check_docgen_boundary.py :: OK: document-harness boundary clean under .
+[0] 6s uv run --no-sync basedpyright :: 0 errors, 0 warnings, 0 notes
+[0] 4s uv run --no-sync cr build-guidance ::   monographs: 266 (233 matched, 33 unmatched)   chunks: 19682 · primary-lit refs: 20579 · kb: 5 
+[0] 49s uv run --no-sync pytest -q :: SKIPPED [1] tests/test_formal_accept_conformance.py:108: FORMAL_ACCEPT_ORACLE is not set (needs the Lean vectors executable) 4257 passed, 5 skipped, 106 warnings in 48.36s 
+[0] 11s harness: uv run --no-sync pytest -q :: -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html 1277 passed, 5 warnings in 10.14s 
+[0] 4s harness: uv run --no-sync basedpyright :: 0 errors, 0 warnings, 0 notes 
+[0] 0s uv run --no-sync cr eval --dir evals --mutations evals/mutations --repeat 2 ::   [ok] tf_optimal_tsh_high   [ok] tf_toxin_lead_high 

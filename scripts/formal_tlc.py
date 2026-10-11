@@ -14,7 +14,8 @@ check    runs TLC once and prints one JSON object: status green (no error), red 
 dump     runs TLC with -dump and writes every distinct state as JSON. A spec that keeps a history
          variable makes each terminal state one whole behaviour: that is the vector source.
 vectors  runs dump and keeps the terminal states (those that match --done, `var=json` or
-         `var!=json`, repeatable) as test vectors, with the spec and cfg hashes. With --check, it
+         `var!=json`, repeatable) as test vectors, with the spec and cfg hashes and the cfg's
+         constants, one vector per line (--keep VAR keeps only those variables). With --check, it
          compares with the committed file and exits 1 on drift.
 control  copies the spec directory to a temp dir, applies one exact find/replace to the .tla file
          (the planted wrong spec), runs check, and exits 0 only when TLC goes red (and the red
@@ -296,9 +297,14 @@ def cmd_vectors(args: argparse.Namespace) -> int:
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     done = sorted((s for s in states if _matches(s, args.done)), key=lambda s: json.dumps(s, sort_keys=True))
-    doc = {"spec": res["spec"], "spec_sha256": res["spec_sha256"], "cfg": res["cfg"],
-           "cfg_sha256": res["cfg_sha256"], "constants": constants(Path(args.cfg)), "done": args.done, "states": len(states), "vectors": done}
-    text = json.dumps(doc, indent=1, sort_keys=True) + "\n"
+    if args.keep:
+        done = [{k: v[k] for k in args.keep if k in v} for v in done]
+    head = {"spec": res["spec"], "spec_sha256": res["spec_sha256"], "cfg": res["cfg"],
+            "cfg_sha256": res["cfg_sha256"], "constants": constants(Path(args.cfg)), "done": args.done,
+            "states": len(states)}
+    # One vector per line, so the file diffs and greps line by line.
+    text = (json.dumps(head, sort_keys=True)[:-1] + ', "vectors": [\n'
+            + ",\n".join(json.dumps(v, sort_keys=True, separators=(",", ":")) for v in done) + "\n]}\n")
     out = Path(args.out)
     if args.check:
         same = out.exists() and out.read_text(encoding="utf-8") == text
@@ -351,6 +357,7 @@ def main() -> int:
             p.add_argument("--out", required=True)
         if name == "vectors":
             p.add_argument("--done", action="append", required=True)
+            p.add_argument("--keep", action="append", help="keep only these variables in each vector")
             p.add_argument("--check", action="store_true")
         if name == "control":
             p.add_argument("--find", required=True)

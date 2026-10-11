@@ -29,7 +29,7 @@ Formal holds only when all of these hold (`verdict` lists each one that is missi
     verdict is "Formal (pending user confirmation)": an agent-proposed invariant is never Formal.
 
 Field names of a record: id, kind, ladder_tier, claims, description, card, check, conformance
-{result, checks}, controls [{id, target, result}], route, blocker_open, invariant {author, ref, status}, witness, witness_test, drift {commit,
+{result, checks}, controls [{id, target, result}], route, blocker_open, invariant {author, ref, status, items}, witness, witness_test, drift {commit,
 code_files [{path, blob}], model_files [{path, sha256}]}, formal {verdict, missing}. Standard
 library only.
 """
@@ -39,6 +39,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -61,7 +62,10 @@ def trim(result: dict) -> dict:
     keep = ("status", "exit", "seconds", "matched", "violation", "trace", "generated", "distinct", "spec",
             "spec_sha256", "cfg", "cfg_sha256", "deadlock_checked", "theorems", "forbidden",
             "tree_sha256", "files", "why", "control", "argv", "edits", "output_tail")
-    return {k: result[k] for k in keep if k in result}
+    out = {k: result[k] for k in keep if k in result}
+    if isinstance(out.get("output_tail"), str):
+        out["output_tail"] = re.sub(r"/(?:private/)?var/folders/\S+?/T/", "<tmp>/", out["output_tail"].replace(str(Path.home()), "~"))
+    return out
 
 
 def cmd_build(args: argparse.Namespace) -> int:
@@ -85,7 +89,8 @@ def cmd_build(args: argparse.Namespace) -> int:
         "route": args.route,
         "blocker_open": args.blocker_open,
         "invariant": {"author": args.invariant_author, "ref": args.invariant_ref, "status":
-                      "confirmed" if args.invariant_author == "user" and args.invariant_ref else "proposed"},
+                      "confirmed" if args.invariant_author == "user" and args.invariant_ref else "proposed",
+                      "items": load(args.invariants) if args.invariants else []},
         "witness": load(args.witness) if args.witness else None,
         "witness_test": trim(load(args.witness_test)) if args.witness_test else None,
         "independence": {"by": "tool", "tool": {"lean": "lean", "tla": "tlc", "property": "property"}[args.kind]},
@@ -193,6 +198,10 @@ def cmd_add(args: argparse.Namespace) -> int:
     side = load(str(path)) if path.exists() else {"schema": SIDE_SCHEMA, "repo": args.repo, "pr": args.pr,
                                                  "head": args.head, "verifiers": []}
     record = load(args.record)
+    if args.proposed_claims:
+        new = load(args.proposed_claims)
+        keep = [c for c in side.get("proposed_claims", []) if c["id"] not in {n["id"] for n in new}]
+        side["proposed_claims"] = sorted(keep + new, key=lambda c: c["id"])
     side["verifiers"] = [v for v in side["verifiers"] if v["id"] != record["id"]] + [record]
     side["verifiers"].sort(key=lambda v: v["id"])
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -220,6 +229,8 @@ def main() -> int:
     p.add_argument("--invariant-author", choices=["user", "agent"], default="agent",
                    help="who stated the invariant: user (a confirmed journal row) or agent (proposed)")
     p.add_argument("--invariant-ref", help="the journal row id of the user-confirmed invariant")
+    p.add_argument("--invariants", help="JSON list: each invariant as {id, sentence, checked_by, "
+                   "questions [{ask, code_today, where, looks}]}, for the interview with the user")
     p.add_argument("--blocker-open", action="store_true",
                    help="the first hard blocker is not resolved (a code-first bug stays in the PR)")
     p.add_argument("--witness")
@@ -240,6 +251,7 @@ def main() -> int:
     p.add_argument("--repo", required=True)
     p.add_argument("--pr", type=int, required=True)
     p.add_argument("--head", required=True)
+    p.add_argument("--proposed-claims", help="JSON list of {id, text, source} for claims the trust map lacks")
     args = ap.parse_args()
     return {"build": cmd_build, "stamp": cmd_stamp, "drift": cmd_drift, "verdict": cmd_verdict,
             "add": cmd_add}[args.cmd](args)

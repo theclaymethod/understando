@@ -1,0 +1,12 @@
+{
+  "status": "red",
+  "exit": 1,
+  "seconds": 1.29,
+  "matched": true,
+  "control": {
+    "file": "Accept/Model.lean",
+    "find": "else (cleanIdx states).getLast?",
+    "replace": "else (cleanIdx states).head?"
+  },
+  "output_tail": "has type\n  (cleanIdx states).head? = some i\nbut is expected to have type\n  (List.filter ?m.84 (List.range ?m.85)).getLast? = some ?m.86\nin the application\n  lastFilter_some ?m.84 ?m.85 ?m.86 h\nerror: Accept/Theorems.lean:161:21: Type mismatch: After simplification, term\n  h2\n has type\n  ?m.84 i = true\nbut is expected to have type\n  blocks (states[i]?.getD []) = false\nerror: Accept/Theorems.lean:162:28: Type mismatch: After simplification, term\n  this\n has type\n  ?m.84 j = false\nbut is expected to have type\n  blocks (states[j]?.getD []) = true\nerror: Accept/Theorems.lean:180:2: unsolved goals\ncase pos\nstates : List (List Finding)\nhne : states \u2260 []\nlast : List Finding\nhl : states.getLast? = some last\nhb : blocks last = true\n\u22a2 (List.find? (fun i => !blocks (states[i]?.getD [])) (List.range states.length)).getD (states.length - 1) =\n    (List.find? (fun i => !blocks (states[i]?.getD [])) (List.range states.length).reverse).getD (states.length - 1)\nerror: Accept/Theorems.lean:198:32: Application type mismatch: The argument\n  h\nhas type\n  (cleanIdx states).head? = none\nbut is expected to have type\n  (List.filter ?m.41 (List.range ?m.42)).getLast? = none\nin the application\n  lastFilter_none ?m.41 ?m.42 h\n\u2714 [7/9] Built Vectors (541ms)\n\u2714 [9/9] Built vectors:exe (96ms)\nSome required targets logged failures:\n- Accept.Theorems\nerror: build failed"
+}
