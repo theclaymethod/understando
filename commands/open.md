@@ -6,7 +6,7 @@ For the reviewer, and for each stop that links to the explainer: `understando op
 
 `understando open` opens `explainer.html` of the run with `open` (macOS) or `xdg-open` (Linux, with a display). With `--no-open`, with no display, or with `UNDERSTANDO_NO_OPEN` set, it prints the file path and the `file://` URL. Each open writes one row to `$R/opened.jsonl`.
 
-The anchors are stable. The levels are `#story`, `#loop`, `#change` (`--level changed` works too), `#promises`, `#verifiers`, `#unclaimed`, `#tradeoffs` and `#glossary-section`. The merge verdict is `#story-verdict`, a promise is `#promise-<id>` and a claim is `#claim-<id>`. `--anchor G3` gives `#promise-g3`, and `--anchor C15` gives `#claim-c15`.
+The anchors are stable. The levels are `#story`, `#why`, `#loop`, `#changed` (`--level change` works too), `#promises`, `#verifiers`, `#unclaimed`, `#tradeoffs` and `#glossary`. The merge verdict is `#merge`, a promise is `#promise-<id>` and a claim is `#claim-<id>`. `--anchor G3` gives `#promise-g3`, and `--anchor C15` gives `#claim-c15`.
 
 ## The reviewer's path
 

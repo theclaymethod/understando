@@ -122,12 +122,12 @@ async function dataImports(text) {
   return out;
 }
 
-/** The section anchors that a helper call computes from the data, for example anchors={promiseAnchors(trust)}. */
+/** The section anchors that a helper call computes from the data, for example anchors={promiseAnchors(trust, refs)}. */
 async function inlineHelpers(mdx, data) {
   const ve = veRuntime();
   if (!ve || !/promiseAnchors\(/.test(mdx)) return mdx;
   const { promiseAnchors } = await import(pathToFileURL(join(ve, "visual-explainer-mdx", "trust-map-rules.ts")).href);
-  return mdx.replace(/promiseAnchors\(([A-Za-z_$][\w$]*)\)/g, (_m, name) => JSON.stringify(promiseAnchors(data.get(name))));
+  return mdx.replace(/promiseAnchors\(\s*([A-Za-z_$][\w$]*)\s*,\s*([A-Za-z_$][\w$]*)\s*\)/g, (_m, map, refs) => JSON.stringify(promiseAnchors(data.get(map), data.get(refs))));
 }
 
 async function loadChapters() {

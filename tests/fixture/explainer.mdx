@@ -20,7 +20,7 @@ import explain from './explain.json';
 
 <ArchitectureDiagram spec={explain.diagrams.story} name="story" />
 
-<PromiseChips data={trust} />
+<PromiseChips data={trust} refs={refs} />
 
 Next: [see why it was built this way](#why).
 
@@ -78,7 +78,7 @@ Next: [check each promise, weakest first](#promises).
 
 </Section>
 
-<Section id="promises" title="The promises, weakest first" navLabel="The promises" anchors={promiseAnchors(trust)}>
+<Section id="promises" title="The promises, weakest first" navLabel="The promises" anchors={promiseAnchors(trust, refs)}>
 
 <PromiseList data={trust} refs={refs} explain={explain} />
 
@@ -86,7 +86,7 @@ Next: [see if the checks can catch a bug](#verifiers).
 
 </Section>
 
-<Section id="verifiers" title="Can these checks catch a bug?" navLabel="Can the checks catch a bug?">
+<Section id="verifiers" title="Can these checks catch a bug?" navLabel="Can checks catch a bug?">
 
 <VerifyTheVerifiers data={trust} refs={refs} explain={explain} />
 

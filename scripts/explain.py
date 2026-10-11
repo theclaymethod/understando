@@ -13,7 +13,9 @@ This script is the glue:
   1. It checks the data: the map is valid and has verdicts, each mechanical check gives its
      recorded result again, and no data input holds pasted code (coderef.pasted).
   2. It resolves the code refs at the head (each claim code ref, and each <CodeRef .../> of the
-     MDX) and the patch of each control, reads the diff, and writes DIR/refs.resolved.json.
+     MDX) and the patch of each control, reads the diff, derives the shared values (derive.py:
+     the promise strengths, the merge verdict, the unclaimed changes, the bugs found), and writes
+     all of it to DIR/refs.resolved.json.
   3. It runs `artifacture export` with the no-hand-copy guard (the repo and the head). The export
      pre-renders the page, validates the data and runs the trust-map checks.
   4. It runs `artifacture trust-map pr-section` for DIR/pr-section.md.
@@ -39,6 +41,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import coderef  # noqa: E402
+import derive  # noqa: E402
 import mechanical  # noqa: E402
 import tm  # noqa: E402
 
@@ -295,6 +298,9 @@ def main() -> int:
     resolved += [{**r, "excerpt": "", "link_only": True} for r in resolve_refs(args.repo, data, mains) if coderef.ref_key(r["ref"]) not in have]
     body = {"schema": REFS_SCHEMA, "head": data["head"], "repo": data.get("repo"), "refs": resolved,
             "controls": control_edits(args.repo, data), "diff": diff}
+    ready = tm.load(args.ready) if args.ready and Path(args.ready).is_file() else None
+    # The values that the review CLI, the PR section and the page share (scripts/derive.py).
+    body["derived"] = derive.derive(data, body, extra, ready)
     (out / coderef.CACHE_NAME).write_text(json.dumps(body, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     runtime = runtime_path(args.runtime)
     if not args.no_html:
@@ -304,8 +310,6 @@ def main() -> int:
             fail("the export failed. Fix the MDX or the data, not the HTML.")
     section = ["node", str(Path(runtime) / "scripts" / "ve-mdx" / "trust-map.mjs"), "pr-section", "--map", str(out / "trust-map.json"),
                "--refs", str(out / coderef.CACHE_NAME), "--explain", str(out / "explain.json"), "--out", str(out / "pr-section.md")]
-    if args.ready and Path(args.ready).is_file():
-        section += ["--ready", args.ready]
     if args.explainer_url:
         section += ["--explainer-url", args.explainer_url]
     if subprocess.run(section).returncode != 0:

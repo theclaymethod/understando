@@ -541,13 +541,13 @@ VERDICT_WORDS = [("Formal", "proven formally"), ("Proven", "proven by tests"), (
 
 
 def merge_state(c: context.Ctx, data: dict) -> tuple[str, list[dict]]:
-    """The merge verdict of the explainer (scripts/explain.py merge_verdict), so the blocker count is the same."""
-    import explain
+    """The merge verdict of the explainer (scripts/derive.py merge_verdict), so the blocker count is the same."""
+    import derive
     rp = c.run / "ready.json"
     ready = tm.load(rp) if rp.is_file() else None
     if ready and ready.get("head") != data.get("head"):
         ready = None
-    return explain.merge_verdict(data, ready)
+    return derive.merge_verdict(data, ready, derive.risky_unclaimed(c.run, data))
 
 
 def standing(c: context.Ctx, data: dict) -> str:
@@ -571,7 +571,7 @@ def explainer_line(row: dict | None) -> str | None:
     if not row["present"]:
         return None
     stale = f" It is out of date ({row['stale_why']})." if row.get("stale") else ""
-    start = "start with 'Can you merge it?'" if row["anchor"] == "story-verdict" else f"see {row['section']}"
+    start = "start with 'Can you merge it?'" if row["anchor"] == "merge" else f"see {row['section']}"
     if row["opened"]:
         return f"I opened the explainer: {start}.{stale}"
     return f"The explainer is ready: {start} (ref: {row['url']}).{stale}"
@@ -853,14 +853,14 @@ def build_prompt(c: context.Ctx, st: dict, s: dict, sig: dict, answers: dict, do
 
 # ---- teach ----------------------------------------------------------------------------------------
 
-TEACH_LEVELS = [("story", "story"), ("loop", "loop"), ("change", "change"), ("promises", None)]
+TEACH_LEVELS = [("story", "story"), ("loop", "loop"), ("change", "changed"), ("promises", None)]
 
 
 def teach_turn(c: context.Ctx, st: dict, no_open: bool, page_dir: Path | None = None, data: dict | None = None) -> str:
     """One teach turn: open the next part of the explainer, add only what the page cannot (the two to
     four ideas that matter, with code refs and the check behind each "this is guaranteed"), and end
     with one question. references/adapted/teach.md holds the rules."""
-    import explain
+    import derive
     import names
     import opener
     data = data or c.data() or {}
@@ -871,7 +871,7 @@ def teach_turn(c: context.Ctx, st: dict, no_open: bool, page_dir: Path | None = 
     if i >= len(TEACH_LEVELS):
         return "The walk-through is done. Ask about any part, or go on to the next stop."
     level, anchor = TEACH_LEVELS[i]
-    order = explain.promises_in_order(data) if data.get("promises") else []
+    order = derive.promises_in_order(data) if data.get("promises") else []
     if anchor is None and order:
         anchor = f"promise-{opener.slug(order[0][0]['id'])}"
     row = opener.open_page(page_dir, data, level=None if anchor else level, anchor=anchor or level, no_open=no_open, why="teach", log_dir=c.run)

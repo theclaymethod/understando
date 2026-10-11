@@ -573,7 +573,7 @@ test -s "$R/explainer.html" || fail "explain --html wrote no page"
 "$U" --run "$R" open --anchor C03 --no-open > "$O/open1.txt"
 has "$O/open1.txt" "runs/wallet/1/explainer.html"
 has "$O/open1.txt" "explainer.html#claim-c03"
-"$U" --run "$R" open --level changed --no-open > "$O/open2.txt"; has "$O/open2.txt" "explainer.html#change"
+"$U" --run "$R" open --level changed --no-open > "$O/open2.txt"; has "$O/open2.txt" "explainer.html#changed"
 test ! -f "$RV/open.log" || fail "open --no-open ran the opener"
 
 step "review: a new PR commit and a fix with a new test on -ready: the merge question comes first"
@@ -632,13 +632,14 @@ for line in p["situation"]:
 assert any(l.startswith("I opened the explainer: start with 'Can you merge it?'") for l in p["situation"]), p["situation"]
 # The blocker count is the count of the explainer's merge verdict.
 n = int(re.search(r"Not ready: (\d+) blockers?", " ".join(p["situation"])).group(1))
-story = open(sys.argv[3] + "/chapters/01-story.mdx").read()
-items = story.count("<li><a href=") if "data-merge-items" in story else 0
-more = re.search(r"And (\d+) more", story)
+page = open(sys.argv[3] + "/explainer.html").read().split('<div id="root">', 1)[1]
+story = page[page.index('id="merge"'):page.index('id="story-promises"')]
+items = len(re.findall(r"<li><a href=", story.split("data-merge-items", 1)[1].split("</ol>", 1)[0])) if "data-merge-items" in story else 0
+more = re.search(r"And (?:<!-- -->)?(\d+)(?:<!-- -->)? more", story)
 assert n == items + (int(more.group(1)) if more else 0), (n, items, more)
 print(f"the merge question is first; {n} blockers, the same as the explainer")
 PY
-has "$RV/open.log" "explainer.html#story-verdict"
+has "$RV/open.log" "explainer.html#merge"
 test -s "$R/opened.jsonl" || fail "review recorded no open event"
 WT_TIP0="$(git -C "$WT" rev-parse HEAD)"
 (cd "$CL" && "$U" review 1 --show-new) > "$O/show-new.txt"; has "$O/show-new.txt" "docs(messages): a note from the author"

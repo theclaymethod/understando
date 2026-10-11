@@ -14,7 +14,7 @@ URL. $UNDERSTANDO_OPENER names another opener command (the e2e test uses a fake)
 one row to $R/opened.jsonl, so a stop can say what it opened.
 
 The anchors are the stable ids of the explainer: the levels (#story, #loop, #change, #promises,
-#verifiers, #unclaimed, #tradeoffs, #glossary-section), the merge verdict (#story-verdict), a
+#verifiers, #unclaimed, #tradeoffs, #glossary), the merge verdict (#merge), a
 promise (#promise-<id>) and a claim (#claim-<id>). `--anchor G3` and `--anchor C15` give
 #promise-g3 and #claim-c15; `--level changed` is #change.
 """
@@ -33,12 +33,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ctx as context  # noqa: E402
 import tm  # noqa: E402
 
-LEVELS = {"story": "story", "verdict": "story-verdict", "merge": "story-verdict", "why": "why", "loop": "loop",
-          "change": "change", "changed": "change", "promises": "promises", "verifiers": "verifiers",
-          "unclaimed": "unclaimed", "tradeoffs": "tradeoffs", "glossary": "glossary-section"}
-SECTION_NAME = {"story": "the story", "story-verdict": "'Can you merge it?'", "why": "why it was built this way",
-                "loop": "the loop", "change": "what changed", "promises": "the promises", "verifiers": "the verifiers",
-                "unclaimed": "the unclaimed changes", "tradeoffs": "the trade-offs", "glossary-section": "the glossary"}
+LEVELS = {"story": "story", "verdict": "merge", "merge": "merge", "why": "why", "loop": "loop",
+          "change": "changed", "changed": "changed", "promises": "promises", "verifiers": "verifiers",
+          "unclaimed": "unclaimed", "tradeoffs": "tradeoffs", "glossary": "glossary"}
+SECTION_NAME = {"story": "the story", "merge": "'Can you merge it?'", "why": "why it was built this way",
+                "loop": "the loop", "changed": "what changed", "promises": "the promises", "verifiers": "the checks",
+                "unclaimed": "the unclaimed changes", "tradeoffs": "the trade-offs", "glossary": "the glossary"}
 
 
 def slug(text: str) -> str:
