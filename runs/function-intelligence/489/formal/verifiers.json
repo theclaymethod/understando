@@ -1,0 +1,1779 @@
+{
+  "schema": "understando.formal/1",
+  "repo": "function-intelligence",
+  "pr": 489,
+  "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b",
+  "verifiers": [
+    {
+      "id": "F489-1",
+      "kind": "lean",
+      "ladder_tier": 5,
+      "claims": [
+        "C20",
+        "FC1",
+        "FC2",
+        "FC3"
+      ],
+      "description": "Lean model of cr.docgen.accept: score order, StrictImprovement keep and rejects_early, LastClean keep and settle.",
+      "card": {
+        "frog": "docgen.accept",
+        "ev": {
+          "impact": 5,
+          "bug_prior": 3,
+          "reach": 5,
+          "proof_cost": 2,
+          "model_cost": 1,
+          "ev": 37.5
+        },
+        "history": "git log -S 'def settle' and -S 'rejects_early' on projects/clinical-reasoning/src/cr/docgen/accept.py: the rule is new in this PR stack; no earlier fix commits on the surface, so BugPrior stays 3 (new code, review-only evidence).",
+        "surface": "projects/clinical-reasoning/src/cr/docgen/accept.py (score, LastClean, StrictImprovement) and findings.py:96-101",
+        "failure_class": "decision rule: a wrong order, a missed new key, an early reject that drops a keepable edit, settle restoring the wrong draft",
+        "math": "Lean 4 core: Bool rules over List findings; lexicographic order on Nat^3 by omega; settle by the recurrence of the last index of a filtered range",
+        "artifact": "formal/lean/Accept/{Model,Theorems}.lean; accept_vectors.jsonl; vectors --oracle; tests/test_formal_accept_conformance.py"
+      },
+      "check": {
+        "status": "green",
+        "theorems": {
+          "Accept.lexLt_irrefl": {
+            "axioms": [
+              "propext",
+              "Classical.choice",
+              "Quot.sound"
+            ],
+            "axioms_clean": true,
+            "file": "Accept/Theorems.lean",
+            "line": 9,
+            "sha256": "sha256:851e414df70412a458a79be5e5b7f582a5705d9ad19159a6253c72aee86d5a8b"
+          },
+          "Accept.lexLt_trans": {
+            "axioms": [
+              "propext",
+              "Classical.choice",
+              "Quot.sound"
+            ],
+            "axioms_clean": true,
+            "file": "Accept/Theorems.lean",
+            "line": 12,
+            "sha256": "sha256:1641a72cf00388902ad1992c49d66e323255b611e8eeef609a856f034d5b3460"
+          },
+          "Accept.lexLt_asymm": {
+            "axioms": [
+              "propext",
+              "Classical.choice",
+              "Quot.sound"
+            ],
+            "axioms_clean": true,
+            "file": "Accept/Theorems.lean",
+            "line": 17,
+            "sha256": "sha256:2742c2444198a2db71df541e5393aed3458b296097fe62e0bddeb19befdfbd89"
+          },
+          "Accept.lexLt_total": {
+            "axioms": [
+              "propext",
+              "Classical.choice",
+              "Quot.sound"
+            ],
+            "axioms_clean": true,
+            "file": "Accept/Theorems.lean",
+            "line": 21,
+            "sha256": "sha256:90de2567eceec6d9c0396dc6658589271000e6b3e0c4182043596d6a3923a576"
+          },
+          "Accept.keepSI_iff": {
+            "axioms": [
+              "propext",
+              "Quot.sound"
+            ],
+            "axioms_clean": true,
+            "file": "Accept/Theorems.lean",
+            "line": 32,
+            "sha256": "sha256:fa1d8b83660dc7358e9096547851beaa919852d07db46005c8a6e14c9b74e7ce"
+          },
+          "Accept.keepSI_no_new_severe": {
+            "axioms": [
+              "propext",
+              "Quot.sound"
+            ],
+            "axioms_clean": true,
+            "file": "Accept/Theorems.lean",
+            "line": 43,
+            "sha256": "sha256:53229f0d39a0374cc453131117b6a2dbfe5027f681fd76fedd6cf69800ad6420"
+          },
+          "Accept.keepSI_no_new_det": {
+            "axioms": [
+              "propext",
+              "Quot.sound"
+            ],
+            "axioms_clean": true,
+            "file": "Accept/Theorems.lean",
+            "line": 48,
+            "sha256": "sha256:db085b7cbf00a3f0c82f4cabb940fc66ab344ba20cbaa14dc9fb83257a042591"
+          },
+          "Accept.keepSI_strict": {
+            "axioms": [
+              "propext",
+              "Quot.sound"
+            ],
+            "axioms_clean": true,
+            "file": "Accept/Theorems.lean",
+            "line": 53,
+            "sha256": "sha256:7ed55ab8103b1f02ee4d9d599571356d9e18e7ad20c7bd91fa601754c66e3fd2"
+          },
+          "Accept.keepSI_unchanged": {
+            "axioms": [
+              "propext",
+              "Classical.choice",
+              "Quot.sound"
+            ],
+            "axioms_clean": true,
+            "file": "Accept/Theorems.lean",
+            "line": 58,
+            "sha256": "sha256:a15649962500b4b28743317a38d39f7eeee38d5603a03d5971bf7cabb8c833c7"
+          },
+          "Accept.rejectsEarlySI_sound": {
+            "axioms": [
+              "propext",
+              "Classical.choice",
+              "Quot.sound"
+            ],
+            "axioms_clean": true,
+            "file": "Accept/Theorems.lean",
+            "line": 86,
+            "sha256": "sha256:d59d6ed7af3057b887ee8444bbd74d2329bc68bcf7acbbfa42ab31a447301d62"
+          },
+          "Accept.keepLC_always": {
+            "axioms": [],
+            "axioms_clean": true,
+            "file": "Accept/Theorems.lean",
+            "line": 105,
+            "sha256": "sha256:bc1e64c0f7dea8ca555def44d8b732403ca6c0ddb199ffb73571660fc2bced68"
+          },
+          "Accept.rejectsEarlyLC_never": {
+            "axioms": [],
+            "axioms_clean": true,
+            "file": "Accept/Theorems.lean",
+            "line": 107,
+            "sha256": "sha256:b1932adac7c67421678ef68724d5bf6521336039c33084d62ef41c57ef0a81bd"
+          },
+          "Accept.settleLC_some": {
+            "axioms": [
+              "propext",
+              "Quot.sound"
+            ],
+            "axioms_clean": true,
+            "file": "Accept/Theorems.lean",
+            "line": 152,
+            "sha256": "sha256:66a292944303634ab847d67c148f0772753b1ccc16316f9966fe4e2e16f1382f"
+          },
+          "Accept.settleLC_stands": {
+            "axioms": [
+              "propext",
+              "Quot.sound"
+            ],
+            "axioms_clean": true,
+            "file": "Accept/Theorems.lean",
+            "line": 171,
+            "sha256": "sha256:64cc22656622e0def41e63cd7cbb51230a45657462d1cc400d14169ec2d3ec9b"
+          },
+          "Accept.settleLC_none": {
+            "axioms": [
+              "propext",
+              "Quot.sound"
+            ],
+            "axioms_clean": true,
+            "file": "Accept/Theorems.lean",
+            "line": 189,
+            "sha256": "sha256:aedffab1594a16a2cde0848aa7424212cb155c778dcefdf7d96e0fce7312b3cd"
+          },
+          "Accept.settleSI_none": {
+            "axioms": [],
+            "axioms_clean": true,
+            "file": "Accept/Theorems.lean",
+            "line": 202,
+            "sha256": "sha256:a5317847563cee6a7f34d9ada21d63c65b2e14efb013bf3357e9d7e63e75a04c"
+          }
+        },
+        "forbidden": [],
+        "tree_sha256": "sha256:42805ec89896e21da980fc63e097796a7bba9dcbd5f394018b8637a36a6e348a",
+        "files": {
+          "Accept/Model.lean": "sha256:d23407fb3662ddfc7557b34bf66c0aec8de6ae28f384c340249850321be180b6",
+          "Accept/Theorems.lean": "sha256:5d512910669e607d7ccb61544ce31551bd7cacfb01da43de25d812cf21aed905",
+          "Accept.lean": "sha256:7c584f6bed58f98b7c7e7f1ddbe7b6f9cd00ecf2b0ee3b18ed6a34f92ab8c340",
+          "Vectors.lean": "sha256:3798c5656add1419575cf1d6a842b33051db8abad8d3af17eb75258a4dbd2d7e"
+        }
+      },
+      "conformance": {
+        "result": {
+          "status": "green",
+          "exit": 0,
+          "seconds": 0.76,
+          "matched": null,
+          "argv": [
+            "uv",
+            "run",
+            "--no-sync",
+            "pytest",
+            "-q",
+            "-rs",
+            "tests/test_formal_accept_conformance.py"
+          ],
+          "edits": [],
+          "output_tail": "...                                                                      [100%]\n3 passed in 0.20s"
+        },
+        "checks": {
+          "statement_parity": {
+            "status": "pass",
+            "note": "each theorem restates a rule of accept.py; settle theorems assume states != [] (Python raises IndexError on [], accept.py:68; the loop always passes the projection, loop.py:223)"
+          },
+          "state_parity": {
+            "status": "pass",
+            "note": "only key, blocking, decided, severity reach the rule; keys are Nat in Lean and 'k<n>' in Python; Python sets are List membership"
+          },
+          "transition_parity": {
+            "status": "pass",
+            "note": "every branch: LC keep/rejects_early/settle (both returns), SI keep (three returns), rejects_early (both disjuncts), SI settle"
+          },
+          "concurrency_parity": {
+            "status": "n/a",
+            "note": "pure functions"
+          },
+          "cancel_drain_parity": {
+            "status": "n/a",
+            "note": "no cancellation in the rule"
+          },
+          "runtime_evidence": {
+            "status": "pass",
+            "note": "501 committed vectors + 6000 random oracle requests green; 4 controls red"
+          },
+          "drift_gate": {
+            "status": "pass",
+            "note": "stamped: commit and blobs of accept.py and findings.py, sha256 of each Lean file and the vectors"
+          }
+        }
+      },
+      "controls": [
+        {
+          "id": "K489-1a",
+          "target": "model",
+          "result": {
+            "status": "red",
+            "exit": 1,
+            "seconds": 1.29,
+            "matched": true,
+            "control": {
+              "file": "Accept/Model.lean",
+              "find": "else (cleanIdx states).getLast?",
+              "replace": "else (cleanIdx states).head?"
+            },
+            "output_tail": "has type\n  (cleanIdx states).head? = some i\nbut is expected to have type\n  (List.filter ?m.84 (List.range ?m.85)).getLast? = some ?m.86\nin the application\n  lastFilter_some ?m.84 ?m.85 ?m.86 h\nerror: Accept/Theorems.lean:161:21: Type mismatch: After simplification, term\n  h2\n has type\n  ?m.84 i = true\nbut is expected to have type\n  blocks (states[i]?.getD []) = false\nerror: Accept/Theorems.lean:162:28: Type mismatch: After simplification, term\n  this\n has type\n  ?m.84 j = false\nbut is expected to have type\n  blocks (states[j]?.getD []) = true\nerror: Accept/Theorems.lean:180:2: unsolved goals\ncase pos\nstates : List (List Finding)\nhne : states \u2260 []\nlast : List Finding\nhl : states.getLast? = some last\nhb : blocks last = true\n\u22a2 (List.find? (fun i => !blocks (states[i]?.getD [])) (List.range states.length)).getD (states.length - 1) =\n    (List.find? (fun i => !blocks (states[i]?.getD [])) (List.range states.length).reverse).getD (states.length - 1)\nerror: Accept/Theorems.lean:198:32: Application type mismatch: The argument\n  h\nhas type\n  (cleanIdx states).head? = none\nbut is expected to have type\n  (List.filter ?m.41 (List.range ?m.42)).getLast? = none\nin the application\n  lastFilter_none ?m.41 ?m.42 h\n\u2714 [7/9] Built Vectors (541ms)\n\u2714 [9/9] Built vectors:exe (96ms)\nSome required targets logged failures:\n- Accept.Theorems\nerror: build failed"
+          }
+        },
+        {
+          "id": "K489-1b",
+          "target": "model",
+          "result": {
+            "status": "red",
+            "exit": 1,
+            "seconds": 1.2,
+            "matched": true,
+            "control": {
+              "file": "Accept/Model.lean",
+              "find": "  else if newKey (severeKeys after) (severeKeys before) then false\n",
+              "replace": ""
+            },
+            "output_tail": "\u2714 [2/9] Built Accept.Model (484ms)\n\u2714 [3/9] Built Accept.Model:c.o (130ms)\n\u2714 [4/9] Built Vectors (530ms)\n\u2716 [6/9] Building Accept.Theorems (570ms)\ntrace: .> LEAN_PATH=<tmp>/lean-control-cu85mlfj/lean/.lake/build/lib/lean ~/.elan/toolchains/leanprover--lean4---v4.34.1/bin/lean <tmp>/lean-control-cu85mlfj/lean/Accept/Theorems.lean -o <tmp>/lean-control-cu85mlfj/lean/.lake/build/lib/lean/Accept/Theorems.olean -i <tmp>/lean-control-cu85mlfj/lean/.lake/build/lib/lean/Accept/Theorems.ilean -c <tmp>/lean-control-cu85mlfj/lean/.lake/build/ir/Accept/Theorems.c --setup <tmp>/lean-control-cu85mlfj/lean/.lake/build/ir/Accept/Theorems.setup.json --json\nerror: Accept/Theorems.lean:36:51: unsolved goals\ncase false.true\nbefore after : List Finding\n\u22a2 lexLt (score after) (score before) = false\n\u2714 [9/9] Built vectors:exe (92ms)\nSome required targets logged failures:\n- Accept.Theorems\nerror: build failed"
+          }
+        },
+        {
+          "id": "K489-1c",
+          "target": "code",
+          "result": {
+            "status": "red",
+            "exit": 1,
+            "seconds": 0.65,
+            "matched": true,
+            "argv": [
+              "uv",
+              "run",
+              "--no-sync",
+              "pytest",
+              "-q",
+              "-x",
+              "tests/test_formal_accept_conformance.py"
+            ],
+            "edits": [
+              {
+                "op": "replace",
+                "path": "src/cr/docgen/accept.py",
+                "find": "return clean[-1] if clean else None",
+                "replace": "return clean[0] if clean else None"
+              }
+            ],
+            "output_tail": "F\n=================================== FAILURES ===================================\n_________________ test_the_real_rules_replay_the_lean_vectors __________________\n\n    def test_the_real_rules_replay_the_lean_vectors() -> None:\n        rows = _rows()\n        pairs = [v for v in rows if v[\"op\"] == \"pair\"]\n        settles = [v for v in rows if v[\"op\"] == \"settle\"]\n        assert len(pairs) > 300 and len(settles) > 100\n        for v in pairs:\n            _check_pair(v)\n        for v in settles:\n>           _check_settle(v)\n\ntests/test_formal_accept_conformance.py:80: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nv = {'op': 'settle', 'states': [[], [[1, False, 'code', 'S2']], [[2, True, 'code', 'S3']]], 'settle_lc': 1, 'settle_si': None, ...}\n\n    def _check_settle(v: dict[str, Any]) -> None:\n        states = [_findings(s) for s in v[\"states\"]]\n>       assert LastClean().settle(states) == v[\"settle_lc\"], v\nE       AssertionError: {'op': 'settle', 'states': [[], [[1, False, 'code', 'S2']], [[2, True, 'code', 'S3']]], 'settle_lc': 1, 'settle_si': None, ...}\nE       assert 0 == 1\nE        +  where 0 = settle([[], [Finding(key='k1', blocking=False, source='formal', where=None, quote='', input_fact='', why='synthetic', hint=''...='formal', where=None, quote='', input_fact='', why='synthetic', hint='', severity='S3', decided='code', floor=False)]])\nE        +    where settle = <cr.docgen.accept.LastClean object at 0x107342f60>.settle\nE        +      where <cr.docgen.accept.LastClean object at 0x107342f60> = LastClean()\n\ntests/test_formal_accept_conformance.py:68: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_formal_accept_conformance.py::test_the_real_rules_replay_the_lean_vectors\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.04s"
+          }
+        },
+        {
+          "id": "K489-1d",
+          "target": "code",
+          "result": {
+            "status": "red",
+            "exit": 1,
+            "seconds": 0.61,
+            "matched": true,
+            "argv": [
+              "uv",
+              "run",
+              "--no-sync",
+              "pytest",
+              "-q",
+              "-x",
+              "tests/test_formal_accept_conformance.py"
+            ],
+            "edits": [
+              {
+                "op": "replace",
+                "path": "src/cr/docgen/accept.py",
+                "find": "        if severe_confirmed_keys(after) - severe_confirmed_keys(before):\n            return False\n",
+                "replace": ""
+              }
+            ],
+            "output_tail": "F\n=================================== FAILURES ===================================\n_________________ test_the_real_rules_replay_the_lean_vectors __________________\n\n    def test_the_real_rules_replay_the_lean_vectors() -> None:\n        rows = _rows()\n        pairs = [v for v in rows if v[\"op\"] == \"pair\"]\n        settles = [v for v in rows if v[\"op\"] == \"settle\"]\n        assert len(pairs) > 300 and len(settles) > 100\n        for v in pairs:\n>           _check_pair(v)\n\ntests/test_formal_accept_conformance.py:78: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nv = {'op': 'pair', 'before': [[0, True, 'code', None]], 'after': [[0, True, 'model', 'S4']], 'score_before': [1, 0, 0], ...}\n\n    def _check_pair(v: dict[str, Any]) -> None:\n        before, after = _findings(v[\"before\"]), _findings(v[\"after\"])\n        si, lc = StrictImprovement(), LastClean()\n        assert list(score(before)) == v[\"score_before\"], v\n        assert list(score(after)) == v[\"score_after\"], v\n>       assert si.keep(before, after) is v[\"keep_si\"], v\nE       AssertionError: {'op': 'pair', 'before': [[0, True, 'code', None]], 'after': [[0, True, 'model', 'S4']], 'score_before': [1, 0, 0], ...}\nE       assert True is False\nE        +  where True = keep([Finding(key='k0', blocking=True, source='formal', where=None, quote='', input_fact='', why='synthetic', hint='', severity=None, decided='code', floor=False)], [Finding(key='k0', blocking=True, source='formal', where=None, quote='', input_fact='', why='synthetic', hint='', severity='S4', decided='model', floor=False)])\nE        +    where keep = <cr.docgen.accept.StrictImprovement object at 0x107cbb0b0>.keep\n\ntests/test_formal_accept_conformance.py:60: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_formal_accept_conformance.py::test_the_real_rules_replay_the_lean_vectors\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.04s"
+          }
+        }
+      ],
+      "route": "none",
+      "blocker_open": false,
+      "invariant": {
+        "author": "agent",
+        "ref": null,
+        "status": "proposed",
+        "items": [
+          {
+            "id": "A1",
+            "sentence": "The accept score ranks a draft by its deterministic findings first, then its confirmed major findings, then its minor findings, and any two different scores compare one way.",
+            "checked_by": [
+              "lexLt_irrefl",
+              "lexLt_trans",
+              "lexLt_asymm",
+              "lexLt_total"
+            ],
+            "questions": [
+              {
+                "ask": "What should happen if an edit removes one deterministic finding and adds ten minor findings?",
+                "code_today": "The edit scores better, (0,0,10) < (1,0,0), so StrictImprovement keeps it.",
+                "where": "src/cr/docgen/accept.py:22-26, 83",
+                "looks": "intended (the docstring says lexicographic)"
+              },
+              {
+                "ask": "What should happen if an edit turns one confirmed major finding into two minor findings with new keys?",
+                "code_today": "Kept: confirmed count drops; new minor keys are not checked.",
+                "where": "src/cr/docgen/accept.py:78-83",
+                "looks": "intended"
+              }
+            ]
+          },
+          {
+            "id": "A2",
+            "sentence": "StrictImprovement keeps an edit only when its score is strictly lower and it adds no new deterministic key and no new confirmed S5 or S4 key.",
+            "checked_by": [
+              "keepSI_iff",
+              "keepSI_no_new_severe",
+              "keepSI_no_new_det",
+              "keepSI_strict"
+            ],
+            "questions": [
+              {
+                "ask": "What should happen if an edit raises a confirmed S3 finding to S4 under the same key?",
+                "code_today": "Rejected: the key is new to the severe set.",
+                "where": "src/cr/docgen/accept.py:81; src/cr/docgen/findings.py:100-101",
+                "looks": "intended"
+              },
+              {
+                "ask": "What should happen if an edit adds an S5 finding that a model judge has not confirmed yet (not blocking)?",
+                "code_today": "It counts only as one more minor finding; the edit can still be kept.",
+                "where": "src/cr/docgen/findings.py:100-101; src/cr/docgen/accept.py:25",
+                "looks": "unclear: ask"
+              },
+              {
+                "ask": "What should happen if an edit fixes one deterministic finding but adds a different deterministic key (same count)?",
+                "code_today": "Rejected: a new deterministic key.",
+                "where": "src/cr/docgen/accept.py:79-80",
+                "looks": "intended"
+              }
+            ]
+          },
+          {
+            "id": "A3",
+            "sentence": "StrictImprovement never keeps an edit whose findings are the same as before.",
+            "checked_by": [
+              "keepSI_unchanged"
+            ],
+            "questions": [
+              {
+                "ask": "What should happen if the editor changes files but reflection reports exactly the same findings?",
+                "code_today": "Not kept (a tie), the files are reverted, and the rounds go on (only an unchanged, finished round stops them).",
+                "where": "src/cr/docgen/accept.py:83; src/cr/docgen/loop.py:216-218, 107",
+                "looks": "intended"
+              }
+            ]
+          },
+          {
+            "id": "A4",
+            "sentence": "When rejects_early is true, keep reverts the edit whatever the reflectors add.",
+            "checked_by": [
+              "rejectsEarlySI_sound"
+            ],
+            "questions": [
+              {
+                "ask": "What should happen if a reflector should be able to clear a code-check finding?",
+                "code_today": "It cannot: reflection always starts from the code checks and only appends, which the soundness proof needs.",
+                "where": "src/cr/docgen/loop.py:164-175",
+                "looks": "intended"
+              }
+            ]
+          },
+          {
+            "id": "A5",
+            "sentence": "When the edit rounds end and the last kept draft has a blocking finding, LastClean restores the last kept draft that has none; when no kept draft is clean, the last kept draft stands.",
+            "checked_by": [
+              "settleLC_stands",
+              "settleLC_some",
+              "settleLC_none",
+              "keepLC_always",
+              "settleSI_none"
+            ],
+            "questions": [
+              {
+                "ask": "What should happen if only the unedited projection is clean and every later round blocks: go back to the projection?",
+                "code_today": "Yes: restored_to = 0.",
+                "where": "src/cr/docgen/accept.py:67-71; src/cr/docgen/loop.py:244-247",
+                "looks": "intended"
+              },
+              {
+                "ask": "What should happen if a draft has no blocking finding but has a non-blocking floor finding?",
+                "code_today": "settle counts it as clean (it reads only blocking); the floor then judges it by floor and can block or fall back.",
+                "where": "src/cr/docgen/accept.py:68-70; src/cr/docgen/loop.py:88-98",
+                "looks": "unclear: ask (can a code check emit floor=True, blocking=False?)"
+              },
+              {
+                "ask": "What should happen if settle gets no kept state?",
+                "code_today": "IndexError on states[-1]; the loop never passes an empty list.",
+                "where": "src/cr/docgen/accept.py:68; src/cr/docgen/loop.py:223",
+                "looks": "precondition, not a bug"
+              }
+            ]
+          }
+        ]
+      },
+      "witness": null,
+      "witness_test": null,
+      "independence": {
+        "by": "tool",
+        "tool": "lean"
+      },
+      "cost": {
+        "usd": 0
+      },
+      "formal": {
+        "verdict": "Formal (pending user confirmation)",
+        "missing": [
+          "no user-confirmed invariant (a journal row with kind: invariant and author: user)"
+        ]
+      },
+      "drift": {
+        "commit": "ef0cca4247c2760f99f137ec084a232c68b5a87e",
+        "code_files": [
+          {
+            "path": "projects/clinical-reasoning/src/cr/docgen/accept.py",
+            "blob": "b3c32637c9cac31d7099cbd9f4bfadeb728e5d5b"
+          },
+          {
+            "path": "projects/clinical-reasoning/src/cr/docgen/findings.py",
+            "blob": "ed0511e45932cb9d43e1a5d94d3ee5c636411b19"
+          }
+        ],
+        "model_files": [
+          {
+            "path": "projects/clinical-reasoning/formal/lean/Accept/Model.lean",
+            "sha256": "sha256:d23407fb3662ddfc7557b34bf66c0aec8de6ae28f384c340249850321be180b6"
+          },
+          {
+            "path": "projects/clinical-reasoning/formal/lean/Accept/Theorems.lean",
+            "sha256": "sha256:5d512910669e607d7ccb61544ce31551bd7cacfb01da43de25d812cf21aed905"
+          },
+          {
+            "path": "projects/clinical-reasoning/formal/lean/Vectors.lean",
+            "sha256": "sha256:3798c5656add1419575cf1d6a842b33051db8abad8d3af17eb75258a4dbd2d7e"
+          },
+          {
+            "path": "projects/clinical-reasoning/formal/lean/accept_vectors.jsonl",
+            "sha256": "sha256:9b3d03f0b3f7bb6199d412fdb3739281c24220b77cb1e2ed39ac67c9631792de"
+          },
+          {
+            "path": "projects/clinical-reasoning/tests/test_formal_accept_conformance.py",
+            "sha256": "sha256:737167708fcfc869bd7bd51dc5a4a474ad118e570f4ff586a448e6c5a83f76be"
+          }
+        ]
+      }
+    },
+    {
+      "id": "F489-2",
+      "kind": "tla",
+      "ladder_tier": 4,
+      "claims": [
+        "C15",
+        "C16",
+        "C17",
+        "FC4",
+        "FC5"
+      ],
+      "description": "TLA+ model of run_document: stop rules, lost call, settle, release audit and floor, for both accept rules.",
+      "card": {
+        "frog": "docgen.loop.stops",
+        "ev": {
+          "impact": 5,
+          "bug_prior": 3,
+          "reach": 5,
+          "proof_cost": 3,
+          "model_cost": 3,
+          "ev": 8.3
+        },
+        "history": "git log -S '_idle' / -S '_unfixable' on loop.py: introduced in this PR stack; the trust map's C15-C18 rest on one integration test each (V19-V22).",
+        "surface": "projects/clinical-reasoning/src/cr/docgen/loop.py:65-116, 185-265; session.py:102-138, 255-265",
+        "failure_class": "loop stop rules: an extra round, a missed stop, a lost call that is reflected or released, a release of a floor finding",
+        "math": "TLA+ state machine with an event log; TLC safety invariants, Termination under WF; the finish gate as a second spec",
+        "artifact": "formal/tla/{DocLoop,Finish}.tla + cfgs; TLC terminal-state vectors replayed by tests/test_formal_{docloop,finish}_replay.py"
+      },
+      "check": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 18.17,
+        "violation": null,
+        "trace": [],
+        "generated": 1707253,
+        "distinct": 1252542,
+        "spec": "DocLoop.tla",
+        "spec_sha256": "sha256:902f92a6e563198ba3931a613d06217634bb74c133eb7c3857d14bcff7746c36",
+        "cfg": "DocLoop.cfg",
+        "cfg_sha256": "sha256:7cea63313470de6c87512dc56e7eb7fdced9bc19ae3f9b716ee84934b2db7aad",
+        "deadlock_checked": true,
+        "output_tail": "TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)\nRunning breadth-first search Model-Checking with fp 18 and seed 6396792505393816670 with 18 workers on 18 cores with 14564MB heap and 64MB offheap memory [pid: 62115] (Mac OS X 26.6.2 aarch64, Homebrew 27 x86_64, MSBDiskFPSet, DiskStateQueue).\nParsing file ~/dev/function-intelligence/.claude/worktrees/understando-489-ready/projects/clinical-reasoning/formal/tla/DocLoop.tla\nParsing file <tmp>/Naturals.tla\nParsing file <tmp>/Sequences.tla\nParsing file <tmp>/FiniteSets.tla\nSemantic processing of module Naturals\nSemantic processing of module Sequences\nSemantic processing of module FiniteSets\nSemantic processing of module DocLoop\nStarting... (2026-10-10 18:20:23)\nImplied-temporal checking--satisfiability problem has 1 branches.\nComputing initial states...\nComputed 2 initial states...\nComputed 4 initial states...\nFinished computing initial states: 8 distinct states generated at 2026-10-10 18:20:23.\nChecking temporal properties for the current state space with 430139 total distinct states at (2026-10-10 18:20:26)\nFinished checking temporal properties in 00s at 2026-10-10 18:20:26\nProgress(10) at 2026-10-10 18:20:26: 466,767 states generated (466,767 s/min), 455,373 distinct states found (455,373 ds/min), 329,279 states left on queue.\nProgress(11) at 2026-10-10 18:20:35: 1,707,253 states generated, 1,252,542 distinct states found, 0 states left on queue.\nChecking temporal properties for the complete state space with 1252542 total distinct states at (2026-10-10 18:20:35)\nFinished checking temporal properties in 05s at 2026-10-10 18:20:40\nModel checking completed. No error has been found.\n  Estimates of the probability that TLC did not check all reachable states\n  because two distinct states had the same fingerprint:\n  calculated (optimistic):  val = 3.1E-8\n  based on the actual fingerprints:  val = 2.8E-7\n1707253 states generated, 1252542 distinct states found, 0 states left on queue.\nThe depth of the complete state graph search is 11.\nThe average outdegree of the complete state graph is 1 (minimum is 0, the maximum 30 and the 95th percentile is 1).\nFinished in 17s at (2026-10-10 18:20:40)"
+      },
+      "conformance": {
+        "result": {
+          "status": "green",
+          "exit": 0,
+          "seconds": 1.39,
+          "matched": null,
+          "argv": [
+            "uv",
+            "run",
+            "--no-sync",
+            "pytest",
+            "-q",
+            "tests/test_formal_docloop_replay.py"
+          ],
+          "edits": [],
+          "output_tail": "..                                                                       [100%]\n2 passed in 0.72s"
+        },
+        "checks": {
+          "statement_parity": {
+            "status": "pass",
+            "note": "each property names the decision the code makes; C15 as worded is stricter than the code (see witness); the checked property is the code's own (_idle needs finished)"
+          },
+          "state_parity": {
+            "status": "pass",
+            "note": "draft = set of abstract findings f,n,u,m,r; kept list, before, edited, lost map to loop.py variables; changed is a separate choice so an edit can change files and keep the same findings"
+          },
+          "transition_parity": {
+            "status": "pass",
+            "note": "ReviewStop order = loop.py:228-231 then 241; ReviewEdit = edit() 194-219; Settle 244-247; StartRelease 250-251; ReleaseEdit 252-261; Floor 262-265 and _floor 79-98"
+          },
+          "concurrency_parity": {
+            "status": "pass",
+            "note": "run_document is one task; each await is sequential, so no interleaving to model"
+          },
+          "cancel_drain_parity": {
+            "status": "pass",
+            "note": "lost call (model_error) modelled in both stages, with restore and floor block; incomplete_response is a non-lost outcome (not in the model's outcome set: turn_limit stands for every non-finished, non-lost stop)"
+          },
+          "runtime_evidence": {
+            "status": "pass",
+            "note": "2692 terminal behaviours (SI + LC) and 9 finish sessions replay green through the real code; 4 code controls red"
+          },
+          "drift_gate": {
+            "status": "pass",
+            "note": "stamped: commit and blobs of loop.py, session.py, accept.py; sha256 of specs, cfgs and vectors"
+          }
+        }
+      },
+      "controls": [
+        {
+          "id": "K489-2a",
+          "target": "model",
+          "result": {
+            "status": "red",
+            "exit": 12,
+            "seconds": 0.73,
+            "violation": {
+              "kind": "invariant",
+              "name": "UnfixableStops"
+            },
+            "trace": [
+              {
+                "n": 1,
+                "action": "<Initial predicate>",
+                "state": {
+                  "phase": "review",
+                  "B": [
+                    "f",
+                    "u"
+                  ],
+                  "C": [
+                    "f",
+                    "u"
+                  ],
+                  "D": [
+                    "f",
+                    "u"
+                  ],
+                  "log": [
+                    {
+                      "d": [
+                        "f",
+                        "u"
+                      ],
+                      "ev": "init"
+                    }
+                  ],
+                  "n": 0,
+                  "rn": 0,
+                  "kept": [
+                    {
+                      "n": 0,
+                      "c": [
+                        "f",
+                        "u"
+                      ],
+                      "d": [
+                        "f",
+                        "u"
+                      ]
+                    }
+                  ],
+                  "lost": false,
+                  "edited": false
+                }
+              },
+              {
+                "n": 2,
+                "action": "<Next line 189, col 12 to line 189, col 96 of module DocLoop>",
+                "state": {
+                  "phase": "floor",
+                  "B": [
+                    "f",
+                    "u"
+                  ],
+                  "C": [
+                    "f",
+                    "u"
+                  ],
+                  "D": [
+                    "f",
+                    "u"
+                  ],
+                  "log": [
+                    {
+                      "d": [
+                        "f",
+                        "u"
+                      ],
+                      "ev": "init"
+                    },
+                    {
+                      "n": 1,
+                      "kept": false,
+                      "d": [],
+                      "ev": "edit",
+                      "o": "lost",
+                      "ch": true,
+                      "stage": "review",
+                      "todo": [
+                        "f",
+                        "u"
+                      ]
+                    }
+                  ],
+                  "n": 1,
+                  "rn": 0,
+                  "kept": [
+                    {
+                      "n": 0,
+                      "c": [
+                        "f",
+                        "u"
+                      ],
+                      "d": [
+                        "f",
+                        "u"
+                      ]
+                    }
+                  ],
+                  "lost": true,
+                  "edited": true
+                }
+              }
+            ],
+            "generated": 356,
+            "distinct": 351,
+            "spec": "DocLoop.tla",
+            "spec_sha256": "sha256:b1905e14455a4fc5872eda8e49171dbab1d6e04ad90569238b1d16f19891bd0f",
+            "cfg": "DocLoop.cfg",
+            "cfg_sha256": "sha256:7cea63313470de6c87512dc56e7eb7fdced9bc19ae3f9b716ee84934b2db7aad",
+            "deadlock_checked": true,
+            "control": {
+              "find": "           ELSE IF Unfixable(C) THEN \"unfixable\"\n           ELSE IF edited",
+              "replace": "           ELSE IF edited",
+              "pattern": "UnfixableStops",
+              "matched": true
+            },
+            "output_tail": "Computed 4 initial states...\nFinished computing initial states: 8 distinct states generated at 2026-10-10 18:20:53.\nError: Invariant UnfixableStops is violated.\nError: The behavior up to this point is:\nState 1: <Initial predicate>\n/\\ phase = \"review\"\n/\\ B = {\"f\", \"u\"}\n/\\ C = {\"f\", \"u\"}\n/\\ D = {\"f\", \"u\"}\n/\\ log = <<[d |-> {\"f\", \"u\"}, ev |-> \"init\"]>>\n/\\ n = 0\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"f\", \"u\"}, d |-> {\"f\", \"u\"}]>>\n/\\ lost = FALSE\n/\\ edited = FALSE\n\nState 2: <Next line 189, col 12 to line 189, col 96 of module DocLoop>\n/\\ phase = \"floor\"\n/\\ B = {\"f\", \"u\"}\n/\\ C = {\"f\", \"u\"}\n/\\ D = {\"f\", \"u\"}\n/\\ log = << [d |-> {\"f\", \"u\"}, ev |-> \"init\"],\n   [ n |-> 1,\n     kept |-> FALSE,\n     d |-> {},\n     ev |-> \"edit\",\n     o |-> \"lost\",\n     ch |-> TRUE,\n     stage |-> \"review\",\n     todo |-> {\"f\", \"u\"} ] >>\n/\\ n = 1\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"f\", \"u\"}, d |-> {\"f\", \"u\"}]>>\n/\\ lost = TRUE\n/\\ edited = TRUE\n\n356 states generated, 351 distinct states found, 291 states left on queue.\nThe depth of the complete state graph search is 6.\nThe average outdegree of the complete state graph is 6 (minimum is 0, the maximum 30 and the 95th percentile is 27).\nFinished in 00s at (2026-10-10 18:20:53)"
+          }
+        },
+        {
+          "id": "K489-2b",
+          "target": "model",
+          "result": {
+            "status": "red",
+            "exit": 12,
+            "seconds": 0.68,
+            "violation": {
+              "kind": "invariant",
+              "name": "LostIsFinal"
+            },
+            "trace": [
+              {
+                "n": 1,
+                "action": "<Initial predicate>",
+                "state": {
+                  "phase": "review",
+                  "B": [
+                    "n"
+                  ],
+                  "C": [
+                    "n"
+                  ],
+                  "D": [
+                    "n"
+                  ],
+                  "log": [
+                    {
+                      "d": [
+                        "n"
+                      ],
+                      "ev": "init"
+                    }
+                  ],
+                  "n": 0,
+                  "rn": 0,
+                  "kept": [
+                    {
+                      "n": 0,
+                      "c": [
+                        "n"
+                      ],
+                      "d": [
+                        "n"
+                      ]
+                    }
+                  ],
+                  "lost": false,
+                  "edited": false
+                }
+              },
+              {
+                "n": 2,
+                "action": "<Next line 190, col 12 to line 190, col 96 of module DocLoop>",
+                "state": {
+                  "phase": "review",
+                  "B": [
+                    "n"
+                  ],
+                  "C": [
+                    "n"
+                  ],
+                  "D": [
+                    "n"
+                  ],
+                  "log": [
+                    {
+                      "d": [
+                        "n"
+                      ],
+                      "ev": "init"
+                    },
+                    {
+                      "n": 1,
+                      "kept": false,
+                      "d": [],
+                      "ev": "edit",
+                      "o": "lost",
+                      "ch": true,
+                      "stage": "review",
+                      "todo": [
+                        "n"
+                      ]
+                    }
+                  ],
+                  "n": 1,
+                  "rn": 0,
+                  "kept": [
+                    {
+                      "n": 0,
+                      "c": [
+                        "n"
+                      ],
+                      "d": [
+                        "n"
+                      ]
+                    }
+                  ],
+                  "lost": true,
+                  "edited": true
+                }
+              },
+              {
+                "n": 3,
+                "action": "<ReviewStop line 97, col 15 to line 100, col 65 of module DocLoop>",
+                "state": {
+                  "phase": "settle",
+                  "B": [
+                    "n"
+                  ],
+                  "C": [
+                    "n"
+                  ],
+                  "D": [
+                    "n"
+                  ],
+                  "log": [
+                    {
+                      "d": [
+                        "n"
+                      ],
+                      "ev": "init"
+                    },
+                    {
+                      "n": 1,
+                      "kept": false,
+                      "d": [],
+                      "ev": "edit",
+                      "o": "lost",
+                      "ch": true,
+                      "stage": "review",
+                      "todo": [
+                        "n"
+                      ]
+                    },
+                    {
+                      "ev": "stop",
+                      "why": "stalled"
+                    }
+                  ],
+                  "n": 1,
+                  "rn": 0,
+                  "kept": [
+                    {
+                      "n": 0,
+                      "c": [
+                        "n"
+                      ],
+                      "d": [
+                        "n"
+                      ]
+                    }
+                  ],
+                  "lost": true,
+                  "edited": true
+                }
+              }
+            ],
+            "generated": 205,
+            "distinct": 205,
+            "spec": "DocLoop.tla",
+            "spec_sha256": "sha256:247600b52c79edd38a590ee45da6916d4d2b696ade6cd5a85568a97f7e22f35b",
+            "cfg": "DocLoop.cfg",
+            "cfg_sha256": "sha256:7cea63313470de6c87512dc56e7eb7fdced9bc19ae3f9b716ee84934b2db7aad",
+            "deadlock_checked": true,
+            "control": {
+              "find": "     THEN /\\ lost' = TRUE /\\ phase' = \"floor\"\n          /\\ log' = Append(log, EditEvent(\"review\"",
+              "replace": "     THEN /\\ lost' = TRUE /\\ phase' = \"review\"\n          /\\ log' = Append(log, EditEvent(\"review\"",
+              "pattern": "LostIsFinal",
+              "matched": true
+            },
+            "output_tail": "/\\ log = << [d |-> {\"n\"}, ev |-> \"init\"],\n   [ n |-> 1,\n     kept |-> FALSE,\n     d |-> {},\n     ev |-> \"edit\",\n     o |-> \"lost\",\n     ch |-> TRUE,\n     stage |-> \"review\",\n     todo |-> {\"n\"} ] >>\n/\\ n = 1\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"n\"}, d |-> {\"n\"}]>>\n/\\ lost = TRUE\n/\\ edited = TRUE\n\nState 3: <ReviewStop line 97, col 15 to line 100, col 65 of module DocLoop>\n/\\ phase = \"settle\"\n/\\ B = {\"n\"}\n/\\ C = {\"n\"}\n/\\ D = {\"n\"}\n/\\ log = << [d |-> {\"n\"}, ev |-> \"init\"],\n   [ n |-> 1,\n     kept |-> FALSE,\n     d |-> {},\n     ev |-> \"edit\",\n     o |-> \"lost\",\n     ch |-> TRUE,\n     stage |-> \"review\",\n     todo |-> {\"n\"} ],\n   [ev |-> \"stop\", why |-> \"stalled\"] >>\n/\\ n = 1\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"n\"}, d |-> {\"n\"}]>>\n/\\ lost = TRUE\n/\\ edited = TRUE\n\n205 states generated, 205 distinct states found, 158 states left on queue.\nThe depth of the complete state graph search is 5.\nThe average outdegree of the complete state graph is 6 (minimum is 1, the maximum 30 and the 95th percentile is 27).\nFinished in 00s at (2026-10-10 18:20:54)"
+          }
+        },
+        {
+          "id": "K489-2c",
+          "target": "model",
+          "result": {
+            "status": "red",
+            "exit": 12,
+            "seconds": 0.76,
+            "violation": {
+              "kind": "invariant",
+              "name": "IdleFinishedStops"
+            },
+            "trace": [
+              {
+                "n": 1,
+                "action": "<Initial predicate>",
+                "state": {
+                  "phase": "review",
+                  "B": [
+                    "f"
+                  ],
+                  "C": [
+                    "f"
+                  ],
+                  "D": [
+                    "f"
+                  ],
+                  "log": [
+                    {
+                      "d": [
+                        "f"
+                      ],
+                      "ev": "init"
+                    }
+                  ],
+                  "n": 0,
+                  "rn": 0,
+                  "kept": [
+                    {
+                      "n": 0,
+                      "c": [
+                        "f"
+                      ],
+                      "d": [
+                        "f"
+                      ]
+                    }
+                  ],
+                  "lost": false,
+                  "edited": false
+                }
+              },
+              {
+                "n": 2,
+                "action": "<Next line 190, col 12 to line 190, col 96 of module DocLoop>",
+                "state": {
+                  "phase": "review",
+                  "B": [
+                    "f"
+                  ],
+                  "C": [
+                    "f"
+                  ],
+                  "D": [
+                    "f"
+                  ],
+                  "log": [
+                    {
+                      "d": [
+                        "f"
+                      ],
+                      "ev": "init"
+                    },
+                    {
+                      "n": 1,
+                      "kept": false,
+                      "d": [
+                        "f"
+                      ],
+                      "ev": "edit",
+                      "o": "finished",
+                      "ch": false,
+                      "stage": "review",
+                      "todo": [
+                        "f"
+                      ]
+                    }
+                  ],
+                  "n": 1,
+                  "rn": 0,
+                  "kept": [
+                    {
+                      "n": 0,
+                      "c": [
+                        "f"
+                      ],
+                      "d": [
+                        "f"
+                      ]
+                    }
+                  ],
+                  "lost": false,
+                  "edited": true
+                }
+              },
+              {
+                "n": 3,
+                "action": "<Next line 190, col 12 to line 190, col 96 of module DocLoop>",
+                "state": {
+                  "phase": "floor",
+                  "B": [
+                    "f"
+                  ],
+                  "C": [
+                    "f"
+                  ],
+                  "D": [
+                    "f"
+                  ],
+                  "log": [
+                    {
+                      "d": [
+                        "f"
+                      ],
+                      "ev": "init"
+                    },
+                    {
+                      "n": 1,
+                      "kept": false,
+                      "d": [
+                        "f"
+                      ],
+                      "ev": "edit",
+                      "o": "finished",
+                      "ch": false,
+                      "stage": "review",
+                      "todo": [
+                        "f"
+                      ]
+                    },
+                    {
+                      "n": 2,
+                      "kept": false,
+                      "d": [],
+                      "ev": "edit",
+                      "o": "lost",
+                      "ch": true,
+                      "stage": "review",
+                      "todo": [
+                        "f"
+                      ]
+                    }
+                  ],
+                  "n": 2,
+                  "rn": 0,
+                  "kept": [
+                    {
+                      "n": 0,
+                      "c": [
+                        "f"
+                      ],
+                      "d": [
+                        "f"
+                      ]
+                    }
+                  ],
+                  "lost": true,
+                  "edited": true
+                }
+              }
+            ],
+            "generated": 491,
+            "distinct": 486,
+            "spec": "DocLoop.tla",
+            "spec_sha256": "sha256:0152a7fd5f89b12a69049ba2192aaf3491a99990b4b9aec91bdd3f9a710e7745",
+            "cfg": "DocLoop.cfg",
+            "cfg_sha256": "sha256:7cea63313470de6c87512dc56e7eb7fdced9bc19ae3f9b716ee84934b2db7aad",
+            "deadlock_checked": true,
+            "control": {
+              "find": "IF ~k /\\ o = \"finished\" /\\ ~ch ",
+              "replace": "IF FALSE ",
+              "pattern": "IdleFinishedStops",
+              "matched": true
+            },
+            "output_tail": "     stage |-> \"review\",\n     todo |-> {\"f\"} ] >>\n/\\ n = 1\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"f\"}, d |-> {\"f\"}]>>\n/\\ lost = FALSE\n/\\ edited = TRUE\n\nState 3: <Next line 190, col 12 to line 190, col 96 of module DocLoop>\n/\\ phase = \"floor\"\n/\\ B = {\"f\"}\n/\\ C = {\"f\"}\n/\\ D = {\"f\"}\n/\\ log = << [d |-> {\"f\"}, ev |-> \"init\"],\n   [ n |-> 1,\n     kept |-> FALSE,\n     d |-> {\"f\"},\n     ev |-> \"edit\",\n     o |-> \"finished\",\n     ch |-> FALSE,\n     stage |-> \"review\",\n     todo |-> {\"f\"} ],\n   [ n |-> 2,\n     kept |-> FALSE,\n     d |-> {},\n     ev |-> \"edit\",\n     o |-> \"lost\",\n     ch |-> TRUE,\n     stage |-> \"review\",\n     todo |-> {\"f\"} ] >>\n/\\ n = 2\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"f\"}, d |-> {\"f\"}]>>\n/\\ lost = TRUE\n/\\ edited = TRUE\n\n491 states generated, 486 distinct states found, 420 states left on queue.\nThe depth of the complete state graph search is 5.\nThe average outdegree of the complete state graph is 8 (minimum is 0, the maximum 30 and the 95th percentile is 27).\nFinished in 00s at (2026-10-10 18:20:55)"
+          }
+        },
+        {
+          "id": "K489-2d",
+          "target": "code",
+          "result": {
+            "status": "red",
+            "exit": 1,
+            "seconds": 0.74,
+            "matched": true,
+            "argv": [
+              "uv",
+              "run",
+              "--no-sync",
+              "pytest",
+              "-q",
+              "-x",
+              "tests/test_formal_docloop_replay.py"
+            ],
+            "edits": [
+              {
+                "op": "replace",
+                "path": "src/cr/docgen/loop.py",
+                "find": "        elif _idle(record):\n            break\n",
+                "replace": ""
+              }
+            ],
+            "output_tail": "        findings: Sequence[EditableFinding],\n        *,\n        stage: Stage,\n        client: ResponsesClient,\n        check: Callable[[], Sequence[Finding]],\n        cache_key: str,\n        clock: Clock,\n    ) -> EditRun:\n        _ = client, check, cache_key, clock\n        self.calls.append((stage, number, sorted(f.key for f in findings)))\n>       assert self.steps, f\"the loop ran an edit the model did not: {stage} round {number}\"\nE       AssertionError: the loop ran an edit the model did not: review round 2\nE       assert []\nE        +  where [] = <test_formal_docloop_replay.ScheduleEditor object at 0x10b195fa0>.steps\n\ntests/test_formal_docloop_replay.py:167: AssertionError\n\nThe above exception was the direct cause of the following exception:\n\nrule = 'SI'\n\n    @pytest.mark.parametrize(\"rule\", [\"SI\", \"LC\"])\n    def test_the_real_loop_replays_every_terminal_behaviour_of_the_model(rule: str) -> None:\n        consts, vectors = _vectors(rule)\n        assert consts[\"Rule\"] == rule and len(vectors) > 500\n        for v in vectors:\n            log = cast(list[dict[str, Any]], v[\"log\"])\n            try:\n                _replay(rule, log, consts)\n            except AssertionError as exc:\n>               raise AssertionError(f\"{rule} vector {json.dumps(log)}: {exc}\") from exc\nE               AssertionError: SI vector [{\"d\": [\"f\"], \"ev\": \"init\"}, {\"ch\": false, \"d\": [\"f\"], \"ev\": \"edit\", \"kept\": false, \"n\": 1, \"o\": \"finished\", \"stage\": \"review\", \"todo\": [\"f\"]}, {\"ev\": \"stop\", \"why\": \"idle\"}, {\"ev\": \"floor\", \"final\": [\"f\"], \"outcome\": \"fallback\"}]: the loop ran an edit the model did not: review round 2\nE               assert []\nE                +  where [] = <test_formal_docloop_replay.ScheduleEditor object at 0x10b195fa0>.steps\n\ntests/test_formal_docloop_replay.py:234: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_formal_docloop_replay.py::test_the_real_loop_replays_every_terminal_behaviour_of_the_model[SI]\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.21s"
+          }
+        },
+        {
+          "id": "K489-2e",
+          "target": "code",
+          "result": {
+            "status": "red",
+            "exit": 1,
+            "seconds": 0.83,
+            "matched": true,
+            "argv": [
+              "uv",
+              "run",
+              "--no-sync",
+              "pytest",
+              "-q",
+              "-x",
+              "tests/test_formal_docloop_replay.py"
+            ],
+            "edits": [
+              {
+                "op": "replace",
+                "path": "src/cr/docgen/loop.py",
+                "find": "        if record.lost:\n            lost = record\n            break\n        before = current\n",
+                "replace": "        before = current\n"
+              }
+            ],
+            "output_tail": "        findings: Sequence[EditableFinding],\n        *,\n        stage: Stage,\n        client: ResponsesClient,\n        check: Callable[[], Sequence[Finding]],\n        cache_key: str,\n        clock: Clock,\n    ) -> EditRun:\n        _ = client, check, cache_key, clock\n        self.calls.append((stage, number, sorted(f.key for f in findings)))\n>       assert self.steps, f\"the loop ran an edit the model did not: {stage} round {number}\"\nE       AssertionError: the loop ran an edit the model did not: review round 2\nE       assert []\nE        +  where [] = <test_formal_docloop_replay.ScheduleEditor object at 0x10715dd00>.steps\n\ntests/test_formal_docloop_replay.py:167: AssertionError\n\nThe above exception was the direct cause of the following exception:\n\nrule = 'SI'\n\n    @pytest.mark.parametrize(\"rule\", [\"SI\", \"LC\"])\n    def test_the_real_loop_replays_every_terminal_behaviour_of_the_model(rule: str) -> None:\n        consts, vectors = _vectors(rule)\n        assert consts[\"Rule\"] == rule and len(vectors) > 500\n        for v in vectors:\n            log = cast(list[dict[str, Any]], v[\"log\"])\n            try:\n                _replay(rule, log, consts)\n            except AssertionError as exc:\n>               raise AssertionError(f\"{rule} vector {json.dumps(log)}: {exc}\") from exc\nE               AssertionError: SI vector [{\"d\": [\"f\"], \"ev\": \"init\"}, {\"ch\": false, \"d\": [\"f\"], \"ev\": \"edit\", \"kept\": false, \"n\": 1, \"o\": \"lost\", \"stage\": \"review\", \"todo\": [\"f\"]}, {\"ev\": \"floor\", \"final\": [\"f\"], \"outcome\": \"blocked\"}]: the loop ran an edit the model did not: review round 2\nE               assert []\nE                +  where [] = <test_formal_docloop_replay.ScheduleEditor object at 0x10715dd00>.steps\n\ntests/test_formal_docloop_replay.py:234: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_formal_docloop_replay.py::test_the_real_loop_replays_every_terminal_behaviour_of_the_model[SI]\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.21s"
+          }
+        },
+        {
+          "id": "K489-2f",
+          "target": "code",
+          "result": {
+            "status": "red",
+            "exit": 1,
+            "seconds": 0.86,
+            "matched": true,
+            "argv": [
+              "uv",
+              "run",
+              "--no-sync",
+              "pytest",
+              "-q",
+              "-x",
+              "tests/test_formal_docloop_replay.py"
+            ],
+            "edits": [
+              {
+                "op": "replace",
+                "path": "src/cr/docgen/loop.py",
+                "find": "not editable(current.findings) or _unfixable(current):",
+                "replace": "not editable(current.findings):"
+              }
+            ],
+            "output_tail": "        findings: Sequence[EditableFinding],\n        *,\n        stage: Stage,\n        client: ResponsesClient,\n        check: Callable[[], Sequence[Finding]],\n        cache_key: str,\n        clock: Clock,\n    ) -> EditRun:\n        _ = client, check, cache_key, clock\n        self.calls.append((stage, number, sorted(f.key for f in findings)))\n>       assert self.steps, f\"the loop ran an edit the model did not: {stage} round {number}\"\nE       AssertionError: the loop ran an edit the model did not: review round 1\nE       assert []\nE        +  where [] = <test_formal_docloop_replay.ScheduleEditor object at 0x10952b8f0>.steps\n\ntests/test_formal_docloop_replay.py:167: AssertionError\n\nThe above exception was the direct cause of the following exception:\n\nrule = 'SI'\n\n    @pytest.mark.parametrize(\"rule\", [\"SI\", \"LC\"])\n    def test_the_real_loop_replays_every_terminal_behaviour_of_the_model(rule: str) -> None:\n        consts, vectors = _vectors(rule)\n        assert consts[\"Rule\"] == rule and len(vectors) > 500\n        for v in vectors:\n            log = cast(list[dict[str, Any]], v[\"log\"])\n            try:\n                _replay(rule, log, consts)\n            except AssertionError as exc:\n>               raise AssertionError(f\"{rule} vector {json.dumps(log)}: {exc}\") from exc\nE               AssertionError: SI vector [{\"d\": [\"f\", \"u\"], \"ev\": \"init\"}, {\"ev\": \"stop\", \"why\": \"unfixable\"}, {\"ev\": \"floor\", \"final\": [\"f\", \"u\"], \"outcome\": \"fallback\"}]: the loop ran an edit the model did not: review round 1\nE               assert []\nE                +  where [] = <test_formal_docloop_replay.ScheduleEditor object at 0x10952b8f0>.steps\n\ntests/test_formal_docloop_replay.py:234: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_formal_docloop_replay.py::test_the_real_loop_replays_every_terminal_behaviour_of_the_model[SI]\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.21s"
+          }
+        }
+      ],
+      "route": "theorem-first",
+      "blocker_open": false,
+      "invariant": {
+        "author": "agent",
+        "ref": null,
+        "status": "proposed",
+        "items": [
+          {
+            "id": "L1",
+            "sentence": "The review step runs at most max_edit_rounds edit rounds, the release step at most release_edits, and the run always ends.",
+            "checked_by": [
+              "Bounded",
+              "Termination"
+            ],
+            "questions": [
+              {
+                "ask": "What should happen with max_edit_rounds = 0: no edit, but does the release step still run?",
+                "code_today": "No review round runs; settle and the release audit still run.",
+                "where": "src/cr/docgen/loop.py:227, 244-251",
+                "looks": "intended"
+              }
+            ]
+          },
+          {
+            "id": "L2",
+            "sentence": "After a lost editor call, nothing reflects, keeps, settles, audits or edits again, and the floor blocks with no fallback.",
+            "checked_by": [
+              "LostIsFinal"
+            ],
+            "questions": [
+              {
+                "ask": "What should happen if the call is lost in the release step after an earlier release edit was kept?",
+                "code_today": "The run blocks; the kept release draft does not stand.",
+                "where": "src/cr/docgen/loop.py:257-263",
+                "looks": "intended (fail-closed), but ask"
+              },
+              {
+                "ask": "What should happen if the provider returns status failed instead of raising?",
+                "code_today": "Treated as lost (model_error).",
+                "where": "src/cr/docgen/session.py:119-124; src/cr/docgen/adapter.py:324-326",
+                "looks": "intended"
+              },
+              {
+                "ask": "What should happen if the response is incomplete (cut off) after a partial patch?",
+                "code_today": "Not lost: the partial edit is reflected and can be kept.",
+                "where": "src/cr/docgen/session.py:119-124; src/cr/docgen/loop.py:207-219",
+                "looks": "unclear: ask"
+              }
+            ]
+          },
+          {
+            "id": "L3",
+            "sentence": "The review rounds stop after a round that the accept rule did not keep, that changed no file, and whose editor finished its session.",
+            "checked_by": [
+              "IdleFinishedStops"
+            ],
+            "questions": [
+              {
+                "ask": "What should happen if the editor hit its turn limit (or made no tool calls), changed no file, and the round was not kept: another round, or stop?",
+                "code_today": "Another round runs from the same draft and findings (TLC witness; replayed on the real loop).",
+                "where": "src/cr/docgen/loop.py:101-107, 241-242",
+                "looks": "matches the code's docstring; the PR-body claim C15 omits 'finished', so the claim overstates"
+              }
+            ]
+          },
+          {
+            "id": "L4",
+            "sentence": "No edit round, review or release, starts while a floor finding that no writable file holds remains.",
+            "checked_by": [
+              "UnfixableStops"
+            ],
+            "questions": [
+              {
+                "ask": "What should happen if an edit creates an unfixable floor finding?",
+                "code_today": "Under LastClean the edit is kept, the next round does not start, and settle can restore an earlier clean draft; under StrictImprovement the edit is reverted (a new deterministic key).",
+                "where": "src/cr/docgen/loop.py:228, 253; src/cr/docgen/accept.py:79-80",
+                "looks": "intended"
+              }
+            ]
+          },
+          {
+            "id": "L6",
+            "sentence": "The floor releases only a draft with no floor finding, and a fallback only when the code checks find no floor finding on it.",
+            "checked_by": [
+              "FloorSafe"
+            ],
+            "questions": [
+              {
+                "ask": "What should happen if the fallback passes the code checks but would fail the release audit?",
+                "code_today": "The fallback stands: only the code checks judge it.",
+                "where": "src/cr/docgen/loop.py:91-96",
+                "looks": "unclear: ask"
+              }
+            ]
+          }
+        ]
+      },
+      "witness": {
+        "kind": "tlc-trace",
+        "property": "IdleStops (C15 as the PR body words it)",
+        "cfg": "formal/tla/DocLoopC15.cfg",
+        "input": {
+          "rule": "StrictImprovement",
+          "projection_findings": [
+            "m: confirmed S4, blocking, editable"
+          ],
+          "round_1": "editor stops at turn_limit, changes no file; not kept",
+          "round_2": "runs (in the trace the model then loses the call)"
+        },
+        "trace": [
+          {
+            "d": [
+              "m"
+            ],
+            "ev": "init"
+          },
+          {
+            "n": 1,
+            "kept": false,
+            "d": [
+              "m"
+            ],
+            "ev": "edit",
+            "o": "turn_limit",
+            "ch": false,
+            "stage": "review",
+            "todo": [
+              "m"
+            ]
+          },
+          {
+            "n": 2,
+            "kept": false,
+            "d": [],
+            "ev": "edit",
+            "o": "lost",
+            "ch": true,
+            "stage": "review",
+            "todo": [
+              "m"
+            ]
+          }
+        ],
+        "replay_on_real_code": {
+          "status": "green",
+          "witness": "C15 as worded",
+          "note": "the real run_document makes the same decisions as the TLC counterexample: round 1 (turn_limit, no file changed, not kept) is followed by round 2",
+          "rounds": [
+            [
+              1,
+              "turn_limit",
+              false,
+              false
+            ],
+            [
+              2,
+              "lost",
+              true,
+              false
+            ]
+          ],
+          "init": [
+            "m"
+          ],
+          "rule": "StrictImprovement"
+        }
+      },
+      "witness_test": null,
+      "independence": {
+        "by": "tool",
+        "tool": "tlc"
+      },
+      "cost": {
+        "usd": 0
+      },
+      "formal": {
+        "verdict": "Formal (pending user confirmation)",
+        "missing": [
+          "no user-confirmed invariant (a journal row with kind: invariant and author: user)"
+        ]
+      },
+      "check_more": [
+        {
+          "status": "green",
+          "spec": "DocLoop.tla",
+          "cfg": "DocLoopLC.cfg",
+          "cfg_sha256": "sha256:bcdad89c11b35ef47f0cee3dcca50483a5e4fd1429611f5c536f477b9de7174e",
+          "distinct": 648613,
+          "deadlock_checked": true
+        }
+      ],
+      "route_reason": "C15 as the PR body words it (no 'finished') fails in TLC; the code's _idle needs a finished session (loop.py:101-107). The claim overstates, so the checked property is IdleFinishedStops, which holds; the witness replays the same decisions on the real loop.",
+      "drift": {
+        "commit": "ef0cca4247c2760f99f137ec084a232c68b5a87e",
+        "code_files": [
+          {
+            "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
+            "blob": "99afc4cdfb99c4195c710e731a33ba38e17cf107"
+          },
+          {
+            "path": "projects/clinical-reasoning/src/cr/docgen/accept.py",
+            "blob": "b3c32637c9cac31d7099cbd9f4bfadeb728e5d5b"
+          },
+          {
+            "path": "projects/clinical-reasoning/src/cr/docgen/adapter.py",
+            "blob": "cd06312f30e24b92bef1482370da540f7da29941"
+          }
+        ],
+        "model_files": [
+          {
+            "path": "projects/clinical-reasoning/formal/tla/DocLoop.tla",
+            "sha256": "sha256:902f92a6e563198ba3931a613d06217634bb74c133eb7c3857d14bcff7746c36"
+          },
+          {
+            "path": "projects/clinical-reasoning/formal/tla/DocLoop.cfg",
+            "sha256": "sha256:7cea63313470de6c87512dc56e7eb7fdced9bc19ae3f9b716ee84934b2db7aad"
+          },
+          {
+            "path": "projects/clinical-reasoning/formal/tla/DocLoopLC.cfg",
+            "sha256": "sha256:bcdad89c11b35ef47f0cee3dcca50483a5e4fd1429611f5c536f477b9de7174e"
+          },
+          {
+            "path": "projects/clinical-reasoning/formal/tla/DocLoopVectorsSI.cfg",
+            "sha256": "sha256:c65fe092f9f120e63950e65a7fdb78dd33cccbc558fb8b6230222090ca0f5eae"
+          },
+          {
+            "path": "projects/clinical-reasoning/formal/tla/DocLoopVectorsLC.cfg",
+            "sha256": "sha256:31d1fe5ffc46db85dc933fd1a509cd5c4c632e48cf0082a969a1451dd83f0fa5"
+          },
+          {
+            "path": "projects/clinical-reasoning/formal/tla/docloop_vectors_SI.json",
+            "sha256": "sha256:151330e1459ca11224040d3f1778746e644b3ce9b02ec32dfd68df05f56a112a"
+          },
+          {
+            "path": "projects/clinical-reasoning/formal/tla/docloop_vectors_LC.json",
+            "sha256": "sha256:47f12968bb8c0153efeecd4c6d4fc30d1403cbbb65252e12391731a2dc357716"
+          },
+          {
+            "path": "projects/clinical-reasoning/tests/test_formal_docloop_replay.py",
+            "sha256": "sha256:2710dd8c8268cf7505919da2e4875068649a30d9fb6ec3ea5c529c4ac80fe5d6"
+          }
+        ]
+      }
+    },
+    {
+      "id": "F489-3",
+      "kind": "tla",
+      "ladder_tier": 4,
+      "claims": [
+        "C18"
+      ],
+      "description": "TLA+ model of the editor session's finish gate: refusals while a code check blocks, at most max_finish_refusals.",
+      "card": {
+        "frog": "docgen.session.finish_gate",
+        "ev": {
+          "impact": 5,
+          "bug_prior": 3,
+          "reach": 5,
+          "proof_cost": 3,
+          "model_cost": 3,
+          "ev": 8.3
+        },
+        "history": "git log -S '_idle' / -S '_unfixable' on loop.py: introduced in this PR stack; the trust map's C15-C18 rest on one integration test each (V19-V22).",
+        "surface": "projects/clinical-reasoning/src/cr/docgen/session.py:102-138, 255-265",
+        "failure_class": "loop stop rules: an extra round, a missed stop, a lost call that is reflected or released, a release of a floor finding",
+        "math": "TLA+ state machine with an event log; TLC safety invariants, Termination under WF; the finish gate as a second spec",
+        "artifact": "formal/tla/Finish.tla + cfgs; finish_vectors_t{3,6}.json; tests/test_formal_finish_replay.py"
+      },
+      "check": {
+        "status": "green",
+        "exit": 0,
+        "seconds": 0.63,
+        "violation": null,
+        "trace": [],
+        "generated": 14,
+        "distinct": 9,
+        "spec": "Finish.tla",
+        "spec_sha256": "sha256:e029bc4757a38ce156b44b8faa6f28a936718604f8e616cef1bc0e585c88ae37",
+        "cfg": "Finish.cfg",
+        "cfg_sha256": "sha256:4d00c19bf87ecc7fb135673d5a846caa816d51115bf0e862b34c26b23d2eab5d",
+        "deadlock_checked": true,
+        "output_tail": "TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)\nRunning breadth-first search Model-Checking with fp 119 and seed 7802973391035326192 with 18 workers on 18 cores with 14564MB heap and 64MB offheap memory [pid: 62611] (Mac OS X 26.6.2 aarch64, Homebrew 27 x86_64, MSBDiskFPSet, DiskStateQueue).\nParsing file ~/dev/function-intelligence/.claude/worktrees/understando-489-ready/projects/clinical-reasoning/formal/tla/Finish.tla\nParsing file <tmp>/Naturals.tla\nParsing file <tmp>/Sequences.tla\nParsing file <tmp>/FiniteSets.tla\nSemantic processing of module Naturals\nSemantic processing of module Sequences\nSemantic processing of module FiniteSets\nSemantic processing of module Finish\nStarting... (2026-10-10 18:20:51)\nImplied-temporal checking--satisfiability problem has 1 branches.\nComputing initial states...\nFinished computing initial states: 1 distinct state generated at 2026-10-10 18:20:51.\nProgress(5) at 2026-10-10 18:20:51: 14 states generated, 9 distinct states found, 0 states left on queue.\nChecking temporal properties for the complete state space with 9 total distinct states at (2026-10-10 18:20:51)\nFinished checking temporal properties in 00s at 2026-10-10 18:20:52\nModel checking completed. No error has been found.\n  Estimates of the probability that TLC did not check all reachable states\n  because two distinct states had the same fingerprint:\n  calculated (optimistic):  val = 2.4E-18\n14 states generated, 9 distinct states found, 0 states left on queue.\nThe depth of the complete state graph search is 5.\nThe average outdegree of the complete state graph is 1 (minimum is 0, the maximum 2 and the 95th percentile is 2).\nFinished in 00s at (2026-10-10 18:20:52)"
+      },
+      "conformance": {
+        "result": {
+          "status": "green",
+          "exit": 0,
+          "seconds": 0.74,
+          "matched": null,
+          "argv": [
+            "uv",
+            "run",
+            "--no-sync",
+            "pytest",
+            "-q",
+            "tests/test_formal_finish_replay.py"
+          ],
+          "edits": [],
+          "output_tail": "..                                                                       [100%]\n2 passed in 0.16s"
+        },
+        "checks": {
+          "statement_parity": {
+            "status": "pass",
+            "note": "each property names the decision the code makes; C15 as worded is stricter than the code (see witness); the checked property is the code's own (_idle needs finished)"
+          },
+          "state_parity": {
+            "status": "pass",
+            "note": "draft = set of abstract findings f,n,u,m,r; kept list, before, edited, lost map to loop.py variables; changed is a separate choice so an edit can change files and keep the same findings"
+          },
+          "transition_parity": {
+            "status": "pass",
+            "note": "ReviewStop order = loop.py:228-231 then 241; ReviewEdit = edit() 194-219; Settle 244-247; StartRelease 250-251; ReleaseEdit 252-261; Floor 262-265 and _floor 79-98"
+          },
+          "concurrency_parity": {
+            "status": "pass",
+            "note": "run_document is one task; each await is sequential, so no interleaving to model"
+          },
+          "cancel_drain_parity": {
+            "status": "pass",
+            "note": "lost call (model_error) modelled in both stages, with restore and floor block; incomplete_response is a non-lost outcome (not in the model's outcome set: turn_limit stands for every non-finished, non-lost stop)"
+          },
+          "runtime_evidence": {
+            "status": "pass",
+            "note": "2692 terminal behaviours (SI + LC) and 9 finish sessions replay green through the real code; 4 code controls red"
+          },
+          "drift_gate": {
+            "status": "pass",
+            "note": "stamped: commit and blobs of loop.py, session.py, accept.py; sha256 of specs, cfgs and vectors"
+          }
+        }
+      },
+      "controls": [
+        {
+          "id": "K489-3a",
+          "target": "model",
+          "result": {
+            "status": "red",
+            "exit": 12,
+            "seconds": 0.63,
+            "violation": {
+              "kind": "invariant",
+              "name": "RefusalsBounded"
+            },
+            "trace": [
+              {
+                "n": 1,
+                "action": "<Initial predicate>",
+                "state": {
+                  "refusals": 0,
+                  "stop": "running",
+                  "withBlocking": false,
+                  "log": []
+                }
+              },
+              {
+                "n": 2,
+                "action": "<Finish line 26, col 3 to line 33, col 31 of module Finish>",
+                "state": {
+                  "refusals": 1,
+                  "stop": "running",
+                  "withBlocking": false,
+                  "log": [
+                    {
+                      "b": true,
+                      "answer": "refused"
+                    }
+                  ]
+                }
+              },
+              {
+                "n": 3,
+                "action": "<Finish line 26, col 3 to line 33, col 31 of module Finish>",
+                "state": {
+                  "refusals": 2,
+                  "stop": "running",
+                  "withBlocking": false,
+                  "log": [
+                    {
+                      "b": true,
+                      "answer": "refused"
+                    },
+                    {
+                      "b": true,
+                      "answer": "refused"
+                    }
+                  ]
+                }
+              },
+              {
+                "n": 4,
+                "action": "<Finish line 26, col 3 to line 33, col 31 of module Finish>",
+                "state": {
+                  "refusals": 3,
+                  "stop": "running",
+                  "withBlocking": false,
+                  "log": [
+                    {
+                      "b": true,
+                      "answer": "refused"
+                    },
+                    {
+                      "b": true,
+                      "answer": "refused"
+                    },
+                    {
+                      "b": true,
+                      "answer": "refused"
+                    }
+                  ]
+                }
+              },
+              {
+                "n": 5,
+                "action": "<Finish line 26, col 3 to line 33, col 31 of module Finish>",
+                "state": {
+                  "refusals": 4,
+                  "stop": "running",
+                  "withBlocking": false,
+                  "log": [
+                    {
+                      "b": true,
+                      "answer": "refused"
+                    },
+                    {
+                      "b": true,
+                      "answer": "refused"
+                    },
+                    {
+                      "b": true,
+                      "answer": "refused"
+                    },
+                    {
+                      "b": true,
+                      "answer": "refused"
+                    }
+                  ]
+                }
+              }
+            ],
+            "generated": 13,
+            "distinct": 9,
+            "spec": "Finish.tla",
+            "spec_sha256": "sha256:aa701b8041047f93698983cb19b2ab01613bb9775932715a892e0b37bbc40491",
+            "cfg": "Finish.cfg",
+            "cfg_sha256": "sha256:4d00c19bf87ecc7fb135673d5a846caa816d51115bf0e862b34c26b23d2eab5d",
+            "deadlock_checked": true,
+            "control": {
+              "find": "IF b /\\ refusals < MaxRefusals",
+              "replace": "IF b",
+              "pattern": "RefusalsBounded",
+              "matched": true
+            },
+            "output_tail": "Error: The behavior up to this point is:\nState 1: <Initial predicate>\n/\\ refusals = 0\n/\\ stop = \"running\"\n/\\ withBlocking = FALSE\n/\\ log = <<>>\n\nState 2: <Finish line 26, col 3 to line 33, col 31 of module Finish>\n/\\ refusals = 1\n/\\ stop = \"running\"\n/\\ withBlocking = FALSE\n/\\ log = <<[b |-> TRUE, answer |-> \"refused\"]>>\n\nState 3: <Finish line 26, col 3 to line 33, col 31 of module Finish>\n/\\ refusals = 2\n/\\ stop = \"running\"\n/\\ withBlocking = FALSE\n/\\ log = <<[b |-> TRUE, answer |-> \"refused\"], [b |-> TRUE, answer |-> \"refused\"]>>\n\nState 4: <Finish line 26, col 3 to line 33, col 31 of module Finish>\n/\\ refusals = 3\n/\\ stop = \"running\"\n/\\ withBlocking = FALSE\n/\\ log = << [b |-> TRUE, answer |-> \"refused\"],\n   [b |-> TRUE, answer |-> \"refused\"],\n   [b |-> TRUE, answer |-> \"refused\"] >>\n\nState 5: <Finish line 26, col 3 to line 33, col 31 of module Finish>\n/\\ refusals = 4\n/\\ stop = \"running\"\n/\\ withBlocking = FALSE\n/\\ log = << [b |-> TRUE, answer |-> \"refused\"],\n   [b |-> TRUE, answer |-> \"refused\"],\n   [b |-> TRUE, answer |-> \"refused\"],\n   [b |-> TRUE, answer |-> \"refused\"] >>\n\n13 states generated, 9 distinct states found, 0 states left on queue.\nThe depth of the complete state graph search is 5.\nThe average outdegree of the complete state graph is 1 (minimum is 0, the maximum 2 and the 95th percentile is 2).\nFinished in 00s at (2026-10-10 18:20:55)"
+          }
+        },
+        {
+          "id": "K489-3b",
+          "target": "code",
+          "result": {
+            "status": "red",
+            "exit": 1,
+            "seconds": 0.84,
+            "matched": true,
+            "argv": [
+              "uv",
+              "run",
+              "--no-sync",
+              "pytest",
+              "-q",
+              "-x",
+              "tests/test_formal_finish_replay.py"
+            ],
+            "edits": [
+              {
+                "op": "replace",
+                "path": "src/cr/docgen/session.py",
+                "find": "if blocking and self.run.finish_refusals < self.spec.max_finish_refusals:",
+                "replace": "if blocking:"
+              }
+            ],
+            "output_tail": "\ntests/test_formal_finish_replay.py:97: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \ntests/test_formal_finish_replay.py:63: in _replay\n    run = asyncio.run(\n~/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run\n    return runner.run(main)\n           ^^^^^^^^^^^^^^^^\n~/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run\n    return self._loop.run_until_complete(task)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n~/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete\n    return future.result()\n           ^^^^^^^^^^^^^^^\nsrc/cr/docgen/session.py:133: in edit\n    items.append(session.answer(call))\n                 ^^^^^^^^^^^^^^^^^^^^\nsrc/cr/docgen/session.py:305: in answer\n    \"output\": self._function_output(name, call),\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/cr/docgen/session.py:290: in _function_output\n    return self._finish(args)\n           ^^^^^^^^^^^^^^^^^^\nsrc/cr/docgen/session.py:256: in _finish\n    blocking = [f for f in self.check() if f.blocking]\n                           ^^^^^^^^^^^^\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\n    def check() -> Sequence[Finding]:\n        nonlocal calls\n        calls += 1\n>       return [BLOCKING] if flags[calls - 1] else []\n                             ^^^^^^^^^^^^^^^^\nE       IndexError: list index out of range\n\ntests/test_formal_finish_replay.py:45: IndexError\n=========================== short test summary info ============================\nFAILED tests/test_formal_finish_replay.py::test_the_real_finish_gate_replays_every_session_of_the_model[finish_vectors_t6.json]\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed, 1 passed in 0.20s"
+          }
+        }
+      ],
+      "route": "none",
+      "blocker_open": false,
+      "invariant": {
+        "author": "agent",
+        "ref": null,
+        "status": "proposed",
+        "items": [
+          {
+            "id": "L5",
+            "sentence": "finish is refused while a code check reports a blocking finding, at most max_finish_refusals (3) times; after that it is accepted and finished_with_blocking records it.",
+            "checked_by": [
+              "RefusalsBounded",
+              "RefusedOnlyWhileBlocking",
+              "BlockingAcceptedOnlyAtBudget",
+              "WithBlockingHonest"
+            ],
+            "questions": [
+              {
+                "ask": "What should happen if the only blocking findings are ones no writable file holds?",
+                "code_today": "finish is still refused up to 3 times, spending turns on a finding the editor cannot fix.",
+                "where": "src/cr/docgen/session.py:255-260",
+                "looks": "unclear: ask"
+              },
+              {
+                "ask": "Should a confirmed model finding also block finish?",
+                "code_today": "No: finish reads only the code checks.",
+                "where": "src/cr/docgen/session.py:256",
+                "looks": "intended (reflection decides after)"
+              }
+            ]
+          }
+        ]
+      },
+      "witness": null,
+      "witness_test": null,
+      "independence": {
+        "by": "tool",
+        "tool": "tlc"
+      },
+      "cost": {
+        "usd": 0
+      },
+      "formal": {
+        "verdict": "Formal (pending user confirmation)",
+        "missing": [
+          "no user-confirmed invariant (a journal row with kind: invariant and author: user)"
+        ]
+      },
+      "drift": {
+        "commit": "ef0cca4247c2760f99f137ec084a232c68b5a87e",
+        "code_files": [
+          {
+            "path": "projects/clinical-reasoning/src/cr/docgen/session.py",
+            "blob": "17ee825cc91911dd0eb2302e55eed9633d243613"
+          }
+        ],
+        "model_files": [
+          {
+            "path": "projects/clinical-reasoning/formal/tla/Finish.tla",
+            "sha256": "sha256:e029bc4757a38ce156b44b8faa6f28a936718604f8e616cef1bc0e585c88ae37"
+          },
+          {
+            "path": "projects/clinical-reasoning/formal/tla/Finish.cfg",
+            "sha256": "sha256:4d00c19bf87ecc7fb135673d5a846caa816d51115bf0e862b34c26b23d2eab5d"
+          },
+          {
+            "path": "projects/clinical-reasoning/formal/tla/finish_vectors_t3.json",
+            "sha256": "sha256:fad25018df1e14c272d4c2a78fd3182865eb1672604859b9d1e9818547dbcd40"
+          },
+          {
+            "path": "projects/clinical-reasoning/formal/tla/finish_vectors_t6.json",
+            "sha256": "sha256:a9e3d68f34c9674983e1bb59dacd6b6a7e79432015d58671c0da5015f8390eea"
+          },
+          {
+            "path": "projects/clinical-reasoning/tests/test_formal_finish_replay.py",
+            "sha256": "sha256:44b65906807b01a854034e9ca696b102a446a88ddc0cbf2187905b96fc6e8fb2"
+          }
+        ]
+      }
+    }
+  ],
+  "proposed_claims": [
+    {
+      "id": "FC1",
+      "text": "StrictImprovement keeps an edit only for a strictly lower score, with no new deterministic key and no new confirmed S5 or S4 key.",
+      "source": "accept.py docstring, lines 5-7"
+    },
+    {
+      "id": "FC2",
+      "text": "The accept score is compared lexicographically: a strict total order on the counts.",
+      "source": "accept.py docstring, line 6"
+    },
+    {
+      "id": "FC3",
+      "text": "When rejects_early is true, keep reverts the edit whatever the reflectors add.",
+      "source": "accept.py:38-39, 86"
+    },
+    {
+      "id": "FC4",
+      "text": "The edit rounds stop at max_edit_rounds and the release rounds at release_edits.",
+      "source": "loop.py docstring, lines 5-8"
+    },
+    {
+      "id": "FC5",
+      "text": "The floor releases only a draft with no floor finding, or a fallback that the code checks pass.",
+      "source": "loop.py docstring, lines 17-19"
+    }
+  ]
+}

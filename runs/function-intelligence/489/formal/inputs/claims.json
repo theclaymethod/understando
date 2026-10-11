@@ -1,0 +1,5 @@
+[{"id": "FC1", "text": "StrictImprovement keeps an edit only for a strictly lower score, with no new deterministic key and no new confirmed S5 or S4 key.", "source": "accept.py docstring, lines 5-7"},
+ {"id": "FC2", "text": "The accept score is compared lexicographically: a strict total order on the counts.", "source": "accept.py docstring, line 6"},
+ {"id": "FC3", "text": "When rejects_early is true, keep reverts the edit whatever the reflectors add.", "source": "accept.py:38-39, 86"},
+ {"id": "FC4", "text": "The edit rounds stop at max_edit_rounds and the release rounds at release_edits.", "source": "loop.py docstring, lines 5-8"},
+ {"id": "FC5", "text": "The floor releases only a draft with no floor finding, or a fallback that the code checks pass.", "source": "loop.py docstring, lines 17-19"}]

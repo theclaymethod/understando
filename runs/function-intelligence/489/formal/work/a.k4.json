@@ -1,0 +1,24 @@
+{
+  "status": "red",
+  "exit": 1,
+  "seconds": 0.61,
+  "matched": true,
+  "argv": [
+    "uv",
+    "run",
+    "--no-sync",
+    "pytest",
+    "-q",
+    "-x",
+    "tests/test_formal_accept_conformance.py"
+  ],
+  "edits": [
+    {
+      "op": "replace",
+      "path": "src/cr/docgen/accept.py",
+      "find": "        if severe_confirmed_keys(after) - severe_confirmed_keys(before):\n            return False\n",
+      "replace": ""
+    }
+  ],
+  "output_tail": "F\n=================================== FAILURES ===================================\n_________________ test_the_real_rules_replay_the_lean_vectors __________________\n\n    def test_the_real_rules_replay_the_lean_vectors() -> None:\n        rows = _rows()\n        pairs = [v for v in rows if v[\"op\"] == \"pair\"]\n        settles = [v for v in rows if v[\"op\"] == \"settle\"]\n        assert len(pairs) > 300 and len(settles) > 100\n        for v in pairs:\n>           _check_pair(v)\n\ntests/test_formal_accept_conformance.py:78: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nv = {'op': 'pair', 'before': [[0, True, 'code', None]], 'after': [[0, True, 'model', 'S4']], 'score_before': [1, 0, 0], ...}\n\n    def _check_pair(v: dict[str, Any]) -> None:\n        before, after = _findings(v[\"before\"]), _findings(v[\"after\"])\n        si, lc = StrictImprovement(), LastClean()\n        assert list(score(before)) == v[\"score_before\"], v\n        assert list(score(after)) == v[\"score_after\"], v\n>       assert si.keep(before, after) is v[\"keep_si\"], v\nE       AssertionError: {'op': 'pair', 'before': [[0, True, 'code', None]], 'after': [[0, True, 'model', 'S4']], 'score_before': [1, 0, 0], ...}\nE       assert True is False\nE        +  where True = keep([Finding(key='k0', blocking=True, source='formal', where=None, quote='', input_fact='', why='synthetic', hint='', severity=None, decided='code', floor=False)], [Finding(key='k0', blocking=True, source='formal', where=None, quote='', input_fact='', why='synthetic', hint='', severity='S4', decided='model', floor=False)])\nE        +    where keep = <cr.docgen.accept.StrictImprovement object at 0x107cbb0b0>.keep\n\ntests/test_formal_accept_conformance.py:60: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_formal_accept_conformance.py::test_the_real_rules_replay_the_lean_vectors\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.04s"
+}

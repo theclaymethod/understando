@@ -1,0 +1,1 @@
+{"status": "green", "witness": "C15 as worded", "note": "the real run_document makes the same decisions as the TLC counterexample: round 1 (turn_limit, no file changed, not kept) is followed by round 2", "rounds": [[1, "turn_limit", false, false], [2, "lost", true, false]], "init": ["m"], "rule": "StrictImprovement"}

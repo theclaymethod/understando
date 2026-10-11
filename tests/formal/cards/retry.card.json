@@ -1,0 +1,4 @@
+{"frog": "retry.stops", "ev": {"impact": 4, "bug_prior": 3, "reach": 4, "proof_cost": 2, "model_cost": 2, "ev": 12.0},
+ "surface": "mini/retry.py::retry", "failure_class": "loop stop rule (call after a final outcome, unbounded retries)",
+ "math": "TLA+ state machine; invariants Bounded, NoCallAfterStop, ResultHonest; liveness Termination under WF",
+ "artifact": "Retry.tla + Retry.cfg; terminal-state vectors retry_vectors.json replayed through retry()"}

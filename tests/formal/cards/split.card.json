@@ -1,0 +1,3 @@
+{"frog": "split.sum", "ev": {"impact": 4, "bug_prior": 3, "reach": 3, "proof_cost": 2, "model_cost": 1, "ev": 18.0},
+ "surface": "mini/split.py::split_evenly", "failure_class": "arithmetic off-by-one in the remainder spread",
+ "math": "bounded statement by decide, then induction once it holds", "artifact": "witness from Fixture.Split.witness; regression test"}

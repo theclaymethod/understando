@@ -1,0 +1,170 @@
+{
+  "status": "red",
+  "violation": {
+    "kind": "invariant",
+    "name": "LostIsFinal"
+  },
+  "trace": [
+    {
+      "n": 1,
+      "action": "<Initial predicate>",
+      "state": {
+        "phase": "review",
+        "B": [
+          "n"
+        ],
+        "C": [
+          "n"
+        ],
+        "D": [
+          "n"
+        ],
+        "log": [
+          {
+            "d": [
+              "n"
+            ],
+            "ev": "init"
+          }
+        ],
+        "n": 0,
+        "rn": 0,
+        "kept": [
+          {
+            "n": 0,
+            "c": [
+              "n"
+            ],
+            "d": [
+              "n"
+            ]
+          }
+        ],
+        "lost": false,
+        "edited": false
+      }
+    },
+    {
+      "n": 2,
+      "action": "<Next line 190, col 12 to line 190, col 96 of module DocLoop>",
+      "state": {
+        "phase": "review",
+        "B": [
+          "n"
+        ],
+        "C": [
+          "n"
+        ],
+        "D": [
+          "n"
+        ],
+        "log": [
+          {
+            "d": [
+              "n"
+            ],
+            "ev": "init"
+          },
+          {
+            "n": 1,
+            "kept": false,
+            "d": [],
+            "ev": "edit",
+            "o": "lost",
+            "ch": true,
+            "stage": "review",
+            "todo": [
+              "n"
+            ]
+          }
+        ],
+        "n": 1,
+        "rn": 0,
+        "kept": [
+          {
+            "n": 0,
+            "c": [
+              "n"
+            ],
+            "d": [
+              "n"
+            ]
+          }
+        ],
+        "lost": true,
+        "edited": true
+      }
+    },
+    {
+      "n": 3,
+      "action": "<ReviewStop line 97, col 15 to line 100, col 65 of module DocLoop>",
+      "state": {
+        "phase": "settle",
+        "B": [
+          "n"
+        ],
+        "C": [
+          "n"
+        ],
+        "D": [
+          "n"
+        ],
+        "log": [
+          {
+            "d": [
+              "n"
+            ],
+            "ev": "init"
+          },
+          {
+            "n": 1,
+            "kept": false,
+            "d": [],
+            "ev": "edit",
+            "o": "lost",
+            "ch": true,
+            "stage": "review",
+            "todo": [
+              "n"
+            ]
+          },
+          {
+            "ev": "stop",
+            "why": "stalled"
+          }
+        ],
+        "n": 1,
+        "rn": 0,
+        "kept": [
+          {
+            "n": 0,
+            "c": [
+              "n"
+            ],
+            "d": [
+              "n"
+            ]
+          }
+        ],
+        "lost": true,
+        "edited": true
+      }
+    }
+  ],
+  "generated": 205,
+  "distinct": 205,
+  "exit": 12,
+  "seconds": 0.68,
+  "spec": "DocLoop.tla",
+  "spec_sha256": "sha256:247600b52c79edd38a590ee45da6916d4d2b696ade6cd5a85568a97f7e22f35b",
+  "cfg": "DocLoop.cfg",
+  "cfg_sha256": "sha256:7cea63313470de6c87512dc56e7eb7fdced9bc19ae3f9b716ee84934b2db7aad",
+  "deadlock_checked": true,
+  "output_tail": "/\\ log = << [d |-> {\"n\"}, ev |-> \"init\"],\n   [ n |-> 1,\n     kept |-> FALSE,\n     d |-> {},\n     ev |-> \"edit\",\n     o |-> \"lost\",\n     ch |-> TRUE,\n     stage |-> \"review\",\n     todo |-> {\"n\"} ] >>\n/\\ n = 1\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"n\"}, d |-> {\"n\"}]>>\n/\\ lost = TRUE\n/\\ edited = TRUE\n\nState 3: <ReviewStop line 97, col 15 to line 100, col 65 of module DocLoop>\n/\\ phase = \"settle\"\n/\\ B = {\"n\"}\n/\\ C = {\"n\"}\n/\\ D = {\"n\"}\n/\\ log = << [d |-> {\"n\"}, ev |-> \"init\"],\n   [ n |-> 1,\n     kept |-> FALSE,\n     d |-> {},\n     ev |-> \"edit\",\n     o |-> \"lost\",\n     ch |-> TRUE,\n     stage |-> \"review\",\n     todo |-> {\"n\"} ],\n   [ev |-> \"stop\", why |-> \"stalled\"] >>\n/\\ n = 1\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"n\"}, d |-> {\"n\"}]>>\n/\\ lost = TRUE\n/\\ edited = TRUE\n\n205 states generated, 205 distinct states found, 158 states left on queue.\nThe depth of the complete state graph search is 5.\nThe average outdegree of the complete state graph is 6 (minimum is 1, the maximum 30 and the 95th percentile is 27).\nFinished in 00s at (2026-10-10 18:20:54)",
+  "control": {
+    "find": "     THEN /\\ lost' = TRUE /\\ phase' = \"floor\"\n          /\\ log' = Append(log, EditEvent(\"review\"",
+    "replace": "     THEN /\\ lost' = TRUE /\\ phase' = \"review\"\n          /\\ log' = Append(log, EditEvent(\"review\"",
+    "pattern": "LostIsFinal",
+    "matched": true
+  }
+}

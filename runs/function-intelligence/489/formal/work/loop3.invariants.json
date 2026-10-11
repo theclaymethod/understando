@@ -1,0 +1,26 @@
+[
+ {
+  "id": "L5",
+  "sentence": "finish is refused while a code check reports a blocking finding, at most max_finish_refusals (3) times; after that it is accepted and finished_with_blocking records it.",
+  "checked_by": [
+   "RefusalsBounded",
+   "RefusedOnlyWhileBlocking",
+   "BlockingAcceptedOnlyAtBudget",
+   "WithBlockingHonest"
+  ],
+  "questions": [
+   {
+    "ask": "What should happen if the only blocking findings are ones no writable file holds?",
+    "code_today": "finish is still refused up to 3 times, spending turns on a finding the editor cannot fix.",
+    "where": "src/cr/docgen/session.py:255-260",
+    "looks": "unclear: ask"
+   },
+   {
+    "ask": "Should a confirmed model finding also block finish?",
+    "code_today": "No: finish reads only the code checks.",
+    "where": "src/cr/docgen/session.py:256",
+    "looks": "intended (reflection decides after)"
+   }
+  ]
+ }
+]

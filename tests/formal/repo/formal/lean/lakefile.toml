@@ -1,0 +1,13 @@
+name = "fixture"
+defaultTargets = ["Fixture", "vectors", "split_witness"]
+
+[[lean_lib]]
+name = "Fixture"
+
+[[lean_exe]]
+name = "vectors"
+root = "Vectors"
+
+[[lean_exe]]
+name = "split_witness"
+root = "SplitWitness"
