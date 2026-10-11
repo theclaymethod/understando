@@ -8,7 +8,9 @@
 
 Checks: schema drift and stale stored verdicts; a trust map behind the PR head; a proof or a
 model older than the code it covers (the drift gate); the Artifacture runtime path; the learn
-sandbox (the learn app is paused); missing toolchains; routed skills (missing, or newer than the
+sandbox (the learn app is paused); missing toolchains (java from $JAVA_HOME or Homebrew's openjdk
+without a PATH edit); run output that a git repo tracks, and a run folder inside a git repo;
+the visual-explainer runtime (ve_runtime in ~/.understando/config.toml) and its parts; routed skills (missing, or newer than the
 adapted copy); a deleted @cc contract comment; stale imported evidence; the skill links; pasted
 code in the explainer input; a code anchor that resolves to no place, or to more than one, at the
 map head, the ready branch tip or --pr-head (scripts/coderef.py).
@@ -157,6 +159,30 @@ def vector_findings(repo: Path, ref: str, run_tlc: bool) -> list[dict]:
     return out
 
 
+RUN_MARKERS = ("trust-map.json", "journal.jsonl", "discover.json", "refs.resolved.json", "ve-report.json",
+               "explain.stamp.json", "understando.toml", "decisions.tsv")
+
+
+def tracked_run_output(repo: Path, own: bool = False) -> list[dict]:
+    """Run output that a git repo tracks: understando's own runs/ folder, or a run file (by name) in
+    any repo. The fixture of understando's tests is not run output."""
+    out = subprocess.run(["git", "-C", str(repo), "ls-files", "-z"], capture_output=True, text=True)
+    if out.returncode != 0:
+        return []
+    files = [f for f in out.stdout.split("\0") if f]
+    hits = [f for f in files if f.rsplit("/", 1)[-1] in RUN_MARKERS or (own and f.startswith("runs/"))]
+    if own:
+        hits = [f for f in hits if not f.startswith(("tests/", "schema/"))]
+    if not hits:
+        return []
+    where = "understando's own repo" if own else f"the reviewed repo {repo}"
+    fix = ("Untrack it with `git rm -r --cached runs/`, keep runs/ in .gitignore, and keep run state under ~/.understando/runs."
+           if own else "Untrack it with `git rm --cached` on a branch the owner reviews; understando keeps run state under ~/.understando/runs.")
+    return [{"id": "run-output-tracked" + ("-own" if own else ""), "severity": "route",
+             "summary": f"{where} tracks {len(hits)} run-output files: " + ", ".join(hits[:3]) + (" ..." if len(hits) > 3 else ""),
+             "fix": fix, "verb": "setup"}]
+
+
 def findings(c: context.Ctx, explicit_head: str | None, formal: bool = False) -> tuple[list[dict], dict | None]:
     out: list[dict] = []
 
@@ -199,13 +225,21 @@ def findings(c: context.Ctx, explicit_head: str | None, formal: bool = False) ->
                 if path and not Path(path).is_dir():
                     add("runtime-path", "route", f"The chapters import a runtime that is not on this machine: {path}.",
                         "Build the explainer again with the current runtime.", "explain")
-    ve = os.environ.get("UNDERSTANDO_VE_RUNTIME")
-    if ve and not (Path(ve) / "visual-explainer-mdx" / "components.tsx").is_file():
-        add("runtime-missing", "mention", f"UNDERSTANDO_VE_RUNTIME names {ve}, which holds no visual-explainer-mdx/components.tsx.",
-            "Point UNDERSTANDO_VE_RUNTIME at an Artifacture checkout.")
-    elif not ve and not skill_found("visual-explainer"):
-        add("runtime-missing", "mention", "No Artifacture runtime: UNDERSTANDO_VE_RUNTIME is not set, and the visual-explainer skill is absent.",
-            "Set UNDERSTANDO_VE_RUNTIME, or run setup.", "setup")
+    import config
+    ve = config.ve_runtime()
+    if ve and config.ve_missing(ve):
+        add("runtime-missing", "mention", f"The visual-explainer runtime {ve} lacks {', '.join(config.ve_missing(ve))}.",
+            "Point ve_runtime in ~/.understando/config.toml at a complete Artifacture checkout (run `npm ci` in it).", "setup")
+    elif not ve:
+        add("runtime-missing", "mention", f"No visual-explainer runtime: ve_runtime is not set in {config.global_path()}.",
+            "Run setup; it asks once.", "setup")
+    for f in tracked_run_output(tm.ROOT, own=True) + (tracked_run_output(c.repo) if c.repo else []):
+        out.append(f)
+    if c.run:
+        refusal = context.refuse_run_write(c.run, c.repo)
+        if refusal:
+            add("run-in-git", "route", refusal.removeprefix("refuse: ").split(". ")[0] + ", so no verb writes to it.",
+                f"Copy the run folder under {config.runs_root()}, outside every git repo, and use that copy.", "setup")
     learn_bin = tm.ROOT / "learn" / "target" / "release" / "understando-learn"
     if not learn_bin.is_file():
         add("learn-not-built", "mention", "The learn app is paused, and its binary is not built.", "Run learn/e2e.sh to build and test it.")

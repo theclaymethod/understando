@@ -45,6 +45,7 @@ While the mode is on, record each user prompt: `understando note prompt "<the pr
 | `close` | Get ready | Close each Asserted or Gap claim, riskiest first: a check that probe proves red, evidence, a new wording, or a waiver. | the user only | [commands/close.md](commands/close.md) |
 | `trim` | Get ready | Find excess code, and delete unit tests that an e2e test already covers. | the user only | [commands/trim.md](commands/trim.md) |
 | `explain` | Share | Build the explainer and the PR-body section. | you or the user | [commands/explain.md](commands/explain.md) |
+| `publish` | Share | Share the review on the orphan branch understando/<pr>-review of the reviewed repo, after a clear yes. --feedback: a reviewer shares their confusion rows. | the user only | [commands/publish.md](commands/publish.md) |
 | `learn` | Share | Paused. The learn app (chapters, exercises, a sandboxed tutor) stays merged and tested, but gets no new features. | the user only | [commands/learn.md](commands/learn.md) |
 | `review` | Run all | A full PR review from the PR number. It finds the run, the ready worktree and the CI profile, then asks one question. The steps chain into four stops: map + probe, close (one claim per question), trim, and ready + explain. | the user only | [commands/review.md](commands/review.md) |
 | `ready` | Run all | Run map, probe, close, trim and explain, then print the four-gate checklist. | the user only. With `--report`: you or the user | [commands/ready.md](commands/ready.md) |

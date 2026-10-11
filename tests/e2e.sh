@@ -17,6 +17,11 @@ WORK="$(mktemp -d "${TMPDIR:-/tmp}/understando-e2e.XXXXXX")"
 REPO="$WORK/repo"
 MAP="$WORK/trust-map.json"
 export E2E_TELEMETRY_DISABLED=1 DO_NOT_TRACK=1
+# The visual-explainer runtime: ve_runtime in ~/.understando/config.toml (UNDERSTANDO_VE_RUNTIME overrides it).
+# Read it before the fake homes below; explain.py and the later steps get it through the variable.
+UNDERSTANDO_VE_RUNTIME="${UNDERSTANDO_VE_RUNTIME:-$(python3 "$S/config.py" ve-runtime || true)}"
+[ -n "$UNDERSTANDO_VE_RUNTIME" ] && export UNDERSTANDO_VE_RUNTIME || unset UNDERSTANDO_VE_RUNTIME
+JAVA_FOUND="$(python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import ctx; print(ctx.java_bin() or "")' "$S")"
 # The mode state of the user's own session must not leak into the fixture run.
 export UNDERSTANDO_HOME="$WORK/uhome0"
 cleanup() { if [ "${KEEP:-0}" = 1 ]; then echo "kept $WORK"; else rm -rf "$WORK"; fi; }
@@ -113,7 +118,7 @@ for case in "leak:the ID C01 is visible" "term:does not define: ZQX" "mode:has n
 done
 echo "explain.py refuses a visible ID, an undefined term and a one-mode diagram"
 
-# UNDERSTANDO_VE_RUNTIME pins an Artifacture checkout. explain.py reads it too.
+# The pinned runtime (above); without one, the repo behind the visual-explainer skill link.
 if [ -n "${UNDERSTANDO_VE_RUNTIME:-}" ]; then
   VE="$UNDERSTANDO_VE_RUNTIME"
 else
@@ -314,7 +319,10 @@ WORK="$WORK" REPO="$REPO" MAP="$MAP" HEAD="$HEAD" FIX="$FIX" bash "$ROOT/tests/r
 step "mode: the CLI verbs, the gates and the ledger (tests/mode-e2e.sh)"
 WORK="$WORK" REPO="$REPO" MAP="$MAP" HEAD="$HEAD" FIX="$FIX" bash "$ROOT/tests/mode-e2e.sh"
 
-if command -v lake >/dev/null && command -v java >/dev/null && [ -f "${UNDERSTANDO_TLA2TOOLS:-$HOME/.understando/tools/tla2tools.jar}" ]; then
+step "store: the runs root, the run-state guard, publish, the review cache, doctor and java (tests/store-e2e.sh)"
+WORK="$WORK" REPO="$REPO" MAP="$MAP" HEAD="$HEAD" FIX="$FIX" bash "$ROOT/tests/store-e2e.sh"
+
+if command -v lake >/dev/null && [ -n "$JAVA_FOUND" ] && [ -f "${UNDERSTANDO_TLA2TOOLS:-$HOME/.understando/tools/tla2tools.jar}" ]; then
   step "formal: the formalize sub-skills (tests/formal/e2e.sh)"
   bash "$ROOT/tests/formal/e2e.sh" | tail -5
 else

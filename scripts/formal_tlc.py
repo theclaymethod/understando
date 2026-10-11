@@ -27,7 +27,7 @@ control  copies the spec directory to a temp dir, applies one anchor edit to the
 Deadlock checking is on by default. Give a spec with terminal states an explicit stutter step
 (`Done == phase = "done" /\\ UNCHANGED vars`) rather than turn the check off.
 
-Environment: UNDERSTANDO_JAVA (default /opt/homebrew/opt/openjdk/bin/java, else java on PATH) and
+Environment: UNDERSTANDO_JAVA (default $JAVA_HOME/bin/java, then /opt/homebrew/opt/openjdk/bin/java, else java on PATH) and
 UNDERSTANDO_TLA2TOOLS (default ~/.understando/tools/tla2tools.jar). Standard library only.
 """
 
@@ -52,15 +52,14 @@ TAIL = 40
 
 
 def java() -> str:
-    env = os.environ.get("UNDERSTANDO_JAVA")
-    if env:
-        return env
-    brew = "/opt/homebrew/opt/openjdk/bin/java"
-    return brew if Path(brew).exists() else "java"
+    """The java that ctx.java_bin() finds ($UNDERSTANDO_JAVA, $JAVA_HOME, Homebrew's openjdk, PATH)."""
+    import ctx
+    return ctx.java_bin() or os.environ.get("UNDERSTANDO_JAVA") or "java"
 
 
 def jar() -> str:
-    return os.environ.get("UNDERSTANDO_TLA2TOOLS", str(Path.home() / ".understando/tools/tla2tools.jar"))
+    import ctx
+    return ctx.tla2tools_jar() or os.environ.get("UNDERSTANDO_TLA2TOOLS") or str(Path.home() / ".understando/tools/tla2tools.jar")
 
 
 def sha256(path: Path) -> str:

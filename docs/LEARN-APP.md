@@ -5,7 +5,7 @@
 The learn app helps a developer learn a PR and judge how well the author verified the PR. It pairs the pre-generated content of one run folder with a live tutor.
 
 - `explain` still makes `explainer.html` and the PR-body section.
-- `learn` starts one local binary for one run folder (`runs/<repo>/<pr>/`) and opens the browser.
+- `learn` starts one local binary for one run folder (`~/.understando/runs/<repo>/<pr>/`) and opens the browser.
 
 ## Two tiers
 
