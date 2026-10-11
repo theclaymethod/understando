@@ -199,7 +199,7 @@
   "The fixture is small, so each level is short."
  ],
  "concerns": [
-  "V02 cannot fail."
+  "The unit test that expects an int from a withdrawal cannot fail."
  ],
  "verifications": [
   "The e2e test runs each step on this fixture."

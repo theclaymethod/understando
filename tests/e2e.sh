@@ -125,7 +125,7 @@ python3 - "$MAP" "$WORK/explain" <<'PY'
 import json, pathlib, re, sys
 data = json.load(open(sys.argv[1]))
 out = pathlib.Path(sys.argv[2])
-names = ["01-story", "02-loop", "03-change", "04-promises", "05-verifiers", "06-unclaimed", "07-tradeoffs", "08-exercises"]
+names = ["01-story", "02-loop", "03-change", "04-promises", "05-verifiers", "06-unclaimed", "07-tradeoffs", "08-exercises", "09-glossary"]
 entry = (out / "explainer.mdx").read_text()
 texts = {}
 for n in names:
@@ -207,13 +207,66 @@ const codeLike = /`|\b[a-z][a-z0-9]*_[a-z0-9_]+\b|\b[A-Z][a-z0-9]+[A-Z][A-Za-z0-
     if ((await page.getAttribute('[data-ve-diagram-modes]', 'data-ve-mode')) !== 'detailed') fail('the page did not remember the Detailed mode');
     console.log(`${count} diagrams render a Simple and a Detailed mode, and the page remembers the choice`);
 
-    // The glossary opens from the story and holds each term; a promise chip opens its claims.
+    // The glossary is a level of its own, in the rail; a term in the text shows its definition.
     const terms = await page.$$eval('#glossary dt', (t) => t.map((x) => x.textContent));
     for (const want of ['Overdraft', 'Balance', 'Proven', 'PR']) if (!terms.includes(want)) fail(`the glossary has no ${want}: ${terms}`);
-    if (await page.$eval('#glossary', (d) => d.open)) fail('the glossary must start closed');
-    await page.click('a[href="#claim-c02"]');
-    await page.waitForFunction(() => document.getElementById('claim-c02').open && document.getElementById('claim-c02').closest('details:not(#claim-c02)').open);
-    console.log(`the glossary holds ${terms.length} terms; a link into a closed claim opens it`);
+    if (!(await page.$('.ve-chapter-list a[href="#glossary-section"]'))) fail('the rail has no Glossary entry');
+    const term = page.locator('#story .ve-term').first();
+    await term.focus();
+    if (!(await term.locator('[role="tooltip"]').isVisible())) fail('a focused term shows no definition');
+    console.log(`the glossary holds ${terms.length} terms and is in the rail; a focused term shows its definition`);
+
+    // The merge verdict: first in the story, inside the first screen, each item a link to a promise.
+    const verdict = await page.evaluate(() => {
+      const line = document.querySelector('[data-merge-verdict]');
+      const first = document.querySelector('#story .ve-section-body > *');
+      return line && { form: line.dataset.mergeVerdict, top: line.getBoundingClientRect().top, first: first.contains(line),
+        links: [...document.querySelectorAll('[data-merge-items] a, [data-merge-verdict] ~ p a')].map((a) => a.getAttribute('href')) };
+    });
+    const promiseIds = data.promises.map((p) => '#promise-' + p.id.toLowerCase());
+    if (!verdict || !verdict.first || verdict.top > 900) fail(`the merge verdict is not first in the first screen: ${JSON.stringify(verdict)}`);
+    if (verdict.form !== 'ready' && (!verdict.links.length || verdict.links.some((h) => !promiseIds.includes(h) && h !== '#story-ready' && !h.startsWith('#claim-')))) fail(`a merge item does not link to a promise: ${verdict.links}`);
+    console.log(`the merge verdict (${verdict.form}) is first in the first screen and links to ${verdict.links.length} promises`);
+
+    // Reader copy: no "red" or "green" outside code, and no ID in the prose of levels 4, 5 and 7.
+    const prose = await page.evaluate(() => {
+      const skip = 'pre, code, [data-ve-code-block], [data-ve-data-table], .ve-terminal, details:not([open]) > .ve-disclosure-body, .ve-disclosure-meta, [role="tooltip"]';
+      const text = (root) => { const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); const out = [];
+        for (let n = w.nextNode(); n; n = w.nextNode()) if (!n.parentElement.closest(skip)) out.push(n.textContent); return out.join(' '); };
+      return { all: text(document.querySelector('main')), levels: ['promises', 'verifiers', 'tradeoffs'].map((id) => [id, text(document.getElementById(id))]) };
+    });
+    const colour = prose.all.match(/\b(red|green)\b/i);
+    if (colour) fail(`reader copy says "${colour[0]}": ${prose.all.slice(Math.max(0, colour.index - 60), colour.index + 40)}`);
+    for (const [id, text] of prose.levels) {
+      const leak = ids.find((x) => new RegExp(`(^|[^\\w-])${x}([^\\w-]|$)`).test(text));
+      if (leak) fail(`level ${id} shows the ID ${leak} in its prose`);
+    }
+    console.log('reader copy has no red or green, and levels 4, 5 and 7 show no ID in their prose');
+
+    // Keyboard: the first tab stop is the skip link, and it moves focus to the content.
+    await page.goto('file://' + path.resolve(html), { waitUntil: 'load' });
+    await page.waitForSelector('main.ve-shell');
+    await page.keyboard.press('Tab');
+    if ((await page.evaluate(() => document.activeElement?.textContent)) !== 'Skip to content') fail('the first tab stop is not the skip link');
+    console.log('the first tab stop is the skip link');
+
+    // No diagram is wider than its column.
+    const wide = await page.$$eval('[data-ve-variant="desktop"]', (vs) => vs.filter((v) => v.offsetParent).map((v) => [v.scrollWidth, v.clientWidth]).filter(([s, c]) => s > c + 1));
+    if (wide.length) fail(`a diagram overflows its column: ${JSON.stringify(wide)}`);
+    console.log('no diagram overflows its column');
+
+    // A deep link into a closed claim opens it and its promise, and puts its headline in view.
+    await page.goto('file://' + path.resolve(html) + '#claim-c02', { waitUntil: 'load' });
+    await page.waitForFunction(() => { const c = document.getElementById('claim-c02'); return c && c.open && c.parentElement.closest('details').open; });
+    await page.waitForTimeout(400);
+    const top = await page.$eval('#claim-c02', (c) => c.getBoundingClientRect().top);
+    if (top < 0 || top > 200) fail(`the deep link to claim C02 puts its headline at ${top}px`);
+    // Opening a block writes its link; a reload keeps it open.
+    await page.click('#claim-c01 > summary .ve-disclosure-label');
+    await page.waitForFunction(() => location.hash === '#claim-c01');
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForFunction(() => document.getElementById('claim-c01')?.open);
+    console.log(`a deep link opens claim C02 with its headline at ${Math.round(top)}px; an open block writes its link and stays open on reload`);
 
     // Unclaimed changes: the file that the fixture adds without a claim.
     const unclaimed = await page.$eval('#unclaimed', (s) => s.innerText);
