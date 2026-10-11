@@ -437,8 +437,7 @@
     "code": [
      {
       "path": "projects/clinical-reasoning/src/cr/finished_cr.py",
-      "start": 116,
-      "end": 139
+      "symbol": "load_finished_cr"
      }
     ]
    },
@@ -448,8 +447,12 @@
     "code": [
      {
       "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
-      "start": 139,
-      "end": 143
+      "symbol": "run_document",
+      "match": "proj = await adapter.pro",
+      "context": [
+       0,
+       4
+      ]
      }
     ]
    },
@@ -459,8 +462,7 @@
     "code": [
      {
       "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
-      "start": 161,
-      "end": 180
+      "symbol": "run_document.reflect"
      }
     ]
    },
@@ -470,8 +472,12 @@
     "code": [
      {
       "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
-      "start": 227,
-      "end": 242
+      "symbol": "run_document",
+      "match": "for number in range(1, bounds.max_edit_r",
+      "context": [
+       0,
+       15
+      ]
      }
     ]
    },
@@ -481,8 +487,12 @@
     "code": [
      {
       "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
-      "start": 210,
-      "end": 219
+      "symbol": "run_document.edit",
+      "match": "if not changed and not a",
+      "context": [
+       0,
+       9
+      ]
      }
     ]
    },
@@ -492,13 +502,16 @@
     "code": [
      {
       "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
-      "start": 243,
-      "end": 261
+      "symbol": "run_document",
+      "match": "restored_to: int | None",
+      "context": [
+       0,
+       18
+      ]
      },
      {
       "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
-      "start": 79,
-      "end": 98
+      "symbol": "_floor"
      }
     ]
    }

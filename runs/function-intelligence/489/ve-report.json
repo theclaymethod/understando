@@ -1,5 +1,5 @@
 {
-  "file": "/Users/clayton/dev/understando/runs/function-intelligence/489/explainer.html",
+  "file": "/Users/clayton/dev/understando-refs/runs/function-intelligence/489/explainer.html",
   "profile": "page",
   "mechanics_profile": "page",
   "review_profile": "page",
@@ -1390,16 +1390,16 @@
     }
   ],
   "screenshots": [
-    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/1440x900-light.png",
-    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/1440x900-light-full.png",
-    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/1440x900-dark.png",
-    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/1440x900-dark-full.png",
-    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/390x844-light.png",
-    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/390x844-light-full.png",
-    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/390x844-dark.png",
-    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/390x844-dark-full.png",
-    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/1440x900-light-reduced-motion.png",
-    "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/1440x900-light-reduced-motion-full.png"
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/1440x900-light.png",
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/1440x900-light-full.png",
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/1440x900-dark.png",
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/1440x900-dark-full.png",
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/390x844-light.png",
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/390x844-light-full.png",
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/390x844-dark.png",
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/390x844-dark-full.png",
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/1440x900-light-reduced-motion.png",
+    "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/1440x900-light-reduced-motion-full.png"
   ],
   "llm_passes_required": [
     "artifact-review:page"
@@ -1418,81 +1418,81 @@
   ],
   "review_contract": {
     "schema_version": 2,
-    "artifact_sha256": "fb83d46ce3e0e7945264083845fa471e8963a5d0a3eab7d5b0b175fcb1783704",
+    "artifact_sha256": "028dc2b81c0987cc9b9df9a881f32f8f67d67ae5e36ac95e5c4d6f00cd1ebb9e",
     "mechanics_profile": "page",
     "review_profile": "page",
     "profile": "page",
     "preset": "custom",
     "truth_sha256": null,
-    "inventory_sha256": "460e90703fa0ac840f3b094b03544e38eaf228cddf68085322aab9f7b8776868",
+    "inventory_sha256": "57f28d2f53a2ae14a0aee16fa87984f70aa56980301ffd99ecfa2055a4f75434",
     "inventory_provenance": "browser-rendered",
     "mechanics_sha256": "f7439262ec3274855e4ade4c3234e2953dada7b391f14fa07c861a37ad85c2fa",
-    "capture_root": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew",
-    "artifact_snapshot": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/artifact.html",
+    "capture_root": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko",
+    "artifact_snapshot": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/artifact.html",
     "truth_snapshot": null,
     "evidence": [
       {
         "kind": "screenshot",
-        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/1440x900-light.png",
-        "sha256": "99db2a93b06fa1bf617f5c495e02dcf6c0b76961108491217e2cf4fed8699d35"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/1440x900-light.png",
+        "sha256": "2222003be4c5b917192ed813b7033ddf9ea80a653e13b11b1c6cb64613afd4fa"
       },
       {
         "kind": "screenshot",
-        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/1440x900-light-full.png",
-        "sha256": "8bab6fd9d365f2ba08499693ee02ef9faff5cfb80c88bd648066667e392d84d7"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/1440x900-light-full.png",
+        "sha256": "7121d4082ea42a064a3b077b8a98d271da226b204a49595faa4d53f76b418b4f"
       },
       {
         "kind": "screenshot",
-        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/1440x900-dark.png",
-        "sha256": "99db2a93b06fa1bf617f5c495e02dcf6c0b76961108491217e2cf4fed8699d35"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/1440x900-dark.png",
+        "sha256": "16b57ef3ad35e0f8081f5b804c311a47d41b2b7e86c36d9f19e3864e66d0478e"
       },
       {
         "kind": "screenshot",
-        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/1440x900-dark-full.png",
-        "sha256": "0124713968660a9e49544db2337b781d0c6a1824358c3cec59ddf78f8a53002f"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/1440x900-dark-full.png",
+        "sha256": "7392c862a2ad32d39519dae1b6089b681ac76ac5f27e5599115c83d3d4716523"
       },
       {
         "kind": "screenshot",
-        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/390x844-light.png",
-        "sha256": "a5afbcd73f74e5ae096cb4f42b62cec8ed5572ad8d88c31cc121ba43c046186a"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/390x844-light.png",
+        "sha256": "765feba5f9fdf569d1f83a13c8d4559567b7b56fd52c8d138853403251a6f027"
       },
       {
         "kind": "screenshot",
-        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/390x844-light-full.png",
-        "sha256": "7f8d609a0410b64780f0e1569ce713f4713d04b1ad57048583d3cdce644d56cb"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/390x844-light-full.png",
+        "sha256": "b4dc4e35adebab987fabd441f47eea6f7c0252d90a947a3668c2acf17069f880"
       },
       {
         "kind": "screenshot",
-        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/390x844-dark.png",
-        "sha256": "abf67773165c42adbff9c3232d2f4c750f9545a78c324efb3060e31654ffd89d"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/390x844-dark.png",
+        "sha256": "0124f6b971869a29c045bad1f79c202b1a560a934bf67cd530a230058f248d81"
       },
       {
         "kind": "screenshot",
-        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/390x844-dark-full.png",
-        "sha256": "52a983c2c721e1686473deb715dabb24b5c18dd3674a0bf2c2dd355f3495fed5"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/390x844-dark-full.png",
+        "sha256": "c95925d5018550f089f42805564fa26cfc385c64abb3789746a68864d28519ff"
       },
       {
         "kind": "screenshot",
-        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/1440x900-light-reduced-motion.png",
-        "sha256": "f51be4c95f6d3d0c07b6b9944a1c540a58a4898f6e20266d29e788592b6b811a"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/1440x900-light-reduced-motion.png",
+        "sha256": "0ed401e6fb4c04f4e3d174c4fefbc43845ea8a5f7ba65c527dd53c690c7aead2"
       },
       {
         "kind": "screenshot",
-        "path": "/private/tmp/claude-501/-Users-clayton-dev-function-intelligence--claude-worktrees-relaxed-tereshkova-4d2431/f1aef78c-1900-4339-a848-d58b215d0754/scratchpad/ergo2/vescreens/ve-capture-Hy9Qew/1440x900-light-reduced-motion-full.png",
-        "sha256": "d9ccbf59068f6f24b2f1ea67f9860900ae25006ca173c258c3f39feca42f4478"
+        "path": "/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/ve-capture-78mdko/1440x900-light-reduced-motion-full.png",
+        "sha256": "e083fb1452225831df8c7202be6597be669ca48aecc5c280a8cd2141462c2bac"
       }
     ],
     "evidence_sha256": [
-      "99db2a93b06fa1bf617f5c495e02dcf6c0b76961108491217e2cf4fed8699d35",
-      "8bab6fd9d365f2ba08499693ee02ef9faff5cfb80c88bd648066667e392d84d7",
-      "99db2a93b06fa1bf617f5c495e02dcf6c0b76961108491217e2cf4fed8699d35",
-      "0124713968660a9e49544db2337b781d0c6a1824358c3cec59ddf78f8a53002f",
-      "a5afbcd73f74e5ae096cb4f42b62cec8ed5572ad8d88c31cc121ba43c046186a",
-      "7f8d609a0410b64780f0e1569ce713f4713d04b1ad57048583d3cdce644d56cb",
-      "abf67773165c42adbff9c3232d2f4c750f9545a78c324efb3060e31654ffd89d",
-      "52a983c2c721e1686473deb715dabb24b5c18dd3674a0bf2c2dd355f3495fed5",
-      "f51be4c95f6d3d0c07b6b9944a1c540a58a4898f6e20266d29e788592b6b811a",
-      "d9ccbf59068f6f24b2f1ea67f9860900ae25006ca173c258c3f39feca42f4478"
+      "2222003be4c5b917192ed813b7033ddf9ea80a653e13b11b1c6cb64613afd4fa",
+      "7121d4082ea42a064a3b077b8a98d271da226b204a49595faa4d53f76b418b4f",
+      "16b57ef3ad35e0f8081f5b804c311a47d41b2b7e86c36d9f19e3864e66d0478e",
+      "7392c862a2ad32d39519dae1b6089b681ac76ac5f27e5599115c83d3d4716523",
+      "765feba5f9fdf569d1f83a13c8d4559567b7b56fd52c8d138853403251a6f027",
+      "b4dc4e35adebab987fabd441f47eea6f7c0252d90a947a3668c2acf17069f880",
+      "0124f6b971869a29c045bad1f79c202b1a560a934bf67cd530a230058f248d81",
+      "c95925d5018550f089f42805564fa26cfc385c64abb3789746a68864d28519ff",
+      "0ed401e6fb4c04f4e3d174c4fefbc43845ea8a5f7ba65c527dd53c690c7aead2",
+      "e083fb1452225831df8c7202be6597be669ca48aecc5c280a8cd2141462c2bac"
     ],
     "required_passes": [
       "artifact-review:page"
@@ -1854,7 +1854,7 @@
         },
         {
           "role": "li",
-          "text": "The harnessHarness: the new shared code that runs one loop for all four documents. loads the finished CR, and it refuses a CR that fails the CR-33CR-33: the set of checks that a CR must pass before a document can use it. checks. Promise: Checked input, separate lanesShow the code for this stepprojects/clinical-reasoning/src/cr/finished_cr.py:116def load_finished_cr( path: str | Path | None, *, member: str, personas_dir: str | Path | None, command: str ) -> FinishedCR: \"\"\"Read the CR at ``path`` for ``member`` and run F1 to F4 on it, against the member record in ``personas_dir`` (``None``: the configured one, ``CR_PERSONAS_DIR``). Raises :class:`CrRefused`: ``missing`` when there is no file (``command`` names the refusing command; no pipeline scans to fill the gap), ``record`` when the personas directory holds no record for ``member``, else the check that failed. Raises ``PersonasDirNotConfigured`` when no personas directory is given or configured.\"\"\" if not path or not Path(path).is_file(): message = _missing_cr_message(command, member, str(path) if path else None) raise CrRefused(\"missing\", [message]) try: ledger, packet = load_checkpoint(Path(path)) except ValueError as exc: # a CheckpointCodecError, or JSON that is not one raise CrRefused(\"codec\", [f\"the CR at {path} does not decode: {exc}\"]) from exc _check_member(ledger, member) # before reading another member's record personas = resolve_personas_dir(None if personas_dir is None else str(personas_dir)) try: record = load_member(member, personas) except FileNotFoundError as exc: raise CrRefused(\"record\", [f\"no member record for {member} in {personas}\"]) from exc check_finished(ledger, packet, record, member=member) return FinishedCR(ledger, packet, record, Path(path))"
+          "text": "The harnessHarness: the new shared code that runs one loop for all four documents. loads the finished CR, and it refuses a CR that fails the CR-33CR-33: the set of checks that a CR must pass before a document can use it. checks. Promise: Checked input, separate lanesShow the code for this stepprojects/clinical-reasoning/src/cr/finished_cr.py:116-139def load_finished_cr( path: str | Path | None, *, member: str, personas_dir: str | Path | None, command: str ) -> FinishedCR: \"\"\"Read the CR at ``path`` for ``member`` and run F1 to F4 on it, against the member record in ``personas_dir`` (``None``: the configured one, ``CR_PERSONAS_DIR``). Raises :class:`CrRefused`: ``missing`` when there is no file (``command`` names the refusing command; no pipeline scans to fill the gap), ``record`` when the personas directory holds no record for ``member``, else the check that failed. Raises ``PersonasDirNotConfigured`` when no personas directory is given or configured.\"\"\" if not path or not Path(path).is_file(): message = _missing_cr_message(command, member, str(path) if path else None) raise CrRefused(\"missing\", [message]) try: ledger, packet = load_checkpoint(Path(path)) except ValueError as exc: # a CheckpointCodecError, or JSON that is not one raise CrRefused(\"codec\", [f\"the CR at {path} does not decode: {exc}\"]) from exc _check_member(ledger, member) # before reading another member's record personas = resolve_personas_dir(None if personas_dir is None else str(personas_dir)) try: record = load_member(member, personas) except FileNotFoundError as exc: raise CrRefused(\"record\", [f\"no member record for {member} in {personas}\"]) from exc check_finished(ledger, packet, record, member=member) return FinishedCR(ledger, packet, record, Path(path))Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -1866,11 +1866,15 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/finished_cr.py:116"
+          "text": "projects/clinical-reasoning/src/cr/finished_cr.py:116-139"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "li",
-          "text": "The generator of the document kindKind: the type of document. The four kinds are the note, the UAP, the FMM and the 4H. writes the first draftDraft: the files of one document at one point in the run.. Each kind uses only its own code. Promise: Checked input, separate lanesShow the code for this stepprojects/clinical-reasoning/src/cr/docgen/loop.py:139 proj = await adapter.project(cr) ws = Workspace(adapter.seeds(cr, proj), adapter.writable(proj)) d = Draft(cr, proj, ws) # A content hash of the inputs, never member data. cache_key = f\"cr-docgen:{adapter.kind}:{content_hash(ws.snapshot(), n=16)}\""
+          "text": "The generator of the document kindKind: the type of document. The four kinds are the note, the UAP, the FMM and the 4H. writes the first draftDraft: the files of one document at one point in the run.. Each kind uses only its own code. Promise: Checked input, separate lanesShow the code for this stepprojects/clinical-reasoning/src/cr/docgen/loop.py:139-143 proj = await adapter.project(cr) ws = Workspace(adapter.seeds(cr, proj), adapter.writable(proj)) d = Draft(cr, proj, ws) # A content hash of the inputs, never member data. cache_key = f\"cr-docgen:{adapter.kind}:{content_hash(ws.snapshot(), n=16)}\"Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -1882,11 +1886,15 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:139"
+          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:139-143"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "li",
-          "text": "The code checks, and the JudgesJudge: a model that grades a document against its cartridges. of the chosen reflection modeReflection mode: how the loop checks each draft. none: the code checks only. cr: the code checks and CR's own Judges. judiciary: the judiciary Judges, for development only., report findingsFinding: a problem that a check or a Judge reports in a draft. A blocking finding stops the release until a repair removes it.. A gate sends the editorEditor: the model that changes the draft to repair findings. only the findings that it can repair. Promise: No gaming the JudgeShow the code for this stepprojects/clinical-reasoning/src/cr/docgen/loop.py:161 async def reflect(previous: Sequence[Finding], *, audit: bool = False) -> Reflection: \"\"\"The code checks and the reflectors on the draft; with ``audit``, the release reflectors instead, each blocking finding they report a floor finding.\"\"\" findings = list(checks()) not_evaluated: list[str] = [] records: list[dict[str, object]] = [] meter = RoleMeter() by = release if audit else reflectors if by: graded = artifact() for reflector in by: out = await reflector.reflect(d, graded, previous) findings += [ replace(f, floor=True) if audit and f.blocking else f for f in out.findings ] not_evaluated += out.not_evaluated records += out.records meter.absorb(out.meter) roles.setdefault(\"release\" if audit else \"reflection\", RoleMeter()).absorb(meter) return Reflection(tuple(findings), tuple(not_evaluated), meter, tuple(records))"
+          "text": "The code checks, and the JudgesJudge: a model that grades a document against its cartridges. of the chosen reflection modeReflection mode: how the loop checks each draft. none: the code checks only. cr: the code checks and CR's own Judges. judiciary: the judiciary Judges, for development only., report findingsFinding: a problem that a check or a Judge reports in a draft. A blocking finding stops the release until a repair removes it.. A gate sends the editorEditor: the model that changes the draft to repair findings. only the findings that it can repair. Promise: No gaming the JudgeShow the code for this stepprojects/clinical-reasoning/src/cr/docgen/loop.py:161-180 async def reflect(previous: Sequence[Finding], *, audit: bool = False) -> Reflection: \"\"\"The code checks and the reflectors on the draft; with ``audit``, the release reflectors instead, each blocking finding they report a floor finding.\"\"\" findings = list(checks()) not_evaluated: list[str] = [] records: list[dict[str, object]] = [] meter = RoleMeter() by = release if audit else reflectors if by: graded = artifact() for reflector in by: out = await reflector.reflect(d, graded, previous) findings += [ replace(f, floor=True) if audit and f.blocking else f for f in out.findings ] not_evaluated += out.not_evaluated records += out.records meter.absorb(out.meter) roles.setdefault(\"release\" if audit else \"reflection\", RoleMeter()).absorb(meter) return Reflection(tuple(findings), tuple(not_evaluated), meter, tuple(records))Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -1898,11 +1906,15 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:161"
+          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:161-180"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "li",
-          "text": "The editor repairs the writable files. It cannot delete a file, and it cannot finish while a code check still blocks. Promise: Bad edits never shipShow the code for this stepprojects/clinical-reasoning/src/cr/docgen/loop.py:227 for number in range(1, bounds.max_edit_rounds + 1): if editor is None or not editable(current.findings) or _unfixable(current): break if edits and _stalled(before, current): break record = await edit(editor, number, \"review\", current, reflect) edits.append(record) if record.lost: lost = record break before = current if record.kept: current = record.after kept.append((number, current, ws.writable_files())) elif _idle(record): break"
+          "text": "The editor repairs the writable files. It cannot delete a file, and it cannot finish while a code check still blocks. Promise: Bad edits never shipShow the code for this stepprojects/clinical-reasoning/src/cr/docgen/loop.py:227-242 for number in range(1, bounds.max_edit_rounds + 1): if editor is None or not editable(current.findings) or _unfixable(current): break if edits and _stalled(before, current): break record = await edit(editor, number, \"review\", current, reflect) edits.append(record) if record.lost: lost = record break before = current if record.kept: current = record.after kept.append((number, current, ws.writable_files())) elif _idle(record): breakOpen these lines at the PR head"
         },
         {
           "role": "p",
@@ -1914,11 +1926,15 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:227"
+          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:227-242"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "li",
-          "text": "The note keeps each edit. Another kind keeps an edit only when the score gets better and no new severe finding comes. The roundsRound: one edit by the editor, then a new check of the draft, then the decision to keep or undo the edit. stop when no fixable finding is left, when a round changes nothing, or at the round limit. Promise: Bad edits never shipShow the code for this stepprojects/clinical-reasoning/src/cr/docgen/loop.py:210 if not changed and not accept.reflects_unchanged: after = _skipped(todo.findings, \"the edit changed no file\") elif accept.rejects_early(todo.findings, checks()): after = _skipped(checks(), \"the code checks alone revert the edit\") else: after = await again(todo.findings) keep = accept.keep(todo.findings, after.findings) if not keep: ws.restore(files) return EditRecord(number, run, keep, after, changed)"
+          "text": "The note keeps each edit. Another kind keeps an edit only when the score gets better and no new severe finding comes. The roundsRound: one edit by the editor, then a new check of the draft, then the decision to keep or undo the edit. stop when no fixable finding is left, when a round changes nothing, or at the round limit. Promise: Bad edits never shipShow the code for this stepprojects/clinical-reasoning/src/cr/docgen/loop.py:210-219 if not changed and not accept.reflects_unchanged: after = _skipped(todo.findings, \"the edit changed no file\") elif accept.rejects_early(todo.findings, checks()): after = _skipped(checks(), \"the code checks alone revert the edit\") else: after = await again(todo.findings) keep = accept.keep(todo.findings, after.findings) if not keep: ws.restore(files) return EditRecord(number, run, keep, after, changed)Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -1930,11 +1946,15 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:210"
+          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:210-219"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "li",
-          "text": "If the last draft of the note still blocks, the loop goes back to the last clean draft, and a release auditRelease audit: for the note in the cr mode only: the major checks that failed during the rounds run again on the final draft. A failure there blocks the release. checks it again. Then the floorFloor: the last safety gate. It releases a document only when none of CR's own guardrail findings remain. Else it blocks the document, or it uses a checked fallback. releases the document only when no guardrail finding is left. Promise: Bad edits never shipShow the code for this stepprojects/clinical-reasoning/src/cr/docgen/loop.py:243 restored_to: int | None = None settled = accept.settle([r.findings for _, r, _ in kept]) if lost is None else None if settled is not None: restored_to, current, files = kept[settled] ws.restore(files) first: Reflection | None = None release_edits: list[EditRecord] = [] if release and lost is None and not _floors(current): first = current = await audit(current.findings) for number in range(1, bounds.release_edits + 1): if editor is None or not _floors(current) or _unfixable(current): break record = await edit(editor, number, \"release\", current, audit) release_edits.append(record) if record.lost: lost = record break if record.kept: current = record.afterprojects/clinical-reasoning/src/cr/docgen/loop.py:79def _floor[ProjT, DocT, K: Kind]( adapter: DocumentAdapter[ProjT, DocT, K], d: Draft[ProjT], final: Sequence[Finding], checks: Callable[[], Sequence[Finding]], ) -> FloorResult: \"\"\"Released when ``final`` holds no floor finding. Otherwise the adapter's fallback is restored and stands only when the code checks find no floor finding on it; else the draft is put back and blocked.\"\"\" held = [f for f in final if f.floor] if not held: return FloorResult(\"released\", \"no floor finding\") replacement = adapter.fallback(d) if replacement is not None: files = d.ws.writable_files() d.ws.restore(replacement) if not any(f.floor for f in checks()): return FloorResult(\"fallback\", f\"the fallback stands: {_why(held)}\") d.ws.restore(files) return FloorResult(\"blocked\", _why(held))"
+          "text": "If the last draft of the note still blocks, the loop goes back to the last clean draft, and a release auditRelease audit: for the note in the cr mode only: the major checks that failed during the rounds run again on the final draft. A failure there blocks the release. checks it again. Then the floorFloor: the last safety gate. It releases a document only when none of CR's own guardrail findings remain. Else it blocks the document, or it uses a checked fallback. releases the document only when no guardrail finding is left. Promise: Bad edits never shipShow the code for this stepprojects/clinical-reasoning/src/cr/docgen/loop.py:243-261 restored_to: int | None = None settled = accept.settle([r.findings for _, r, _ in kept]) if lost is None else None if settled is not None: restored_to, current, files = kept[settled] ws.restore(files) first: Reflection | None = None release_edits: list[EditRecord] = [] if release and lost is None and not _floors(current): first = current = await audit(current.findings) for number in range(1, bounds.release_edits + 1): if editor is None or not _floors(current) or _unfixable(current): break record = await edit(editor, number, \"release\", current, audit) release_edits.append(record) if record.lost: lost = record break if record.kept: current = record.afterOpen these lines at the PR headprojects/clinical-reasoning/src/cr/docgen/loop.py:79-98def _floor[ProjT, DocT, K: Kind]( adapter: DocumentAdapter[ProjT, DocT, K], d: Draft[ProjT], final: Sequence[Finding], checks: Callable[[], Sequence[Finding]], ) -> FloorResult: \"\"\"Released when ``final`` holds no floor finding. Otherwise the adapter's fallback is restored and stands only when the code checks find no floor finding on it; else the draft is put back and blocked.\"\"\" held = [f for f in final if f.floor] if not held: return FloorResult(\"released\", \"no floor finding\") replacement = adapter.fallback(d) if replacement is not None: files = d.ws.writable_files() d.ws.restore(replacement) if not any(f.floor for f in checks()): return FloorResult(\"fallback\", f\"the fallback stands: {_why(held)}\") d.ws.restore(files) return FloorResult(\"blocked\", _why(held))Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -1946,11 +1966,19 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:243"
+          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:243-261"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:79"
+          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:79-98"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "summary",
@@ -2190,7 +2218,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/generation_util.py:47"
+          "text": "projects/clinical-reasoning/src/cr/generation_util.py:47-53"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -2202,7 +2234,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/tests/_docgen_type_contracts.py:50"
+          "text": "projects/clinical-reasoning/tests/_docgen_type_contracts.py:50-52"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -2230,11 +2266,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -49,5 +49,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "49"
+        },
+        {
+          "role": "td",
+          "text": "49"
+        },
+        {
+          "role": "td",
+          "text": ") -> None:"
+        },
+        {
+          "role": "td",
+          "text": "50"
+        },
+        {
+          "role": "td",
+          "text": "50"
+        },
+        {
+          "role": "td",
+          "text": "Wiring(uap, UAP_SUBSET)"
+        },
+        {
+          "role": "td",
+          "text": "51"
         },
         {
           "role": "td",
@@ -2246,7 +2306,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "51"
         },
         {
           "role": "td",
@@ -2255,6 +2315,30 @@
         {
           "role": "td",
           "text": "Wiring(uap, FMM_SUBSET)"
+        },
+        {
+          "role": "td",
+          "text": "52"
+        },
+        {
+          "role": "td",
+          "text": "52"
+        },
+        {
+          "role": "td",
+          "text": "Wiring(fmm, FOUR_HORSEMEN_SUBSET) # pyright: ignore[reportArgumentType]"
+        },
+        {
+          "role": "td",
+          "text": "53"
+        },
+        {
+          "role": "td",
+          "text": "53"
+        },
+        {
+          "role": "td",
+          "text": "await run_adapter("
         },
         {
           "role": "figcaption",
@@ -2286,11 +2370,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -50,5 +50,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "50"
+        },
+        {
+          "role": "td",
+          "text": "50"
+        },
+        {
+          "role": "td",
+          "text": "Wiring(uap, UAP_SUBSET)"
+        },
+        {
+          "role": "td",
+          "text": "51"
+        },
+        {
+          "role": "td",
+          "text": "51"
+        },
+        {
+          "role": "td",
+          "text": "Wiring(uap, FMM_SUBSET) # pyright: ignore[reportArgumentType]"
+        },
+        {
+          "role": "td",
+          "text": "52"
         },
         {
           "role": "td",
@@ -2302,7 +2410,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "52"
         },
         {
           "role": "td",
@@ -2311,6 +2419,30 @@
         {
           "role": "td",
           "text": "Wiring(fmm, FOUR_HORSEMEN_SUBSET)"
+        },
+        {
+          "role": "td",
+          "text": "53"
+        },
+        {
+          "role": "td",
+          "text": "53"
+        },
+        {
+          "role": "td",
+          "text": "await run_adapter("
+        },
+        {
+          "role": "td",
+          "text": "54"
+        },
+        {
+          "role": "td",
+          "text": "54"
+        },
+        {
+          "role": "td",
+          "text": "uap, # pyright: ignore[reportArgumentType]"
         },
         {
           "role": "figcaption",
@@ -2322,7 +2454,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/tests/_docgen_type_contracts.py:53"
+          "text": "projects/clinical-reasoning/tests/_docgen_type_contracts.py:53-61"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -2350,11 +2486,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -52,5 +52,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "52"
+        },
+        {
+          "role": "td",
+          "text": "52"
+        },
+        {
+          "role": "td",
+          "text": "Wiring(fmm, FOUR_HORSEMEN_SUBSET) # pyright: ignore[reportArgumentType]"
+        },
+        {
+          "role": "td",
+          "text": "53"
+        },
+        {
+          "role": "td",
+          "text": "53"
+        },
+        {
+          "role": "td",
+          "text": "await run_adapter("
+        },
+        {
+          "role": "td",
+          "text": "54"
         },
         {
           "role": "td",
@@ -2366,7 +2526,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "54"
         },
         {
           "role": "td",
@@ -2375,6 +2535,30 @@
         {
           "role": "td",
           "text": "uap,"
+        },
+        {
+          "role": "td",
+          "text": "55"
+        },
+        {
+          "role": "td",
+          "text": "55"
+        },
+        {
+          "role": "td",
+          "text": "cr,"
+        },
+        {
+          "role": "td",
+          "text": "56"
+        },
+        {
+          "role": "td",
+          "text": "56"
+        },
+        {
+          "role": "td",
+          "text": "editor_client=client,"
         },
         {
           "role": "figcaption",
@@ -2406,11 +2590,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -59,4 +59,4 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "59"
+        },
+        {
+          "role": "td",
+          "text": "59"
+        },
+        {
+          "role": "td",
+          "text": ")"
+        },
+        {
+          "role": "td",
+          "text": "60"
+        },
+        {
+          "role": "td",
+          "text": "60"
+        },
+        {
+          "role": "td",
+          "text": "_run_kind(run, Kind.UAP, uap_setup)"
+        },
+        {
+          "role": "td",
+          "text": "61"
         },
         {
           "role": "td",
@@ -2422,7 +2630,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "61"
         },
         {
           "role": "td",
@@ -2431,6 +2639,18 @@
         {
           "role": "td",
           "text": "_run_kind(run, Kind.UAP, fmm_setup)"
+        },
+        {
+          "role": "td",
+          "text": "62"
+        },
+        {
+          "role": "td",
+          "text": "62"
+        },
+        {
+          "role": "td",
+          "text": "Outputs(Kind.CLINICIAN_NOTE, cr, {}) # pyright: ignore[reportArgumentType]"
         },
         {
           "role": "figcaption",
@@ -2443,6 +2663,10 @@
         {
           "role": "figcaption",
           "text": "projects/clinical-reasoning/tests/_docgen_type_contracts.py:62"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -2470,11 +2694,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -60,3 +60,3 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "60"
+        },
+        {
+          "role": "td",
+          "text": "60"
+        },
+        {
+          "role": "td",
+          "text": "_run_kind(run, Kind.UAP, uap_setup)"
+        },
+        {
+          "role": "td",
+          "text": "61"
+        },
+        {
+          "role": "td",
+          "text": "61"
+        },
+        {
+          "role": "td",
+          "text": "_run_kind(run, Kind.UAP, fmm_setup) # pyright: ignore[reportArgumentType]"
+        },
+        {
+          "role": "td",
+          "text": "62"
         },
         {
           "role": "td",
@@ -2486,7 +2734,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "62"
         },
         {
           "role": "td",
@@ -2506,7 +2754,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/scripts/check_docgen_boundary.py:44"
+          "text": "projects/clinical-reasoning/scripts/check_docgen_boundary.py:44-61"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -2534,11 +2786,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -50,5 +50,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "50"
+        },
+        {
+          "role": "td",
+          "text": "50"
+        },
+        {
+          "role": "td",
+          "text": "\"accept\": (\"findings\", \"adapter\"),"
+        },
+        {
+          "role": "td",
+          "text": "51"
+        },
+        {
+          "role": "td",
+          "text": "51"
+        },
+        {
+          "role": "td",
+          "text": "\"session\": (\"adapter\", \"findings\", \"workspace\"),"
+        },
+        {
+          "role": "td",
+          "text": "52"
         },
         {
           "role": "td",
@@ -2550,7 +2826,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "52"
         },
         {
           "role": "td",
@@ -2559,6 +2835,30 @@
         {
           "role": "td",
           "text": "\"loop\": (\"adapter\", \"findings\", \"workspace\"),"
+        },
+        {
+          "role": "td",
+          "text": "53"
+        },
+        {
+          "role": "td",
+          "text": "53"
+        },
+        {
+          "role": "td",
+          "text": "\"judiciary\": (\"adapter\", \"findings\"),"
+        },
+        {
+          "role": "td",
+          "text": "54"
+        },
+        {
+          "role": "td",
+          "text": "54"
+        },
+        {
+          "role": "td",
+          "text": "\"submission\": (\"adapter\", \"findings\", \"session\", \"workspace\"),"
         },
         {
           "role": "figcaption",
@@ -2570,7 +2870,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/scripts/check_docgen_boundary.py:62"
+          "text": "projects/clinical-reasoning/scripts/check_docgen_boundary.py:62-63"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -2598,11 +2902,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,0 +1,2 @@"
+          "text": "@@ -130,2 +130,4 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "130"
+        },
+        {
+          "role": "td",
+          "text": "130"
+        },
+        {
+          "role": "td",
+          "text": "failure=model_call_error_category,"
+        },
+        {
+          "role": "td",
+          "text": "131"
+        },
+        {
+          "role": "td",
+          "text": "131"
+        },
+        {
+          "role": "td",
+          "text": ")"
+        },
+        {
+          "role": "td",
+          "text": "132"
         },
         {
           "role": "td",
@@ -2610,7 +2938,7 @@
         },
         {
           "role": "td",
-          "text": "2"
+          "text": "133"
         },
         {
           "role": "td",
@@ -2631,6 +2959,18 @@
         {
           "role": "figcaption",
           "text": "projects/clinical-reasoning/scripts/check_docgen_boundary.py:64"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/scripts/check_docgen_boundary.py:66-75"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -2658,11 +2998,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,0 +1,2 @@"
+          "text": "@@ -288,2 +288,4 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "288"
+        },
+        {
+          "role": "td",
+          "text": "288"
+        },
+        {
+          "role": "td",
+          "text": "seconds=clock() - origin,"
+        },
+        {
+          "role": "td",
+          "text": "289"
+        },
+        {
+          "role": "td",
+          "text": "289"
+        },
+        {
+          "role": "td",
+          "text": ")"
+        },
+        {
+          "role": "td",
+          "text": "290"
         },
         {
           "role": "td",
@@ -2670,7 +3034,7 @@
         },
         {
           "role": "td",
-          "text": "2"
+          "text": "291"
         },
         {
           "role": "td",
@@ -2690,7 +3054,19 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/scripts/check_docgen_boundary.py:77"
+          "text": "projects/clinical-reasoning/scripts/check_docgen_boundary.py:77-81"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/scripts/check_docgen_boundary.py:82-94"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -2718,11 +3094,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,0 @@"
+          "text": "@@ -89,5 +89,4 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "89"
+        },
+        {
+          "role": "td",
+          "text": "89"
+        },
+        {
+          "role": "td",
+          "text": "(\"session\", \"cr.note.author\"),"
+        },
+        {
+          "role": "td",
+          "text": "90"
+        },
+        {
+          "role": "td",
+          "text": "90"
+        },
+        {
+          "role": "td",
+          "text": "(\"session\", \"cr.note.loop\"),"
+        },
+        {
+          "role": "td",
+          "text": "91"
         },
         {
           "role": "td",
@@ -2731,6 +3131,30 @@
         {
           "role": "td",
           "text": "(\"loop\", \"cr.note.loop\"),"
+        },
+        {
+          "role": "td",
+          "text": "92"
+        },
+        {
+          "role": "td",
+          "text": "91"
+        },
+        {
+          "role": "td",
+          "text": "(\"cli\", \"cr.note.loop\"),"
+        },
+        {
+          "role": "td",
+          "text": "93"
+        },
+        {
+          "role": "td",
+          "text": "92"
+        },
+        {
+          "role": "td",
+          "text": "}"
         },
         {
           "role": "figcaption",
@@ -2742,11 +3166,19 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/scripts/check_docgen_boundary.py:99"
+          "text": "projects/clinical-reasoning/scripts/check_docgen_boundary.py:99-105"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/finished_cr.py:116"
+          "text": "projects/clinical-reasoning/src/cr/finished_cr.py:116-139"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -2774,11 +3206,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -99,5 +99,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "99"
+        },
+        {
+          "role": "td",
+          "text": "99"
+        },
+        {
+          "role": "td",
+          "text": "# Class name -> the files (relative to the project root) allowed to call it."
+        },
+        {
+          "role": "td",
+          "text": "100"
+        },
+        {
+          "role": "td",
+          "text": "100"
+        },
+        {
+          "role": "td",
+          "text": "CONSTRUCTOR_ALLOWLIST: dict[str, frozenset[str]] = {"
+        },
+        {
+          "role": "td",
+          "text": "101"
         },
         {
           "role": "td",
@@ -2790,7 +3246,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "101"
         },
         {
           "role": "td",
@@ -2799,6 +3255,30 @@
         {
           "role": "td",
           "text": "\"FinishedCR\": frozenset({\"src/cr/finished_cr.py\"}),"
+        },
+        {
+          "role": "td",
+          "text": "102"
+        },
+        {
+          "role": "td",
+          "text": "102"
+        },
+        {
+          "role": "td",
+          "text": "# findings.classify is the one place a finding becomes editable: it takes its producer's"
+        },
+        {
+          "role": "td",
+          "text": "103"
+        },
+        {
+          "role": "td",
+          "text": "103"
+        },
+        {
+          "role": "td",
+          "text": "# word (judiciary._fixable applies a cartridge's policy) before the quote's location."
         },
         {
           "role": "figcaption",
@@ -2810,7 +3290,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/finished_cr.py:105"
+          "text": "projects/clinical-reasoning/src/cr/finished_cr.py:105-113"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -2838,11 +3322,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,2 +1,0 @@"
+          "text": "@@ -110,6 +110,4 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "110"
+        },
+        {
+          "role": "td",
+          "text": "110"
+        },
+        {
+          "role": "td",
+          "text": "raise CrRefused(\"snapshot\", [message])"
+        },
+        {
+          "role": "td",
+          "text": "111"
+        },
+        {
+          "role": "td",
+          "text": "111"
+        },
+        {
+          "role": "td",
+          "text": "issues = cr33_acceptance_issues(packet, None, ledger, followups_open=True)"
+        },
+        {
+          "role": "td",
+          "text": "112"
         },
         {
           "role": "td",
@@ -2854,7 +3362,7 @@
         },
         {
           "role": "td",
-          "text": "2"
+          "text": "113"
         },
         {
           "role": "td",
@@ -2863,6 +3371,22 @@
         {
           "role": "td",
           "text": "raise CrRefused(\"cr33\", [f\"CRP failed CR-33 acceptance: {issue}\" for issue in issues])"
+        },
+        {
+          "role": "td",
+          "text": "114"
+        },
+        {
+          "role": "td",
+          "text": "112"
+        },
+        {
+          "role": "td",
+          "text": "115"
+        },
+        {
+          "role": "td",
+          "text": "113"
         },
         {
           "role": "figcaption",
@@ -2894,7 +3418,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:101"
+          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:101-107"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -2922,11 +3450,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,2 +1,0 @@"
+          "text": "@@ -239,6 +239,4 @@ async def run_document[ProjT, DocT, K: Kind]("
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "239"
+        },
+        {
+          "role": "td",
+          "text": "239"
+        },
+        {
+          "role": "td",
+          "text": "current = record.after"
+        },
+        {
+          "role": "td",
+          "text": "240"
+        },
+        {
+          "role": "td",
+          "text": "240"
+        },
+        {
+          "role": "td",
+          "text": "kept.append((number, current, ws.writable_files()))"
+        },
+        {
+          "role": "td",
+          "text": "241"
         },
         {
           "role": "td",
@@ -2938,7 +3490,7 @@
         },
         {
           "role": "td",
-          "text": "2"
+          "text": "242"
         },
         {
           "role": "td",
@@ -2947,6 +3499,30 @@
         {
           "role": "td",
           "text": "break"
+        },
+        {
+          "role": "td",
+          "text": "243"
+        },
+        {
+          "role": "td",
+          "text": "241"
+        },
+        {
+          "role": "td",
+          "text": "restored_to: int | None = None"
+        },
+        {
+          "role": "td",
+          "text": "244"
+        },
+        {
+          "role": "td",
+          "text": "242"
+        },
+        {
+          "role": "td",
+          "text": "settled = accept.settle([r.findings for _, r, _ in kept]) if lost is None else None"
         },
         {
           "role": "figcaption",
@@ -3270,7 +3846,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/generation_util.py:15"
+          "text": "projects/clinical-reasoning/src/cr/generation_util.py:15-26"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -3922,7 +4502,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:69"
+          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:69-71"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -3950,11 +4534,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -226,5 +226,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "226"
+        },
+        {
+          "role": "td",
+          "text": "226"
+        },
+        {
+          "role": "td",
+          "text": "lost: EditRecord | None = None"
+        },
+        {
+          "role": "td",
+          "text": "227"
+        },
+        {
+          "role": "td",
+          "text": "227"
+        },
+        {
+          "role": "td",
+          "text": "for number in range(1, bounds.max_edit_rounds + 1):"
+        },
+        {
+          "role": "td",
+          "text": "228"
         },
         {
           "role": "td",
@@ -3962,11 +4570,11 @@
         },
         {
           "role": "td",
-          "text": "not editable(current.findings) or _unfixable(current):"
+          "text": "if editor is None or not editable(current.findings) or _unfixable(current):"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "228"
         },
         {
           "role": "td",
@@ -3974,7 +4582,31 @@
         },
         {
           "role": "td",
-          "text": "not editable(current.findings):"
+          "text": "if editor is None or not editable(current.findings):"
+        },
+        {
+          "role": "td",
+          "text": "229"
+        },
+        {
+          "role": "td",
+          "text": "229"
+        },
+        {
+          "role": "td",
+          "text": "break"
+        },
+        {
+          "role": "td",
+          "text": "230"
+        },
+        {
+          "role": "td",
+          "text": "230"
+        },
+        {
+          "role": "td",
+          "text": "if edits and _stalled(before, current):"
         },
         {
           "role": "figcaption",
@@ -4298,7 +4930,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:219"
+          "text": "projects/clinical-reasoning/src/cr/docgen/loop.py:219-222"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -4326,11 +4962,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,3 +1,0 @@"
+          "text": "@@ -232,7 +232,4 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "232"
+        },
+        {
+          "role": "td",
+          "text": "232"
+        },
+        {
+          "role": "td",
+          "text": "record = await edit(editor, number, \"review\", current, reflect)"
+        },
+        {
+          "role": "td",
+          "text": "233"
+        },
+        {
+          "role": "td",
+          "text": "233"
+        },
+        {
+          "role": "td",
+          "text": "edits.append(record)"
+        },
+        {
+          "role": "td",
+          "text": "234"
         },
         {
           "role": "td",
@@ -4342,7 +5002,7 @@
         },
         {
           "role": "td",
-          "text": "2"
+          "text": "235"
         },
         {
           "role": "td",
@@ -4354,7 +5014,7 @@
         },
         {
           "role": "td",
-          "text": "3"
+          "text": "236"
         },
         {
           "role": "td",
@@ -4363,6 +5023,30 @@
         {
           "role": "td",
           "text": "break"
+        },
+        {
+          "role": "td",
+          "text": "237"
+        },
+        {
+          "role": "td",
+          "text": "234"
+        },
+        {
+          "role": "td",
+          "text": "before = current"
+        },
+        {
+          "role": "td",
+          "text": "238"
+        },
+        {
+          "role": "td",
+          "text": "235"
+        },
+        {
+          "role": "td",
+          "text": "if record.kept:"
         },
         {
           "role": "figcaption",
@@ -4686,7 +5370,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/docgen/workspace.py:127"
+          "text": "projects/clinical-reasoning/src/cr/docgen/workspace.py:127-156"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -4714,11 +5402,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,3 +1,2 @@"
+          "text": "@@ -145,7 +145,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "145"
+        },
+        {
+          "role": "td",
+          "text": "145"
+        },
+        {
+          "role": "td",
+          "text": "# The adapter checks the writable files it named; one that is gone would read as"
+        },
+        {
+          "role": "td",
+          "text": "146"
+        },
+        {
+          "role": "td",
+          "text": "146"
+        },
+        {
+          "role": "td",
+          "text": "# empty text, so the editor rewrites a file and never deletes it."
+        },
+        {
+          "role": "td",
+          "text": "147"
         },
         {
           "role": "td",
@@ -4730,7 +5442,7 @@
         },
         {
           "role": "td",
-          "text": "2"
+          "text": "148"
         },
         {
           "role": "td",
@@ -4742,7 +5454,7 @@
         },
         {
           "role": "td",
-          "text": "3"
+          "text": "149"
         },
         {
           "role": "td",
@@ -4754,7 +5466,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "147"
         },
         {
           "role": "td",
@@ -4762,19 +5474,31 @@
         },
         {
           "role": "td",
-          "text": "self._files.pop(norm, None)"
+          "text": "self._files.pop(norm, None); return f\"delete_file {norm}: ok\""
         },
         {
           "role": "td",
-          "text": "2"
+          "text": "150"
         },
         {
           "role": "td",
-          "text": "+"
+          "text": "148"
         },
         {
           "role": "td",
-          "text": "return f\"delete_file {norm}: ok\""
+          "text": "else:"
+        },
+        {
+          "role": "td",
+          "text": "151"
+        },
+        {
+          "role": "td",
+          "text": "149"
+        },
+        {
+          "role": "td",
+          "text": "raise WorkspaceError(f\"unsupported apply_patch operation: {operation}\")"
         },
         {
           "role": "figcaption",
@@ -4786,7 +5510,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/docgen/judiciary.py:323"
+          "text": "projects/clinical-reasoning/src/cr/docgen/judiciary.py:323-330"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -4814,11 +5542,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,2 +1,0 @@"
+          "text": "@@ -324,6 +324,4 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "324"
+        },
+        {
+          "role": "td",
+          "text": "324"
+        },
+        {
+          "role": "td",
+          "text": "if ready.get(\"schema_version\") != \"cr-reflection-ready.v1\" or ready.get(\"protocol\") != PROTOCOL:"
+        },
+        {
+          "role": "td",
+          "text": "325"
+        },
+        {
+          "role": "td",
+          "text": "325"
+        },
+        {
+          "role": "td",
+          "text": "raise JudiciaryWorkerError(f\"expected a {PROTOCOL} ready line\")"
+        },
+        {
+          "role": "td",
+          "text": "326"
         },
         {
           "role": "td",
@@ -4830,7 +5582,7 @@
         },
         {
           "role": "td",
-          "text": "2"
+          "text": "327"
         },
         {
           "role": "td",
@@ -4839,6 +5591,30 @@
         {
           "role": "td",
           "text": "raise JudiciaryWorkerError(\"the worker is not synthetic-only\")"
+        },
+        {
+          "role": "td",
+          "text": "328"
+        },
+        {
+          "role": "td",
+          "text": "326"
+        },
+        {
+          "role": "td",
+          "text": "if ready.get(\"protocol_digest\") != PROTOCOL_DIGEST:"
+        },
+        {
+          "role": "td",
+          "text": "329"
+        },
+        {
+          "role": "td",
+          "text": "327"
+        },
+        {
+          "role": "td",
+          "text": "got = _printable(ready.get(\"protocol_digest\"))"
         },
         {
           "role": "figcaption",
@@ -4850,7 +5626,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/docgen/session.py:255"
+          "text": "projects/clinical-reasoning/src/cr/docgen/session.py:255-266"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -4878,11 +5658,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -255,5 +255,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "255"
+        },
+        {
+          "role": "td",
+          "text": "255"
+        },
+        {
+          "role": "td",
+          "text": "def _finish(self, args: dict[str, object]) -> str:"
+        },
+        {
+          "role": "td",
+          "text": "256"
+        },
+        {
+          "role": "td",
+          "text": "256"
+        },
+        {
+          "role": "td",
+          "text": "blocking = [f for f in self.check() if f.blocking]"
+        },
+        {
+          "role": "td",
+          "text": "257"
         },
         {
           "role": "td",
@@ -4890,11 +5694,11 @@
         },
         {
           "role": "td",
-          "text": "if blocking and self.run.finish_refusals"
+          "text": "if blocking and self.run.finish_refusals < self.spec.max_finish_refusals:"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "257"
         },
         {
           "role": "td",
@@ -4902,7 +5706,31 @@
         },
         {
           "role": "td",
-          "text": "if not blocking and self.run.finish_refusals"
+          "text": "if not blocking and self.run.finish_refusals < self.spec.max_finish_refusals:"
+        },
+        {
+          "role": "td",
+          "text": "258"
+        },
+        {
+          "role": "td",
+          "text": "258"
+        },
+        {
+          "role": "td",
+          "text": "self.run.finish_refusals += 1"
+        },
+        {
+          "role": "td",
+          "text": "259"
+        },
+        {
+          "role": "td",
+          "text": "259"
+        },
+        {
+          "role": "td",
+          "text": "return ("
         },
         {
           "role": "figcaption",
@@ -5014,7 +5842,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/docgen/accept.py:55"
+          "text": "projects/clinical-reasoning/src/cr/docgen/accept.py:55-71"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -5042,11 +5874,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -69,5 +69,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "69"
+        },
+        {
+          "role": "td",
+          "text": "69"
+        },
+        {
+          "role": "td",
+          "text": "return None"
+        },
+        {
+          "role": "td",
+          "text": "70"
+        },
+        {
+          "role": "td",
+          "text": "70"
+        },
+        {
+          "role": "td",
+          "text": "clean = [i for i, s in enumerate(states) if not any(f.blocking for f in s)]"
+        },
+        {
+          "role": "td",
+          "text": "71"
         },
         {
           "role": "td",
@@ -5058,7 +5914,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "71"
         },
         {
           "role": "td",
@@ -5067,6 +5923,22 @@
         {
           "role": "td",
           "text": "return clean[0] if clean else None"
+        },
+        {
+          "role": "td",
+          "text": "72"
+        },
+        {
+          "role": "td",
+          "text": "72"
+        },
+        {
+          "role": "td",
+          "text": "73"
+        },
+        {
+          "role": "td",
+          "text": "73"
         },
         {
           "role": "figcaption",
@@ -5814,7 +6686,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/guidance/_xlsx.py:16"
+          "text": "projects/clinical-reasoning/src/cr/guidance/_xlsx.py:16-28"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -5827,6 +6703,18 @@
         {
           "role": "figcaption",
           "text": "projects/clinical-reasoning/tests/test_docgen_judiciary_worker.py:40"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/tests/test_docgen_judiciary_worker.py:42-48"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -5854,11 +6742,31 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -55,5 +55,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "55"
+        },
+        {
+          "role": "td",
+          "text": "55"
+        },
+        {
+          "role": "td",
+          "text": "from .findings import Finding, Severity, classify"
+        },
+        {
+          "role": "td",
+          "text": "56"
+        },
+        {
+          "role": "td",
+          "text": "56"
+        },
+        {
+          "role": "td",
+          "text": "57"
         },
         {
           "role": "td",
@@ -5870,7 +6778,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "57"
         },
         {
           "role": "td",
@@ -5879,6 +6787,30 @@
         {
           "role": "td",
           "text": "PROTOCOL = \"cr-reflection-protocol.v0\""
+        },
+        {
+          "role": "td",
+          "text": "58"
+        },
+        {
+          "role": "td",
+          "text": "58"
+        },
+        {
+          "role": "td",
+          "text": "# CR's copy of the ``protocol_digest`` in judiciary's generated/cr-reflection-protocol.v1.json."
+        },
+        {
+          "role": "td",
+          "text": "59"
+        },
+        {
+          "role": "td",
+          "text": "59"
+        },
+        {
+          "role": "td",
+          "text": "# Tests pin it, and the ready line must carry it."
         },
         {
           "role": "figcaption",
@@ -5902,7 +6834,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/tests/test_docgen_parity.py:554"
+          "text": "projects/clinical-reasoning/tests/test_docgen_parity.py:553-566"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -5922,7 +6858,7 @@
         },
         {
           "role": "p",
-          "text": "corrupt-byte projects/clinical-reasoning/tests/data/docgen_parity.json: offset 68"
+          "text": "changed bytes projects/clinical-reasoning/tests/data/docgen_parity.json"
         },
         {
           "role": "figcaption",
@@ -5934,11 +6870,19 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/tests/test_docgen_parity.py:714"
+          "text": "projects/clinical-reasoning/tests/test_docgen_parity.py:714-730"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/docgen/clinician_note.py:340"
+          "text": "projects/clinical-reasoning/src/cr/docgen/clinician_note.py:340-355"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -5966,11 +6910,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -349,5 +349,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "349"
+        },
+        {
+          "role": "td",
+          "text": "349"
+        },
+        {
+          "role": "td",
+          "text": "max_turns=policy.author_max_turns,"
+        },
+        {
+          "role": "td",
+          "text": "350"
+        },
+        {
+          "role": "td",
+          "text": "350"
+        },
+        {
+          "role": "td",
+          "text": "max_finish_refusals=policy.max_finish_refusals,"
+        },
+        {
+          "role": "td",
+          "text": "351"
         },
         {
           "role": "td",
@@ -5982,7 +6950,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "351"
         },
         {
           "role": "td",
@@ -5991,6 +6959,30 @@
         {
           "role": "td",
           "text": "cache_key=f\"{_cache_key(d.cr)}:harness\","
+        },
+        {
+          "role": "td",
+          "text": "352"
+        },
+        {
+          "role": "td",
+          "text": "352"
+        },
+        {
+          "role": "td",
+          "text": "# The note loop's sessions score the CR they were seeded from (``_Loop.write``)."
+        },
+        {
+          "role": "td",
+          "text": "353"
+        },
+        {
+          "role": "td",
+          "text": "353"
+        },
+        {
+          "role": "td",
+          "text": "check_context=check_context_for("
         },
         {
           "role": "figcaption",
@@ -6002,7 +6994,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/cli.py:680"
+          "text": "projects/clinical-reasoning/src/cr/cli.py:680-681"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -6030,11 +7026,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -679,5 +679,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "679"
+        },
+        {
+          "role": "td",
+          "text": "679"
+        },
+        {
+          "role": "td",
+          "text": "return _cmd_build_guidance()"
+        },
+        {
+          "role": "td",
+          "text": "680"
+        },
+        {
+          "role": "td",
+          "text": "680"
+        },
+        {
+          "role": "td",
+          "text": "if argv and argv[0] in (\"fmm\", \"uap\"):"
+        },
+        {
+          "role": "td",
+          "text": "681"
         },
         {
           "role": "td",
@@ -6042,11 +7062,11 @@
         },
         {
           "role": "td",
-          "text": "\"--reflection\", \"none\", *argv[1:]"
+          "text": "return _cmd_docgen([\"--kind\", argv[0], \"--reflection\", \"none\", *argv[1:]])"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "681"
         },
         {
           "role": "td",
@@ -6054,7 +7074,31 @@
         },
         {
           "role": "td",
-          "text": "\"--reflection\", \"cr\", *argv[1:]"
+          "text": "return _cmd_docgen([\"--kind\", argv[0], \"--reflection\", \"cr\", *argv[1:]])"
+        },
+        {
+          "role": "td",
+          "text": "682"
+        },
+        {
+          "role": "td",
+          "text": "682"
+        },
+        {
+          "role": "td",
+          "text": "if argv and argv[0] == \"scan\":"
+        },
+        {
+          "role": "td",
+          "text": "683"
+        },
+        {
+          "role": "td",
+          "text": "683"
+        },
+        {
+          "role": "td",
+          "text": "return _cmd_scan(argv[1:])"
         },
         {
           "role": "figcaption",
@@ -6194,11 +7238,19 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/tests/_docgen_type_contracts.py:33"
+          "text": "projects/clinical-reasoning/tests/_docgen_type_contracts.py:33-38"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/docgen/adapter.py:199"
+          "text": "projects/clinical-reasoning/src/cr/docgen/adapter.py:199-213"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -6226,11 +7278,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -34,5 +34,5 @@ async def only_an_editable_finding_reaches_the_editor("
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "34"
+        },
+        {
+          "role": "td",
+          "text": "34"
+        },
+        {
+          "role": "td",
+          "text": "editor: Editor[str], d: Draft[str], client: ResponsesClient, found: Finding"
+        },
+        {
+          "role": "td",
+          "text": "35"
+        },
+        {
+          "role": "td",
+          "text": "35"
+        },
+        {
+          "role": "td",
+          "text": ") -> None:"
+        },
+        {
+          "role": "td",
+          "text": "36"
         },
         {
           "role": "td",
@@ -6242,7 +7318,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "36"
         },
         {
           "role": "td",
@@ -6251,6 +7327,30 @@
         {
           "role": "td",
           "text": "await _edit(editor, d, client, [found])"
+        },
+        {
+          "role": "td",
+          "text": "37"
+        },
+        {
+          "role": "td",
+          "text": "37"
+        },
+        {
+          "role": "td",
+          "text": "await _edit(editor, d, client, [classify(found)]) # pyright: ignore[reportArgumentType]"
+        },
+        {
+          "role": "td",
+          "text": "38"
+        },
+        {
+          "role": "td",
+          "text": "38"
+        },
+        {
+          "role": "td",
+          "text": "await _edit(editor, d, client, editable([classify(found)]))"
         },
         {
           "role": "figcaption",
@@ -6270,11 +7370,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -204,5 +204,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "204"
+        },
+        {
+          "role": "td",
+          "text": "204"
+        },
+        {
+          "role": "td",
+          "text": "d: Draft[ProjT],"
+        },
+        {
+          "role": "td",
+          "text": "205"
+        },
+        {
+          "role": "td",
+          "text": "205"
+        },
+        {
+          "role": "td",
+          "text": "number: int,"
+        },
+        {
+          "role": "td",
+          "text": "206"
         },
         {
           "role": "td",
@@ -6286,7 +7410,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "206"
         },
         {
           "role": "td",
@@ -6295,6 +7419,30 @@
         {
           "role": "td",
           "text": "findings: Sequence[Finding],"
+        },
+        {
+          "role": "td",
+          "text": "207"
+        },
+        {
+          "role": "td",
+          "text": "207"
+        },
+        {
+          "role": "td",
+          "text": "*,"
+        },
+        {
+          "role": "td",
+          "text": "208"
+        },
+        {
+          "role": "td",
+          "text": "208"
+        },
+        {
+          "role": "td",
+          "text": "stage: Stage,"
         },
         {
           "role": "figcaption",
@@ -6306,11 +7454,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -75,5 +75,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "75"
+        },
+        {
+          "role": "td",
+          "text": "75"
+        },
+        {
+          "role": "td",
+          "text": "d: Draft[object],"
+        },
+        {
+          "role": "td",
+          "text": "76"
+        },
+        {
+          "role": "td",
+          "text": "76"
+        },
+        {
+          "role": "td",
+          "text": "number: int,"
+        },
+        {
+          "role": "td",
+          "text": "77"
         },
         {
           "role": "td",
@@ -6322,7 +7494,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "77"
         },
         {
           "role": "td",
@@ -6331,6 +7503,30 @@
         {
           "role": "td",
           "text": "findings: Sequence[Finding],"
+        },
+        {
+          "role": "td",
+          "text": "78"
+        },
+        {
+          "role": "td",
+          "text": "78"
+        },
+        {
+          "role": "td",
+          "text": "*,"
+        },
+        {
+          "role": "td",
+          "text": "79"
+        },
+        {
+          "role": "td",
+          "text": "79"
+        },
+        {
+          "role": "td",
+          "text": "stage: Stage,"
         },
         {
           "role": "figcaption",
@@ -6342,11 +7538,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -317,5 +317,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "317"
+        },
+        {
+          "role": "td",
+          "text": "317"
+        },
+        {
+          "role": "td",
+          "text": "d: Draft[NoteProjection],"
+        },
+        {
+          "role": "td",
+          "text": "318"
+        },
+        {
+          "role": "td",
+          "text": "318"
+        },
+        {
+          "role": "td",
+          "text": "number: int,"
+        },
+        {
+          "role": "td",
+          "text": "319"
         },
         {
           "role": "td",
@@ -6358,7 +7578,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "319"
         },
         {
           "role": "td",
@@ -6367,6 +7587,30 @@
         {
           "role": "td",
           "text": "findings: Sequence[Finding],"
+        },
+        {
+          "role": "td",
+          "text": "320"
+        },
+        {
+          "role": "td",
+          "text": "320"
+        },
+        {
+          "role": "td",
+          "text": "*,"
+        },
+        {
+          "role": "td",
+          "text": "321"
+        },
+        {
+          "role": "td",
+          "text": "321"
+        },
+        {
+          "role": "td",
+          "text": "stage: Stage,"
         },
         {
           "role": "figcaption",
@@ -6398,11 +7642,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -35,5 +35,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "35"
+        },
+        {
+          "role": "td",
+          "text": "35"
+        },
+        {
+          "role": "td",
+          "text": ") -> None:"
+        },
+        {
+          "role": "td",
+          "text": "36"
+        },
+        {
+          "role": "td",
+          "text": "36"
+        },
+        {
+          "role": "td",
+          "text": "await _edit(editor, d, client, [found]) # pyright: ignore[reportArgumentType]"
+        },
+        {
+          "role": "td",
+          "text": "37"
         },
         {
           "role": "td",
@@ -6414,7 +7682,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "37"
         },
         {
           "role": "td",
@@ -6423,6 +7691,26 @@
         {
           "role": "td",
           "text": "await _edit(editor, d, client, [classify(found)])"
+        },
+        {
+          "role": "td",
+          "text": "38"
+        },
+        {
+          "role": "td",
+          "text": "38"
+        },
+        {
+          "role": "td",
+          "text": "await _edit(editor, d, client, editable([classify(found)]))"
+        },
+        {
+          "role": "td",
+          "text": "39"
+        },
+        {
+          "role": "td",
+          "text": "39"
         },
         {
           "role": "figcaption",
@@ -6454,11 +7742,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -204,5 +204,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "204"
+        },
+        {
+          "role": "td",
+          "text": "204"
+        },
+        {
+          "role": "td",
+          "text": "d: Draft[ProjT],"
+        },
+        {
+          "role": "td",
+          "text": "205"
+        },
+        {
+          "role": "td",
+          "text": "205"
+        },
+        {
+          "role": "td",
+          "text": "number: int,"
+        },
+        {
+          "role": "td",
+          "text": "206"
         },
         {
           "role": "td",
@@ -6470,7 +7782,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "206"
         },
         {
           "role": "td",
@@ -6479,6 +7791,30 @@
         {
           "role": "td",
           "text": "findings: Sequence[Finding],"
+        },
+        {
+          "role": "td",
+          "text": "207"
+        },
+        {
+          "role": "td",
+          "text": "207"
+        },
+        {
+          "role": "td",
+          "text": "*,"
+        },
+        {
+          "role": "td",
+          "text": "208"
+        },
+        {
+          "role": "td",
+          "text": "208"
+        },
+        {
+          "role": "td",
+          "text": "stage: Stage,"
         },
         {
           "role": "figcaption",
@@ -6490,11 +7826,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -75,5 +75,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "75"
+        },
+        {
+          "role": "td",
+          "text": "75"
+        },
+        {
+          "role": "td",
+          "text": "d: Draft[object],"
+        },
+        {
+          "role": "td",
+          "text": "76"
+        },
+        {
+          "role": "td",
+          "text": "76"
+        },
+        {
+          "role": "td",
+          "text": "number: int,"
+        },
+        {
+          "role": "td",
+          "text": "77"
         },
         {
           "role": "td",
@@ -6506,7 +7866,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "77"
         },
         {
           "role": "td",
@@ -6515,6 +7875,30 @@
         {
           "role": "td",
           "text": "findings: Sequence[Finding],"
+        },
+        {
+          "role": "td",
+          "text": "78"
+        },
+        {
+          "role": "td",
+          "text": "78"
+        },
+        {
+          "role": "td",
+          "text": "*,"
+        },
+        {
+          "role": "td",
+          "text": "79"
+        },
+        {
+          "role": "td",
+          "text": "79"
+        },
+        {
+          "role": "td",
+          "text": "stage: Stage,"
         },
         {
           "role": "figcaption",
@@ -6526,11 +7910,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -317,5 +317,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "317"
+        },
+        {
+          "role": "td",
+          "text": "317"
+        },
+        {
+          "role": "td",
+          "text": "d: Draft[NoteProjection],"
+        },
+        {
+          "role": "td",
+          "text": "318"
+        },
+        {
+          "role": "td",
+          "text": "318"
+        },
+        {
+          "role": "td",
+          "text": "number: int,"
+        },
+        {
+          "role": "td",
+          "text": "319"
         },
         {
           "role": "td",
@@ -6542,7 +7950,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "319"
         },
         {
           "role": "td",
@@ -6551,6 +7959,30 @@
         {
           "role": "td",
           "text": "findings: Sequence[Finding],"
+        },
+        {
+          "role": "td",
+          "text": "320"
+        },
+        {
+          "role": "td",
+          "text": "320"
+        },
+        {
+          "role": "td",
+          "text": "*,"
+        },
+        {
+          "role": "td",
+          "text": "321"
+        },
+        {
+          "role": "td",
+          "text": "321"
+        },
+        {
+          "role": "td",
+          "text": "stage: Stage,"
         },
         {
           "role": "figcaption",
@@ -6562,7 +7994,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/scripts/check_docgen_boundary.py:99"
+          "text": "projects/clinical-reasoning/scripts/check_docgen_boundary.py:99-105"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -6590,11 +8026,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,0 +1,2 @@"
+          "text": "@@ -288,2 +288,4 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "288"
+        },
+        {
+          "role": "td",
+          "text": "288"
+        },
+        {
+          "role": "td",
+          "text": "seconds=clock() - origin,"
+        },
+        {
+          "role": "td",
+          "text": "289"
+        },
+        {
+          "role": "td",
+          "text": "289"
+        },
+        {
+          "role": "td",
+          "text": ")"
+        },
+        {
+          "role": "td",
+          "text": "290"
         },
         {
           "role": "td",
@@ -6602,7 +8062,7 @@
         },
         {
           "role": "td",
-          "text": "2"
+          "text": "291"
         },
         {
           "role": "td",
@@ -6622,7 +8082,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/docgen/judiciary.py:621"
+          "text": "projects/clinical-reasoning/src/cr/docgen/judiciary.py:621-633"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -6650,11 +8114,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,2 +1,0 @@"
+          "text": "@@ -627,6 +627,4 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "627"
+        },
+        {
+          "role": "td",
+          "text": "627"
+        },
+        {
+          "role": "td",
+          "text": "file whose source evidence (``file_evidence``, by path) holds that result, so never in a file"
+        },
+        {
+          "role": "td",
+          "text": "628"
+        },
+        {
+          "role": "td",
+          "text": "628"
+        },
+        {
+          "role": "td",
+          "text": "with no evidence, such as a UAP's overview. Any other key, yes.\"\"\""
+        },
+        {
+          "role": "td",
+          "text": "629"
         },
         {
           "role": "td",
@@ -6666,7 +8154,7 @@
         },
         {
           "role": "td",
-          "text": "2"
+          "text": "630"
         },
         {
           "role": "td",
@@ -6675,6 +8163,30 @@
         {
           "role": "td",
           "text": "return False"
+        },
+        {
+          "role": "td",
+          "text": "631"
+        },
+        {
+          "role": "td",
+          "text": "629"
+        },
+        {
+          "role": "td",
+          "text": "if f.key in policy.evidence_bound:"
+        },
+        {
+          "role": "td",
+          "text": "632"
+        },
+        {
+          "role": "td",
+          "text": "630"
+        },
+        {
+          "role": "td",
+          "text": "return _held(file_evidence, f.where, f.input_fact)"
         },
         {
           "role": "figcaption",
@@ -6686,7 +8198,19 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/docgen/judiciary.py:614"
+          "text": "projects/clinical-reasoning/src/cr/docgen/judiciary.py:614-618"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
+        },
+        {
+          "role": "figcaption",
+          "text": "projects/clinical-reasoning/src/cr/docgen/judiciary.py:621-633"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -6714,11 +8238,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -630,5 +630,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "630"
+        },
+        {
+          "role": "td",
+          "text": "630"
+        },
+        {
+          "role": "td",
+          "text": "return False"
+        },
+        {
+          "role": "td",
+          "text": "631"
+        },
+        {
+          "role": "td",
+          "text": "631"
+        },
+        {
+          "role": "td",
+          "text": "if f.key in policy.evidence_bound:"
+        },
+        {
+          "role": "td",
+          "text": "632"
         },
         {
           "role": "td",
@@ -6730,7 +8278,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "632"
         },
         {
           "role": "td",
@@ -6739,6 +8287,26 @@
         {
           "role": "td",
           "text": "return True"
+        },
+        {
+          "role": "td",
+          "text": "633"
+        },
+        {
+          "role": "td",
+          "text": "633"
+        },
+        {
+          "role": "td",
+          "text": "return True"
+        },
+        {
+          "role": "td",
+          "text": "634"
+        },
+        {
+          "role": "td",
+          "text": "634"
         },
         {
           "role": "figcaption",
@@ -6750,7 +8318,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/docgen/judiciary.py:589"
+          "text": "projects/clinical-reasoning/src/cr/docgen/judiciary.py:586-604"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -6778,11 +8350,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -602,5 +602,5 @@ class JudiciaryReflector[ProjT]:"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "602"
+        },
+        {
+          "role": "td",
+          "text": "602"
+        },
+        {
+          "role": "td",
+          "text": "refuted = major and not blocking"
+        },
+        {
+          "role": "td",
+          "text": "603"
+        },
+        {
+          "role": "td",
+          "text": "603"
+        },
+        {
+          "role": "td",
+          "text": "policy = policies[w.cartridge]"
+        },
+        {
+          "role": "td",
+          "text": "604"
         },
         {
           "role": "td",
@@ -6790,11 +8386,11 @@
         },
         {
           "role": "td",
-          "text": "editable=not refuted and _fixable("
+          "text": "return classify(found, editable=not refuted and _fixable(policy, found, file_evidence))"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "604"
         },
         {
           "role": "td",
@@ -6802,7 +8398,27 @@
         },
         {
           "role": "td",
-          "text": "editable=_fixable("
+          "text": "return classify(found, editable=_fixable(policy, found, file_evidence))"
+        },
+        {
+          "role": "td",
+          "text": "605"
+        },
+        {
+          "role": "td",
+          "text": "605"
+        },
+        {
+          "role": "td",
+          "text": "606"
+        },
+        {
+          "role": "td",
+          "text": "606"
+        },
+        {
+          "role": "td",
+          "text": "findings = tuple(finding(w) for w in defects)"
         },
         {
           "role": "figcaption",
@@ -6814,7 +8430,11 @@
         },
         {
           "role": "figcaption",
-          "text": "projects/clinical-reasoning/src/cr/docgen/judiciary.py:640"
+          "text": "projects/clinical-reasoning/src/cr/docgen/judiciary.py:640-650"
+        },
+        {
+          "role": "p",
+          "text": "Open these lines at the PR head"
         },
         {
           "role": "p",
@@ -6842,11 +8462,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -648,5 +648,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "648"
+        },
+        {
+          "role": "td",
+          "text": "648"
+        },
+        {
+          "role": "td",
+          "text": "else:"
+        },
+        {
+          "role": "td",
+          "text": "649"
+        },
+        {
+          "role": "td",
+          "text": "649"
+        },
+        {
+          "role": "td",
+          "text": "place = f\"input:{_folded(input_fact)}\""
+        },
+        {
+          "role": "td",
+          "text": "650"
         },
         {
           "role": "td",
@@ -6858,7 +8502,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "650"
         },
         {
           "role": "td",
@@ -6867,6 +8511,22 @@
         {
           "role": "td",
           "text": "return cartridge, key, \"\""
+        },
+        {
+          "role": "td",
+          "text": "651"
+        },
+        {
+          "role": "td",
+          "text": "651"
+        },
+        {
+          "role": "td",
+          "text": "652"
+        },
+        {
+          "role": "td",
+          "text": "652"
         },
         {
           "role": "figcaption",
@@ -6898,11 +8558,35 @@
         },
         {
           "role": "td",
-          "text": "@@ -1,1 +1,1 @@"
+          "text": "@@ -648,5 +648,5 @@"
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "648"
+        },
+        {
+          "role": "td",
+          "text": "648"
+        },
+        {
+          "role": "td",
+          "text": "else:"
+        },
+        {
+          "role": "td",
+          "text": "649"
+        },
+        {
+          "role": "td",
+          "text": "649"
+        },
+        {
+          "role": "td",
+          "text": "place = f\"input:{_folded(input_fact)}\""
+        },
+        {
+          "role": "td",
+          "text": "650"
         },
         {
           "role": "td",
@@ -6914,7 +8598,7 @@
         },
         {
           "role": "td",
-          "text": "1"
+          "text": "650"
         },
         {
           "role": "td",
@@ -6923,6 +8607,22 @@
         {
           "role": "td",
           "text": "return cartridge, key, \"\""
+        },
+        {
+          "role": "td",
+          "text": "651"
+        },
+        {
+          "role": "td",
+          "text": "651"
+        },
+        {
+          "role": "td",
+          "text": "652"
+        },
+        {
+          "role": "td",
+          "text": "652"
         },
         {
           "role": "figcaption",
@@ -7962,7 +9662,7 @@
         },
         {
           "role": "td",
-          "text": "Core harness file. Claims cite 55 of 656 new lines."
+          "text": "Core harness file. Claims cite 56 of 656 new lines."
         },
         {
           "role": "td",
@@ -9297,9 +10997,9 @@
           "text": "Each word below has one meaning on this page. In the text, a word with a dotted line shows its meaning when you point to it, focus it or tap it."
         }
       ],
-      "sha256": "460e90703fa0ac840f3b094b03544e38eaf228cddf68085322aab9f7b8776868",
+      "sha256": "57f28d2f53a2ae14a0aee16fa87984f70aa56980301ffd99ecfa2055a4f75434",
       "provenance": "browser-rendered"
     },
-    "sha256": "1b1a8a5cbd94e4f4ea0f0e4ae9b0656465e54d7849285960cf704f2cf5411542"
+    "sha256": "2a960854e7f1b5affbbc2c307330eeb4bece971e47124a31d4413b7b083a4d06"
   }
 }

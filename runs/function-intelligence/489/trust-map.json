@@ -33,13 +33,11 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
-          "start": 33,
-          "end": 38
+          "symbol": "only_an_editable_finding_reaches_the_editor"
         },
         {
           "path": "projects/clinical-reasoning/src/cr/docgen/adapter.py",
-          "start": 199,
-          "end": 213
+          "symbol": "Editor"
         }
       ],
       "verdict": "Proven",
@@ -61,8 +59,12 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
-          "start": 50,
-          "end": 52
+          "symbol": "one_kind_binds_adapter_subset_and_outputs",
+          "match": "Wiring(uap, UAP_SUBSET)",
+          "context": [
+            0,
+            2
+          ]
         }
       ],
       "verdict": "Proven",
@@ -83,8 +85,12 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
-          "start": 53,
-          "end": 61
+          "symbol": "one_kind_binds_adapter_subset_and_outputs",
+          "match": "await run_adapter(",
+          "context": [
+            0,
+            8
+          ]
         }
       ],
       "verdict": "Proven",
@@ -105,8 +111,8 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
-          "start": 62,
-          "end": 62
+          "symbol": "one_kind_binds_adapter_subset_and_outputs",
+          "match": "Outputs(Kind.CLINICIAN_N"
         }
       ],
       "verdict": "Proven",
@@ -127,8 +133,7 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
-          "start": 44,
-          "end": 60
+          "symbol": "DOCGEN_IMPORTS"
         }
       ],
       "verdict": "Proven",
@@ -149,8 +154,11 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
-          "start": 62,
-          "end": 63
+          "match": "ADAPTERS: tuple[str, ...",
+          "context": [
+            1,
+            0
+          ]
         }
       ],
       "verdict": "Proven",
@@ -171,8 +179,11 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
-          "start": 64,
-          "end": 75
+          "symbol": "CORE"
+        },
+        {
+          "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
+          "symbol": "CORE_FORBIDDEN"
         }
       ],
       "verdict": "Proven",
@@ -193,8 +204,11 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
-          "start": 77,
-          "end": 94
+          "symbol": "EXTERNAL_EDGE_OWNERS"
+        },
+        {
+          "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
+          "symbol": "EXTERNAL_EDGE_ALLOWLIST"
         }
       ],
       "verdict": "Proven",
@@ -215,13 +229,11 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
-          "start": 99,
-          "end": 105
+          "symbol": "CONSTRUCTOR_ALLOWLIST"
         },
         {
           "path": "projects/clinical-reasoning/src/cr/finished_cr.py",
-          "start": 116,
-          "end": 139
+          "symbol": "load_finished_cr"
         }
       ],
       "verdict": "Proven",
@@ -242,8 +254,7 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
-          "start": 99,
-          "end": 105
+          "symbol": "CONSTRUCTOR_ALLOWLIST"
         }
       ],
       "verdict": "Proven",
@@ -264,8 +275,7 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
-          "start": 621,
-          "end": 633
+          "symbol": "_fixable"
         }
       ],
       "verdict": "Proven",
@@ -286,8 +296,11 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
-          "start": 614,
-          "end": 633
+          "symbol": "_held"
+        },
+        {
+          "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
+          "symbol": "_fixable"
         }
       ],
       "verdict": "Proven",
@@ -308,8 +321,7 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
-          "start": 589,
-          "end": 604
+          "symbol": "JudiciaryReflector._reflect.finding"
         }
       ],
       "verdict": "Proven",
@@ -330,8 +342,7 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
-          "start": 640,
-          "end": 650
+          "symbol": "_claim"
         }
       ],
       "verdict": "Proven",
@@ -352,8 +363,7 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
-          "start": 101,
-          "end": 107
+          "symbol": "_idle"
         }
       ],
       "verdict": "Gap",
@@ -376,8 +386,7 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
-          "start": 69,
-          "end": 71
+          "symbol": "_unfixable"
         }
       ],
       "verdict": "Proven",
@@ -400,8 +409,12 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
-          "start": 219,
-          "end": 222
+          "symbol": "run_document",
+          "match": "return EditRecord(number, run, keep, aft",
+          "context": [
+            0,
+            3
+          ]
         }
       ],
       "verdict": "Proven",
@@ -424,8 +437,7 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/src/cr/docgen/session.py",
-          "start": 255,
-          "end": 266
+          "symbol": "_Session._finish"
         }
       ],
       "verdict": "Formal",
@@ -448,8 +460,7 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/src/cr/docgen/workspace.py",
-          "start": 127,
-          "end": 164
+          "symbol": "Workspace.apply_patch"
         }
       ],
       "verdict": "Proven",
@@ -470,8 +481,7 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/src/cr/docgen/accept.py",
-          "start": 55,
-          "end": 71
+          "symbol": "LastClean"
         }
       ],
       "verdict": "Formal",
@@ -494,8 +504,7 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
-          "start": 323,
-          "end": 330
+          "symbol": "_check_ready"
         }
       ],
       "verdict": "Proven",
@@ -516,8 +525,7 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/tests/test_docgen_parity.py",
-          "start": 554,
-          "end": 566
+          "symbol": "test_docgen_sends_the_golden_requests"
         }
       ],
       "verdict": "Proven",
@@ -538,13 +546,21 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/tests/test_docgen_parity.py",
-          "start": 714,
-          "end": 730
+          "symbol": "test_the_harness_note_path_sends_the_note_loops_requests",
+          "match": "def test_the_harness_not",
+          "context": [
+            0,
+            16
+          ]
         },
         {
           "path": "projects/clinical-reasoning/src/cr/docgen/clinician_note.py",
-          "start": 340,
-          "end": 355
+          "symbol": "NoteAuthorEditor.edit",
+          "match": "\"check_note, and call fi",
+          "context": [
+            0,
+            15
+          ]
         }
       ],
       "verdict": "Proven",
@@ -565,8 +581,12 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/src/cr/cli.py",
-          "start": 680,
-          "end": 681
+          "symbol": "main",
+          "match": "if argv and argv[0] in (",
+          "context": [
+            0,
+            1
+          ]
         }
       ],
       "verdict": "Proven",
@@ -587,8 +607,7 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/src/cr/finished_cr.py",
-          "start": 105,
-          "end": 113
+          "symbol": "check_finished"
         }
       ],
       "verdict": "Proven",
@@ -609,8 +628,11 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/tests/test_docgen_judiciary_worker.py",
-          "start": 40,
-          "end": 48
+          "symbol": "NODE"
+        },
+        {
+          "path": "projects/clinical-reasoning/tests/test_docgen_judiciary_worker.py",
+          "symbol": "pytestmark"
         }
       ],
       "verdict": "Asserted",
@@ -778,8 +800,7 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/src/cr/generation_util.py",
-          "start": 47,
-          "end": 55
+          "symbol": "require_same_scope"
         }
       ],
       "verdict": "Gap",
@@ -800,8 +821,7 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/src/cr/guidance/_xlsx.py",
-          "start": 16,
-          "end": 28
+          "symbol": "read_sheet_rows"
         }
       ],
       "verdict": "Gap",
@@ -822,8 +842,7 @@
       "code": [
         {
           "path": "projects/clinical-reasoning/src/cr/generation_util.py",
-          "start": 15,
-          "end": 27
+          "symbol": "submission_text"
         }
       ],
       "verdict": "Gap",
@@ -955,9 +974,9 @@
       "baseline": {
         "status": "green",
         "exit": 0,
-        "seconds": 3.32,
+        "seconds": 3.12,
         "output_tail": "0 errors, 0 warnings, 0 notes",
-        "ran_at": "2026-10-10T18:48:00+00:00",
+        "ran_at": "2026-10-11T03:17:24+00:00",
         "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
       },
       "state": "proven"
@@ -1594,9 +1613,9 @@
       "baseline": {
         "status": "green",
         "exit": 0,
-        "seconds": 1.22,
-        "output_tail": ".                                                                        [100%]\n1 passed in 0.57s",
-        "ran_at": "2026-10-10T18:48:11+00:00",
+        "seconds": 3.6,
+        "output_tail": ".                                                                        [100%]\n1 passed in 2.66s",
+        "ran_at": "2026-10-11T03:17:28+00:00",
         "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
       },
       "state": "proven"
@@ -1729,9 +1748,9 @@
       "baseline": {
         "status": "green",
         "exit": 0,
-        "seconds": 1.51,
-        "output_tail": "...                                                                      [100%]\n3 passed in 0.88s",
-        "ran_at": "2026-10-10T18:48:15+00:00",
+        "seconds": 1.26,
+        "output_tail": "...                                                                      [100%]\n3 passed in 0.70s",
+        "ran_at": "2026-10-11T03:17:29+00:00",
         "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
       },
       "state": "proven",
@@ -3338,11 +3357,11 @@
       "description": "Remove the ignore marker on line 36, so the type error shows.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
-          "find": "    await _edit(editor, d, client, [found])  # pyright: ignore[reportArgumentType]\n",
-          "replace": "    await _edit(editor, d, client, [found])\n",
-          "count": 1
+          "symbol": "only_an_editable_finding_reaches_the_editor",
+          "match": "/found\\]\\)(  # pyright: ignore\\[reportArgumentType\\])/",
+          "with": ""
         }
       ],
       "expect": {
@@ -3352,11 +3371,12 @@
       "result": {
         "status": "red",
         "exit": 1,
-        "seconds": 2.8,
+        "seconds": 2.62,
         "matched": true,
-        "output_tail": "<worktree>/projects/clinical-reasoning/tests/_docgen_type_contracts.py\n  <worktree>/projects/clinical-reasoning/tests/_docgen_type_contracts.py:36:37 - error: Argument of type \"list[Finding]\" cannot be assigned to parameter \"todo\" of type \"Sequence[EditableFinding]\" in function \"_edit\"\n    \"Finding\" is not assignable to \"EditableFinding\" (reportArgumentType)\n1 error, 0 warnings, 0 notes",
-        "ran_at": "2026-10-10T18:48:54+00:00",
-        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+        "output_tail": "/private<worktree>/projects/clinical-reasoning/tests/_docgen_type_contracts.py\n  /private<worktree>/projects/clinical-reasoning/tests/_docgen_type_contracts.py:36:37 - error: Argument of type \"list[Finding]\" cannot be assigned to parameter \"todo\" of type \"Sequence[EditableFinding]\" in function \"_edit\"\n    \"Finding\" is not assignable to \"EditableFinding\" (reportArgumentType)\n1 error, 0 warnings, 0 notes",
+        "ran_at": "2026-10-11T03:17:38+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b",
+        "diff": "diff --git a/projects/clinical-reasoning/tests/_docgen_type_contracts.py b/projects/clinical-reasoning/tests/_docgen_type_contracts.py\nindex cd8d835b..8c3a0153 100644\n--- a/projects/clinical-reasoning/tests/_docgen_type_contracts.py\n+++ b/projects/clinical-reasoning/tests/_docgen_type_contracts.py\n@@ -34,5 +34,5 @@ async def only_an_editable_finding_reaches_the_editor(\n     editor: Editor[str], d: Draft[str], client: ResponsesClient, found: Finding\n ) -> None:\n-    await _edit(editor, d, client, [found])  # pyright: ignore[reportArgumentType]\n+    await _edit(editor, d, client, [found])\n     await _edit(editor, d, client, [classify(found)])  # pyright: ignore[reportArgumentType]\n     await _edit(editor, d, client, editable([classify(found)]))\n"
       }
     },
     {
@@ -3366,11 +3386,11 @@
       "description": "Remove the ignore marker on line 37, so the type error shows.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
-          "find": "    await _edit(editor, d, client, [classify(found)])  # pyright: ignore[reportArgumentType]\n",
-          "replace": "    await _edit(editor, d, client, [classify(found)])\n",
-          "count": 1
+          "symbol": "only_an_editable_finding_reaches_the_editor",
+          "match": "/found\\)\\]\\)(  # pyright: ignore\\[reportArgumentType\\])/",
+          "with": ""
         }
       ],
       "expect": {
@@ -3394,11 +3414,11 @@
       "description": "Remove the ignore marker on line 51, so the type error shows.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
-          "find": "    Wiring(uap, FMM_SUBSET)  # pyright: ignore[reportArgumentType]\n",
-          "replace": "    Wiring(uap, FMM_SUBSET)\n",
-          "count": 1
+          "symbol": "one_kind_binds_adapter_subset_and_outputs",
+          "match": "/FMM_SUBSET\\)(  # pyright: ignore\\[reportArgumentType\\])/",
+          "with": ""
         }
       ],
       "expect": {
@@ -3422,11 +3442,11 @@
       "description": "Remove the ignore marker on line 52, so the type error shows.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
-          "find": "    Wiring(fmm, FOUR_HORSEMEN_SUBSET)  # pyright: ignore[reportArgumentType]\n",
-          "replace": "    Wiring(fmm, FOUR_HORSEMEN_SUBSET)\n",
-          "count": 1
+          "symbol": "one_kind_binds_adapter_subset_and_outputs",
+          "match": "/FOUR_HORSEMEN_SUBSET\\)(  # pyright: ignore\\[reportArgumentType\\])/",
+          "with": ""
         }
       ],
       "expect": {
@@ -3450,11 +3470,11 @@
       "description": "Remove the ignore marker on line 54, so the type error shows.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
-          "find": "        uap,  # pyright: ignore[reportArgumentType]\n",
-          "replace": "        uap,\n",
-          "count": 1
+          "symbol": "one_kind_binds_adapter_subset_and_outputs",
+          "match": "/uap,(  # pyright: ignore\\[reportArgumentType\\])/",
+          "with": ""
         }
       ],
       "expect": {
@@ -3478,11 +3498,11 @@
       "description": "Remove the ignore marker on line 61, so the type error shows.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
-          "find": "    _run_kind(run, Kind.UAP, fmm_setup)  # pyright: ignore[reportArgumentType]\n",
-          "replace": "    _run_kind(run, Kind.UAP, fmm_setup)\n",
-          "count": 1
+          "symbol": "one_kind_binds_adapter_subset_and_outputs",
+          "match": "/fmm_setup\\)(  # pyright: ignore\\[reportArgumentType\\])/",
+          "with": ""
         }
       ],
       "expect": {
@@ -3506,11 +3526,11 @@
       "description": "Remove the ignore marker on line 62, so the type error shows.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/tests/_docgen_type_contracts.py",
-          "find": "    Outputs(Kind.CLINICIAN_NOTE, cr, {})  # pyright: ignore[reportArgumentType]\n",
-          "replace": "    Outputs(Kind.CLINICIAN_NOTE, cr, {})\n",
-          "count": 1
+          "symbol": "one_kind_binds_adapter_subset_and_outputs",
+          "match": "/\\}\\)(  # pyright: ignore\\[reportArgumentType\\])/",
+          "with": ""
         }
       ],
       "expect": {
@@ -3534,25 +3554,25 @@
       "description": "Widen the editor contract: Editor.edit, EditorSpec.edit and NoteAuthorEditor.edit take a plain Finding. The pin on line 36 must then go red.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/src/cr/docgen/adapter.py",
-          "find": "        findings: Sequence[EditableFinding],\n",
-          "replace": "        findings: Sequence[Finding],\n",
-          "count": 1
+          "symbol": "Editor.edit",
+          "match": "Editable",
+          "with": ""
         },
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/src/cr/docgen/session.py",
-          "find": "        findings: Sequence[EditableFinding],\n",
-          "replace": "        findings: Sequence[Finding],\n",
-          "count": 1
+          "symbol": "EditorSpec.edit",
+          "match": "Editable",
+          "with": ""
         },
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/src/cr/docgen/clinician_note.py",
-          "find": "        findings: Sequence[EditableFinding],\n",
-          "replace": "        findings: Sequence[Finding],\n",
-          "count": 1
+          "symbol": "NoteAuthorEditor.edit",
+          "match": "Editable",
+          "with": ""
         }
       ],
       "expect": {
@@ -3576,11 +3596,10 @@
       "description": "Remove accept from the DOCGEN_IMPORTS row of loop. loop.py imports accept.",
       "edits": [
         {
-          "op": "replace",
+          "op": "drop-allowlist-row",
           "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
-          "find": "    \"loop\": (\"adapter\", \"accept\", \"findings\", \"workspace\"),\n",
-          "replace": "    \"loop\": (\"adapter\", \"findings\", \"workspace\"),\n",
-          "count": 1
+          "symbol": "DOCGEN_IMPORTS",
+          "match": "/(\"accept\"),/"
         }
       ],
       "expect": {
@@ -3656,11 +3675,10 @@
       "description": "Remove the loop and cr.note.loop pair from EXTERNAL_EDGE_ALLOWLIST.",
       "edits": [
         {
-          "op": "replace",
+          "op": "delete-line",
           "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
-          "find": "        (\"loop\", \"cr.note.loop\"),\n",
-          "replace": "",
-          "count": 1
+          "symbol": "EXTERNAL_EDGE_ALLOWLIST",
+          "match": "(\"loop\", \"cr.note.loop\"),"
         }
       ],
       "expect": {
@@ -3684,11 +3702,10 @@
       "description": "Remove tests/_crp_fixtures.py from the FinishedCR allowlist.",
       "edits": [
         {
-          "op": "replace",
+          "op": "drop-allowlist-row",
           "path": "projects/clinical-reasoning/scripts/check_docgen_boundary.py",
-          "find": "    \"FinishedCR\": frozenset({\"src/cr/finished_cr.py\", \"tests/_crp_fixtures.py\"}),\n",
-          "replace": "    \"FinishedCR\": frozenset({\"src/cr/finished_cr.py\"}),\n",
-          "count": 1
+          "symbol": "CONSTRUCTOR_ALLOWLIST",
+          "match": "\"tests/_crp_fixtures.py\""
         }
       ],
       "expect": {
@@ -3738,11 +3755,10 @@
       "description": "Remove the not_editable guard in _fixable.",
       "edits": [
         {
-          "op": "replace",
+          "op": "delete-line",
           "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
-          "find": "    if f.key in policy.not_editable:\n        return False\n",
-          "replace": "",
-          "count": 1
+          "symbol": "_fixable",
+          "match": "if f.key in policy.not_editable:"
         }
       ],
       "expect": {
@@ -3766,11 +3782,11 @@
       "description": "Make _fixable return True for an evidence_bound key.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
-          "find": "        return _held(file_evidence, f.where, f.input_fact)\n",
-          "replace": "        return True\n",
-          "count": 1
+          "symbol": "_fixable",
+          "match": "_held(file_evidence, f.where, f.input_fact)",
+          "with": "True"
         }
       ],
       "expect": {
@@ -3794,11 +3810,11 @@
       "description": "Remove the refuted test from the editable decision.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
-          "find": "editable=not refuted and _fixable(",
-          "replace": "editable=_fixable(",
-          "count": 1
+          "symbol": "JudiciaryReflector._reflect.finding",
+          "match": "/editable=(not refuted and )_fixable/",
+          "with": ""
         }
       ],
       "expect": {
@@ -3808,11 +3824,12 @@
       "result": {
         "status": "red",
         "exit": 1,
-        "seconds": 3.14,
+        "seconds": 3.63,
         "matched": true,
-        "output_tail": "            \"quote\": \"your 145 mg/dL leads it\",\n        }\n        args, log = worker(tmp_path, ledger_fingerprint(ledger), [refuted, mismatch])\n        _wire(monkeypatch, SlotRealizer(), Judge())\n        review = json.dumps({\"path\": \"review/round-1.md\", \"start_line\": None, \"max_lines\": None})\n        fix = update(OVERVIEW_TEXT, \"Here is your plan.\", \"u1\", OVERVIEW)\n        rc, out, wiring = run_cli(\n            monkeypatch,\n            tmp_path,\n            \"uap\",\n            FIXTURE_MEMBER,\n            *args,\n            checkpoint=crp,\n            editor=[[function_call_item(\"read_file\", review, \"r1\")], [fix, finish_call()]],\n        )\n        assert rc == 0\n        second = requests(log)[1][\"cartridge_ids\"]\n        assert second == [\"grounding.patient-record\", \"result.lab-fidelity\"]\n        trace = as_dict(read(out / \"trace.json\"))\n        found = {\n            as_dict(f)[\"key\"]: as_dict(f) for f in as_list(as_dict(trace[\"reflection\"])[\"findings\"])\n        }\n        got = {k: (f[\"where\"], f[\"blocking\"], f[\"decided\"], f[\"editable\"]) for k, f in found.items()}\n>       assert got == {\n            \"unsupported_patient_specific_claim\": (path, False, \"model\", False),\n            \"value_mismatch\": (OVERVIEW, True, \"model\", True),\n        }\nE       AssertionError: assert {'unsupported...model', True)} == {'unsupported...model', True)}\nE         \nE         Omitting 1 identical items, use -vv to show\nE         Differing items:\nE         {'unsupported_patient_specific_claim': ('cards/01-card-sha256-e1b8fd288efa.md', False, 'model', True)} != {'unsupported_patient_specific_claim': ('cards/01-card-sha256-e1b8fd288efa.md', False, 'model', False)}\nE         Use -v to get more diff\n\ntests/test_docgen_uap.py:519: AssertionError\n----------------------------- Captured stdout call -----------------------------\ncr docgen: UAP released -> /private/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/pytest-of-clayton/pytest-2369/test_a_major_the_second_sample0/out\n=========================== short test summary info ============================\nFAILED tests/test_docgen_uap.py::test_a_major_the_second_sample_refutes_is_graded_but_never_sent_to_the_editor\n1 failed in 2.07s",
-        "ran_at": "2026-10-10T18:50:35+00:00",
-        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+        "output_tail": "            \"quote\": \"your 145 mg/dL leads it\",\n        }\n        args, log = worker(tmp_path, ledger_fingerprint(ledger), [refuted, mismatch])\n        _wire(monkeypatch, SlotRealizer(), Judge())\n        review = json.dumps({\"path\": \"review/round-1.md\", \"start_line\": None, \"max_lines\": None})\n        fix = update(OVERVIEW_TEXT, \"Here is your plan.\", \"u1\", OVERVIEW)\n        rc, out, wiring = run_cli(\n            monkeypatch,\n            tmp_path,\n            \"uap\",\n            FIXTURE_MEMBER,\n            *args,\n            checkpoint=crp,\n            editor=[[function_call_item(\"read_file\", review, \"r1\")], [fix, finish_call()]],\n        )\n        assert rc == 0\n        second = requests(log)[1][\"cartridge_ids\"]\n        assert second == [\"grounding.patient-record\", \"result.lab-fidelity\"]\n        trace = as_dict(read(out / \"trace.json\"))\n        found = {\n            as_dict(f)[\"key\"]: as_dict(f) for f in as_list(as_dict(trace[\"reflection\"])[\"findings\"])\n        }\n        got = {k: (f[\"where\"], f[\"blocking\"], f[\"decided\"], f[\"editable\"]) for k, f in found.items()}\n>       assert got == {\n            \"unsupported_patient_specific_claim\": (path, False, \"model\", False),\n            \"value_mismatch\": (OVERVIEW, True, \"model\", True),\n        }\nE       AssertionError: assert {'unsupported...model', True)} == {'unsupported...model', True)}\nE         \nE         Omitting 1 identical items, use -vv to show\nE         Differing items:\nE         {'unsupported_patient_specific_claim': ('cards/01-card-sha256-e1b8fd288efa.md', False, 'model', True)} != {'unsupported_patient_specific_claim': ('cards/01-card-sha256-e1b8fd288efa.md', False, 'model', False)}\nE         Use -v to get more diff\n\ntests/test_docgen_uap.py:519: AssertionError\n----------------------------- Captured stdout call -----------------------------\ncr docgen: UAP released -> /private/var/folders/fc/p243dhf53bb95rncxbn9pfx00000gn/T/pytest-of-clayton/pytest-2395/test_a_major_the_second_sample0/out\n=========================== short test summary info ============================\nFAILED tests/test_docgen_uap.py::test_a_major_the_second_sample_refutes_is_graded_but_never_sent_to_the_editor\n1 failed in 2.69s",
+        "ran_at": "2026-10-11T03:17:46+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b",
+        "diff": "diff --git a/projects/clinical-reasoning/src/cr/docgen/judiciary.py b/projects/clinical-reasoning/src/cr/docgen/judiciary.py\nindex f5565416..1234110c 100644\n--- a/projects/clinical-reasoning/src/cr/docgen/judiciary.py\n+++ b/projects/clinical-reasoning/src/cr/docgen/judiciary.py\n@@ -602,5 +602,5 @@ class JudiciaryReflector[ProjT]:\n             refuted = major and not blocking\n             policy = policies[w.cartridge]\n-            return classify(found, editable=not refuted and _fixable(policy, found, file_evidence))\n+            return classify(found, editable=_fixable(policy, found, file_evidence))\n \n         findings = tuple(finding(w) for w in defects)\n"
       }
     },
     {
@@ -3822,11 +3839,11 @@
       "description": "Make _claim drop the place, so a claim is only the cartridge and the key.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
-          "find": "    return cartridge, key, place\n",
-          "replace": "    return cartridge, key, \"\"\n",
-          "count": 1
+          "symbol": "_claim",
+          "match": "/key, (place)/",
+          "with": "\"\""
         }
       ],
       "expect": {
@@ -3850,11 +3867,11 @@
       "description": "Make _claim drop the place, so a claim is only the cartridge and the key.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
-          "find": "    return cartridge, key, place\n",
-          "replace": "    return cartridge, key, \"\"\n",
-          "count": 1
+          "symbol": "_claim",
+          "match": "/key, (place)/",
+          "with": "\"\""
         }
       ],
       "expect": {
@@ -3878,11 +3895,10 @@
       "description": "Remove the idle-round stop from the edit loop.",
       "edits": [
         {
-          "op": "replace",
+          "op": "delete-line",
           "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
-          "find": "        elif _idle(record):\n            break\n",
-          "replace": "",
-          "count": 1
+          "symbol": "run_document",
+          "match": "elif _idle(record):"
         }
       ],
       "expect": {
@@ -3892,11 +3908,12 @@
       "result": {
         "status": "red",
         "exit": 1,
-        "seconds": 1.71,
+        "seconds": 1.88,
         "matched": true,
-        "output_tail": "F..                                                                      [100%]\n=================================== FAILURES ===================================\n_ test_a_finished_round_that_changed_no_file_ends_the_edit_rounds[strict-finished] _\n\naccept = <cr.docgen.accept.StrictImprovement object at 0x10a2b4ef0>\nturns = [[{'type': 'function_call', 'name': 'finish', 'arguments': '{\"summary\": \"done\"}', 'call_id': 'f1'}], [{'type': 'function_call', 'name': 'finish', 'arguments': '{\"summary\": \"done\"}', 'call_id': 'f2'}]]\nrounds = 1, reflected = 1\n\n    @pytest.mark.parametrize(\n        (\"accept\", \"turns\", \"rounds\", \"reflected\"),\n        [\n            (StrictImprovement(), UNCHANGED, 1, 1),\n            # The session never finished (its turns ran out), so a next round may still edit.\n            (StrictImprovement(), [], 3, 1),\n            # The note's rule reflects the unchanged draft again, as the note loop does, and edits on.\n            (LastClean(), UNCHANGED, 3, 4),\n        ],\n        ids=[\"strict-finished\", \"strict-unfinished\", \"last-clean\"],\n    )\n    def test_a_finished_round_that_changed_no_file_ends_the_edit_rounds(\n        accept: AcceptRule, turns: list[list[JsonObject]], rounds: int, reflected: int\n    ) -> None:\n        \"\"\"Round 1's editor finishes without changing a file while a floor finding remains. Under\n        StrictImprovement the round is not reflected and not kept, and no round 2 runs: it would start\n        from the same draft and findings. The floor then falls back as before.\"\"\"\n        seen = SeenReflector()\n        result, editor = _run(turns, accept=accept, reflectors=[seen])\n>       assert [e.changed for e in result.edits] == [False] * rounds\nE       assert [False, False, False] == [False]\nE         \nE         Left contains 2 more items, first extra item: False\nE         Use -v to get more diff\n\ntests/test_docgen_loop.py:357: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_docgen_loop.py::test_a_finished_round_that_changed_no_file_ends_the_edit_rounds[strict-finished]\n1 failed, 2 passed in 0.74s",
-        "ran_at": "2026-10-10T18:50:53+00:00",
-        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
+        "output_tail": "F..                                                                      [100%]\n=================================== FAILURES ===================================\n_ test_a_finished_round_that_changed_no_file_ends_the_edit_rounds[strict-finished] _\n\naccept = <cr.docgen.accept.StrictImprovement object at 0x10a628680>\nturns = [[{'type': 'function_call', 'name': 'finish', 'arguments': '{\"summary\": \"done\"}', 'call_id': 'f1'}], [{'type': 'function_call', 'name': 'finish', 'arguments': '{\"summary\": \"done\"}', 'call_id': 'f2'}]]\nrounds = 1, reflected = 1\n\n    @pytest.mark.parametrize(\n        (\"accept\", \"turns\", \"rounds\", \"reflected\"),\n        [\n            (StrictImprovement(), UNCHANGED, 1, 1),\n            # The session never finished (its turns ran out), so a next round may still edit.\n            (StrictImprovement(), [], 3, 1),\n            # The note's rule reflects the unchanged draft again, as the note loop does, and edits on.\n            (LastClean(), UNCHANGED, 3, 4),\n        ],\n        ids=[\"strict-finished\", \"strict-unfinished\", \"last-clean\"],\n    )\n    def test_a_finished_round_that_changed_no_file_ends_the_edit_rounds(\n        accept: AcceptRule, turns: list[list[JsonObject]], rounds: int, reflected: int\n    ) -> None:\n        \"\"\"Round 1's editor finishes without changing a file while a floor finding remains. Under\n        StrictImprovement the round is not reflected and not kept, and no round 2 runs: it would start\n        from the same draft and findings. The floor then falls back as before.\"\"\"\n        seen = SeenReflector()\n        result, editor = _run(turns, accept=accept, reflectors=[seen])\n>       assert [e.changed for e in result.edits] == [False] * rounds\nE       assert [False, False, False] == [False]\nE         \nE         Left contains 2 more items, first extra item: False\nE         Use -v to get more diff\n\ntests/test_docgen_loop.py:357: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_docgen_loop.py::test_a_finished_round_that_changed_no_file_ends_the_edit_rounds[strict-finished]\n1 failed, 2 passed in 0.76s",
+        "ran_at": "2026-10-11T03:17:52+00:00",
+        "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b",
+        "diff": "diff --git a/projects/clinical-reasoning/src/cr/docgen/loop.py b/projects/clinical-reasoning/src/cr/docgen/loop.py\nindex 99afc4cd..059a8ba3 100644\n--- a/projects/clinical-reasoning/src/cr/docgen/loop.py\n+++ b/projects/clinical-reasoning/src/cr/docgen/loop.py\n@@ -239,6 +239,4 @@ async def run_document[ProjT, DocT, K: Kind](\n             current = record.after\n             kept.append((number, current, ws.writable_files()))\n-        elif _idle(record):\n-            break\n     restored_to: int | None = None\n     settled = accept.settle([r.findings for _, r, _ in kept]) if lost is None else None\n"
       }
     },
     {
@@ -3906,11 +3923,11 @@
       "description": "Remove the _unfixable stop from the edit loop.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
-          "find": "not editable(current.findings) or _unfixable(current):",
-          "replace": "not editable(current.findings):",
-          "count": 1
+          "symbol": "run_document",
+          "match": "/findings\\)( or _unfixable\\(current\\)):/",
+          "with": ""
         }
       ],
       "expect": {
@@ -3934,11 +3951,10 @@
       "description": "Remove the stop after a lost editor call.",
       "edits": [
         {
-          "op": "replace",
+          "op": "delete-line",
           "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
-          "find": "        if record.lost:\n            lost = record\n            break\n",
-          "replace": "",
-          "count": 1
+          "symbol": "run_document",
+          "match": "/reflect\\)\\s+edits\\.append\\(record\\)\\s+(if record\\.lost:)\\s+lost = record\\s+break/"
         }
       ],
       "expect": {
@@ -3962,11 +3978,10 @@
       "description": "Invert the blocking test in _finish.",
       "edits": [
         {
-          "op": "replace",
+          "op": "invert-condition",
           "path": "projects/clinical-reasoning/src/cr/docgen/session.py",
-          "find": "if blocking and self.run.finish_refusals",
-          "replace": "if not blocking and self.run.finish_refusals",
-          "count": 1
+          "symbol": "_Session._finish",
+          "match": "/if (blocking) and/"
         }
       ],
       "expect": {
@@ -3990,11 +4005,12 @@
       "description": "Let delete_file remove the file, not refuse it.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/src/cr/docgen/workspace.py",
-          "find": "                raise WorkspaceError(\n                    f\"{norm} may not be deleted; send update_file with a diff instead\"\n                )\n",
-          "replace": "                self._files.pop(norm, None)\n                return f\"delete_file {norm}: ok\"\n",
-          "count": 1
+          "symbol": "Workspace.apply_patch",
+          "match": "/it\\.\\s+(raise WorkspaceError\\()/",
+          "with": "self._files.pop(norm, None); return f\"delete_file {norm}: ok\"",
+          "span": "statement"
         }
       ],
       "expect": {
@@ -4018,11 +4034,11 @@
       "description": "Make LastClean.settle pick the first clean draft, not the last.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/src/cr/docgen/accept.py",
-          "find": "return clean[-1] if clean else None",
-          "replace": "return clean[0] if clean else None",
-          "count": 1
+          "symbol": "LastClean.settle",
+          "match": "/clean\\[(-1)\\]/",
+          "with": "0"
         }
       ],
       "expect": {
@@ -4046,11 +4062,10 @@
       "description": "Remove the synthetic-only check of the ready line.",
       "edits": [
         {
-          "op": "replace",
+          "op": "delete-line",
           "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
-          "find": "    if ready.get(\"synthetic_only\") is not True:\n        raise JudiciaryWorkerError(\"the worker is not synthetic-only\")\n",
-          "replace": "",
-          "count": 1
+          "symbol": "_check_ready",
+          "match": "if ready.get(\"synthetic_only\") is not True:"
         }
       ],
       "expect": {
@@ -4100,11 +4115,11 @@
       "description": "Change the prompt cache key of NoteAuthorEditor from author to harness.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/src/cr/docgen/clinician_note.py",
-          "find": "cache_key=f\"{_cache_key(d.cr)}:author\",",
-          "replace": "cache_key=f\"{_cache_key(d.cr)}:harness\",",
-          "count": 1
+          "symbol": "NoteAuthorEditor.edit",
+          "match": "/:(author)\"/",
+          "with": "harness"
         }
       ],
       "expect": {
@@ -4128,11 +4143,11 @@
       "description": "Make cr uap and cr fmm pass --reflection cr.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/src/cr/cli.py",
-          "find": "\"--reflection\", \"none\", *argv[1:]",
-          "replace": "\"--reflection\", \"cr\", *argv[1:]",
-          "count": 1
+          "symbol": "main",
+          "match": "none",
+          "with": "cr"
         }
       ],
       "expect": {
@@ -4156,11 +4171,10 @@
       "description": "Remove the CR-33 refusal from check_finished.",
       "edits": [
         {
-          "op": "replace",
+          "op": "delete-line",
           "path": "projects/clinical-reasoning/src/cr/finished_cr.py",
-          "find": "    if issues:\n        raise CrRefused(\"cr33\", [f\"CRP failed CR-33 acceptance: {issue}\" for issue in issues])\n",
-          "replace": "",
-          "count": 1
+          "symbol": "check_finished",
+          "match": "if issues:"
         }
       ],
       "expect": {
@@ -4184,25 +4198,25 @@
       "description": "Widen the editor contract, as in K01b. Project-wide basedpyright must go red in the editors.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/src/cr/docgen/adapter.py",
-          "find": "        findings: Sequence[EditableFinding],\n",
-          "replace": "        findings: Sequence[Finding],\n",
-          "count": 1
+          "symbol": "Editor.edit",
+          "match": "Editable",
+          "with": ""
         },
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/src/cr/docgen/session.py",
-          "find": "        findings: Sequence[EditableFinding],\n",
-          "replace": "        findings: Sequence[Finding],\n",
-          "count": 1
+          "symbol": "EditorSpec.edit",
+          "match": "Editable",
+          "with": ""
         },
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/src/cr/docgen/clinician_note.py",
-          "find": "        findings: Sequence[EditableFinding],\n",
-          "replace": "        findings: Sequence[Finding],\n",
-          "count": 1
+          "symbol": "NoteAuthorEditor.edit",
+          "match": "Editable",
+          "with": ""
         }
       ],
       "expect": {
@@ -4226,11 +4240,11 @@
       "description": "Change the protocol name that CR sends to the worker, so the real worker must refuse it.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/src/cr/docgen/judiciary.py",
-          "find": "PROTOCOL = \"cr-reflection-protocol.v1\"\n",
-          "replace": "PROTOCOL = \"cr-reflection-protocol.v0\"\n",
-          "count": 1
+          "symbol": "PROTOCOL",
+          "match": "1",
+          "with": "0"
         }
       ],
       "expect": {
@@ -5251,5 +5265,6 @@
       "owner": "CR clinical-safety owners",
       "flag": "the open safety question"
     }
-  ]
+  ],
+  "probed_at": "2026-10-11T03:17:52+00:00"
 }
