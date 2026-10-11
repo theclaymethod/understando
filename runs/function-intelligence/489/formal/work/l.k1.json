@@ -1,0 +1,128 @@
+{
+  "status": "red",
+  "violation": {
+    "kind": "invariant",
+    "name": "UnfixableStops"
+  },
+  "trace": [
+    {
+      "n": 1,
+      "action": "<Initial predicate>",
+      "state": {
+        "phase": "review",
+        "B": [
+          "f",
+          "u"
+        ],
+        "C": [
+          "f",
+          "u"
+        ],
+        "D": [
+          "f",
+          "u"
+        ],
+        "log": [
+          {
+            "d": [
+              "f",
+              "u"
+            ],
+            "ev": "init"
+          }
+        ],
+        "n": 0,
+        "rn": 0,
+        "kept": [
+          {
+            "n": 0,
+            "c": [
+              "f",
+              "u"
+            ],
+            "d": [
+              "f",
+              "u"
+            ]
+          }
+        ],
+        "lost": false,
+        "edited": false
+      }
+    },
+    {
+      "n": 2,
+      "action": "<Next line 189, col 12 to line 189, col 96 of module DocLoop>",
+      "state": {
+        "phase": "floor",
+        "B": [
+          "f",
+          "u"
+        ],
+        "C": [
+          "f",
+          "u"
+        ],
+        "D": [
+          "f",
+          "u"
+        ],
+        "log": [
+          {
+            "d": [
+              "f",
+              "u"
+            ],
+            "ev": "init"
+          },
+          {
+            "n": 1,
+            "kept": false,
+            "d": [],
+            "ev": "edit",
+            "o": "lost",
+            "ch": true,
+            "stage": "review",
+            "todo": [
+              "f",
+              "u"
+            ]
+          }
+        ],
+        "n": 1,
+        "rn": 0,
+        "kept": [
+          {
+            "n": 0,
+            "c": [
+              "f",
+              "u"
+            ],
+            "d": [
+              "f",
+              "u"
+            ]
+          }
+        ],
+        "lost": true,
+        "edited": true
+      }
+    }
+  ],
+  "generated": 356,
+  "distinct": 351,
+  "exit": 12,
+  "seconds": 0.73,
+  "spec": "DocLoop.tla",
+  "spec_sha256": "sha256:b1905e14455a4fc5872eda8e49171dbab1d6e04ad90569238b1d16f19891bd0f",
+  "cfg": "DocLoop.cfg",
+  "cfg_sha256": "sha256:7cea63313470de6c87512dc56e7eb7fdced9bc19ae3f9b716ee84934b2db7aad",
+  "deadlock_checked": true,
+  "output_tail": "Computed 4 initial states...\nFinished computing initial states: 8 distinct states generated at 2026-10-10 18:20:53.\nError: Invariant UnfixableStops is violated.\nError: The behavior up to this point is:\nState 1: <Initial predicate>\n/\\ phase = \"review\"\n/\\ B = {\"f\", \"u\"}\n/\\ C = {\"f\", \"u\"}\n/\\ D = {\"f\", \"u\"}\n/\\ log = <<[d |-> {\"f\", \"u\"}, ev |-> \"init\"]>>\n/\\ n = 0\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"f\", \"u\"}, d |-> {\"f\", \"u\"}]>>\n/\\ lost = FALSE\n/\\ edited = FALSE\n\nState 2: <Next line 189, col 12 to line 189, col 96 of module DocLoop>\n/\\ phase = \"floor\"\n/\\ B = {\"f\", \"u\"}\n/\\ C = {\"f\", \"u\"}\n/\\ D = {\"f\", \"u\"}\n/\\ log = << [d |-> {\"f\", \"u\"}, ev |-> \"init\"],\n   [ n |-> 1,\n     kept |-> FALSE,\n     d |-> {},\n     ev |-> \"edit\",\n     o |-> \"lost\",\n     ch |-> TRUE,\n     stage |-> \"review\",\n     todo |-> {\"f\", \"u\"} ] >>\n/\\ n = 1\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"f\", \"u\"}, d |-> {\"f\", \"u\"}]>>\n/\\ lost = TRUE\n/\\ edited = TRUE\n\n356 states generated, 351 distinct states found, 291 states left on queue.\nThe depth of the complete state graph search is 6.\nThe average outdegree of the complete state graph is 6 (minimum is 0, the maximum 30 and the 95th percentile is 27).\nFinished in 00s at (2026-10-10 18:20:53)",
+  "control": {
+    "find": "           ELSE IF Unfixable(C) THEN \"unfixable\"\n           ELSE IF edited",
+    "replace": "           ELSE IF edited",
+    "pattern": "UnfixableStops",
+    "matched": true
+  }
+}

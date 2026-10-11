@@ -289,6 +289,34 @@ print("doctor: cc-deleted-ready and import-stale")
 PY
 git -C "$REPO" branch -q -D cc-test
 
+step "discover import: a formal sidecar's proposed invariants, then the user's decisions rate the record"
+SIDE="$RUN2/formal/verifiers.json"; mkdir -p "$RUN2/formal"; cp "$FIX/ready/sidecar.json" "$SIDE"
+"$U" --run "$RUN2" formalize --sidecar "$SIDE" > "$O/side0.txt"
+has "$O/side0.txt" "FW1: Formal (pending user confirmation)"
+"$U" --run "$RUN2" discover import --sidecar "$SIDE" > "$O/side1.txt"
+has "$O/side1.txt" "W1, W1-q2"
+"$U" --run "$RUN2" discover questions > "$O/side2.txt"
+has "$O/side2.txt" "code today: It pays out a negative amount"
+printf '%s' '{"answers": [{"candidate": "W1", "decision": "accept", "confirmed": true, "claims": ["C01"]},
+  {"candidate": "W1-q2", "decision": "defer", "reason": "The owner decides negative amounts.", "owner": "wallet team"}]}' > "$WORK/side-answers.json"
+"$U" --run "$RUN2" discover answer --answers "$WORK/side-answers.json" > "$O/side3.txt"
+has "$O/side3.txt" "Owner: wallet team."
+"$U" --run "$RUN2" formalize --sidecar "$SIDE" > "$O/side4.txt"
+has "$O/side4.txt" "FW1: Formal"
+lacks "$O/side4.txt" "FW1: Formal (pending"
+python3 - "$RUN2/trust-map.json" "$SIDE" <<'PY'
+import json, sys
+d, side = json.load(open(sys.argv[1])), json.load(open(sys.argv[2]))
+c = {x["id"]: x for x in d["claims"]}
+assert c["C01"]["verdict"] == "Formal" and c["C01"]["tier"] == 5, c["C01"]
+dup = [x for x in d["claims"] if x["source"].endswith("(formal FCW1)")]
+assert not dup, "the duplicate proposed claim was added"
+assert any(x["source"].endswith("(formal FCW2)") for x in d["claims"]), "the new proposed claim is missing"
+assert side["verifiers"][0]["invariant"]["author"] == "user"
+assert next(i for i in d["invariants"] if i["id"] == "W1-q2")["status"] == "proposed"
+print("the sidecar record is Formal after the user confirmed W1; the deferred question stays proposed")
+PY
+
 step "mode off: the hook writes nothing"
 "$U" mode off > /dev/null
 N="$(wc -l < "$RUN/journal.jsonl")"

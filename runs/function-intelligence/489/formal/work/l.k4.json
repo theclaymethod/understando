@@ -1,0 +1,24 @@
+{
+  "status": "red",
+  "exit": 1,
+  "seconds": 0.74,
+  "matched": true,
+  "argv": [
+    "uv",
+    "run",
+    "--no-sync",
+    "pytest",
+    "-q",
+    "-x",
+    "tests/test_formal_docloop_replay.py"
+  ],
+  "edits": [
+    {
+      "op": "replace",
+      "path": "src/cr/docgen/loop.py",
+      "find": "        elif _idle(record):\n            break\n",
+      "replace": ""
+    }
+  ],
+  "output_tail": "        findings: Sequence[EditableFinding],\n        *,\n        stage: Stage,\n        client: ResponsesClient,\n        check: Callable[[], Sequence[Finding]],\n        cache_key: str,\n        clock: Clock,\n    ) -> EditRun:\n        _ = client, check, cache_key, clock\n        self.calls.append((stage, number, sorted(f.key for f in findings)))\n>       assert self.steps, f\"the loop ran an edit the model did not: {stage} round {number}\"\nE       AssertionError: the loop ran an edit the model did not: review round 2\nE       assert []\nE        +  where [] = <test_formal_docloop_replay.ScheduleEditor object at 0x10b195fa0>.steps\n\ntests/test_formal_docloop_replay.py:167: AssertionError\n\nThe above exception was the direct cause of the following exception:\n\nrule = 'SI'\n\n    @pytest.mark.parametrize(\"rule\", [\"SI\", \"LC\"])\n    def test_the_real_loop_replays_every_terminal_behaviour_of_the_model(rule: str) -> None:\n        consts, vectors = _vectors(rule)\n        assert consts[\"Rule\"] == rule and len(vectors) > 500\n        for v in vectors:\n            log = cast(list[dict[str, Any]], v[\"log\"])\n            try:\n                _replay(rule, log, consts)\n            except AssertionError as exc:\n>               raise AssertionError(f\"{rule} vector {json.dumps(log)}: {exc}\") from exc\nE               AssertionError: SI vector [{\"d\": [\"f\"], \"ev\": \"init\"}, {\"ch\": false, \"d\": [\"f\"], \"ev\": \"edit\", \"kept\": false, \"n\": 1, \"o\": \"finished\", \"stage\": \"review\", \"todo\": [\"f\"]}, {\"ev\": \"stop\", \"why\": \"idle\"}, {\"ev\": \"floor\", \"final\": [\"f\"], \"outcome\": \"fallback\"}]: the loop ran an edit the model did not: review round 2\nE               assert []\nE                +  where [] = <test_formal_docloop_replay.ScheduleEditor object at 0x10b195fa0>.steps\n\ntests/test_formal_docloop_replay.py:234: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_formal_docloop_replay.py::test_the_real_loop_replays_every_terminal_behaviour_of_the_model[SI]\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.21s"
+}

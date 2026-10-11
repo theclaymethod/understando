@@ -1,0 +1,6 @@
+{"frog": "docgen.accept", "ev": {"impact": 5, "bug_prior": 3, "reach": 5, "proof_cost": 2, "model_cost": 1, "ev": 37.5},
+ "history": "git log -S 'def settle' and -S 'rejects_early' on projects/clinical-reasoning/src/cr/docgen/accept.py: the rule is new in this PR stack; no earlier fix commits on the surface, so BugPrior stays 3 (new code, review-only evidence).",
+ "surface": "projects/clinical-reasoning/src/cr/docgen/accept.py (score, LastClean, StrictImprovement) and findings.py:96-101",
+ "failure_class": "decision rule: a wrong order, a missed new key, an early reject that drops a keepable edit, settle restoring the wrong draft",
+ "math": "Lean 4 core: Bool rules over List findings; lexicographic order on Nat^3 by omega; settle by the recurrence of the last index of a filtered range",
+ "artifact": "formal/lean/Accept/{Model,Theorems}.lean; accept_vectors.jsonl; vectors --oracle; tests/test_formal_accept_conformance.py"}

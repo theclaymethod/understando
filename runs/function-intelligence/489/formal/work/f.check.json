@@ -1,0 +1,15 @@
+{
+  "status": "green",
+  "violation": null,
+  "trace": [],
+  "generated": 14,
+  "distinct": 9,
+  "exit": 0,
+  "seconds": 0.63,
+  "spec": "Finish.tla",
+  "spec_sha256": "sha256:e029bc4757a38ce156b44b8faa6f28a936718604f8e616cef1bc0e585c88ae37",
+  "cfg": "Finish.cfg",
+  "cfg_sha256": "sha256:4d00c19bf87ecc7fb135673d5a846caa816d51115bf0e862b34c26b23d2eab5d",
+  "deadlock_checked": true,
+  "output_tail": "TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)\nRunning breadth-first search Model-Checking with fp 119 and seed 7802973391035326192 with 18 workers on 18 cores with 14564MB heap and 64MB offheap memory [pid: 62611] (Mac OS X 26.6.2 aarch64, Homebrew 27 x86_64, MSBDiskFPSet, DiskStateQueue).\nParsing file ~/dev/function-intelligence/.claude/worktrees/understando-489-ready/projects/clinical-reasoning/formal/tla/Finish.tla\nParsing file <tmp>/Naturals.tla\nParsing file <tmp>/Sequences.tla\nParsing file <tmp>/FiniteSets.tla\nSemantic processing of module Naturals\nSemantic processing of module Sequences\nSemantic processing of module FiniteSets\nSemantic processing of module Finish\nStarting... (2026-10-10 18:20:51)\nImplied-temporal checking--satisfiability problem has 1 branches.\nComputing initial states...\nFinished computing initial states: 1 distinct state generated at 2026-10-10 18:20:51.\nProgress(5) at 2026-10-10 18:20:51: 14 states generated, 9 distinct states found, 0 states left on queue.\nChecking temporal properties for the complete state space with 9 total distinct states at (2026-10-10 18:20:51)\nFinished checking temporal properties in 00s at 2026-10-10 18:20:52\nModel checking completed. No error has been found.\n  Estimates of the probability that TLC did not check all reachable states\n  because two distinct states had the same fingerprint:\n  calculated (optimistic):  val = 2.4E-18\n14 states generated, 9 distinct states found, 0 states left on queue.\nThe depth of the complete state graph search is 5.\nThe average outdegree of the complete state graph is 1 (minimum is 0, the maximum 2 and the 95th percentile is 2).\nFinished in 00s at (2026-10-10 18:20:52)"
+}

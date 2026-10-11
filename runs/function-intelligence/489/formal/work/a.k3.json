@@ -1,0 +1,24 @@
+{
+  "status": "red",
+  "exit": 1,
+  "seconds": 0.65,
+  "matched": true,
+  "argv": [
+    "uv",
+    "run",
+    "--no-sync",
+    "pytest",
+    "-q",
+    "-x",
+    "tests/test_formal_accept_conformance.py"
+  ],
+  "edits": [
+    {
+      "op": "replace",
+      "path": "src/cr/docgen/accept.py",
+      "find": "return clean[-1] if clean else None",
+      "replace": "return clean[0] if clean else None"
+    }
+  ],
+  "output_tail": "F\n=================================== FAILURES ===================================\n_________________ test_the_real_rules_replay_the_lean_vectors __________________\n\n    def test_the_real_rules_replay_the_lean_vectors() -> None:\n        rows = _rows()\n        pairs = [v for v in rows if v[\"op\"] == \"pair\"]\n        settles = [v for v in rows if v[\"op\"] == \"settle\"]\n        assert len(pairs) > 300 and len(settles) > 100\n        for v in pairs:\n            _check_pair(v)\n        for v in settles:\n>           _check_settle(v)\n\ntests/test_formal_accept_conformance.py:80: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nv = {'op': 'settle', 'states': [[], [[1, False, 'code', 'S2']], [[2, True, 'code', 'S3']]], 'settle_lc': 1, 'settle_si': None, ...}\n\n    def _check_settle(v: dict[str, Any]) -> None:\n        states = [_findings(s) for s in v[\"states\"]]\n>       assert LastClean().settle(states) == v[\"settle_lc\"], v\nE       AssertionError: {'op': 'settle', 'states': [[], [[1, False, 'code', 'S2']], [[2, True, 'code', 'S3']]], 'settle_lc': 1, 'settle_si': None, ...}\nE       assert 0 == 1\nE        +  where 0 = settle([[], [Finding(key='k1', blocking=False, source='formal', where=None, quote='', input_fact='', why='synthetic', hint=''...='formal', where=None, quote='', input_fact='', why='synthetic', hint='', severity='S3', decided='code', floor=False)]])\nE        +    where settle = <cr.docgen.accept.LastClean object at 0x107342f60>.settle\nE        +      where <cr.docgen.accept.LastClean object at 0x107342f60> = LastClean()\n\ntests/test_formal_accept_conformance.py:68: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_formal_accept_conformance.py::test_the_real_rules_replay_the_lean_vectors\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.04s"
+}

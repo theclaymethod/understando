@@ -1,0 +1,7 @@
+{"statement_parity": {"status": "pass", "note": "each property names the decision the code makes; C15 as worded is stricter than the code (see witness); the checked property is the code's own (_idle needs finished)"},
+ "state_parity": {"status": "pass", "note": "draft = set of abstract findings f,n,u,m,r; kept list, before, edited, lost map to loop.py variables; changed is a separate choice so an edit can change files and keep the same findings"},
+ "transition_parity": {"status": "pass", "note": "ReviewStop order = loop.py:228-231 then 241; ReviewEdit = edit() 194-219; Settle 244-247; StartRelease 250-251; ReleaseEdit 252-261; Floor 262-265 and _floor 79-98"},
+ "concurrency_parity": {"status": "pass", "note": "run_document is one task; each await is sequential, so no interleaving to model"},
+ "cancel_drain_parity": {"status": "pass", "note": "lost call (model_error) modelled in both stages, with restore and floor block; incomplete_response is a non-lost outcome (not in the model's outcome set: turn_limit stands for every non-finished, non-lost stop)"},
+ "runtime_evidence": {"status": "pass", "note": "2692 terminal behaviours (SI + LC) and 9 finish sessions replay green through the real code; 4 code controls red"},
+ "drift_gate": {"status": "pass", "note": "stamped: commit and blobs of loop.py, session.py, accept.py; sha256 of specs, cfgs and vectors"}}

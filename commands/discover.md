@@ -15,4 +15,6 @@ For the question rounds, use the grilling skill when `understando routes` shows 
 4. **Record.** Run `understando discover answer --answers <file>`. It writes one `invariant` row per decision to the journal. It copies each invariant to the trust map with its suggested tier (rule 5, process 4, wiring 3, input space 2, flow 1). It adds the frog EV score: the risk times the cost of an error, divided by the effort. It links the claims that the answer names. An example that the code does not give prints `POSSIBLE BUG`.
    - **Done when** `discover status` prints `DONE`. Report each possible bug and each `proposed` invariant to the user.
 
+To take the proposed invariants of a formal sidecar, run `understando discover import --sidecar runs/<repo>/<pr>/formal/verifiers.json`. Each invariant becomes a candidate with its questions, and the code's current behaviour is its evidence. Each question that the pilot marked unclear becomes a candidate of its own. A deferral can name an `owner` and a `flag`. Then run `understando formalize --sidecar` with the same file, so each record takes the user's decisions.
+
 An invariant without `"confirmed": true` is `author: agent`, status `proposed`. No verifier may use it, except under full autonomy (`mode on --autonomy`), and then its claim stays at Backed or below.

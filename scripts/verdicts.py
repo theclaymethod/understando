@@ -97,10 +97,20 @@ def families(text: str | None) -> set[str]:
 
 
 def conformant(v: dict) -> bool:
-    """A rung 4 or 5 check counts only with a passing conformance link to the real code."""
+    """A rung 4 or 5 check counts only with a passing conformance link to the real code. A check
+    from a formal sidecar record counts only when the record itself rates Formal."""
     if (tm.ladder(v) or 0) < 4:
         return True
+    record = v.get("formal_record")
+    if record and (record.get("formal") or {}).get("verdict") != "Formal":
+        return False
     return ((v.get("formal") or {}).get("conformance") or {}).get("status") == "pass"
+
+
+def disagreeing(data: dict, inv_id: str | None) -> dict | None:
+    """A user-confirmed invariant that the code at the head does not obey: a possible bug."""
+    return next((i for i in data.get("invariants", []) if i["id"] == inv_id and i["author"] == "user"
+                 and i["status"] == "accepted" and i.get("possible_bug")), None)
 
 
 def user_confirmed(data: dict, inv_id: str | None) -> bool:
@@ -172,12 +182,21 @@ def apply(data: dict) -> dict:
                 "proven": "a model verifier from the author family went red, or a proof has no passing conformance link",
             }
             c["reason"] = f"{ids} backs this claim, but " + " and ".join(why[s] for s in kinds) + "."
+            pending = [v for v in counted if v.get("formal_record") and (v["formal_record"].get("formal") or {}).get("verdict") != "Formal"]
+            if pending and not [v for v in counted if v not in pending and v["state"] == "proven"]:
+                c["reason"] = " ".join(f"{v['id']} backs this claim, but its formal record is {v['formal_record']['formal']['verdict']}."
+                                       for v in pending)
         elif c["stated"]:
             c["verdict"] = "Asserted"
             c["reason"] = "Only the PR text states this claim."
         else:
             c["verdict"] = "Gap"
             c["reason"] = "No verifier backs this claim, and the PR text does not state it."
+        bug = disagreeing(data, c.get("invariant"))
+        if bug:
+            c["verdict"], c["tier"] = "Gap", None
+            c["reason"] = (f"code disagrees with the confirmed invariant {bug['id']}"
+                           + (f"; fix pending on {bug['fix_branch']}" if bug.get("fix_branch") else "; fix pending"))
         if dead and c["verdict"] not in ("Formal", "Proven"):
             c["reason"] += " " + " ".join(f"{v['id']} is {v['state']}." for v in dead)
         summary[c["verdict"]] += 1

@@ -1,0 +1,7 @@
+{"statement_parity": {"status": "pass", "note": "result and call count are the observable decisions; both compared"},
+ "state_parity": {"status": "pass", "note": "tries = index into outcomes; hist = the outcomes consumed"},
+ "transition_parity": {"status": "pass", "note": "Call(ok|fatal|transient) and GiveUp map to the three returns"},
+ "concurrency_parity": {"status": "n/a", "note": "single-threaded loop"},
+ "cancel_drain_parity": {"status": "n/a", "note": "no cancellation"},
+ "runtime_evidence": {"status": "pass", "note": "every terminal behaviour at MaxTries=3 replayed"},
+ "drift_gate": {"status": "pass", "note": "spec hash, commit and blob of mini/retry.py stamped"}}

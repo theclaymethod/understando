@@ -833,6 +833,61 @@
               "type": "string"
             }
           }
+        },
+        "formal_record": {
+          "type": "object",
+          "description": "The artifact record of a formal sidecar (runs/<repo>/<pr>/formal/verifiers.json, schema understando.formal/1), as `understando formalize --sidecar` copies it. A rung 4 or 5 verifier with a record proves its claims only when formal.verdict is Formal.",
+          "additionalProperties": true,
+          "properties": {
+            "ladder_tier": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 5
+            },
+            "conformance": {
+              "type": "object"
+            },
+            "controls": {
+              "type": "array"
+            },
+            "route": {
+              "type": "string"
+            },
+            "invariant": {
+              "type": "object"
+            },
+            "witness": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "drift": {
+              "type": "object"
+            },
+            "formal": {
+              "type": "object",
+              "required": [
+                "verdict"
+              ],
+              "properties": {
+                "verdict": {
+                  "type": "string"
+                },
+                "missing": {
+                  "type": "array"
+                }
+              }
+            },
+            "sidecar": {
+              "type": "string"
+            }
+          }
+        },
+        "incomplete": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A case of the claim that this verifier does not test."
         }
       }
     },
@@ -960,7 +1015,8 @@
             "baseline-error",
             "baseline-not-run",
             "same-family",
-            "shared-context"
+            "shared-context",
+            "stale-import"
           ]
         },
         "subject": {
@@ -1210,11 +1266,45 @@
               },
               "got": {
                 "type": "string"
+              },
+              "where": {
+                "type": "string"
               }
             }
           }
         },
         "at": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string",
+          "description": "Who decides a deferred invariant."
+        },
+        "deferred": {
+          "type": "boolean",
+          "description": "The user deferred it. It stays proposed."
+        },
+        "flag": {
+          "type": "string",
+          "description": "For example: the open safety question."
+        },
+        "route": {
+          "type": "string",
+          "enum": [
+            "code-first",
+            "model-first",
+            "harness-first",
+            "theorem-first"
+          ]
+        },
+        "fix_branch": {
+          "type": "string"
+        },
+        "record": {
+          "type": "string",
+          "description": "The formal record that checks it, for example F489-1."
+        },
+        "parent": {
           "type": "string"
         }
       }

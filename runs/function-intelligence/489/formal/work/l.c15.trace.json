@@ -1,0 +1,1 @@
+{"log": [{"d": ["m"], "ev": "init"}, {"n": 1, "kept": false, "d": ["m"], "ev": "edit", "o": "turn_limit", "ch": false, "stage": "review", "todo": ["m"]}, {"n": 2, "kept": false, "d": [], "ev": "edit", "o": "lost", "ch": true, "stage": "review", "todo": ["m"]}], "constants": {"Rule": "SI", "MaxRounds": 3, "ReleaseEdits": 2, "HasRelease": true, "Fallback": "clean"}}
