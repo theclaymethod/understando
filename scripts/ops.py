@@ -145,10 +145,11 @@ def intent_ok(data: dict, claim: dict, inv_id: str | None = None) -> str | None:
 
     The claim must come from the PR's stated intent, or link to a user-confirmed invariant. Under
     full autonomy an agent-picked invariant also passes, and its claim stays at Backed or below."""
-    inv_id = inv_id or claim.get("invariant")
-    if claim.get("stated"):
+    import onto
+    inv_id = inv_id or claim.get("invariant") or next(iter(onto.invariants_of(claim)), None)
+    if onto.intent(data, claim):
         return None
-    if confirmed_invariant(data, inv_id):
+    if confirmed_invariant(data, inv_id) and not claim.get("parts"):
         return None
     if autonomy() and any(i["id"] == inv_id and i["author"] == "agent" for i in data.get("invariants", [])):
         return None

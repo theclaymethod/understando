@@ -205,6 +205,14 @@ def findings(c: context.Ctx, explicit_head: str | None, formal: bool = False) ->
                 add("stale-verdicts", "auto", "The stored verdicts, tiers or summary differ from the current rules.", "Write the verdicts again (verdicts.py).")
             else:
                 fixed = None
+        import onto
+        bad = onto.name_problems(data)
+        if bad:
+            import names
+            add("plain-names", "route", f"{len(bad)} names are not plain: "
+                + "; ".join(f"the {k} '{names.of(data, i)}' ({why})" for k, i, why in bad[:3]) + (" and more" if len(bad) > 3 else "")
+                + names.ref([i for _, i, _ in bad]),
+                "Write each name again: 2 to 6 words, as a reviewer says it, with no path and no tool name.", "map")
         head = signals.pr_head(data, explicit_head)
         if head and head != data["head"]:
             add("stale-map", "route", f"The PR head moved: the map is at {data['head'][:10]}, the PR at {head[:10]}.", "Update the map and diff it.", "map")

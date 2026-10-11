@@ -11,7 +11,9 @@ Standard library only. The schema in ../schema/trust-map.schema.json is the sour
 - with `promises=True` (validate.py, verdicts.py, explain.py): each claim is in exactly one
   promise, and each promise names only claims that exist;
 - a verifier judged by a model names its family and its context, and kind `model` is guess tier;
-- a verifier on ladder rung 4 or 5 has a `formal` block (its proof or model, and its conformance link).
+- a verifier on ladder rung 4 or 5 has a `formal` block (its proof or model, and its conformance link);
+- shape 2 (onto.py): each claim lists one or more checks that exist, each check is under a claim,
+  and each verifier's `claims` mirrors the claims that list it.
 """
 
 from __future__ import annotations
@@ -153,7 +155,7 @@ def validate(data: dict, promises: bool = True) -> list[str]:
         for cid in v["claims"]:
             if cid not in claim_ids:
                 errors.append(f"verifier {v['id']}: unknown claim {cid}")
-        if not {"command", "recorded", "mechanical"} & set(v):
+        if v["kind"] != "none" and not {"command", "recorded", "mechanical"} & set(v):
             errors.append(f"verifier {v['id']}: needs a command, recorded evidence or a mechanical check")
         m = v.get("mechanical")
         if m and m["op"].startswith("grep") and "pattern" not in m:
@@ -189,6 +191,8 @@ def validate(data: dict, promises: bool = True) -> list[str]:
                 errors.append(f"claim {c['id']}: a code ref is an anchor or a line range, not both")
             if ({"part"} & set(ref)) and "symbol" not in ref:
                 errors.append(f"claim {c['id']}: part needs a symbol")
+    import onto
+    errors += onto.shape_errors(data)
     if promises:
         errors += promise_errors(data)
     return errors

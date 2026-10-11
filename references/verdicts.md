@@ -9,7 +9,7 @@
 
 ## The verification ladder
 
-Each claim gets `tier`: the highest rung of a verifier that went red on a control and can prove the claim. The rung comes from the verifier's `ladder`, else from its kind.
+Each claim gets `tier`: the highest rung of a check that went red on a control and can prove the claim. The rung comes from the verifier's `ladder`, else from its kind.
 
 | Rung | Checks |
 |---|---|
@@ -38,21 +38,29 @@ The script sets `state` on each verifier from its baseline and its control resul
 
 A red result counts as caught only when the exit code is in `red_exits` (default `[1]`) and the output holds `expect.pattern`. A red for a different reason (an import error, a syntax error) is an error, not a catch.
 
+## Check strength
+
+A claim lists its checks (`claims[].checks`). The strength of a check is the verdict that the check alone gives its claim:
+
+| Strength | Rule |
+|---|---|
+| **Formal** | The check is on ladder rung 4 or 5, and it is `proven`: a control broke the proof or the model. Its `formal.conformance` link passes. |
+| **Proven** | The check is `proven`, and it is fact tier. A model check also qualifies when its family is not the author's family, its context is fresh, and it went red on a control. |
+| **Backed** | The check is `proven`, `untested`, `recorded` or `checked`. A same-family model check stays here, also after a control. A rung 4 or 5 check without a passing conformance link stays here. |
+| **Asserted** | The check is `cannot-fail`, `failing`, `broken` or `stale`, or it is of kind `none`, and the PR narrative states the claim. |
+| **Gap** | The same, but the PR does not state the claim. The reviewer decides. |
+
+Intent gate: a Formal or Proven check gives only Backed when the claim has no intent. A claim has intent when the PR states it, or when each of its invariants has `author: user` and `status: accepted`. A merged claim needs this intent for each of its `parts`.
+
 ## Claim verdicts
 
-The script applies the first rule that holds.
+The verdict of a claim is the strength of its weakest check. Two checks can have the same strength. Then the weakest is the check that is weak by itself, not only by the intent gate. After that, it is the check with the worst result. The results, worst first, are none, broken, cannot fail, missed, no planted bug, mechanical, recorded and caught. The claim card names this check, in plain words, with its action. Thus, a weak check cannot hide behind a strong check of the same claim.
 
-| Verdict | Rule |
-|---|---|
-| **Formal** | A backing verifier on ladder rung 4 or 5 is `proven`: a control broke the proof or the model. Its `formal.conformance` link passes. |
-| **Proven** | A backing verifier is `proven`, and it is fact tier. A model verifier also qualifies when its family is not the author's family, its context is fresh, and it went red on a control. |
-| **Backed** | A backing verifier is `proven`, `untested`, `recorded` or `checked`. A same-family model verifier stays here, also after a control. |
-| **Asserted** | No backing verifier counts, and the PR narrative states the claim. |
-| **Gap** | No backing verifier counts, and the PR does not state the claim. The reviewer decides. |
+A user-confirmed invariant of the claim that the code does not obey (a possible bug) makes the claim Gap.
 
-Intent gate: a claim that the PR does not state reaches Proven or Formal only when its `invariant` names an invariant with `author: user` and `status: accepted`. Else it stays Backed, and the reason says why.
+The `tier` of a claim is the highest rung of a check that went red on a control and can prove the claim. It is the strongest check, and the verdict is the weakest check. The promise shows the tier as "Strongest check".
 
-A verifier that is `cannot-fail`, `failing`, `broken` or `stale` backs nothing. Its claim falls to Asserted or Gap, and the reason names the verifier.
+The strength of a promise is the verdict of its weakest claim. `scripts/derive.py` derives it, and the PR body, the review CLI and the page show the same value.
 
 ## Flags
 

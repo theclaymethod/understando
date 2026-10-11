@@ -4,6 +4,8 @@
     understando close --next                 the riskiest open claim as one question (review asks this one)
     understando close --answers FILE         apply the user's answers (the agent asks, then writes the file)
     understando close                        on a terminal: ask each question here
+    understando close --add-claim FILE       draft a claim for a changed file that no claim covers
+        [--name NAME --text TEXT [--what PLAIN] [--promise G1] [--invariant I01]]
 
 The seven options for each claim:
   1 mechanical   a grep or a line count (scripts/mechanical.py)        -> Backed
@@ -13,6 +15,15 @@ The seven options for each claim:
   5 evidence     attach recorded evidence                               -> Backed
   6 reword       reword the claim, or drop it
   7 waive        waive with a reason: the checklist and the PR body show it
+
+A claim is as strong as its weakest check, so close can also fix one weak check inside a claim:
+  fix-check      draft a test that replaces one weak check of the claim   -> the claim gains
+  drop-check     drop a check that cannot fail, fails or is stale: it backs nothing
+
+--add-claim drafts a claim for a file from its changed symbols. The user words it (--name and
+--text). Then close attaches the existing checks that run the file (the coverage record of the run)
+or whose control edits it, and offers to add a check. A claim that the user adds is not in the PR
+text: Proven needs an invariant that the user confirmed (--invariant, or understando discover).
 
 A drafted test goes into a scratch worktree of a private clone. probe runs it at that commit,
 first green, then with the planted bug. Only when it goes red with the expected pattern does the
@@ -25,11 +36,14 @@ Answer file: {"answers": [{"claim": "C03", "choice": "e2e", "invariant"?: "I01",
   {"claim": "C04", "choice": "waive", "reason": "..."},
   {"claim": "C02", "choice": "mechanical", "check": {"op", "pattern", "paths"}, "description"},
   {"claim": ..., "choice": "evidence", "recorded": {"source", "result", "at"?}, "description"},
-  {"claim": ..., "choice": "reword", "text": "...", "plain"?: {...}} or {"choice": "drop"}]}
+  {"claim": ..., "choice": "reword", "text": "...", "plain"?: {...}} or {"choice": "drop"},
+  {"claim": ..., "choice": "fix-check", "check": "V36", "files", "verifier", "control"},
+  {"claim": ..., "choice": "drop-check", "check": "V36", "reason": "..."}]}
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -38,6 +52,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ctx as context  # noqa: E402
 import journal  # noqa: E402
 import mechanical  # noqa: E402
+import names  # noqa: E402
 import ops  # noqa: E402
 import tm  # noqa: E402
 import verdicts  # noqa: E402
@@ -64,7 +79,7 @@ def queue(data: dict) -> list[dict]:
     return sorted(open_, key=lambda c: risk(c, loud, data))
 
 
-def add_check(c: context.Ctx, data: dict, claim: dict, a: dict, kind: str) -> str:
+def add_check(c: context.Ctx, data: dict, claim: dict, a: dict, kind: str, replaces: str | None = None) -> str:
     refusal = ops.intent_ok(data, claim, a.get("invariant"))
     if refusal:
         return refusal
@@ -120,8 +135,36 @@ def add_check(c: context.Ctx, data: dict, claim: dict, a: dict, kind: str) -> st
         ops.publish(clone, data, commit)
     data["verifiers"].append(tv)
     data["controls"].append(tk)
+    attach(data, claim, vid, replaces)
     verdicts.apply(data)
-    return f"{claim['id']}: {vid} goes green, and red on control {kid}. Commit {commit[:10]} is on {ops.ready_branch(data)}."
+    return (f"{claim['id']}: {vid} goes green, and red on control {kid}." + (f" It replaces {replaces}." if replaces else "")
+            + f" Commit {commit[:10]} is on {ops.ready_branch(data)}.")
+
+
+def attach(data: dict, claim: dict, vid: str, replaces: str | None = None) -> None:
+    """Put a check under its claim (shape 2), drop the check that it replaces, and drop a check of
+    kind none that a tool check makes needless."""
+    import onto
+    if data.get("schema_version") == onto.SHAPE:
+        claim["checks"] = [x for x in claim.get("checks") or [] if x != replaces] + [vid]
+    if replaces:
+        drop_check(data, claim, replaces)
+    if data.get("schema_version") == onto.SHAPE:
+        onto.upgrade(data)
+
+
+def drop_check(data: dict, claim: dict, vid: str) -> None:
+    """Take a check off a claim. A check that no claim lists any more goes, with its controls."""
+    import onto
+    claim["checks"] = [x for x in claim.get("checks") or [] if x != vid]
+    for v in data["verifiers"]:
+        if v["id"] == vid:
+            v["claims"] = [x for x in v["claims"] if x != claim["id"]]
+    if not any(vid in (c.get("checks") or []) or any(v["id"] == vid and c["id"] in v["claims"] for v in data["verifiers"]) for c in data["claims"]):
+        data["verifiers"] = [v for v in data["verifiers"] if v["id"] != vid]
+        data["controls"] = [k for k in data["controls"] if k["verifier"] != vid]
+    if data.get("schema_version") == onto.SHAPE:
+        onto.upgrade(data)
 
 
 def apply_answer(c: context.Ctx, data: dict, a: dict) -> str:
@@ -137,6 +180,7 @@ def apply_answer(c: context.Ctx, data: dict, a: dict) -> str:
                                   "provenance": "Added by understando close; scripts/mechanical.py runs it at the PR head."})
         v = data["verifiers"][-1]
         v["mechanical"]["result"] = {**mechanical.run(str(c.need_repo()), data["base"], data["head"], v["mechanical"]), "ran_at": tm.now()}
+        attach(data, claim, vid)
         verdicts.apply(data)
         return f"{claim['id']}: mechanical check {vid} is {v['mechanical']['result']['status']}; the claim is {claim['verdict']}."
     if choice in ("formalize", "2"):
@@ -155,6 +199,7 @@ def apply_answer(c: context.Ctx, data: dict, a: dict) -> str:
                                   "description": a["description"], "recorded": a["recorded"],
                                   "independence": {"by": "tool", "tool": a.get("tool", "recorded run")}, "cost": {"usd": 0},
                                   "provenance": a.get("provenance", "Recorded by understando close from the user's evidence.")})
+        attach(data, claim, vid)
         verdicts.apply(data)
         return f"{claim['id']}: recorded evidence {vid}; the claim is {claim['verdict']}."
     if choice in ("reword", "drop", "6"):
@@ -165,6 +210,10 @@ def apply_answer(c: context.Ctx, data: dict, a: dict) -> str:
             data["promises"] = [p for p in data.get("promises", []) if p["claims"]]
             for v in data["verifiers"]:
                 v["claims"] = [x for x in v["claims"] if x != claim["id"]]
+            # A check that backed only the dropped claim goes too, with its controls.
+            gone = {v["id"] for v in data["verifiers"] if not v["claims"]}
+            data["verifiers"] = [v for v in data["verifiers"] if v["id"] not in gone]
+            data["controls"] = [k for k in data["controls"] if k["verifier"] not in gone]
             verdicts.apply(data)
             return f"{claim['id']}: dropped."
         claim["text"] = a["text"]
@@ -172,6 +221,22 @@ def apply_answer(c: context.Ctx, data: dict, a: dict) -> str:
             claim["plain"] = a["plain"]
         verdicts.apply(data)
         return f"{claim['id']}: reworded; it is {claim['verdict']}. Run probe if a check now fits."
+    if choice == "fix-check":
+        vid = a.get("check")
+        if vid not in [v["id"] for v in names.checks_of(data, claim)]:
+            tm.fail(f"close: {claim['id']}: {vid} is not one of its checks", 2)
+        return add_check(c, data, claim, a, a.get("kind", "e2e"), replaces=vid)
+    if choice == "drop-check":
+        vid = a.get("check")
+        v = next((v for v in names.checks_of(data, claim) if v["id"] == vid), None)
+        if not v:
+            tm.fail(f"close: {claim['id']}: {vid} is not one of its checks", 2)
+        if v.get("state") not in ("cannot-fail", "failing", "broken", "stale"):
+            return (f"{claim['id']}: refuse: {vid} is {v.get('state')}, and it backs the claim. Close drops only a check that backs nothing "
+                    "(cannot fail, fails or is stale). Fix it instead (fix-check).")
+        drop_check(data, claim, vid)
+        verdicts.apply(data)
+        return f"{claim['id']}: dropped {vid}, which backed nothing ({v.get('state')}). The claim is {claim['verdict']}."
     if choice in ("waive", "7"):
         if not a.get("reason"):
             tm.fail(f"close: {claim['id']}: a waiver needs a reason", 2)
@@ -197,6 +262,10 @@ CHOICE = {
     "reword": ("Reword it", "I propose a wording that the code shows, and you approve the words. Nothing runs."),
     "waive": ("Waive it", "You give the reason. The ready checklist and the PR section show the waiver. Nothing runs."),
     "formalize": ("Formalize it", "A TLA+ model check or a Lean proof (tier {tier}). It takes the longest; you start it."),
+    "fix-check": ("Fix '{check}'", "I draft one test that replaces '{check}', and one planted bug. Probe keeps the test only when it "
+                  "catches the bug; then the claim loses its weakest check. $0, no model call."),
+    "drop-check": ("Drop '{check}'", "It backs nothing: it cannot fail, or it fails. The claim keeps its other checks, or it shows that no "
+                   "check exists. Nothing runs."),
 }
 COST_ORDER = ["mechanical", "evidence", "reword", "waive", "property", "e2e", "formalize"]
 
@@ -213,28 +282,31 @@ def recommend_choice(claim: dict, data: dict) -> str:
 
 
 def weakness(claim: dict, data: dict) -> str:
-    """Why the claim is weak, in plain words; the verifier and control IDs go in the ref."""
-    import names
+    """Why the claim is weak, in plain words: its weakest check (derive.py, the same words as the
+    claim card) and its action. The verifier and control IDs go in the ref."""
+    import derive
     import prompt
     reason = claim.get("reason") or ""
     ids = list(dict.fromkeys(prompt.INTERNAL_ID.findall(reason)))
-    backing = names.checks_of(data, claim)
+    row = derive.claim_rows(data).get(claim["id"]) or {}
+    w = row.get("weakest")
     if reason.startswith("code disagrees"):
         why = "the code disagrees with an invariant that you confirmed; a fix is pending"
-    elif claim["verdict"] == "Gap":
-        why = "no check backs it, and the PR text does not state it"
-    elif claim["verdict"] == "Asserted":
-        why = "only the PR text states it; no check backs it"
-    elif claim["verdict"] == "Backed":
-        why = f"{names.listing([v.get('name') or names.verifier_name(v, {c['id']: c for c in data['claims']}) for v in backing])} backs it, but no planted bug shows that the check can fail"
+    elif not w:
+        why = "no check backs it"
     else:
-        why = names.scrub(reason).split(" (ref:")[0].rstrip(".")
-    dead = [v["id"] for v in backing if v.get("state") in ("cannot-fail", "failing", "broken", "stale")]
-    if dead:
-        weak = next(v for v in backing if v["id"] == dead[0])
-        why += (f"; {'one' if len(dead) == 1 else len(dead)} of its {prompt.n_of(len(backing), 'check')} "
-                f"{'misses its' if len(dead) == 1 else 'miss their'} planted bug ({weak.get('name') or 'a check'}): fix that check first")
-    return f"Why it is weak: {why}." + names.ref(ids + [d for d in dead if d not in ids])
+        why = w["text"].rstrip(".") + "; " + w["action"][0].lower() + w["action"][1:].rstrip(".")
+        ids.append(w["id"])
+    if row.get("n", 0) > 1:
+        why = f"{row['summary'].rstrip('.')}. " + why
+    return f"Why it is weak: {why}." + names.ref(list(dict.fromkeys(ids)))
+
+
+def weak_tool_check(data: dict, claim: dict) -> dict | None:
+    """The weakest check of the claim, when it is a tool check that backs nothing or missed its bug."""
+    import onto
+    v, _ = onto.weakest_check(data, claim)
+    return v if v and onto.is_tool(v) and onto.check_result(data, v) in ("cannot-fail", "broken", "missed") else None
 
 
 def question(data: dict, pr: str | None = None) -> dict | None:
@@ -248,10 +320,15 @@ def question(data: dict, pr: str | None = None) -> dict | None:
     rec = recommend_choice(claim, data)
     test = "property" if rec == "property" else "e2e"
     order = [rec] + [x for x in COST_ORDER if x != rec and x in ("mechanical", "reword", "waive", test)]
+    weak = weak_tool_check(data, claim)
+    if weak:
+        order = ["fix-check", *(["drop-check"] if weak.get("state") in ("cannot-fail", "broken", "failing", "stale") else []), *order]
     opts = []
     for name in order[:3]:
         label, does = CHOICE[name]
-        opts.append({**prompt.option(label, does.format(id=claim["id"], tier=claim.get("tier_target") or 5)), "choice": name})
+        fill = {"id": claim["id"], "tier": claim.get("tier_target") or 5, "check": (weak or {}).get("name") or "the weak check"}
+        opts.append({**prompt.option(label.format(**fill), does.format(**fill)), "choice": name,
+                     **({"check": weak["id"]} if weak and name.endswith("-check") else {})})
     import names
     what = (claim.get("plain") or {}).get("what") or claim["text"]
     name = claim.get("name") or names.short(what)
@@ -264,6 +341,95 @@ def question(data: dict, pr: str | None = None) -> dict | None:
                         "time": "about a minute for each drafted check", "writes": "trust-map.json; a kept check is a commit on the ready branch"},
                        else_does="Another option (" + ", ".join(CHOICE[x][0].lower() for x in COST_ORDER if x not in order[:3] and x in CHOICE)
                        + "), skip it for now, or drop it.") | {"claim": claim["id"]}
+
+
+def exercising(c: context.Ctx, data: dict, path: str) -> list[dict]:
+    """The checks that run a file (the coverage record of the run) or whose control edits it."""
+    import derive
+    import onto
+    cov = derive.load_coverage(c.run / "coverage.json" if c.run else None, data["head"]) or {}
+    edits = {k["verifier"] for k in data["controls"] if k.get("recipe") != "plant-violation"
+             and any(e.get("path") == path for e in k.get("edits") or [])}
+    return [v for v in data["verifiers"] if onto.is_tool(v) and (path in (cov.get(v["id"]) or []) or v["id"] in edits)]
+
+
+def add_claim(c: context.Ctx, data: dict, path: str, a: argparse.Namespace) -> int:
+    """Draft a claim for a changed file from its changed symbols. The user words it. Then attach the
+    checks that run the file, and offer to add a check."""
+    import explain
+    import onto
+    import prompt
+    repo = c.need_repo()
+    diff = explain.diff_data(str(repo), data["base"], data["head"])
+    if path not in diff["files"] or path in diff["deleted"]:
+        print(f"close: refuse: {path} is not a changed file at the PR head.")
+        return 2
+    symbols, _ = explain.changed_symbols(str(repo), data["head"], {**diff, "added": {path: diff["added"].get(path) or []}})
+    row = symbols.get(path) or {"names": [], "main": None}
+    checks = exercising(c, data, path)
+    who = names.listing([v.get("name") or v["id"] for v in checks])
+    if not (a.name and a.text):
+        changed = names.listing(row["names"][:6] + ([f"{len(row['names']) - 6} more"] if len(row["names"]) > 6 else []))
+        lines = [f"Draft claim for {path}.",
+                 f"Its changed symbols: {changed or 'none that a parser finds'}.",
+                 (f"Checks that run it: {who}." if checks else "No check runs it yet. After you add the claim, close offers to add one."),
+                 "Write the claim in your words: one statement that a reviewer can accept or reject, and a plain name of 2 to 6 words.",
+                 f"Then run: understando close --add-claim {path} --name '<name>' --text '<claim>' [--promise <id>]"]
+        q = prompt.make([names.scrub(lines[0]), names.scrub(lines[1]), names.scrub(lines[2])], "What does this file promise, in your words?",
+                        [prompt.option("Word the claim", "You give the name and the statement. I attach the checks that run the file. Nothing runs."),
+                         prompt.option("Skip it", "The file stays in the unclaimed list.")],
+                        {"step": "close", "does": "Add one claim for a file that no claim covers", "scope": path, "cost": "$0, no model call",
+                         "time": "seconds", "writes": "trust-map.json"})
+        context.emit(c, {"draft": {"path": path, "symbols": row["names"], "main": row["main"], "checks": [v["id"] for v in checks]},
+                         "prompt": q}, "\n".join(lines))
+        return 0
+    why = onto.name_problem(a.name, [a.what or "", a.text])
+    if why:
+        print(f"close: refuse: the name '{a.name}' is not plain: {why}.")
+        return 2
+    onto.upgrade(data)
+    owner = onto.promise_of(data)
+    if a.promise:
+        pid = a.promise
+    else:
+        votes: dict[str, int] = {}
+        for v in checks:
+            for cid in v.get("claims") or []:
+                if owner.get(cid):
+                    votes[owner[cid]] = votes.get(owner[cid], 0) + 1
+        pid = max(votes, key=votes.get) if votes else None
+    promise = next((p for p in data.get("promises", []) if p["id"] == pid), None)
+    if not promise:
+        print("close: refuse: name the promise of the claim with --promise: " + ", ".join(f"{p['id']} ({p.get('name') or p['label']})" for p in data.get("promises", [])))
+        return 2
+    cid = ops.next_id(data, "C")
+    claim = {"id": cid, "name": a.name, "text": a.text, "stated": False, "layer": "Added by the author",
+             "source": "understando close --add-claim, worded by the user", "code": [row["main"] or {"path": path}],
+             "plain": {"what": a.what or a.text, "proof": (f"The checks that run this file: {who}." if checks else "No check runs this file yet.")},
+             "checks": [v["id"] for v in checks]}
+    if a.invariant:
+        if not ops.confirmed_invariant(data, a.invariant):
+            print(f"close: refuse: {a.invariant} is not an invariant that the user confirmed (understando discover).")
+            return 2
+        claim["invariant"] = a.invariant
+    data["claims"].append(claim)
+    promise["claims"].append(cid)
+    onto.upgrade(data)
+    verdicts.apply(data)
+    errors = tm.validate(data)
+    if errors:
+        print("close: the new claim makes the map invalid:\n" + "\n".join(errors))
+        return 1
+    tm.save(data, c.map)
+    journal.append(c.journal, "decision", f"close --add-claim {path}: {a.text}", c.repo, result=f"claim {cid}", claims=[cid])
+    q = question({**data, "claims": [claim]})
+    lines = [f"Added the claim '{a.name}' to the promise '{promise.get('name') or promise['label']}'. It is {claim['verdict']}." + names.ref([cid]),
+             (f"It has {len(checks)} {'check' if len(checks) == 1 else 'checks'} that run the file: {who}." if checks else "No check runs the file yet."),
+             "Next: add a check. Run understando close --next; it offers a test, a mechanical check or recorded evidence for this claim."]
+    if not claim.get("invariant"):
+        lines.append("The PR text does not state this claim, so it can reach Proven only with an invariant that you confirm (understando discover).")
+    context.emit(c, {"claim": cid, "checks": claim["checks"], "verdict": claim["verdict"], **({"prompt": q} if q else {})}, "\n".join(lines))
+    return 0
 
 
 def ask(data: dict) -> list[dict]:
@@ -296,9 +462,17 @@ def main(c: context.Ctx, argv: list[str]) -> int:
     ap.add_argument("--answers")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--next", action="store_true", help="the riskiest open claim as one question")
+    ap.add_argument("--add-claim", metavar="FILE", help="draft a claim for a changed file that no claim covers")
+    ap.add_argument("--name", help="--add-claim: the plain name, 2 to 6 words")
+    ap.add_argument("--text", help="--add-claim: the claim, in the user's words")
+    ap.add_argument("--what", help="--add-claim: the plain text for a reader who does not know the code")
+    ap.add_argument("--promise", help="--add-claim: the promise of the claim")
+    ap.add_argument("--invariant", help="--add-claim: an invariant that the user confirmed")
     args = ap.parse_args(argv)
     data = c.need_map()
     verdicts.apply(data)
+    if args.add_claim:
+        return add_claim(c, data, args.add_claim, args)
     if args.answers and c.repo:
         import ci
         refusal, _ = ci.gate(c, data)

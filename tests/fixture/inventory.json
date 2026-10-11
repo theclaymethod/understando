@@ -25,7 +25,8 @@
       "plain": {
         "what": "The withdraw function stops when the amount is more than the balance. It raises OverdraftError.",
         "proof": "A unit test (V01) calls withdraw with a large amount. We deleted the guard line, and the test went red."
-      }
+      },
+      "name": "the overdraft refusal"
     },
     {
       "id": "C02",
@@ -45,7 +46,8 @@
         "what": "The withdraw function gives the balance minus the amount.",
         "proof": "It is not proven. A test (V02) exists, but it checks only the type of the result. We changed the result, and the test stayed green.",
         "warning": "The test cannot find a wrong result. Thus, it is weaker than it looks."
-      }
+      },
+      "name": "the new balance"
     },
     {
       "id": "C04",
@@ -57,7 +59,8 @@
       "plain": {
         "what": "Many threads can use the wallet at the same time.",
         "proof": "It is not proven. Only the PR text says it."
-      }
+      },
+      "name": "the thread safety"
     },
     {
       "id": "C05",
@@ -75,7 +78,8 @@
       "plain": {
         "what": "A denial message does not show the account number.",
         "proof": "A model reviewer (V05) read each message. This is a model opinion, not a tool check."
-      }
+      },
+      "name": "the hidden account number"
     },
     {
       "id": "C06",
@@ -87,7 +91,8 @@
       "plain": {
         "what": "The wallet sends nothing over the network: no wallet module imports a network library.",
         "proof": "A grep (V06) finds no import of a network library in the wallet modules."
-      }
+      },
+      "name": "the network ban"
     },
     {
       "id": "C07",
@@ -105,7 +110,8 @@
       "plain": {
         "what": "A denial message tells the person the amount.",
         "proof": "A unit test (V07) reads the amount in the message. We removed the amount, and the test went red."
-      }
+      },
+      "name": "the amount in the denial"
     },
     {
       "id": "C08",
@@ -129,7 +135,8 @@
         "what": "The new balance is never below zero.",
         "proof": "A Lean proof (V08) shows it for a model of the function. A recorded conformance run shows that the model and the code agree. We removed the guard in the model, and the proof failed.",
         "warning": "The proof run is recorded. We did not run Lean again."
-      }
+      },
+      "name": "the never-negative balance"
     }
   ],
   "verifiers": [
@@ -159,7 +166,8 @@
         "usd": 0,
         "seconds": 1
       },
-      "provenance": "tests/test_core.py in the PR"
+      "provenance": "tests/test_core.py in the PR",
+      "name": "the overdraft test"
     },
     {
       "id": "V02",
@@ -187,7 +195,8 @@
         "usd": 0,
         "seconds": 1
       },
-      "provenance": "tests/test_core.py in the PR"
+      "provenance": "tests/test_core.py in the PR",
+      "name": "the balance type test"
     },
     {
       "id": "V03",
@@ -215,7 +224,8 @@
         "usd": 0,
         "seconds": 2
       },
-      "provenance": "Code Contracts cc-check 0.2.0"
+      "provenance": "Code Contracts cc-check 0.2.0",
+      "name": "the contract format check"
     },
     {
       "id": "V05",
@@ -239,7 +249,8 @@
         "usd": 0.01,
         "note": "recorded, not run again"
       },
-      "provenance": "The PR author ran the reviewer. understando recorded the result and did not run it."
+      "provenance": "The PR author ran the reviewer. understando recorded the result and did not run it.",
+      "name": "the message review"
     },
     {
       "id": "V06",
@@ -264,7 +275,8 @@
         "usd": 0,
         "seconds": 1
       },
-      "provenance": "understando runs it at the PR head (scripts/mechanical.py)."
+      "provenance": "understando runs it at the PR head (scripts/mechanical.py).",
+      "name": "the network import search"
     },
     {
       "id": "V07",
@@ -292,7 +304,8 @@
         "usd": 0,
         "seconds": 1
       },
-      "provenance": "tests/test_messages.py in the PR"
+      "provenance": "tests/test_messages.py in the PR",
+      "name": "the denial amount test"
     },
     {
       "id": "V08",
@@ -326,7 +339,8 @@
         "usd": 0,
         "note": "recorded, not run again"
       },
-      "provenance": "The PR author ran the proof and the conformance cases. understando recorded both."
+      "provenance": "The PR author ran the proof and the conformance cases. understando recorded both.",
+      "name": "the balance proof"
     }
   ],
   "controls": [

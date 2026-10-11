@@ -11,6 +11,7 @@ Each stop of this playbook ends with one question to the user. Ask it as [Asking
 It looks for these problems:
 
 - Schema drift, and stale stored verdicts.
+- A promise, claim or check name that is not plain: a cut of `plain.what`, a path, a tool name or a code name. The fix is a name of 2 to 6 words that you write (`commands/map.md`).
 - A trust map behind the PR head.
 - A proof or a model older than its code.
 - The explainer runtime, and the learn app (paused).

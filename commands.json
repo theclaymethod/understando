@@ -36,6 +36,15 @@
       "tier": "advanced"
     },
     {
+      "id": "coverage",
+      "category": "Understand",
+      "line": "Run each check once under line coverage at the head, and record the changed files that it runs, so a file that a check runs counts as covered.",
+      "args": "[--only V01,V02]",
+      "invoke": "user",
+      "doc": "commands/probe.md",
+      "tier": "advanced"
+    },
+    {
       "id": "formalize",
       "category": "Understand",
       "line": "Climb to tier 4 or 5: a TLA+ model check, or a Lean proof with a conformance link.",

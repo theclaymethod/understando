@@ -152,33 +152,35 @@ def apply(data: dict) -> dict:
             })
 
     summary = {name: 0 for name in ORDER}
+    import onto
     for c in data["claims"]:
-        backing = [v for v in data["verifiers"] if c["id"] in v["claims"]]
+        backing = [v for v in onto.checks_of(data, c) if onto.is_tool(v)]
         proven = [v for v in backing if v["state"] == "proven" and can_prove(v, author)]
         counted = [v for v in backing if v["state"] in ("proven", "untested", "recorded", "checked")]
         dead = [v for v in backing if v["state"] in ("cannot-fail", "failing", "broken", "stale")]
         rungs = [tm.ladder(v) for v in proven if tm.ladder(v)]
+        # The tier is the strongest rung that a planted bug proved; the verdict is the weakest check.
         c["tier"] = max(rungs) if rungs else None
-        formal = [v for v in proven if (tm.ladder(v) or 0) >= 4]
-        if proven:
-            hit = max(proven, key=lambda v: tm.ladder(v) or 0)
-            ks = [k["id"] for k in controls_by_verifier.get(hit["id"], []) if control_outcome(k) == "caught"]
-            if formal:
-                link = hit["formal"]["conformance"]
-                c["verdict"] = "Formal"
-                c["reason"] = (f"{hit['id']} is a rung {tm.ladder(hit)} {hit['formal']['tool']} check. Its conformance link "
+        weak, strength = onto.weakest_check(data, c)
+        c["verdict"], c["reason"] = strength or ("Asserted" if c["stated"] else "Gap"), ""
+        if c["verdict"] in ("Formal", "Proven"):
+            ks = [k["id"] for k in controls_by_verifier.get(weak["id"], []) if control_outcome(k) == "caught"]
+            if c["verdict"] == "Formal":
+                link = weak["formal"]["conformance"]
+                c["reason"] = (f"{weak['id']} is a rung {tm.ladder(weak)} {weak['formal']['tool']} check. Its conformance link "
                                f"({link['source']}) passes, and control {', '.join(ks)} broke it.")
             else:
-                c["verdict"] = "Proven"
-                c["reason"] = f"{hit['id']} went red on control {', '.join(ks)}."
-            if not c["stated"] and not user_confirmed(data, c.get("invariant")):
-                c["verdict"] = "Backed"
-                c["reason"] += (" It stays Backed: the PR does not state it, and it links to no invariant that the user"
-                                " confirmed (understando discover).")
-        elif counted:
-            ids = ", ".join(v["id"] for v in counted)
-            c["verdict"] = "Backed"
-            kinds = sorted({v["state"] for v in counted})
+                c["reason"] = f"{weak['id']} went red on control {', '.join(ks)}."
+            if len(backing) > 1:
+                c["reason"] += f" It is the weakest of the {len(backing)} checks."
+        elif c["verdict"] == "Backed" and not [v for v in counted if v not in proven and onto.check_strength(data, v, c) == "Backed"]:
+            ks = [k["id"] for k in controls_by_verifier.get(weak["id"], []) if control_outcome(k) == "caught"]
+            c["reason"] = (f"{weak['id']} went red on control {', '.join(ks)}. It stays Backed: the PR does not state it, and it links to no "
+                           "invariant that the user confirmed (understando discover).")
+        elif c["verdict"] == "Backed":
+            weak_ones = [v for v in counted if v not in proven and onto.check_strength(data, v, c) == "Backed"]
+            ids = ", ".join(v["id"] for v in weak_ones)
+            kinds = sorted({v["state"] for v in weak_ones})
             why = {
                 "untested": "no control went red",
                 "recorded": "the evidence is recorded, not run again",
@@ -186,17 +188,17 @@ def apply(data: dict) -> dict:
                 "proven": "a model verifier from the author family went red, or a proof has no passing conformance link",
             }
             c["reason"] = f"{ids} backs this claim, but " + " and ".join(why[s] for s in kinds) + "."
-            pending = [v for v in counted if v.get("formal_record") and (v["formal_record"].get("formal") or {}).get("verdict") != "Formal"]
-            if pending and not [v for v in counted if v not in pending and v["state"] == "proven"]:
+            pending = [v for v in weak_ones if v.get("formal_record") and (v["formal_record"].get("formal") or {}).get("verdict") != "Formal"]
+            if pending and not [v for v in weak_ones if v not in pending]:
                 c["reason"] = " ".join(f"{v['id']} backs this claim, but its formal record is {v['formal_record']['formal']['verdict']}."
                                        for v in pending)
+            if proven and not onto.intent(data, c):
+                c["reason"] += " A proven check cannot lift it: the PR does not state it, and it links to no invariant that the user confirmed."
         elif c["stated"]:
-            c["verdict"] = "Asserted"
             c["reason"] = "Only the PR text states this claim."
         else:
-            c["verdict"] = "Gap"
             c["reason"] = "No verifier backs this claim, and the PR text does not state it."
-        bug = disagreeing(data, c.get("invariant"))
+        bug = next((b for b in (disagreeing(data, i) for i in onto.invariants_of(c)) if b), None)
         if bug:
             c["verdict"], c["tier"] = "Gap", None
             c["reason"] = (f"code disagrees with the confirmed invariant {bug['id']}"

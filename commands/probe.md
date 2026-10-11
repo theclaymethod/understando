@@ -25,4 +25,8 @@ An e2e verifier must follow the tier-1 proof standards of [../references/control
 
 A verifier that needs no model key runs with no env file. Only a paid verifier that the user said yes to (`--paid V36`) gets the key wrapper, for that run only. The flag never stays in the saved trust map. `--env-file` passes the user's own env file to each verifier with `env_file: true`. probe prints a skip line only for a paid verifier in scope (`--only`). `review` shows the paid ones once, as one option with their cost.
 
+## Coverage
+
+Run `understando coverage [--only V14,V15]` after probe. It runs each check with a command one time, at its commit, in a scratch worktree, with a line tracer. It records the changed code files that each check runs in `$R/coverage.json`. The explain step reads this record: a changed file that a check of a claim runs is covered by that claim. The record counts only at the map head. Only commands of the approved CI profile run, and a check that needs the model key does not run. The tracer reads Python only. For other files, a control that edits the file covers it, and a claim that cites the file or names it covers it.
+
 A tier on the ladder counts for a claim only after a control shows that its check can fail. See [../references/verdicts.md](../references/verdicts.md).

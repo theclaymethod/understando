@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- The review ontology: promise -> claim -> check (`scripts/onto.py`). A claim lists its checks (`claims[].checks`, `schema_version` 2), and a merged claim keeps `legacy_ids` and `parts`. A claim is as strong as its weakest check, and its card names that check with its action. `map` writes the new shape, prints the grouping lint (`merge:` and `budget:` lines) and refuses a missing plain name. understando reads the old shape for one release.
+- The schema check refuses a claim with no checks, a check that no claim lists, and a claim in more than one promise.
+- Plain names: the agent writes the name of each promise, claim and check. doctor flags a cut of the plain text, a path or a tool name.
+- `understando coverage` records the changed files that each check runs. A claim covers a file when it cites or names the file. It also covers a file that one of its checks runs or that one of its controls edits.
+- The unclaimed level leads with the risky files. Its "what we broke" lines are full sentences.
+- `close --add-claim <file>` drafts a claim for a file, attaches the checks that run it, and offers a check. close can fix one weak check of a claim (`fix-check`, `drop-check`).
+- `scripts/regroup.py` joins old claims into fewer claims from a proposal, and prints the safety proof.
+
 - understando is a mode with one CLI, `bin/understando`.
 - The verbs are map, discover, probe, formalize, import, close, trim, explain, learn (paused), ready, build, setup and doctor. The mode verbs are signals, menu, routes, mode and note.
 - The verification ladder (tiers 1 to 5) and the verdict Formal. Proven and Formal need a stated claim or a user-confirmed invariant.

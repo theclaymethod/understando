@@ -20,8 +20,10 @@
     "schema_version": {
       "type": "integer",
       "enum": [
-        1
-      ]
+        1,
+        2
+      ],
+      "description": "2: the promise, claim, check shape (claims[].checks). 1: the old shape, where each verifier lists its claims; understando reads it for one release, and map writes 2."
     },
     "repo": {
       "type": "string",
@@ -401,7 +403,56 @@
         "name": {
           "type": "string",
           "minLength": 1,
-          "description": "A short plain name for chat, 3 to 7 words. map fills it from the plain text; the prompts show it in place of the ID."
+          "description": "A plain name of 2 to 6 words, as a reviewer says it: 'the import boundary', 'the accept rule'. The agent writes it; map refuses a missing name, and doctor flags a cut of plain.what, a path or a tool name."
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "description": "Shape 2: the ids of the claim's checks (verifiers). A claim with no tool check lists one check of kind none. The strength of the claim is the verdict of its weakest check."
+        },
+        "legacy_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "description": "The old claim ids that this claim merges, so an old link or note still finds it."
+        },
+        "parts": {
+          "type": "array",
+          "description": "The statements of the merged old claims, in strict STE. A reviewer accepts or rejects them together. With parts, Proven and Formal need intent for each part: the PR states it, or the user confirmed its invariant.",
+          "items": {
+            "type": "object",
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/id"
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1
+              },
+              "stated": {
+                "type": "boolean",
+                "description": "True when the PR narrative states this part."
+              },
+              "invariant": {
+                "$ref": "#/$defs/id",
+                "description": "The invariant of this part, when one exists."
+              }
+            }
+          }
+        },
+        "invariants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "description": "Shape 2: the invariants that this claim states. Proven and Formal need a stated claim, or each of these confirmed by the user."
         }
       }
     },
@@ -529,8 +580,10 @@
             "static",
             "tla",
             "type-pin",
-            "unit"
-          ]
+            "unit",
+            "none"
+          ],
+          "description": "none: a placeholder check for a claim that no tool checks. It is Asserted when the PR states the claim, else Gap. map adds and removes it."
         },
         "claims": {
           "type": "array",
@@ -934,7 +987,7 @@
         "name": {
           "type": "string",
           "minLength": 1,
-          "description": "A short plain name for chat, 3 to 7 words. map fills it from the plain text; the prompts show it in place of the ID."
+          "description": "A plain name of 2 to 6 words, as a reviewer says it: 'the project-wide type check', 'the idle stop test'. No path, no tool name. The agent writes it."
         },
         "user_path": {
           "type": "object",
@@ -1208,6 +1261,11 @@
           "type": "string",
           "minLength": 1,
           "description": "Strict STE. What a reviewer must do, or not rely on, because the promise is weak. Required when the weakest claim is not Proven."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A plain name of 2 to 6 words, as a reviewer says it: 'the separate lanes'. The agent writes it."
         }
       }
     },

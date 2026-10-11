@@ -23,7 +23,8 @@ This script is the glue:
 DIR gets explainer.html, refs.resolved.json and pr-section.md. The MDX imports ./trust-map.json,
 ./explain.json and ./refs.resolved.json, so when DIR is not the folder of the map, the script
 copies the map, explain.json and the MDX into DIR first. The default MDX is explainer.mdx next to
-the map. --no-html stops after step 2 and writes pr-section.md.
+the map. --no-html stops after step 2 and writes pr-section.md. --coverage is the coverage record of the run
+(`understando coverage`); the default is coverage.json next to the map, when it is at the map head.
 
 --runtime is the Artifacture checkout. $UNDERSTANDO_VE_RUNTIME, then ve_runtime in
 ~/.understando/config.toml, set it too. The default asks the visual-explainer CLI: `node ~/.claude/skills/visual-explainer/scripts/artifacture.mjs path`.
@@ -45,7 +46,7 @@ import derive  # noqa: E402
 import mechanical  # noqa: E402
 import tm  # noqa: E402
 
-REFS_SCHEMA = 1
+REFS_SCHEMA = 2
 LANG = {".py": "python", ".ts": "ts", ".tsx": "tsx", ".js": "js", ".mjs": "js", ".json": "json",
         ".md": "markdown", ".sh": "bash", ".toml": "toml", ".yml": "yaml", ".yaml": "yaml"}
 # A <CodeRef .../> tag of the MDX: its string attributes and its JSON attributes.
@@ -254,6 +255,7 @@ def main() -> int:
     ap.add_argument("--extra")
     ap.add_argument("--mdx", help="the explainer MDX; default: explainer.mdx next to the map")
     ap.add_argument("--ready", help="ready.json of the run: the ready checklist of the PR section")
+    ap.add_argument("--coverage", help="the coverage record of the run (understando coverage); default: coverage.json next to the map")
     ap.add_argument("--runtime")
     ap.add_argument("--explainer-url")
     ap.add_argument("--no-html", action="store_true", help="resolve the refs and write pr-section.md; no HTML export")
@@ -300,7 +302,8 @@ def main() -> int:
             "controls": control_edits(args.repo, data), "diff": diff}
     ready = tm.load(args.ready) if args.ready and Path(args.ready).is_file() else None
     # The values that the review CLI, the PR section and the page share (scripts/derive.py).
-    body["derived"] = derive.derive(data, body, extra, ready)
+    cov = derive.load_coverage(Path(args.coverage) if args.coverage else Path(args.map).parent / "coverage.json", data["head"])
+    body["derived"] = derive.derive(data, body, extra, ready, cov)
     (out / coderef.CACHE_NAME).write_text(json.dumps(body, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     runtime = runtime_path(args.runtime)
     if not args.no_html:

@@ -95,6 +95,10 @@ def do_map(c: context.Ctx, argv: list[str]) -> int:
             return 1
     data = tm.load(c.map)
     import names
+    import onto
+    # map writes shape 2 (promise -> claim -> check): each claim lists its checks.
+    if onto.upgrade(data):
+        print("map: wrote the map in shape 2: each claim lists its checks, and a claim with no tool check lists a check of kind none")
     named = names.fill(data)
     errors = tm.validate(data)
     if errors:
@@ -104,7 +108,17 @@ def do_map(c: context.Ctx, argv: list[str]) -> int:
     verdicts.apply(data)
     tm.save(data, c.map)
     if named:
-        print(f"map: wrote a plain name for {named} claims, verifiers and invariants (the prompts show these names; edit any name in the map)")
+        print(f"map: wrote a plain name for {named} invariants")
+    unnamed = names.missing(data)
+    if unnamed:
+        print(f"map: refuse: {len(unnamed)} items have no plain name: {', '.join(unnamed[:12])}{' ...' if len(unnamed) > 12 else ''}.")
+        print("map: write each `name` yourself: 2 to 6 words, as a reviewer says it, for example 'the import boundary' or "
+              "'the project-wide type check'. No path, no tool name, and not the first words of the plain text (commands/map.md step 9).")
+        return 1
+    for kind, item, why in onto.name_problems(data):
+        print(f"name: the {kind} name '{names.of(data, item)}' is not plain: {why}. Write it again.{names.ref([item])}")
+    for line in onto.group_lint(data):
+        print(line)
     hist = c.run / "history"
     hist.mkdir(exist_ok=True)
     previous = sorted(hist.glob("trust-map.*.json"))
@@ -389,6 +403,8 @@ def lock_paths(verb: str, argv: list[str]) -> list[str]:
         return ["run:trust-map.json", "run:history/"]
     if verb == "probe":
         return ["run:trust-map.json"]
+    if verb == "coverage":
+        return ["run:coverage.json"]
     if verb == "close":
         return [] if "--list" in argv or "--next" in argv or not (argv or sys.stdin.isatty()) else ["run:trust-map.json", "ready:"]
     if verb == "trim":
@@ -494,6 +510,9 @@ def dispatch(verb: str, argv: list[str], c: context.Ctx) -> int:
     if verb == "close":
         import close
         return close.main(c, argv)
+    if verb == "coverage":
+        import coverage
+        return coverage.main(c, argv)
     if verb == "trim":
         import trim
         return trim.main(c, argv)

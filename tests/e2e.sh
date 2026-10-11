@@ -55,16 +55,52 @@ for claim in data["claims"]:
         claim["plain"] = plain[claim["id"]]
 json.dump(data, open(sys.argv[1], "w"), indent=2)
 PY
-python3 - "$MAP" "$FIX/promises.json" <<'PY'
+python3 - "$MAP" "$FIX/promises.json" "$FIX/names.json" <<'PY'
 # The map step writes three to six promises after the scan, so each claim, also each added one,
-# belongs to exactly one promise.
+# belongs to exactly one promise. The agent also writes the plain name of each added claim.
 import json, sys
 data = json.load(open(sys.argv[1]))
 data["promises"] = json.load(open(sys.argv[2]))
+for claim in data["claims"]:
+    claim.setdefault("name", json.load(open(sys.argv[3])).get(claim["id"]))
 json.dump(data, open(sys.argv[1], "w"), indent=2)
 PY
 python3 "$S/mechanical.py" --map "$MAP" --repo "$REPO"
+# The old shape (each verifier lists its claims) stays readable for one release: keep a copy.
+cp "$MAP" "$WORK/old-shape.json"
+
+step "map: the fixture migrates to the new shape (promise -> claim -> check)"
+python3 "$S/onto.py" upgrade "$MAP"
+python3 - "$MAP" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1]))
+assert data["schema_version"] == 2, data["schema_version"]
+checks = {c["id"]: c["checks"] for c in data["claims"]}
+assert checks["C01"] == ["V01", "V03"] and checks["C02"] == ["V02"], checks
+none = {v["id"]: v for v in data["verifiers"] if v["kind"] == "none"}
+gap = [c for c in data["claims"] if not any(v["id"] in c["checks"] for v in data["verifiers"] if v["kind"] != "none")]
+assert sorted(c["id"] for c in gap) == ["C03", "C04"], [c["id"] for c in gap]
+assert all(len(c["checks"]) == 1 and c["checks"][0] in none for c in gap), "a claim with no tool check lists one check of kind none"
+assert all(sorted(v["claims"]) == sorted(c["id"] for c in data["claims"] if v["id"] in c["checks"]) for v in data["verifiers"]), "the verifier lists mirror the claim lists"
+print(f"the fixture is in shape 2: {len(data['claims'])} claims list their checks; {len(none)} claims with no tool check list a check of kind none")
+PY
 python3 "$S/validate.py" "$MAP"
+
+step "validate: an orphan check and a claim with no checks fail"
+python3 - "$MAP" "$WORK/orphan.json" "$WORK/no-checks.json" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1]))
+orphan = json.loads(json.dumps(data))
+orphan["verifiers"].append({**orphan["verifiers"][0], "id": "V99", "claims": ["C01"]})
+empty = json.loads(json.dumps(data))
+next(c for c in empty["claims"] if c["id"] == "C07")["checks"] = []
+json.dump(orphan, open(sys.argv[2], "w")); json.dump(empty, open(sys.argv[3], "w"))
+PY
+if python3 "$S/validate.py" "$WORK/orphan.json" > "$WORK/orphan.out"; then echo "FAIL: an orphan check passed"; exit 1; fi
+grep -q "check V99: no claim lists it" "$WORK/orphan.out"
+if python3 "$S/validate.py" "$WORK/no-checks.json" > "$WORK/no-checks.out"; then echo "FAIL: a claim with no checks passed"; exit 1; fi
+grep -q "claim C07: has no checks" "$WORK/no-checks.out"
+echo "validate refuses a check that no claim lists and a claim with no checks"
 
 step "validate: a claim in two promises, or in none, fails"
 python3 - "$MAP" "$WORK/two-promises.json" "$WORK/no-promise.json" <<'PY'
@@ -143,7 +179,7 @@ import hashlib, html as h, json, pathlib, re, sys
 data = json.load(open(sys.argv[1]))
 out = pathlib.Path(sys.argv[2])
 refs = json.loads((out / "refs.resolved.json").read_text())
-assert refs["schema"] == 1 and refs["head"] == data["head"], refs.get("head")
+assert refs["schema"] == 2 and refs["head"] == data["head"], refs.get("head")
 assert all(k["id"] in refs["controls"] for k in data["controls"]), "a control has no patch"
 html = (out / "explainer.html").read_text()
 assert f'<meta name="ve-trust-map-head" content="{data["head"]}">' in html, "no head stamp"
@@ -248,7 +284,7 @@ const url = 'file://' + path.resolve(html);
       const leak = ids.find((x) => new RegExp(`(^|[^\\w-])${x}([^\\w-]|$)`).test(text));
       if (leak) fail(`level ${id} shows the ID ${leak} in its prose`);
     }
-    if (!/\d+ of \d+ checks caught the bug we planted/.test(prose.first ?? '')) fail(`the verify level does not open with its result: ${prose.first}`);
+    if (!/\d+ of \d+ checks caught their planted bug/.test(prose.first ?? '')) fail(`the verify level does not open with its result: ${prose.first}`);
     console.log('reader copy has no red or green, the prose shows no ID, and the verify level opens with its result');
 
     // Keyboard: the first tab stop is the skip link.
@@ -315,6 +351,8 @@ PY
 test "$(g status --porcelain)" = "$BEFORE_STATUS" || { echo "FAIL: the fixture checkout changed"; exit 1; }
 test "$(g worktree list | wc -l | tr -d ' ')" = "$BEFORE_TREES" || { echo "FAIL: a scratch worktree is left"; exit 1; }
 test -z "$(ls -A "$WORK/scratch")" || { echo "FAIL: scratch dir is not empty"; exit 1; }
+step "onto: the grouping lint, plain names, coverage, close --add-claim and the old shape (tests/onto-e2e.sh)"
+WORK="$WORK" REPO="$REPO" MAP="$MAP" HEAD="$HEAD" FIX="$FIX" bash "$ROOT/tests/onto-e2e.sh"
 step "refs: symbol anchors, snippet, permalinks, anchor controls, the guard and drift (tests/refs-e2e.sh)"
 WORK="$WORK" REPO="$REPO" MAP="$MAP" HEAD="$HEAD" FIX="$FIX" bash "$ROOT/tests/refs-e2e.sh"
 step "mode: the CLI verbs, the gates and the ledger (tests/mode-e2e.sh)"

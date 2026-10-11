@@ -1,13 +1,15 @@
-"""Plain names for chat: a claim, a verifier and an invariant get a short `name` that a reviewer can read.
+"""Plain names for chat: each promise, claim and check has a short `name` that a reviewer can read.
 
 A reviewer does not know what C15 or V19 is. Every prompt, situation line, option and stop report
 uses these names; the IDs go only in a trailing "(ref: ...)" part, in --verbose output or in JSON.
 
-map fills a missing `name` (it keeps a name that the agent or the user wrote):
-  - a claim: from `plain.what` (else `text`), 3 to 7 words. "If X, Y." gives Y.
-  - an invariant: the same rule, from its text.
-  - a verifier: what it checks. A test selector names the test ("the test that a finished round
-    ... ends the edit rounds"); else its kind and the name of its first claim.
+The agent writes each name: 2 to 6 words, in STE, as a reviewer says it ("the idle stop", "the
+project-wide type check", "the import boundary", "the accept rule"). map refuses a promise, a claim
+or a check with no name, and doctor flags a name that is a cut of `plain.what`, or that holds a
+path or a tool name (onto.name_problems). The mechanical rules below are only a display fallback
+for an old map, and the rule that names an invariant:
+  - a claim or an invariant: from `plain.what` (else `text`), 3 to 7 words. "If X, Y." gives Y.
+  - a verifier: what it checks. A test selector names the test; else its kind and its first claim.
 """
 
 from __future__ import annotations
@@ -81,22 +83,22 @@ def verifier_name(v: dict, claims: dict[str, dict]) -> str:
 
 
 def fill(data: dict) -> int:
-    """Add a missing `name` to each claim, invariant and verifier. Returns how many it added."""
+    """Add a missing `name` to each invariant. Returns how many it added. A promise, a claim and a
+    check get no mechanical name: the agent writes it (missing)."""
     n = 0
-    for c in data.get("claims", []):
-        if not c.get("name"):
-            c["name"] = short((c.get("plain") or {}).get("what") or c.get("text", ""))
-            n += 1
     for i in data.get("invariants", []):
         if not i.get("name"):
             i["name"] = short(i.get("text", ""))
             n += 1
-    claims = {c["id"]: c for c in data.get("claims", [])}
-    for v in data.get("verifiers", []):
-        if not v.get("name"):
-            v["name"] = verifier_name(v, claims)
-            n += 1
     return n
+
+
+def missing(data: dict) -> list[str]:
+    """The promises, claims and checks that have no name. map refuses them."""
+    out = [f"promise {p['id']}" for p in data.get("promises", []) if not p.get("name")]
+    out += [f"claim {c['id']}" for c in data.get("claims", []) if not c.get("name")]
+    out += [f"check {v['id']}" for v in data.get("verifiers", []) if not v.get("name")]
+    return out
 
 
 def of(data: dict, item_id: str) -> str:
@@ -107,19 +109,14 @@ def of(data: dict, item_id: str) -> str:
                 return x.get("name") or (short(x.get("text", "")) if key != "verifiers" else verifier_name(x, {c["id"]: c for c in data["claims"]}))
     for p in data.get("promises", []):
         if p["id"] == item_id:
-            return p.get("label") or item_id
+            return p.get("name") or p.get("label") or item_id
     return item_id
 
 
 def checks_of(data: dict, claim: dict | str) -> list[dict]:
-    """The checks of a claim (promise -> claim -> check). The new shape lists them in `claims[].checks`;
-    the old shape links each verifier to its claims. Both work."""
-    if isinstance(claim, str):
-        claim = next((c for c in data.get("claims", []) if c["id"] == claim), {"id": claim})
-    vs = {v["id"]: v for v in data.get("verifiers", [])}
-    if claim.get("checks"):
-        return [vs[i] for i in claim["checks"] if i in vs]
-    return [v for v in data.get("verifiers", []) if claim["id"] in v.get("claims", [])]
+    """The checks of a claim (promise -> claim -> check), in either shape (onto.checks_of)."""
+    import onto
+    return onto.checks_of(data, claim)
 
 
 def listing(names: list[str], top: int = 3) -> str:

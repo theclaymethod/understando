@@ -8,7 +8,8 @@
       "C02",
       "C08"
     ],
-    "reviewer_action": "Do not trust the new balance yet: its test cannot fail. Check the subtraction yourself."
+    "reviewer_action": "Do not trust the new balance yet: its test cannot fail. Check the subtraction yourself.",
+    "name": "the overdraft rules"
   },
   {
     "id": "P2",
@@ -17,7 +18,8 @@
     "claims": [
       "C04"
     ],
-    "reviewer_action": "Do not use the wallet from many threads: only the PR text says that it is safe."
+    "reviewer_action": "Do not use the wallet from many threads: only the PR text says that it is safe.",
+    "name": "the thread safety"
   },
   {
     "id": "P3",
@@ -28,7 +30,8 @@
       "C06",
       "C07"
     ],
-    "reviewer_action": "Treat the message check as one model opinion. No planted bug tested it."
+    "reviewer_action": "Treat the message check as one model opinion. No planted bug tested it.",
+    "name": "the private messages"
   },
   {
     "id": "P4",
@@ -37,6 +40,7 @@
     "claims": [
       "C03"
     ],
-    "reviewer_action": "Read the fee function yourself: no test calls it, and the PR text does not mention it."
+    "reviewer_action": "Read the fee function yourself: no test calls it, and the PR text does not mention it.",
+    "name": "the fees"
   }
 ]

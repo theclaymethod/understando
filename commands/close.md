@@ -15,4 +15,15 @@ Each stop of this playbook ends with one question to the user. Ask it as [Asking
 4. **Apply.** Run `understando close --answers <file>`. A drafted test goes to a scratch clone. Probe runs it. When it is green, then red on its control, the commit goes to `understando/<pr>-ready`. A waiver shows in the ready checklist and in the PR section.
    - **Done when** it prints `DONE`, or each open claim has the reason why it stays open.
 
-A claim is one statement that a reviewer accepts or rejects. Its strength is the strength of its weakest check. When one check of a claim misses its planted bug, the question says so and offers to fix that check first. When a drafted test shows that the code is wrong, report it in the finding format ([../references/adapted/find-bugs.md](../references/adapted/find-bugs.md)), and keep it apart from the leads.
+A claim is one statement that a reviewer accepts or rejects. Its strength is the strength of its weakest check. A check can miss its planted bug, or it can fail to fail. Then the question names that check and offers to fix it first (`fix-check`). A drafted test then replaces the check. A check that backs nothing can also go (`drop-check`). Such a check cannot fail, fails or is stale. A check that backs the claim never goes.
+
+## Add a claim for a file
+
+The unclaimed level of the explainer tells the author to run `understando close --add-claim <file>` for each risky file.
+
+1. **Draft.** Run `understando close --add-claim <file>`. It prints the changed symbols of the file and the checks that run it. These checks come from the coverage record (`understando coverage`) and from the controls that edit the file.
+   - **Done when** you showed the draft to the user.
+2. **Word it.** The user writes the claim and its plain name. Run `understando close --add-claim <file> --name "<2 to 6 words>" --text "<the claim>" [--promise G1]`. It puts the claim in the promise, and it attaches the checks that run the file. Without a check, the claim lists a check of kind `none`.
+   - **Done when** it prints `Added the claim`.
+3. **Offer a check.** Run `understando close --next`, and relay its question. The PR text does not state an added claim, so Proven needs an invariant from the user (`--invariant`, or `understando discover`).
+   - **Done when** the user chose a check, or chose to keep the claim as it is. When a drafted test shows that the code is wrong, report it in the finding format ([../references/adapted/find-bugs.md](../references/adapted/find-bugs.md)), and keep it apart from the leads.
