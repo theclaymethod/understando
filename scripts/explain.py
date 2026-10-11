@@ -404,7 +404,7 @@ def why_level(data: dict, journal: list[dict]) -> str | None:
         linked = [cid for cid in r.get("claims", []) if cid in claims]
         for cid in linked:
             ASKED.setdefault(cid, i)
-        body = f"<blockquote data-quote=\"user\"><p>{js(short_quote(r['text']))}</p></blockquote>"
+        body = f"<blockquote data-quote=\"user\"><p>{js(short_quote(r.get('what') or r.get('text', '')))}</p></blockquote>"
         if linked:
             links = "".join(f"<li><a href={js('#' + claim_anchor(cid))}>{js(cid + ': ' + (claims[cid].get('plain') or {}).get('what', claims[cid]['text']))}</a></li>" for cid in linked)
             body += "\n" + disclosure(f"Show the claims that this request asked for ({len(linked)})", "<ul>" + links + "</ul>")
@@ -420,7 +420,7 @@ def why_level(data: dict, journal: list[dict]) -> str | None:
     decisions = [r for r in journal if r.get("kind") in ("decision", "verifier-choice", "waiver", "result")]
     if decisions:
         def row(r: dict) -> str:
-            cells = [r.get("text", "")] + [f"{k.capitalize()}: {r[k]}" for k in ("why", "evidence", "result") if r.get(k)]
+            cells = [r.get("what") or r.get("text", "")] + [f"{k.capitalize()}: {r[k]}" for k in ("why", "evidence", "result") if r.get(k)]
             if r.get("claims"):
                 cells.append("Claims: " + ", ".join(r["claims"]))
             return f"<li>{js(r['kind'] + '. ' + ' '.join(cells))}</li>"
