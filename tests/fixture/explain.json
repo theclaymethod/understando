@@ -1,11 +1,4 @@
 {
- "story": {
-  "summary": "The wallet now refuses an overdraft. This page explains the change, then shows how far each promise is proven.",
-  "problem": "Before this PR, a withdrawal could take the balance below zero.",
-  "change": "The withdraw function now refuses an amount above the balance, and a new function adds a fee.",
-  "trust": "A planted bug proves the overdraft rule. The promises below show the weak parts.",
-  "picture": "story"
- },
  "diagrams": {
   "story": {
    "title": "Before and after",
@@ -153,33 +146,6 @@
    }
   }
  },
- "loop": {
-  "intro": "One call takes an amount from a balance. Each step links to the promise that protects it.",
-  "diagram": "loop",
-  "steps": [
-   {
-    "text": "A caller asks the wallet to take an amount from the balance.",
-    "promise": "P1",
-    "code": [
-     {
-      "path": "wallet/core.py",
-      "symbol": "withdraw"
-     }
-    ]
-   },
-   {
-    "text": "The wallet refuses an amount above the balance, and else it gives the balance minus the amount.",
-    "promise": "P1"
-   },
-   {
-    "text": "The PR also adds a fee function and a denial message, but the withdraw function does not call them yet.",
-    "promise": "P4"
-   }
-  ]
- },
- "change": {
-  "intro": "The PR changes the wallet core and adds two modules and a report script."
- },
  "unclaimed": {
   "notes": {
    "bin/report.py": "New. It reads a file of accounts and prints each balance. No claim covers it."
@@ -193,14 +159,5 @@
    "why": "The balance test checks only the type of the result.",
    "fix": "Assert the exact new balance in the test."
   }
- ],
- "tradeoffs": [
-  "The fixture is small, so each level is short."
- ],
- "concerns": [
-  "The unit test that expects an int from a withdrawal cannot fail."
- ],
- "verifications": [
-  "The e2e test runs each step on this fixture."
  ]
 }

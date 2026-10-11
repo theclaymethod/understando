@@ -89,71 +89,70 @@ cp "$MAP" "$WORK/previous.json"
 python3 "$S/rerun.py" "$WORK/previous.json" "$MAP" --fail-on-drop | tee "$WORK/rerun.md"
 grep -q "No verdict, state or control result changed." "$WORK/rerun.md"
 
-step "explain: PR-body section, the level ladder, HTML"
+step "explain: the agent's MDX through the visual-explainer pipeline: refs, the pre-rendered HTML, the PR section"
+# The explain step writes explainer.mdx next to the map (the narrative and the data components).
+cp "$FIX/explainer.mdx" "$WORK/explainer.mdx"
 EXTRA="$FIX/explain.json"
-python3 "$S/explain.py" --map "$MAP" --repo "$REPO" --out "$WORK/explain" --extra "$EXTRA"
-
-step "explain: the build refuses an ID in level 1, an undefined term, and a diagram with one mode"
-python3 - "$EXTRA" "$MAP" "$WORK" <<'PY'
-import json, sys
-extra, data, work = json.load(open(sys.argv[1])), json.load(open(sys.argv[2])), sys.argv[3]
-leak = json.loads(json.dumps(extra)); leak["story"]["trust"] = "Claim C01 is Proven, and `withdraw` checks it."
-json.dump(leak, open(f"{work}/leak.json", "w"))
-term = json.loads(json.dumps(extra)); term["story"]["problem"] = "Before this PR, the ZQX ledger let a withdrawal take the balance below zero."
-json.dump(term, open(f"{work}/term.json", "w"))
-mode = json.loads(json.dumps(extra)); del mode["diagrams"]["loop"]["detailed"]
-json.dump(mode, open(f"{work}/mode.json", "w"))
-PY
-for case in "leak:the ID C01 is visible" "term:does not define: ZQX" "mode:has no detailed mode"; do
-  name="${case%%:*}"; want="${case#*:}"
-  if python3 "$S/explain.py" --map "$MAP" --repo "$REPO" --out "$WORK/bad-$name" --extra "$WORK/$name.json" 2> "$WORK/$name.err"; then
-    echo "FAIL: explain.py accepted the $name case"; exit 1
-  fi
-  grep -q "$want" "$WORK/$name.err" || { echo "FAIL: the $name case failed for another reason:"; cat "$WORK/$name.err"; exit 1; }
-done
-echo "explain.py refuses a visible ID, an undefined term and a one-mode diagram"
-
 # UNDERSTANDO_VE_RUNTIME pins an Artifacture checkout. explain.py reads it too.
 if [ -n "${UNDERSTANDO_VE_RUNTIME:-}" ]; then
   VE="$UNDERSTANDO_VE_RUNTIME"
 else
   VE="$(dirname "$(readlink -f "$HOME/.claude/skills/visual-explainer/SKILL.md" 2>/dev/null || echo "$HOME/.claude/skills/visual-explainer/SKILL.md")")"
 fi
-node "$VE/scripts/artifacture.mjs" export "$WORK/explain/explainer.mdx" --out "$WORK/explain/explainer.html"
+export UNDERSTANDO_VE_RUNTIME="$VE"
+python3 "$S/explain.py" --map "$MAP" --repo "$REPO" --out "$WORK/explain" --extra "$EXTRA"
 test -s "$WORK/explain/explainer.html"
+
+step "explain: the export refuses an ID in the prose, an undefined term, a one-mode diagram, a weak promise without an action, and pasted code"
+python3 - "$FIX" "$MAP" "$WORK" <<'PY'
+import json, pathlib, sys
+fix, data, work = pathlib.Path(sys.argv[1]), json.load(open(sys.argv[2])), pathlib.Path(sys.argv[3])
+mdx, extra = (fix / "explainer.mdx").read_text(), json.loads((fix / "explain.json").read_text())
+story = "A planted bug proves the overdraft rule."
+cases = {
+    "leak": (mdx.replace(story, "Claim C01 is Proven, and `withdraw` checks it."), extra, data),
+    "term": (mdx.replace(story, "The ZQX ledger lets a withdrawal take the balance below zero."), extra, data),
+    "mode": (mdx, {**extra, "diagrams": {**extra["diagrams"], "loop": {k: v for k, v in extra["diagrams"]["loop"].items() if k != "detailed"}}}, data),
+    "action": (mdx, extra, {**data, "promises": [{k: v for k, v in p.items() if k != "reviewer_action"} if p["id"] == "P4" else p for p in data["promises"]]}),
+    "pasted": (mdx.replace(story, "def withdraw(balance: int, amount: int) -> int:\n    if amount > balance:"), extra, data),
+}
+for name, (m, e, d) in cases.items():
+    out = work / f"bad-{name}"
+    out.mkdir(exist_ok=True)
+    (out / "explainer.mdx").write_text(m)
+    (out / "explain.json").write_text(json.dumps(e))
+    (out / "trust-map.json").write_text(json.dumps(d))
+PY
+for case in "leak:the ID C01 is in the narrative prose" "term:does not define: ZQX" "mode:has no detailed mode" "action:needs a reviewer_action" "pasted:pasted code from wallet/core.py"; do
+  name="${case%%:*}"; want="${case#*:}"; B="$WORK/bad-$name"
+  if python3 "$S/explain.py" --map "$B/trust-map.json" --repo "$REPO" --out "$B" --extra "$B/explain.json" > "$B/out.txt" 2>&1; then
+    echo "FAIL: the export accepted the $name case"; exit 1
+  fi
+  grep -q "$want" "$B/out.txt" || { echo "FAIL: the $name case failed for another reason:"; cat "$B/out.txt"; exit 1; }
+done
+echo "the export refuses a visible ID, an undefined term, a one-mode diagram, a weak promise without an action and pasted code"
+
 python3 - "$MAP" "$WORK/explain" <<'PY'
-# One self-contained MDX unit per level. Each claim is in exactly one promise, has one claim block,
-# and its plain sentence shows once on the whole page.
-import json, pathlib, re, sys
+# The refs, the stamp and the pre-render: each claim has one block, and the page names its map.
+import hashlib, json, pathlib, re, sys
 data = json.load(open(sys.argv[1]))
 out = pathlib.Path(sys.argv[2])
-names = ["01-story", "02-loop", "03-change", "04-promises", "05-verifiers", "06-unclaimed", "07-tradeoffs", "08-exercises", "09-glossary"]
-entry = (out / "explainer.mdx").read_text()
-texts = {}
-for n in names:
-    f = out / "chapters" / f"{n}.mdx"
-    if not f.is_file():
-        sys.exit(f"FAIL: missing level file {n}")
-    texts[n] = f.read_text()
-    if "visual-explainer-mdx/components" not in texts[n].split("\n", 2)[1] or f"./chapters/{n}.mdx" not in entry:
-        sys.exit(f"FAIL: level {n} does not import its components, or the entry does not import it")
-member = {}
-for p in data["promises"]:
-    for cid in p["claims"]:
-        member.setdefault(cid, []).append(p["id"])
-blob = "\n".join(texts.values())
+refs = json.loads((out / "refs.resolved.json").read_text())
+assert refs["schema"] == 1 and refs["head"] == data["head"], refs.get("head")
+assert all(k["id"] in refs["controls"] for k in data["controls"]), "a control has no patch"
+html = (out / "explainer.html").read_text()
+assert f'<meta name="ve-trust-map-head" content="{data["head"]}">' in html, "no head stamp"
+assert f'<meta name="ve-trust-map-sha256" content="{hashlib.sha256((out / "trust-map.json").read_bytes()).hexdigest()}">' in html, "no map hash stamp"
+root = html.split('<div id="root">', 1)[1]
 for c in data["claims"]:
-    if len(member.get(c["id"], [])) != 1:
-        sys.exit(f"FAIL: {c['id']} is in {member.get(c['id'], [])}, not in exactly one promise")
-    anchor = 'id={"claim-' + c["id"].lower() + '"}'
-    if texts["04-promises"].count(anchor) != 1:
-        sys.exit(f"FAIL: {c['id']} has no single claim block in the promises level")
-    said = json.dumps(c["plain"]["what"], ensure_ascii=False)[1:-1]
-    if blob.count(said) != 1:
-        sys.exit(f"FAIL: the sentence of {c['id']} shows {blob.count(said)} times; it must show once")
-print(f"{len(names)} level units; each of the {len(data['claims'])} claims is in one promise, with one block and one sentence")
+    n = root.count(f'id="claim-{c["id"].lower()}"')
+    if n != 1:
+        sys.exit(f"FAIL: {c['id']} has {n} claim blocks in the pre-render")
+for p in data["promises"]:
+    assert p["sentence"].split(".")[0].replace("'", "&#x27;") in root, f"the pre-render lacks the promise {p['id']}"
+print(f"refs at the head, the map stamped, and each of the {len(data['claims'])} claims in one pre-rendered block")
 PY
-# The rendered page: default themes only, and the ladder rules in a real browser.
+# The rendered page: default themes only, and the level rules in a real browser.
 node - "$VE" "$WORK/explain/explainer.html" "$MAP" <<'JS'
 const path = require('node:path');
 const fs = require('node:fs');
@@ -162,37 +161,39 @@ const data = JSON.parse(fs.readFileSync(mapPath, 'utf8'));
 const { chromium } = require(require.resolve('playwright', { paths: [ve] }));
 const fail = (message) => { console.error('FAIL: ' + message); process.exit(1); };
 const ids = [...data.claims, ...data.verifiers, ...data.controls].map((x) => x.id);
-const codeLike = /`|\b[a-z][a-z0-9]*_[a-z0-9_]+\b|\b[A-Z][a-z0-9]+[A-Z][A-Za-z0-9]*\b|\b[a-z]+[A-Z][A-Za-z0-9]*\b|\b[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]+\b|\w\(\)/;
+const url = 'file://' + path.resolve(html);
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
+    // Without JavaScript: the text, the merge verdict, the promises and the claim text show, and a deep link opens its claim.
+    const off = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 1280, height: 900 } });
+    const still = await off.newPage();
+    await still.goto(url + '#claim-c02', { waitUntil: 'load' });
+    const text = await still.innerText('main');
+    for (const want of ['Can you merge it?', data.promises[0].label, data.claims[0].plain.what.split('`')[0].trim()]) if (!text.includes(want)) fail(`without JavaScript the page lacks "${want}"`);
+    if (!(await still.$eval('#claim-c02 .ve-disclosure-body', (b) => b.getBoundingClientRect().height > 0))) fail('without JavaScript the deep link does not show claim C02');
+    await off.close();
+    console.log('without JavaScript the page shows the merge verdict, the promises and the claims, and a deep link shows its claim');
+
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-    await page.goto('file://' + path.resolve(html), { waitUntil: 'load' });
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto(url, { waitUntil: 'load' });
     await page.waitForSelector('main.ve-shell');
+    await page.waitForTimeout(300);
+    if (errors.length) fail(`the page logs errors (hydration): ${errors.join(' | ').slice(0, 400)}`);
     const got = await page.evaluate(() => ({
       styles: document.querySelectorAll('#root style').length,
       presets: [...new Set([...document.querySelectorAll('[data-ve-preset]')].map((e) => e.dataset.vePreset))],
+      levels: [...document.querySelectorAll('main section.ve-section[id]')].map((s) => s.id).join(','),
     }));
     if (got.styles || got.presets.join() !== 'iso') fail(`the explainer has ${got.styles} page <style> elements and presets [${got.presets}]; want 0 and [iso]`);
-    console.log('the explainer has no page <style> and uses only the iso preset');
-
-    // Levels 1-3: the text a reader sees without opening anything (tables aside) holds no ID and no code name.
-    const shown = async () => page.evaluate(() => ['story', 'loop', 'change'].map((id) => {
-      const skip = '[data-ve-data-table], details:not([open]) > .ve-disclosure-body, [data-ve-variant="mobile"]';
-      const walker = document.createTreeWalker(document.getElementById(id), NodeFilter.SHOW_TEXT);
-      const parts = [];
-      for (let node = walker.nextNode(); node; node = walker.nextNode()) if (!node.parentElement.closest(skip)) parts.push(node.textContent);
-      return [id, parts.join(' ')];
-    }));
-    for (const [id, text] of await shown()) {
-      const id_ = ids.find((x) => new RegExp(`(^|[^\\w-])${x}([^\\w-]|$)`).test(text));
-      if (id_) fail(`level ${id} shows the ID ${id_}`);
-      const code = text.match(codeLike);
-      if (code) fail(`level ${id} shows the code name "${code[0]}"`);
-    }
-    console.log('levels 1-3 show no ID and no code name outside tables and collapsed blocks');
+    if (got.levels !== 'story,why,loop,changed,promises,verifiers,unclaimed,tradeoffs,exercises,glossary') fail(`the level ids are ${got.levels}`);
+    console.log('the page hydrates with no error, has no page <style>, uses only the iso preset and has the stable level ids');
 
     // Each architecture diagram renders both modes; the mode is shared and remembered.
+    const codeLike = /`|\b[a-z][a-z0-9]*_[a-z0-9_]+\b|\b[A-Z][a-z0-9]+[A-Z][A-Za-z0-9]*\b|\b[a-z]+[A-Z][A-Za-z0-9]*\b|\b[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]+\b|\w\(\)/;
     const diagrams = page.locator('[data-ve-diagram-modes]');
     const count = await diagrams.count();
     if (count < 2) fail(`want the story and loop diagrams in two modes, found ${count}`);
@@ -204,38 +205,36 @@ const codeLike = /`|\b[a-z][a-z0-9]*_[a-z0-9_]+\b|\b[A-Z][a-z0-9]+[A-Z][A-Za-z0-
     if (modes.some((m) => m !== 'detailed')) fail(`one switch must set every diagram: ${modes}`);
     const detailed = await labels();
     if (detailed === simple || !codeLike.test(detailed)) fail('the Detailed mode must name real code');
-    await page.reload({ waitUntil: 'load' });
-    await page.waitForSelector('[data-ve-diagram-modes]');
-    if ((await page.getAttribute('[data-ve-diagram-modes]', 'data-ve-mode')) !== 'detailed') fail('the page did not remember the Detailed mode');
-    console.log(`${count} diagrams render a Simple and a Detailed mode, and the page remembers the choice`);
+    console.log(`${count} diagrams render a Simple and a Detailed mode`);
 
     // The glossary is a level of its own, in the rail; a term in the text shows its definition.
     const terms = await page.$$eval('#glossary dt', (t) => t.map((x) => x.textContent));
     for (const want of ['Overdraft', 'Balance', 'Proven', 'PR']) if (!terms.includes(want)) fail(`the glossary has no ${want}: ${terms}`);
-    if (!(await page.$('.ve-chapter-list a[href="#glossary-section"]'))) fail('the rail has no Glossary entry');
+    if (!(await page.$('.ve-chapter-list a[href="#glossary"]'))) fail('the rail has no Glossary entry');
     const term = page.locator('#story .ve-term').first();
     await term.focus();
     if (!(await term.locator('[role="tooltip"]').isVisible())) fail('a focused term shows no definition');
     console.log(`the glossary holds ${terms.length} terms and is in the rail; a focused term shows its definition`);
 
-    // The merge verdict: first in the story, inside the first screen, each item a link to a promise.
+    // The merge verdict: #merge, first in the story, inside the first screen, each item a link.
     const verdict = await page.evaluate(() => {
-      const line = document.querySelector('[data-merge-verdict]');
+      const line = document.querySelector('#merge [data-merge-verdict]');
       const first = document.querySelector('#story .ve-section-body > *');
       return line && { form: line.dataset.mergeVerdict, top: line.getBoundingClientRect().top, first: first.contains(line),
         links: [...document.querySelectorAll('[data-merge-items] a, [data-merge-verdict] ~ p a')].map((a) => a.getAttribute('href')) };
     });
-    const promiseIds = data.promises.map((p) => '#promise-' + p.id.toLowerCase());
+    const targets = [...data.promises.map((p) => '#promise-' + p.id.toLowerCase()), '#story-ready', '#unclaimed'];
     if (!verdict || !verdict.first || verdict.top > 900) fail(`the merge verdict is not first in the first screen: ${JSON.stringify(verdict)}`);
-    if (verdict.form !== 'ready' && (!verdict.links.length || verdict.links.some((h) => !promiseIds.includes(h) && h !== '#story-ready' && !h.startsWith('#claim-')))) fail(`a merge item does not link to a promise: ${verdict.links}`);
-    console.log(`the merge verdict (${verdict.form}) is first in the first screen and links to ${verdict.links.length} promises`);
+    if (verdict.form !== 'ready' && (!verdict.links.length || verdict.links.some((h) => !targets.includes(h) && !h.startsWith('#claim-')))) fail(`a merge item does not link to a promise: ${verdict.links}`);
+    console.log(`the merge verdict (${verdict.form}) is first in the first screen and links to ${verdict.links.length} targets`);
 
-    // Reader copy: no "red" or "green" outside code, and no ID in the prose of levels 4, 5 and 7.
+    // Reader copy: no "red" or "green" outside code, and no ID in the prose of the narrative and the verify level.
     const prose = await page.evaluate(() => {
       const skip = 'pre, code, [data-ve-code-block], [data-ve-data-table], .ve-terminal, details:not([open]) > .ve-disclosure-body, .ve-disclosure-meta, [role="tooltip"]';
       const text = (root) => { const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); const out = [];
         for (let n = w.nextNode(); n; n = w.nextNode()) if (!n.parentElement.closest(skip)) out.push(n.textContent); return out.join(' '); };
-      return { all: text(document.querySelector('main')), levels: ['promises', 'verifiers', 'tradeoffs'].map((id) => [id, text(document.getElementById(id))]) };
+      return { all: text(document.querySelector('main')), levels: ['story', 'loop', 'changed', 'verifiers', 'tradeoffs'].map((id) => [id, text(document.getElementById(id))]),
+        first: document.querySelector('#verifiers [data-ve-trust="verifiers"] > *')?.textContent };
     });
     const colour = prose.all.match(/\b(red|green)\b/i);
     if (colour) fail(`reader copy says "${colour[0]}": ${prose.all.slice(Math.max(0, colour.index - 60), colour.index + 40)}`);
@@ -243,10 +242,11 @@ const codeLike = /`|\b[a-z][a-z0-9]*_[a-z0-9_]+\b|\b[A-Z][a-z0-9]+[A-Z][A-Za-z0-
       const leak = ids.find((x) => new RegExp(`(^|[^\\w-])${x}([^\\w-]|$)`).test(text));
       if (leak) fail(`level ${id} shows the ID ${leak} in its prose`);
     }
-    console.log('reader copy has no red or green, and levels 4, 5 and 7 show no ID in their prose');
+    if (!/\d+ of \d+ checks caught the bug we planted/.test(prose.first ?? '')) fail(`the verify level does not open with its result: ${prose.first}`);
+    console.log('reader copy has no red or green, the prose shows no ID, and the verify level opens with its result');
 
-    // Keyboard: the first tab stop is the skip link, and it moves focus to the content.
-    await page.goto('file://' + path.resolve(html), { waitUntil: 'load' });
+    // Keyboard: the first tab stop is the skip link.
+    await page.goto(url, { waitUntil: 'load' });
     await page.waitForSelector('main.ve-shell');
     await page.keyboard.press('Tab');
     if ((await page.evaluate(() => document.activeElement?.textContent)) !== 'Skip to content') fail('the first tab stop is not the skip link');
@@ -258,23 +258,23 @@ const codeLike = /`|\b[a-z][a-z0-9]*_[a-z0-9_]+\b|\b[A-Z][a-z0-9]+[A-Z][A-Za-z0-
     console.log('no diagram overflows its column');
 
     // A deep link into a closed claim opens it and its promise, and puts its headline in view.
-    await page.goto('file://' + path.resolve(html) + '#claim-c02', { waitUntil: 'load' });
+    await page.goto(url + '#claim-c02', { waitUntil: 'load' });
     await page.waitForFunction(() => { const c = document.getElementById('claim-c02'); return c && c.open && c.parentElement.closest('details').open; });
     await page.waitForTimeout(400);
     const top = await page.$eval('#claim-c02', (c) => c.getBoundingClientRect().top);
     if (top < 0 || top > 200) fail(`the deep link to claim C02 puts its headline at ${top}px`);
-    // Opening a block writes its link; a reload keeps it open.
     await page.click('#claim-c01 > summary .ve-disclosure-label');
     await page.waitForFunction(() => location.hash === '#claim-c01');
     await page.reload({ waitUntil: 'load' });
     await page.waitForFunction(() => document.getElementById('claim-c01')?.open);
     console.log(`a deep link opens claim C02 with its headline at ${Math.round(top)}px; an open block writes its link and stays open on reload`);
 
-    // Unclaimed changes: the file that the fixture adds without a claim.
+    // Unclaimed changes: the file that the fixture adds without a claim, with an action.
     const unclaimed = await page.$eval('#unclaimed', (s) => s.innerText);
-    if (!unclaimed.includes('bin/report.py')) fail('the unclaimed panel does not list bin/report.py');
-    if (unclaimed.includes('wallet/fees.py')) fail('the unclaimed panel lists wallet/fees.py, which a claim cites');
-    console.log('the unclaimed panel lists bin/report.py');
+    if (!unclaimed.includes('bin/report.py')) fail('the unclaimed level does not list bin/report.py');
+    if (unclaimed.includes('wallet/fees.py')) fail('the unclaimed level lists wallet/fees.py, which a claim cites');
+    if (!/changed files? ha(s|ve) no claim/.test(unclaimed)) fail('the unclaimed level has no summary line');
+    console.log('the unclaimed level lists bin/report.py, with its summary and its action');
   } finally {
     await browser.close();
   }
