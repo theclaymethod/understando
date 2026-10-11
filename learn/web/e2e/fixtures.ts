@@ -82,8 +82,12 @@ async function launch(opts: LaunchOptions = {}): Promise<Learn> {
     ANTHROPIC_API_KEY: "sk-ant-e2e-must-not-leak-000000000000",
     FAKE_SECRET_TOKEN: "e2e-must-not-leak",
     CLAUDECODE: "1",
+    // Explicit and hermetic: no real ~/.understando state, and never the real function-intelligence
+    // .env. A test that wants a key passes fiEnv; every other launch points at a file that is absent.
+    UNDERSTANDO_HOME: join(dir, "uhome"),
+    UNDERSTANDO_RUNS: join(dir, "runs"),
+    UNDERSTANDO_FI_ENV: opts.fiEnv ?? join(dir, "no-such.env"),
   };
-  if (opts.fiEnv) env.UNDERSTANDO_FI_ENV = opts.fiEnv;
   let out = "";
   const child: ChildProcess = spawn(process.env.UNDERSTANDO_LEARN_BIN!, [join(dir, "run"), "--repo", join(dir, "repo"), "--port", String(port), "--no-open"], { env, stdio: ["ignore", "pipe", "pipe"] });
   child.stdout!.on("data", (c) => { out += c; });
