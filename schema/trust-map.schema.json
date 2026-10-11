@@ -172,6 +172,13 @@
       "items": {
         "$ref": "#/$defs/promise"
       }
+    },
+    "exercises": {
+      "type": "array",
+      "description": "Optional. Exercises for understando learn that need fields the claims do not hold: the steps and answers of a trace, and the test path, command and planted bug of a close-gap exercise. The app derives predict, find-the-line and explain-it-back exercises from the controls and claims.",
+      "items": {
+        "$ref": "#/$defs/exercise"
+      }
     }
   },
   "$defs": {
@@ -762,6 +769,118 @@
           "type": "string",
           "minLength": 1,
           "description": "Strict STE. What a reviewer must do, or not rely on, because the promise is weak. Required when the weakest claim is not Proven."
+        }
+      }
+    },
+    "exercise": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "claim",
+        "title"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "trace",
+            "close-gap"
+          ]
+        },
+        "claim": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scenario": {
+          "type": "string",
+          "description": "trace: the situation to step through."
+        },
+        "steps": {
+          "type": "array",
+          "description": "trace: one question per step. The server keeps answer and why.",
+          "items": {
+            "type": "object",
+            "required": [
+              "prompt",
+              "choices",
+              "answer"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "prompt": {
+                "type": "string",
+                "minLength": 1
+              },
+              "choices": {
+                "type": "array",
+                "minItems": 2,
+                "items": {
+                  "type": "string"
+                }
+              },
+              "answer": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "why": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "brief": {
+          "type": "string",
+          "description": "close-gap: what the missing test must check."
+        },
+        "test_path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "close-gap: the only file the learner can write, relative to the worktree root."
+        },
+        "starter": {
+          "type": "string",
+          "description": "close-gap: the first text of the test file."
+        },
+        "command": {
+          "$ref": "#/$defs/command"
+        },
+        "bug": {
+          "type": "object",
+          "required": [
+            "description",
+            "edits"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "description": {
+              "type": "string",
+              "minLength": 1
+            },
+            "edits": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/edit"
+              }
+            }
+          }
+        },
+        "expect": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pattern": {
+              "type": "string"
+            }
+          }
         }
       }
     }
