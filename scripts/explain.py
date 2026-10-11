@@ -120,6 +120,14 @@ def resolve_refs(repo: str, data: dict, refs: list[dict]) -> list[dict]:
     return out
 
 
+def export(runtime: str, mdx: Path, html: Path, *extra: str) -> int:
+    """Export the explainer MDX to HTML with the source script of the Artifacture checkout
+    (scripts/ve-mdx/export.mjs); the `artifacture export` command is gone from the CLI. The script
+    resolves its package from the working directory, so it runs in the checkout, with absolute paths."""
+    script = Path(runtime) / "scripts" / "ve-mdx" / "export.mjs"
+    return subprocess.run(["node", str(script), str(mdx.resolve()), "--out", str(html.resolve()), *extra], cwd=runtime).returncode
+
+
 def formal_roots(v: dict) -> list[str]:
     """The folders that the edit paths of a formal control can be relative to: the repo root, then
     each folder above the formal artifact (projects/x/formal/lean/, ..., projects/x/)."""
@@ -417,9 +425,7 @@ def main() -> int:
     (out / coderef.CACHE_NAME).write_text(json.dumps(body, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     runtime = runtime_path(args.runtime)
     if not args.no_html:
-        cli = [str(Path(runtime) / "scripts" / "artifacture.mjs"), "export", str(out / "explainer.mdx"), "--out", str(out / "explainer.html"),
-               "--guard-repo", str(args.repo), "--guard-head", data["head"]]
-        if subprocess.run(["node", *cli]).returncode != 0:
+        if export(runtime, out / "explainer.mdx", out / "explainer.html", "--guard-repo", str(Path(args.repo).resolve()), "--guard-head", data["head"]) != 0:
             fail("the export failed. Fix the MDX or the data, not the HTML.")
     section = ["node", str(Path(runtime) / "scripts" / "ve-mdx" / "trust-map.mjs"), "pr-section", "--map", str(out / "trust-map.json"),
                "--refs", str(out / coderef.CACHE_NAME), "--explain", str(out / "explain.json"), "--out", str(out / "pr-section.md")]

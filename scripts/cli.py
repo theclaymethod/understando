@@ -312,11 +312,11 @@ def do_explain(c: context.Ctx, argv: list[str]) -> int:
         # The page: the explainer source exported by the visual-explainer runtime (commands/explain.md, step 5).
         runtime = ve or subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import explain; print(explain.runtime_path(None))", str(S)],
                                        capture_output=True, text=True).stdout.strip()
-        cli = Path(runtime) / "scripts" / "artifacture.mjs"
-        if not cli.is_file():
+        if not (Path(runtime) / "scripts" / "ve-mdx" / "export.mjs").is_file():
             print(f"explain --html: no Artifacture runtime at {runtime}. Set UNDERSTANDO_VE_RUNTIME, or run setup.")
             return 1
-        code = subprocess.run(["node", str(cli), "export", str(c.run / "explainer.mdx"), "--out", str(c.run / "explainer.html")]).returncode
+        import explain
+        code = explain.export(runtime, c.run / "explainer.mdx", c.run / "explainer.html")
     return code
 
 
