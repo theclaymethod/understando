@@ -344,7 +344,7 @@ const url = 'file://' + path.resolve(html);
     await page.goto(url + '#ch-3', { waitUntil: 'load' });
     await page.waitForFunction(() => !document.getElementById('ch-3').hidden);
     const report = await page.$eval('[data-ve-spine-file="bin/report.py"]', (s) => s.innerText);
-    if (!/Low risk: skim|No claim/.test(report)) fail(`bin/report.py has no protection status: ${report}`);
+    if (!/Low risk: read it quickly|No claim/.test(report)) fail(`bin/report.py has no protection status: ${report}`);
     const fees = await page.$eval('[data-ve-spine-file="wallet/fees.py"]', (s) => s.innerText);
     if (!/Protected by 1 claim/.test(fees)) fail(`wallet/fees.py does not show the claim that protects it: ${fees}`);
     const spine = await page.$eval('#ch-3', (s) => s.innerText);
