@@ -43,7 +43,14 @@ The build stops (exit 1) when:
   - a weak promise (its weakest claim is not Proven) has no reviewer action;
   - the page uses a term (an acronym, a capitalised word inside a sentence, or a glossary term)
     that the glossary does not define;
-  - a mechanical check gives a result that differs from the recorded one.
+  - a mechanical check gives a result that differs from the recorded one;
+  - a code ref (scripts/coderef.py) resolves to no place, or to more than one, at the head;
+  - an input (explain.json, the text fields of the map, the template) holds pasted code: 2 or more
+    lines that are the same, after whitespace normalisation, as a tracked file at the head.
+
+Every code excerpt, control diff and permalink comes from a code ref, never from typed text. A
+codeRef is an anchor {"path", "symbol", "part"?, "match"?, "context"?} or, discouraged, a range
+{"path", "start", "end"}. The resolved lines go to DIR/refs.resolved.json, not into the data.
 
 --runtime is the Artifacture checkout. $UNDERSTANDO_VE_RUNTIME sets it too. The default asks the
 visual-explainer CLI: `node ~/.claude/skills/visual-explainer/scripts/artifacture.mjs path`.
@@ -79,6 +86,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import coderef  # noqa: E402
 import mechanical  # noqa: E402
 import tm  # noqa: E402
 
@@ -281,14 +289,27 @@ def git(repo: str, *args: str) -> str:
     return out.stdout
 
 
-def snippet(repo: str, head: str, ref: dict) -> tuple[str, int] | None:
-    out = subprocess.run(["git", "-C", repo, "show", f"{head}:{ref['path']}"], capture_output=True, text=True)
-    if out.returncode != 0:
-        return None
-    lines = out.stdout.splitlines()
-    start = ref.get("start", 1)
-    end = min(ref.get("end", start + MAX_SNIPPET - 1), start + MAX_SNIPPET - 1, len(lines))
-    return "\n".join(lines[start - 1:end]), start
+RESOLVED: dict[str, coderef.Resolved] = {}
+
+
+def snippet(repo: str, head: str, ref: dict, slug: str | None = None) -> tuple[str, int, int, str | None]:
+    """(code, start, end, permalink) of a code ref at the head. The build copies the code; nobody
+    types it. A ref that resolves to no place, or to more than one, stops the build."""
+    try:
+        r = coderef.resolve(repo, head, ref)
+    except coderef.AnchorError as exc:
+        fail(f"a code ref does not resolve at the head: {exc}. Fix the ref (understando snippet), then build again.")
+    RESOLVED[coderef.ref_key(ref)] = r
+    return r.excerpt, r.start, r.end, coderef.permalink(repo, head, ref["path"], r.start, r.end, slug)
+
+
+def code_block(repo: str, data: dict, ref: dict) -> str:
+    text, start, end, link = snippet(repo, data["head"], ref, data.get("repo"))
+    name = f"{ref['path']}:{start}" + (f"-{end}" if end != start else "")
+    out = f"<CodeBlock language={js(LANG.get(Path(ref['path']).suffix, 'text'))} filename={js(name)} code={js(text)} />"
+    if link:
+        out += f"\n<p><a href={js(link)}>{js('Open these lines at the PR head')}</a></p>"
+    return out
 
 
 def runtime_path(explicit: str | None) -> str:
@@ -310,6 +331,7 @@ class Diff:
     """git diff --numstat and the added line numbers from the base to the head."""
 
     def __init__(self, repo: str, base: str, head: str):
+        self.repo = repo
         self.files: dict[str, tuple[int, int]] = {}
         for line in git(repo, "diff", "--numstat", "--no-renames", base, head).splitlines():
             a, d, path = line.split("\t", 2)
@@ -643,12 +665,7 @@ def loop(data: dict, extra: dict, repo: str) -> str:
         body = f"<p>{inline(step['text'])}{js(' ')}<a href={js('#' + promise_anchor(pid))}>{js('Promise: ' + labels[pid])}</a></p>"
         if len(steps) > 6:
             fail(f"the loop has {len(steps)} steps; keep it at five or six, so the level fits one screen")
-        code = []
-        for ref in step.get("code", []):
-            got = snippet(repo, data["head"], ref)
-            if got:
-                text, start = got
-                code.append(f"<CodeBlock language={js(LANG.get(Path(ref['path']).suffix, 'text'))} filename={js(ref['path'] + ':' + str(start))} code={js(text)} />")
+        code = [code_block(repo, data, ref) for ref in step.get("code", [])]
         if code:
             body += "\n" + disclosure("Show the code for this step", "\n".join(code), lazy=True)
         items.append(f"<Step id={js(f'loop-step-{i}')}>{body}</Step>")
@@ -845,10 +862,7 @@ def claim_block(c: dict, risk: dict | None, verifiers: list[dict], controls: dic
         terms.append(("Asked for", f"<a href={js(f'#why-{n}')}>{js(f'Request {n}, in the user words')}</a>", None, True))
     body = [definitions(terms)]
     for ref in c.get("code", []):
-        got = snippet(repo, data["head"], ref)
-        if got:
-            text, start = got
-            body.append(f"<CodeBlock language={js(LANG.get(Path(ref['path']).suffix, 'text'))} filename={js(ref['path'] + ':' + str(start))} code={js(text)} />")
+        body.append(code_block(repo, data, ref))
     if not verifiers:
         body.append(none("No verifier backs this claim."))
     for v in verifiers:
@@ -875,7 +889,7 @@ def claim_block(c: dict, risk: dict | None, verifiers: list[dict], controls: dic
             outcome = {"red": OUTCOME["caught"][0].lower(), "green": OUTCOME["missed"][0].lower()}.get(status, status)
             label = "The check {} ({}).".format(outcome, k["id"]) if status in ("red", "green") else "Control {}: {}.".format(k["id"], status)
             body.append(f"<p><strong>{js(label)}</strong>{js(' ' + reader(k['description']))}</p>")
-            body += [edit_block(e) for e in k["edits"]]
+            body += edit_blocks(k, data, repo)
             tail = r.get("output_tail", r.get("note", ""))
             if tail:
                 body.append(f"<TerminalBlock title={js('Control ' + k['id'] + ' output')} content={js(tail)} />")
@@ -883,7 +897,33 @@ def claim_block(c: dict, risk: dict | None, verifiers: list[dict], controls: dic
     return disclosure(summary, "\n".join(body), anchor=claim_anchor(c["id"]), meta=c["id"], jsx=True, share=True, lazy=True)
 
 
-def edit_block(edit: dict) -> str:
+def edit_blocks(k: dict, data: dict, repo: str) -> list[str]:
+    """The real before and after of a control: the patch of its scratch worktree (result.diff),
+    else the same resolution in memory at the commit where the control runs."""
+    commit = next((v.get("at") for v in data["verifiers"] if v["id"] == k["verifier"]), None) or data["head"]
+    r = k.get("result") or {}
+    if r.get("diff") and r.get("head") == commit:
+        patches = coderef.split_patch(r["diff"])
+    else:
+        try:
+            patches = coderef.control_patches(repo, commit, k["edits"])
+        except coderef.AnchorError as exc:
+            if any(e["op"] in coderef.ANCHOR_OPS for e in k["edits"]):
+                fail(f"control {k['id']}: its anchor does not resolve at {commit[:10]}: {exc}")
+            patches = None
+    if patches is None:
+        # A recorded formal control: its paths are relative to the formal copy, not to the repo.
+        return [legacy_edit_block(e) for e in k["edits"]]
+    out = []
+    for path, patch in patches:
+        if patch is None:
+            out.append(f"<p><code>{js('changed bytes')}</code>{js(' ' + path)}</p>")
+        else:
+            out.append(f"<DiffBlock language={js(LANG.get(Path(path).suffix, 'text'))} filename={js(path)} patch={js(patch)} />")
+    return out
+
+
+def legacy_edit_block(edit: dict) -> str:
     lang = LANG.get(Path(edit["path"]).suffix, "text")
     name = js(edit["path"])
     if edit["op"] == "replace" and edit.get("find") != edit.get("replace"):
@@ -1029,7 +1069,11 @@ def unclaimed(data: dict, extra: dict, diff: Diff) -> str:
     cited: dict[str, set[int] | None] = {}
     for c in data["claims"]:
         for ref in c.get("code", []):
-            span = set(range(ref["start"], ref.get("end", ref["start"]) + 1)) if "start" in ref else None
+            if coderef.is_anchor(ref) or "start" in ref:
+                r = RESOLVED.get(coderef.ref_key(ref)) or coderef.resolve(diff.repo, data["head"], ref, cap=False)
+                span = set(range(r.start, r.end + 1))
+            else:
+                span = None
             if ref["path"] in cited and cited[ref["path"]] is None:
                 continue
             cited[ref["path"]] = None if span is None else (cited.get(ref["path"]) or set()) | span
@@ -1304,7 +1348,23 @@ def merge_line(data: dict, ready: dict | None, explainer_url: str | None) -> str
     return "\n".join(lines_)
 
 
-def pr_section(data: dict, extra: dict, explainer_url: str | None, ready: dict | None = None) -> str:
+def claim_link(c: dict, data: dict, repo: str | None) -> str:
+    """The claim ID, linked to the permalink of its first code ref. The link comes from the git
+    remote and the resolved lines, never from typed text."""
+    refs = c.get("code") or []
+    if not repo or not refs:
+        return c["id"]
+    r = RESOLVED.get(coderef.ref_key(refs[0]))
+    if r is None:
+        try:
+            r = coderef.resolve(repo, data["head"], refs[0])
+        except coderef.AnchorError as exc:
+            fail(f"claim {c['id']}: a code ref does not resolve at the head: {exc}")
+    link = coderef.permalink(repo, data["head"], r.path, r.start, r.end, data.get("repo"))
+    return f"[{c['id']}]({link})" if link else c["id"]
+
+
+def pr_section(data: dict, extra: dict, explainer_url: str | None, ready: dict | None = None, repo: str | None = None) -> str:
     s = data["summary"]
     out = ["## Trust map", "", merge_line(data, ready, explainer_url), ""]
     if ready:
@@ -1313,7 +1373,7 @@ def pr_section(data: dict, extra: dict, explainer_url: str | None, ready: dict |
     esc = lambda t: t.replace("|", chr(92) + "|")  # noqa: E731
     for c in data["claims"]:
         verdict = f"**{c['verdict']}**" + (f" (waived: {esc(c['waiver']['reason'])})" if c.get("waiver") else "")
-        out.append(f"| {c['id']}: {esc(c['text'])} | {verdict} | {c.get('tier') or '-'} | {esc(c['reason'])} |")
+        out.append(f"| {claim_link(c, data, repo)}: {esc(c['text'])} | {verdict} | {c.get('tier') or '-'} | {esc(c['reason'])} |")
     out.append("")
     out.append("- **Verdicts:** " + ", ".join(f"{s.get(v, 0)} {v}" for v in VERDICTS) + ".")
     claims = {c["id"]: c for c in data["claims"]}
@@ -1375,6 +1435,10 @@ def main() -> int:
                 fail(f"{v['id']}: the mechanical check now gives {got['status']} ({got['detail'].splitlines()[0]}); "
                      f"the map records {old.get('status')}. Run scripts/mechanical.py, then verdicts.py.")
     extra = tm.load(args.extra) if args.extra else {}
+    template = tm.ROOT / "templates" / "three-level.mdx"
+    pasted = coderef.pasted(args.repo, data["head"], coderef.guard_inputs(data, extra, [template]))
+    if pasted:
+        fail("the input holds code that a person or a model typed. Code comes in through a ref:\n  " + "\n  ".join(pasted))
     out = Path(args.out)
     (out / "chapters").mkdir(parents=True, exist_ok=True)
     for old in (out / "chapters").glob("*.mdx"):
@@ -1417,7 +1481,8 @@ def main() -> int:
     problems += link_errors(bodies, set(CHAPTERS) | {"why"}, data)
     if problems:
         fail("the levels break the ladder rules:\n  " + "\n  ".join(problems))
-    (out / "pr-section.md").write_text(pr_section(data, extra, args.explainer_url, ready), encoding="utf-8")
+    (out / "pr-section.md").write_text(pr_section(data, extra, args.explainer_url, ready, args.repo), encoding="utf-8")
+    coderef.write_cache(out, data["head"], RESOLVED)
     for stem, name in chapters:
         (out / "chapters" / f"{stem}.mdx").write_text(chapter_file(runtime, name, bodies[name]), encoding="utf-8")
     order = promises_in_order(data)
@@ -1431,7 +1496,7 @@ def main() -> int:
     }
     title = f"PR #{data.get('pr')}: " + (data.get("title") or data["repo"])
     summary = (extra.get("story") or {}).get("summary") or "What this PR changes, and how far to trust it."
-    filled = (tm.ROOT / "templates" / "three-level.mdx").read_text(encoding="utf-8")
+    filled = template.read_text(encoding="utf-8")
     filled = filled.replace("{{REPO}}", runtime).replace("{{TITLE}}", json.dumps(title)).replace("{{SUMMARY}}", json.dumps(summary))
     for key, items in nav.items():
         filled = filled.replace("{{" + key + "}}", anchors(items))

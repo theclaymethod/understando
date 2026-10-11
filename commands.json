@@ -49,6 +49,14 @@
       "doc": "commands/import.md"
     },
     {
+      "id": "snippet",
+      "category": "Understand",
+      "line": "Print the code of a ref at the head, with its line numbers and its GitHub permalink. Preview a ref with it; never paste code.",
+      "args": "PATH[::SYMBOL] [--match RE] [--part whole|signature|body] [--context N[,M]] [--head SHA] [--lines A-B --suggest]",
+      "invoke": "model",
+      "doc": "commands/map.md"
+    },
+    {
       "id": "close",
       "category": "Get ready",
       "line": "Close each Asserted or Gap claim, riskiest first: a check that probe proves red, evidence, a new wording, or a waiver.",

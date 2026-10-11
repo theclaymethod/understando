@@ -31,6 +31,7 @@ While the mode is on:
 | `probe` | Understand | Plant model-free controls in scratch worktrees and record which checks go red. | the user only | [commands/probe.md](commands/probe.md) |
 | `formalize` | Understand | Climb to tier 4 or 5: a TLA+ model check, or a Lean proof with a conformance link. | the user only | [commands/formalize.md](commands/formalize.md) |
 | `import` | Understand | Record outside evidence (evo, impeccable, Lean, nemesis-review, show-me-your-work, `verify-<app>` feature files). A file with a wrong format is stale. | you or the user | [commands/import.md](commands/import.md) |
+| `snippet` | Understand | Print the code of a ref at the head, with its line numbers and its GitHub permalink. Preview a ref with it; never paste code. | you or the user | [commands/map.md](commands/map.md) |
 | `close` | Get ready | Close each Asserted or Gap claim, riskiest first: a check that probe proves red, evidence, a new wording, or a waiver. | the user only | [commands/close.md](commands/close.md) |
 | `trim` | Get ready | Find excess code, and delete unit tests that an e2e test already covers. | the user only | [commands/trim.md](commands/trim.md) |
 | `explain` | Share | Build the explainer and the PR-body section. | you or the user | [commands/explain.md](commands/explain.md) |

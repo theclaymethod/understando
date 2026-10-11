@@ -179,6 +179,16 @@ def validate(data: dict, promises: bool = True) -> list[str]:
                 errors.append(f"control {k['id']}: replace needs find and replace")
             if e["op"] == "append" and "text" not in e:
                 errors.append(f"control {k['id']}: append needs text")
+            if e["op"] in ("delete-line", "invert-condition", "replace-with", "drop-allowlist-row") and not ({"symbol", "match"} & set(e)):
+                errors.append(f"control {k['id']}: {e['op']} needs a symbol or a match")
+            if e["op"] == "replace-with" and ("with" not in e or "match" not in e):
+                errors.append(f"control {k['id']}: replace-with needs match and with")
+    for c in data["claims"]:
+        for ref in c.get("code", []):
+            if ({"symbol", "match"} & set(ref)) and ({"start", "end"} & set(ref)):
+                errors.append(f"claim {c['id']}: a code ref is an anchor or a line range, not both")
+            if ({"part"} & set(ref)) and "symbol" not in ref:
+                errors.append(f"claim {c['id']}: part needs a symbol")
     if promises:
         errors += promise_errors(data)
     return errors

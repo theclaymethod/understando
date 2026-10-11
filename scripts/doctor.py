@@ -9,7 +9,9 @@
 Checks: schema drift and stale stored verdicts; a trust map behind the PR head; a proof or a
 model older than the code it covers (the drift gate); the Artifacture runtime path; the learn
 sandbox (the learn app is paused); missing toolchains; routed skills (missing, or newer than the
-adapted copy); a deleted @cc contract comment; stale imported evidence; the skill links.
+adapted copy); a deleted @cc contract comment; stale imported evidence; the skill links; pasted
+code in the explainer input; a code anchor that resolves to no place, or to more than one, at the
+map head, the ready branch tip or --pr-head (scripts/coderef.py).
 An empty list is the good result.
 """
 
@@ -24,6 +26,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import coderef  # noqa: E402
 import ctx as context  # noqa: E402
 import importers  # noqa: E402
 import routes  # noqa: E402
@@ -58,6 +61,50 @@ def cc_deleted(repo: Path, a: str, b: str) -> list[str]:
 def last_change(repo: Path, head: str, paths: list[str]) -> int:
     out = subprocess.run(["git", "-C", str(repo), "log", "-1", "--format=%ct", head, "--", *paths], capture_output=True, text=True)
     return int(out.stdout.strip() or 0)
+
+
+def newer_heads(repo: Path, data: dict, explicit_head: str | None) -> list[tuple[str, str]]:
+    """(name, sha) of the map head, the ready branch tip and an explicit PR head, each once."""
+    out = [("the map head", data["head"])]
+    ready = (data.get("ready") or {}).get("head")
+    if not ready:
+        tip = subprocess.run(["git", "-C", str(repo), "rev-parse", "--verify", "-q", f"refs/heads/understando/{data.get('pr')}-ready"],
+                             capture_output=True, text=True).stdout.strip()
+        ready = tip or None
+    if ready:
+        out.append(("the ready branch", ready))
+    if explicit_head:
+        out.append(("the PR head", explicit_head))
+    seen, keep = set(), []
+    for name, sha in out:
+        if sha not in seen:
+            seen.add(sha)
+            keep.append((name, sha))
+    return keep
+
+
+def code_ref_findings(repo: Path, data: dict, extra: dict, explicit_head: str | None) -> list[tuple]:
+    """Pasted code in the inputs of the explainer, and anchors that drift: on a head, an anchor
+    that resolves to no place or to more than one routes to map."""
+    out = []
+    template = tm.ROOT / "templates" / "three-level.mdx"
+    pasted = coderef.pasted(repo, data["head"], coderef.guard_inputs(data, extra, [template]))
+    if pasted:
+        out.append(("pasted-code", "route", f"The explainer input holds pasted code: {pasted[0]}" + (f" (and {len(pasted) - 1} more)" if len(pasted) > 1 else ""),
+                    "Replace the pasted code with a code ref; preview it with `understando snippet`.", "map"))
+    anchors = [(w, r) for w, r in coderef.walk_refs(data, extra) if coderef.is_anchor(r)]
+    anchors += [(w, coderef.anchor_ref(e)) for _, w, e in coderef.walk_edits(data) if coderef.is_anchor(e)]
+    for name, sha in newer_heads(repo, data, explicit_head):
+        broken = []
+        for where, ref in anchors:
+            try:
+                coderef.resolve(repo, sha, ref)
+            except coderef.AnchorError as exc:
+                broken.append(f"{where}: {exc}")
+        if broken:
+            out.append((f"anchor-drift-{sha[:10]}", "route", f"At {name} ({sha[:10]}), {len(broken)} code anchors do not resolve once: " + "; ".join(broken[:3]),
+                        "Write the anchors again for the new code, then build again.", "map"))
+    return out
 
 
 def findings(c: context.Ctx, explicit_head: str | None) -> tuple[list[dict], dict | None]:
@@ -147,6 +194,9 @@ def findings(c: context.Ctx, explicit_head: str | None) -> tuple[list[dict], dic
                 add("cc-deleted" + ("-ready" if "ready" in where else ""), "mention",
                     f"{where} deletes a @cc contract comment: " + "; ".join(gone[:5]),
                     "Restore the contract, or record why it goes. trim and the comment cleanup keep each @cc comment.")
+        extra = tm.load(c.run / "explain.json") if (c.run / "explain.json").is_file() else {}
+        for f in code_ref_findings(c.repo, data, extra, explicit_head):
+            add(*f)
         for v in data["verifiers"]:
             imp = v.get("import")
             if not imp:

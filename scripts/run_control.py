@@ -14,8 +14,11 @@ For each control the script:
   1. adds a detached scratch worktree of --repo at the trust map's `head`, or at the verifier's
      `at` commit (a commit on the ready branch);
   2. runs the trust map's `setup` commands in it, without the env file;
-  3. applies the control's edits, and refuses when an edit does not apply exactly;
-  4. runs the verifier's command, and records green (exit 0), red (an exit in `red_exits`,
+  3. applies the control's edits, and refuses when an edit does not apply exactly. An anchor
+     edit (scripts/coderef.py) resolves here, at the commit; an anchor that matches 0 or more
+     than 1 places is an ANCHOR ERROR, and the script exits 1;
+  4. records the git diff of the worktree (result.diff: the real before and after that the
+     explainer shows), runs the verifier's command, and records green (exit 0), red (an exit in `red_exits`,
      default [1], and the `expect.pattern` holds), or error (anything else);
   5. removes the worktree, also on failure.
 
@@ -36,9 +39,11 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import coderef  # noqa: E402
 import tm  # noqa: E402
 
 TAIL_LINES = 40
+DIFF_LINES = 80
 
 
 def git(repo: Path, *args: str) -> str:
@@ -75,11 +80,15 @@ def apply_edit(root: Path, edit: dict) -> None:
         return
     if op == "corrupt-byte":
         data = bytearray(path.read_bytes())
-        offset = edit.get("offset", len(data) // 2)
+        offset = coderef.corrupt_offset(bytes(data), edit)
         data[offset] ^= 0x01
         path.write_bytes(bytes(data))
         return
     text = path.read_text(encoding="utf-8")
+    if op in coderef.ANCHOR_OPS:
+        # The anchor resolves here, in the scratch worktree at the commit: 0 or 2+ places raise.
+        path.write_text(coderef.apply_text(text, edit), encoding="utf-8")
+        return
     if op == "append":
         path.write_text(text + edit["text"], encoding="utf-8")
         return
@@ -168,11 +177,17 @@ def run_one(data: dict, control: dict, repo: Path, scratch: Path, env_file: str 
             prepare(root, data)
             for edit in control["edits"]:
                 apply_edit(root, edit)
+        except coderef.AnchorError as exc:
+            control["result"] = {"status": "error", "exit": None, "note": f"The anchor did not resolve once: {exc}",
+                                 "ran_at": tm.now(), "head": commit}
+            print(f"ANCHOR ERROR: control {control['id']}: {exc}", file=sys.stderr)
+            return
         except (ValueError, RuntimeError, OSError) as exc:
             control["result"] = {"status": "error", "exit": None, "note": f"The control did not apply: {exc}",
                                  "ran_at": tm.now(), "head": commit}
             print(f"control {control['id']}: error ({exc})")
             return
+        diff = subprocess.run(["git", "-C", str(root), "diff", "--no-color", "-U2"], capture_output=True, text=True).stdout
         code, output, seconds = run_command(root, v["command"], env_file)
     status = classify(code, v["command"])
     matched = None
@@ -182,6 +197,7 @@ def run_one(data: dict, control: dict, repo: Path, scratch: Path, env_file: str 
     control["result"] = {
         "status": status, "exit": code, "seconds": seconds, "matched": matched,
         "output_tail": tail(scrub(output, root)), "ran_at": tm.now(), "head": commit,
+        **({"diff": "\n".join(diff.splitlines()[:DIFF_LINES]) + "\n"} if diff.strip() else {}),
     }
     shown = status if matched is not False else "red, but the expected pattern is missing"
     print(f"control {control['id']} on {v['id']}: {shown} (exit {code}, {seconds}s)")
@@ -220,6 +236,10 @@ def main() -> int:
     for control in chosen:
         run_one(data, control, repo, scratch, env_file)
         tm.save(data, args.map)
+    broken = [k["id"] for k in chosen if (k.get("result") or {}).get("note", "").startswith("The anchor did not resolve")]
+    if broken:
+        print(f"FAIL: the anchors of {', '.join(broken)} do not resolve once; fix them (understando snippet)", file=sys.stderr)
+        return 1
     return 0
 
 

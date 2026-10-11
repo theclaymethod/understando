@@ -240,9 +240,41 @@
           "type": "string",
           "minLength": 1
         },
+        "symbol": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A dotted name at the head: run_document, Editor.edit, DOCGEN_IMPORTS. Python resolves it with ast, TS and JS with a brace scan, other files with a regex. Preferred over start and end."
+        },
+        "part": {
+          "type": "string",
+          "enum": [
+            "whole",
+            "signature",
+            "body"
+          ],
+          "description": "With symbol. whole (default) has the decorators and the comment lines right above."
+        },
+        "match": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Text inside the symbol (or the file) that occurs exactly once. /RE/ is a regex; a regex group points at the group only."
+        },
+        "context": {
+          "type": [
+            "integer",
+            "array"
+          ],
+          "minimum": 0,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "With match: the lines around it, N or [before, after]."
+        },
         "start": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 1,
+          "description": "A line range. Discouraged: write a symbol or a match."
         },
         "end": {
           "type": "integer",
@@ -251,7 +283,8 @@
         "note": {
           "type": "string"
         }
-      }
+      },
+      "description": "An anchor {path, symbol, part?, match?, context?} (preferred), or a line range {path, start, end} (discouraged: it drifts). The build resolves it at the head and copies the code; scripts/coderef.py."
     },
     "claim": {
       "type": "object",
@@ -448,6 +481,10 @@
         "recorded": {
           "type": "boolean",
           "description": "The result comes from a past run, for example a proof control, and probe keeps it."
+        },
+        "diff": {
+          "type": "string",
+          "description": "run_control.py: git diff of the scratch worktree after the edits. The explainer shows it."
         }
       }
     },
@@ -902,8 +939,12 @@
         "op": {
           "type": "string",
           "enum": [
-            "replace",
+            "delete-line",
+            "invert-condition",
+            "replace-with",
+            "drop-allowlist-row",
             "corrupt-byte",
+            "replace",
             "delete-file",
             "append"
           ]
@@ -911,6 +952,50 @@
         "path": {
           "type": "string",
           "minLength": 1
+        },
+        "symbol": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A dotted name at the head: run_document, Editor.edit, DOCGEN_IMPORTS. Python resolves it with ast, TS and JS with a brace scan, other files with a regex. Preferred over start and end."
+        },
+        "part": {
+          "type": "string",
+          "enum": [
+            "whole",
+            "signature",
+            "body"
+          ],
+          "description": "With symbol. whole (default) has the decorators and the comment lines right above."
+        },
+        "match": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Text inside the symbol (or the file) that occurs exactly once. /RE/ is a regex; a regex group points at the group only."
+        },
+        "context": {
+          "type": [
+            "integer",
+            "array"
+          ],
+          "minimum": 0,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "With match: the lines around it, N or [before, after]."
+        },
+        "with": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "replace-with: the new text, one line, at most 80 characters."
+        },
+        "span": {
+          "type": "string",
+          "enum": [
+            "match",
+            "statement"
+          ],
+          "description": "replace-with: replace the match (default) or the whole Python statement on its line."
         },
         "find": {
           "type": "string"
@@ -928,7 +1013,8 @@
         "text": {
           "type": "string"
         }
-      }
+      },
+      "description": "An anchor op (delete-line, invert-condition, replace-with, drop-allowlist-row, corrupt-byte with an anchor) names {path, symbol?, match?}; run_control.py resolves it at the head and fails when it matches 0 or more than 1 places. replace and append are the old text form."
     },
     "control": {
       "type": "object",

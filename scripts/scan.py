@@ -26,6 +26,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import coderef  # noqa: E402
 import tm  # noqa: E402
 
 CC = re.compile(r"@cc\s+(?:\[[^\]]*\]\s+)?(?P<id>[^\s,:\[\]]+)")
@@ -53,7 +54,14 @@ def contracts(repo: str, head: str, paths: list[str]) -> list[dict]:
     for path in paths:
         if Path(path).suffix not in SOURCE_SUFFIXES and Path(path).name != "CONTRACTS":
             continue
-        lines = git(repo, "show", f"{head}:{path}").splitlines()
+        text = git(repo, "show", f"{head}:{path}")
+        lines = text.splitlines()
+        syms = []
+        if path.endswith(".py"):
+            try:
+                syms = coderef.python_symbols(text, path)
+            except coderef.AnchorError:
+                syms = []
         for i, line in enumerate(lines):
             m = CC.search(line)
             if not m:
@@ -63,7 +71,11 @@ def contracts(repo: str, head: str, paths: list[str]) -> list[dict]:
                 prose = COMMENT_LEAD.sub("", nxt).strip()
                 if prose:
                     break
-            found.append({"cc_id": m.group("id"), "path": path, "line": i + 1, "prose": prose})
+            hold = [x for x in syms if x.start <= i + 1 <= x.end]
+            # An anchor, not a line range: the symbol that holds the contract, so the ref moves with the code.
+            ref = ({"path": path, "symbol": min(hold, key=lambda x: x.end - x.start).qual} if hold
+                   else {"path": path, "start": i + 1, "end": i + 3})
+            found.append({"cc_id": m.group("id"), "path": path, "line": i + 1, "prose": prose, "ref": ref})
     return found
 
 
@@ -101,7 +113,7 @@ def add(data: dict, found: list[dict], gaps: list[str]) -> int:
             "id": next_id(data), "cc_id": item["cc_id"], "stated": True,
             "text": item["prose"] or f"The contract {item['cc_id']} holds.",
             "source": f"@cc contract in {item['path']}:{item['line']}",
-            "code": [{"path": item["path"], "start": item["line"], "end": item["line"] + 2}],
+            "code": [item["ref"]],
         })
         have_cc.add(item["cc_id"])
         added += 1

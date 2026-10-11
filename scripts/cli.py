@@ -316,6 +316,9 @@ def run_verb(verb: str, argv: list[str], c: context.Ctx) -> int:
     if verb == "import":
         import importers
         return importers.main(c, argv)
+    if verb == "snippet":
+        import coderef
+        return coderef.main(c, argv)
     if verb == "doctor":
         import doctor
         return doctor.main(c, argv)
