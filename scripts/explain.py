@@ -584,17 +584,21 @@ def why_level(data: dict, journal: list[dict]) -> str | None:
         return None
     claims = {c["id"]: c for c in data["claims"]}
     parts = [para("This level shows what the user asked for, in order, in the user's own words. Each request links to the claims that it asked for. Then the decisions that followed show what was chosen and why.")]
+    # The requests are numbered steps (two columns on a wide screen), so the level fits one screen.
+    steps = []
     for i, r in enumerate(prompts, 1):
         linked = [cid for cid in r.get("claims", []) if cid in claims]
         for cid in linked:
             ASKED.setdefault(cid, i)
         body = f"<blockquote data-quote=\"user\"><p>{js(short_quote(r.get('what') or r.get('text', '')))}</p></blockquote>"
         if linked:
-            links = "".join(f"<li><a href={js('#' + claim_anchor(cid))}>{js(cid + ': ' + (claims[cid].get('plain') or {}).get('what', claims[cid]['text']))}</a></li>" for cid in linked)
-            body += "\n" + disclosure(f"Show the claims that this request asked for ({len(linked)})", "<ul>" + links + "</ul>")
+            links = "".join(f"<li><a href={js('#' + claim_anchor(cid))}>{js((claims[cid].get('plain') or {}).get('what', claims[cid]['text']) + ' (' + cid + ')')}</a></li>" for cid in linked)
+            body += disclosure(f"Show the claims that this request asked for ({len(linked)})", "<ul>" + links + "</ul>")
         else:
-            body += "\n" + none("No claim links to this request.")
-        parts.append(subsection(f"why-{i}", js(f"Request {i}"), body))
+            body += f"<p><em>{js('No claim links to this request.')}</em></p>"
+        steps.append(f"<Step id={js(f'why-{i}')}>{body}</Step>")
+    if steps:
+        parts.append(f"{{<Steps label={js('The requests, in order')}>" + "".join(steps) + "</Steps>}")
     if invariants:
         rows = "".join(f"<li>{js(('Confirmed by the user: ' if i['author'] == 'user' and i['status'] == 'accepted' else 'Proposed, not confirmed: ') + i['text'])}</li>"
                        for i in invariants)
@@ -1403,6 +1407,9 @@ def main() -> int:
     ids = {x["id"] for x in data["claims"] + data["verifiers"] + data["controls"]}
     problems = [e for name in ("story", "loop", "change") for e in leak_errors(name, bodies[name], ids)]
     problems += [e for name in ("promises", "verifiers", "tradeoffs") for e in leak_errors(name, bodies[name], ids, ids_only=True)]
+    if why:
+        # The user's quotes are their own words; the generated prose around them follows the rule.
+        problems += leak_errors("why", re.sub(r'<blockquote data-quote="user">.*?</blockquote>', "", why, flags=re.S), ids, ids_only=True)
     chapters = [(f"{i:02d}-{name}", name) for i, name in enumerate(CHAPTERS, 1)]
     if why:
         bodies["why"] = why
