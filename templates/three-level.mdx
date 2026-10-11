@@ -1,28 +1,38 @@
-{/* understando explainer entry. scripts/explain.py fills each slot and writes each chapter as its own MDX unit under chapters/. Edit the generated copy, not this template, to tune one PR. */}
+{/* understando explainer entry: a level ladder. scripts/explain.py fills each slot and writes each level as its own MDX unit under chapters/. Levels 1-3 hold no ID and no code name outside a table, a collapsed block or the Detailed mode of a diagram. Edit the generated copy, not this template, to tune one PR. */}
 import { ExplainerShell, Section } from '{{REPO}}/visual-explainer-mdx/components';
-import Orientation from './chapters/01-orientation.mdx';
-import Tour from './chapters/02-tour.mdx';
-import Confidence from './chapters/03-confidence.mdx';
-import Evidence from './chapters/04-evidence.mdx';
-import Tradeoffs from './chapters/05-tradeoffs.mdx';
-import Exercises from './chapters/06-exercises.mdx';
+import Story from './chapters/01-story.mdx';
+import Loop from './chapters/02-loop.mdx';
+import Change from './chapters/03-change.mdx';
+import Promises from './chapters/04-promises.mdx';
+import Verifiers from './chapters/05-verifiers.mdx';
+import Unclaimed from './chapters/06-unclaimed.mdx';
+import Tradeoffs from './chapters/07-tradeoffs.mdx';
+import Exercises from './chapters/08-exercises.mdx';
 
-<ExplainerShell title={{{TITLE}}} summary={{{SUMMARY}}} chapterNav appearance="auto">
+<ExplainerShell title={{{TITLE}}} summary={{{SUMMARY}}} chapterNav appearance="auto" reviewTools={false}>
 
-<Section id="orientation" title="Orientation: what the PR does and why" navLabel="Orientation" anchors={{ORIENTATION_ANCHORS}}>
-<Orientation />
+<Section id="story" title="The story: what changed, and why you can trust it" navLabel="The story" anchors={{STORY_ANCHORS}}>
+<Story />
 </Section>
 
-<Section id="tour" title="Guided tour: one run, step by step" navLabel="Guided tour" anchors={{TOUR_ANCHORS}}>
-<Tour />
+<Section id="loop" title="The loop: one run, step by step" navLabel="The loop">
+<Loop />
 </Section>
 
-<Section id="confidence" title="Confidence: how far to trust each claim" navLabel="Confidence" anchors={{CONFIDENCE_ANCHORS}}>
-<Confidence />
+<Section id="change" title="What changed in the code" navLabel="What changed" anchors={{CHANGE_ANCHORS}}>
+<Change />
 </Section>
 
-<Section id="evidence" title="Evidence: the code and the checks for each claim" navLabel="Evidence" anchors={{EVIDENCE_ANCHORS}}>
-<Evidence />
+<Section id="promises" title="The promises, weakest first" navLabel="The promises" anchors={{PROMISE_ANCHORS}}>
+<Promises />
+</Section>
+
+<Section id="verifiers" title="Verify the verifiers" navLabel="Verify the verifiers" anchors={{VERIFIER_ANCHORS}}>
+<Verifiers />
+</Section>
+
+<Section id="unclaimed" title="Changed code that no claim covers" navLabel="Unclaimed changes">
+<Unclaimed />
 </Section>
 
 <Section id="tradeoffs" title="Trade-offs and concerns" navLabel="Trade-offs and concerns" anchors={{TRADEOFFS_ANCHORS}}>

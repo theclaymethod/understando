@@ -47,7 +47,30 @@ for claim in data["claims"]:
         claim["plain"] = plain[claim["id"]]
 json.dump(data, open(sys.argv[1], "w"), indent=2)
 PY
+python3 - "$MAP" "$FIX/promises.json" <<'PY'
+# The map step writes three to six promises after the scan, so each claim, also each added one,
+# belongs to exactly one promise.
+import json, sys
+data = json.load(open(sys.argv[1]))
+data["promises"] = json.load(open(sys.argv[2]))
+json.dump(data, open(sys.argv[1], "w"), indent=2)
+PY
+python3 "$S/mechanical.py" --map "$MAP" --repo "$REPO"
 python3 "$S/validate.py" "$MAP"
+
+step "validate: a claim in two promises, or in none, fails"
+python3 - "$MAP" "$WORK/two-promises.json" "$WORK/no-promise.json" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1]))
+two = json.loads(json.dumps(data)); two["promises"][1]["claims"].append("C01")
+none = json.loads(json.dumps(data)); none["promises"][0]["claims"].remove("C02")
+json.dump(two, open(sys.argv[2], "w")); json.dump(none, open(sys.argv[3], "w"))
+PY
+if python3 "$S/validate.py" "$WORK/two-promises.json" > "$WORK/two.out"; then echo "FAIL: a claim in two promises passed"; exit 1; fi
+grep -q "claim C01: in 2 promises" "$WORK/two.out"
+if python3 "$S/validate.py" "$WORK/no-promise.json" > "$WORK/none.out"; then echo "FAIL: a claim in no promise passed"; exit 1; fi
+grep -q "claim C02: in no promise" "$WORK/none.out"
+echo "validate refuses a claim in two promises and a claim in none"
 
 step "controls: baseline at the head, then one scratch worktree per control"
 python3 "$S/run_control.py" --map "$MAP" --repo "$REPO" --baseline --scratch "$WORK/scratch"
@@ -63,8 +86,30 @@ cp "$MAP" "$WORK/previous.json"
 python3 "$S/rerun.py" "$WORK/previous.json" "$MAP" --fail-on-drop | tee "$WORK/rerun.md"
 grep -q "No verdict, state or control result changed." "$WORK/rerun.md"
 
-step "explain: PR-body section, three-level source, HTML"
-python3 "$S/explain.py" --map "$MAP" --repo "$REPO" --out "$WORK/explain"
+step "explain: PR-body section, the level ladder, HTML"
+EXTRA="$FIX/explain.json"
+python3 "$S/explain.py" --map "$MAP" --repo "$REPO" --out "$WORK/explain" --extra "$EXTRA"
+
+step "explain: the build refuses an ID in level 1, an undefined term, and a diagram with one mode"
+python3 - "$EXTRA" "$MAP" "$WORK" <<'PY'
+import json, sys
+extra, data, work = json.load(open(sys.argv[1])), json.load(open(sys.argv[2])), sys.argv[3]
+leak = json.loads(json.dumps(extra)); leak["story"]["trust"] = "Claim C01 is Proven, and `withdraw` checks it."
+json.dump(leak, open(f"{work}/leak.json", "w"))
+term = json.loads(json.dumps(extra)); term["story"]["problem"] = "Before this PR, the ZQX ledger let a withdrawal take the balance below zero."
+json.dump(term, open(f"{work}/term.json", "w"))
+mode = json.loads(json.dumps(extra)); del mode["diagrams"]["loop"]["detailed"]
+json.dump(mode, open(f"{work}/mode.json", "w"))
+PY
+for case in "leak:the ID C01 is visible" "term:does not define: ZQX" "mode:has no detailed mode"; do
+  name="${case%%:*}"; want="${case#*:}"
+  if python3 "$S/explain.py" --map "$MAP" --repo "$REPO" --out "$WORK/bad-$name" --extra "$WORK/$name.json" 2> "$WORK/$name.err"; then
+    echo "FAIL: explain.py accepted the $name case"; exit 1
+  fi
+  grep -q "$want" "$WORK/$name.err" || { echo "FAIL: the $name case failed for another reason:"; cat "$WORK/$name.err"; exit 1; }
+done
+echo "explain.py refuses a visible ID, an undefined term and a one-mode diagram"
+
 # UNDERSTANDO_VE_RUNTIME pins an Artifacture checkout. explain.py reads it too.
 if [ -n "${UNDERSTANDO_VE_RUNTIME:-}" ]; then
   VE="$UNDERSTANDO_VE_RUNTIME"
@@ -73,57 +118,107 @@ else
 fi
 node "$VE/scripts/artifacture.mjs" export "$WORK/explain/explainer.mdx" --out "$WORK/explain/explainer.html"
 test -s "$WORK/explain/explainer.html"
-python3 - "$MAP" "$WORK/explain/explainer.html" <<'PY'
-import json, sys
-claims = json.load(open(sys.argv[1]))["claims"]
-html = open(sys.argv[2], encoding="utf-8").read()
-missing = [c["id"] for c in claims
-           if not c.get("plain") or (c["plain"]["what"] not in html and json.dumps(c["plain"]["what"])[1:-1] not in html)]
-if missing:
-    sys.exit(f"FAIL: the explainer has no plain.what text for {missing}")
-print(f"the explainer shows plain.what for all {len(claims)} claims")
-PY
 python3 - "$MAP" "$WORK/explain" <<'PY'
-# One self-contained MDX unit per chapter, and the guided tour shows each claim at a step.
+# One self-contained MDX unit per level. Each claim is in exactly one promise, has one claim block,
+# and its plain sentence shows once on the whole page.
 import json, pathlib, re, sys
-claims = json.load(open(sys.argv[1]))["claims"]
-chapters = pathlib.Path(sys.argv[2]) / "chapters"
-names = ["01-orientation", "02-tour", "03-confidence", "04-evidence", "05-tradeoffs", "06-exercises"]
-missing = [n for n in names if not (chapters / f"{n}.mdx").is_file()]
-if missing:
-    sys.exit(f"FAIL: missing chapter files {missing}")
-entry = (pathlib.Path(sys.argv[2]) / "explainer.mdx").read_text()
+data = json.load(open(sys.argv[1]))
+out = pathlib.Path(sys.argv[2])
+names = ["01-story", "02-loop", "03-change", "04-promises", "05-verifiers", "06-unclaimed", "07-tradeoffs", "08-exercises"]
+entry = (out / "explainer.mdx").read_text()
+texts = {}
 for n in names:
-    text = (chapters / f"{n}.mdx").read_text()
-    if "visual-explainer-mdx/components" not in text.split("\n", 2)[1] or f"./chapters/{n}.mdx" not in entry:
-        sys.exit(f"FAIL: chapter {n} does not import its components, or the entry does not import it")
-tour = (chapters / "02-tour.mdx").read_text()
-absent = [c["id"] for c in claims if not re.search(r'"text":\s*"' + c["id"] + '"', tour)]
-if absent:
-    sys.exit(f"FAIL: the guided tour does not show {absent}")
-print(f"{len(names)} chapter units; the guided tour shows all {len(claims)} claims")
+    f = out / "chapters" / f"{n}.mdx"
+    if not f.is_file():
+        sys.exit(f"FAIL: missing level file {n}")
+    texts[n] = f.read_text()
+    if "visual-explainer-mdx/components" not in texts[n].split("\n", 2)[1] or f"./chapters/{n}.mdx" not in entry:
+        sys.exit(f"FAIL: level {n} does not import its components, or the entry does not import it")
+member = {}
+for p in data["promises"]:
+    for cid in p["claims"]:
+        member.setdefault(cid, []).append(p["id"])
+blob = "\n".join(texts.values())
+for c in data["claims"]:
+    if len(member.get(c["id"], [])) != 1:
+        sys.exit(f"FAIL: {c['id']} is in {member.get(c['id'], [])}, not in exactly one promise")
+    anchor = 'id={"claim-' + c["id"].lower() + '"}'
+    if texts["04-promises"].count(anchor) != 1:
+        sys.exit(f"FAIL: {c['id']} has no single claim block in the promises level")
+    said = json.dumps(c["plain"]["what"], ensure_ascii=False)[1:-1]
+    if blob.count(said) != 1:
+        sys.exit(f"FAIL: the sentence of {c['id']} shows {blob.count(said)} times; it must show once")
+print(f"{len(names)} level units; each of the {len(data['claims'])} claims is in one promise, with one block and one sentence")
 PY
-# Default themes: the rendered page has no page <style> and no preset other than iso (DEFAULT_PRESET
-# in visual-explainer-mdx/preset-policy.mjs).
-node - "$VE" "$WORK/explain/explainer.html" <<'JS'
+# The rendered page: default themes only, and the ladder rules in a real browser.
+node - "$VE" "$WORK/explain/explainer.html" "$MAP" <<'JS'
 const path = require('node:path');
-const [ve, html] = process.argv.slice(2);
+const fs = require('node:fs');
+const [ve, html, mapPath] = process.argv.slice(2);
+const data = JSON.parse(fs.readFileSync(mapPath, 'utf8'));
 const { chromium } = require(require.resolve('playwright', { paths: [ve] }));
+const fail = (message) => { console.error('FAIL: ' + message); process.exit(1); };
+const ids = [...data.claims, ...data.verifiers, ...data.controls].map((x) => x.id);
+const codeLike = /`|\b[a-z][a-z0-9]*_[a-z0-9_]+\b|\b[A-Z][a-z0-9]+[A-Z][A-Za-z0-9]*\b|\b[a-z]+[A-Z][A-Za-z0-9]*\b|\b[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]+\b|\w\(\)/;
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
-    const page = await browser.newPage();
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     await page.goto('file://' + path.resolve(html), { waitUntil: 'load' });
     await page.waitForSelector('main.ve-shell');
     const got = await page.evaluate(() => ({
       styles: document.querySelectorAll('#root style').length,
       presets: [...new Set([...document.querySelectorAll('[data-ve-preset]')].map((e) => e.dataset.vePreset))],
     }));
-    if (got.styles || got.presets.join() !== 'iso') {
-      console.error(`FAIL: the explainer has ${got.styles} page <style> elements and presets [${got.presets}]; want 0 and [iso]`);
-      process.exit(1);
-    }
+    if (got.styles || got.presets.join() !== 'iso') fail(`the explainer has ${got.styles} page <style> elements and presets [${got.presets}]; want 0 and [iso]`);
     console.log('the explainer has no page <style> and uses only the iso preset');
+
+    // Levels 1-3: the text a reader sees without opening anything (tables aside) holds no ID and no code name.
+    const shown = async () => page.evaluate(() => ['story', 'loop', 'change'].map((id) => {
+      const skip = '[data-ve-data-table], details:not([open]) > .ve-disclosure-body, [data-ve-variant="mobile"]';
+      const walker = document.createTreeWalker(document.getElementById(id), NodeFilter.SHOW_TEXT);
+      const parts = [];
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) if (!node.parentElement.closest(skip)) parts.push(node.textContent);
+      return [id, parts.join(' ')];
+    }));
+    for (const [id, text] of await shown()) {
+      const id_ = ids.find((x) => new RegExp(`(^|[^\\w-])${x}([^\\w-]|$)`).test(text));
+      if (id_) fail(`level ${id} shows the ID ${id_}`);
+      const code = text.match(codeLike);
+      if (code) fail(`level ${id} shows the code name "${code[0]}"`);
+    }
+    console.log('levels 1-3 show no ID and no code name outside tables and collapsed blocks');
+
+    // Each architecture diagram renders both modes; the mode is shared and remembered.
+    const diagrams = page.locator('[data-ve-diagram-modes]');
+    const count = await diagrams.count();
+    if (count < 2) fail(`want the story and loop diagrams in two modes, found ${count}`);
+    const labels = async () => page.$$eval('[data-ve-diagram-modes] [data-ve-variant="desktop"] svg text', (t) => t.map((x) => x.textContent).join(' | '));
+    const simple = await labels();
+    if (codeLike.test(simple)) fail(`the Simple mode shows a code name: ${simple.match(codeLike)[0]}`);
+    await diagrams.first().getByLabel('Detailed').check();
+    const modes = await page.$$eval('[data-ve-diagram-modes]', (d) => d.map((x) => x.dataset.veMode));
+    if (modes.some((m) => m !== 'detailed')) fail(`one switch must set every diagram: ${modes}`);
+    const detailed = await labels();
+    if (detailed === simple || !codeLike.test(detailed)) fail('the Detailed mode must name real code');
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForSelector('[data-ve-diagram-modes]');
+    if ((await page.getAttribute('[data-ve-diagram-modes]', 'data-ve-mode')) !== 'detailed') fail('the page did not remember the Detailed mode');
+    console.log(`${count} diagrams render a Simple and a Detailed mode, and the page remembers the choice`);
+
+    // The glossary opens from the story and holds each term; a promise chip opens its claims.
+    const terms = await page.$$eval('#glossary dt', (t) => t.map((x) => x.textContent));
+    for (const want of ['Overdraft', 'Balance', 'Proven', 'PR']) if (!terms.includes(want)) fail(`the glossary has no ${want}: ${terms}`);
+    if (await page.$eval('#glossary', (d) => d.open)) fail('the glossary must start closed');
+    await page.click('a[href="#claim-c02"]');
+    await page.waitForFunction(() => document.getElementById('claim-c02').open && document.getElementById('claim-c02').closest('details:not(#claim-c02)').open);
+    console.log(`the glossary holds ${terms.length} terms; a link into a closed claim opens it`);
+
+    // Unclaimed changes: the file that the fixture adds without a claim.
+    const unclaimed = await page.$eval('#unclaimed', (s) => s.innerText);
+    if (!unclaimed.includes('bin/report.py')) fail('the unclaimed panel does not list bin/report.py');
+    if (unclaimed.includes('wallet/fees.py')) fail('the unclaimed panel lists wallet/fees.py, which a claim cites');
+    console.log('the unclaimed panel lists bin/report.py');
   } finally {
     await browser.close();
   }

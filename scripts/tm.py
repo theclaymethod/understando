@@ -6,7 +6,10 @@ Standard library only. The schema in ../schema/trust-map.schema.json is the sour
 - every id is unique across claims, verifiers and controls;
 - every verifier backs only claims that exist;
 - every control names a verifier that exists;
-- a verifier has a command, or recorded evidence, or both;
+- a verifier has a command, recorded evidence or a mechanical check;
+- a mechanical check names a pattern (grep) or an expected net line count (net-lines);
+- with `promises=True` (validate.py, verdicts.py, explain.py): each claim is in exactly one
+  promise, and each promise names only claims that exist;
 - a verifier judged by a model names its family and its context, and kind `model` is guess tier.
 """
 
@@ -116,7 +119,7 @@ def _check(value, schema: dict, root: dict, where: str, errors: list[str]) -> No
                 errors.append(f"{where}: unknown key {key!r}")
 
 
-def validate(data: dict) -> list[str]:
+def validate(data: dict, promises: bool = True) -> list[str]:
     root = load(SCHEMA_PATH)
     errors: list[str] = []
     _check(data, root, root, "$", errors)
@@ -134,8 +137,13 @@ def validate(data: dict) -> list[str]:
         for cid in v["claims"]:
             if cid not in claim_ids:
                 errors.append(f"verifier {v['id']}: unknown claim {cid}")
-        if "command" not in v and "recorded" not in v:
-            errors.append(f"verifier {v['id']}: needs a command or recorded evidence")
+        if not {"command", "recorded", "mechanical"} & set(v):
+            errors.append(f"verifier {v['id']}: needs a command, recorded evidence or a mechanical check")
+        m = v.get("mechanical")
+        if m and m["op"].startswith("grep") and "pattern" not in m:
+            errors.append(f"verifier {v['id']}: a grep check needs a pattern")
+        if m and m["op"] == "net-lines" and "expect" not in m:
+            errors.append(f"verifier {v['id']}: a net-lines check needs expect")
         ind = v["independence"]
         if ind["by"] == "model" and ("family" not in ind or "context" not in ind):
             errors.append(f"verifier {v['id']}: a model verifier names its family and context")
@@ -149,6 +157,32 @@ def validate(data: dict) -> list[str]:
                 errors.append(f"control {k['id']}: replace needs find and replace")
             if e["op"] == "append" and "text" not in e:
                 errors.append(f"control {k['id']}: append needs text")
+    if promises:
+        errors += promise_errors(data)
+    return errors
+
+
+def promise_errors(data: dict) -> list[str]:
+    """Each claim is in exactly one promise, and each promise names only claims that exist."""
+    groups = data.get("promises") or []
+    if not groups:
+        return ["promises: the map has no promises; write three to six (commands/map.md)"]
+    errors = []
+    claim_ids = {c["id"] for c in data["claims"]}
+    seen: dict[str, list[str]] = {}
+    for p in groups:
+        for cid in p["claims"]:
+            if cid not in claim_ids:
+                errors.append(f"promise {p['id']}: unknown claim {cid}")
+            seen.setdefault(cid, []).append(p["id"])
+    for c in data["claims"]:
+        where = seen.get(c["id"], [])
+        if not where:
+            errors.append(f"claim {c['id']}: in no promise")
+        elif len(where) > 1:
+            errors.append(f"claim {c['id']}: in {len(where)} promises ({', '.join(where)})")
+    if not 3 <= len(groups) <= 6:
+        errors.append(f"promises: {len(groups)} promises; write three to six")
     return errors
 
 

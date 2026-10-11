@@ -4,48 +4,142 @@
   "title": "understando trust map",
   "description": "Claims, verifiers, controls and verdicts for one PR. scripts/validate.py reads this file and applies it, plus the cross-reference rules in its docstring.",
   "type": "object",
-  "required": ["schema_version", "repo", "pr", "base", "head", "author_family", "claims", "verifiers", "controls"],
+  "required": [
+    "schema_version",
+    "repo",
+    "pr",
+    "base",
+    "head",
+    "author_family",
+    "claims",
+    "verifiers",
+    "controls"
+  ],
   "additionalProperties": false,
   "properties": {
-    "schema_version": {"type": "integer", "enum": [1]},
-    "repo": {"type": "string", "minLength": 1},
-    "pr": {"type": ["integer", "null"]},
-    "title": {"type": "string"},
-    "base": {"type": "string", "pattern": "^[0-9a-f]{7,40}$"},
-    "head": {"type": "string", "pattern": "^[0-9a-f]{7,40}$"},
-    "author_family": {"type": ["string", "null"], "description": "Model family of the agent that wrote the PR, for example anthropic. Null when a human wrote it."},
-    "created_at": {"type": "string"},
-    "narrative": {"type": "string", "description": "Where the PR narrative came from."},
+    "schema_version": {
+      "type": "integer",
+      "enum": [
+        1
+      ]
+    },
+    "repo": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pr": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "base": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,40}$"
+    },
+    "head": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,40}$"
+    },
+    "author_family": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Model family of the agent that wrote the PR, for example anthropic. Null when a human wrote it."
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "narrative": {
+      "type": "string",
+      "description": "Where the PR narrative came from."
+    },
     "setup": {
       "type": "array",
       "description": "Commands that prepare a fresh worktree before a verifier runs. They run without the env file.",
-      "items": {"$ref": "#/$defs/command"}
+      "items": {
+        "$ref": "#/$defs/command"
+      }
     },
-    "claims": {"type": "array", "items": {"$ref": "#/$defs/claim"}},
-    "verifiers": {"type": "array", "items": {"$ref": "#/$defs/verifier"}},
-    "controls": {"type": "array", "items": {"$ref": "#/$defs/control"}},
-    "flags": {"type": "array", "items": {"$ref": "#/$defs/flag"}},
+    "claims": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/claim"
+      }
+    },
+    "verifiers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/verifier"
+      }
+    },
+    "controls": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/control"
+      }
+    },
+    "flags": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/flag"
+      }
+    },
     "summary": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "Proven": {"type": "integer"},
-        "Backed": {"type": "integer"},
-        "Asserted": {"type": "integer"},
-        "Gap": {"type": "integer"}
+        "Proven": {
+          "type": "integer"
+        },
+        "Backed": {
+          "type": "integer"
+        },
+        "Asserted": {
+          "type": "integer"
+        },
+        "Gap": {
+          "type": "integer"
+        }
       }
     },
-    "notes": {"type": "array", "items": {"type": "string"}},
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "glossary": {
       "type": "array",
       "description": "Strict STE. The words a reader must know to read the plain text of the claims.",
       "items": {
         "type": "object",
-        "required": ["term", "meaning"],
+        "required": [
+          "term",
+          "meaning"
+        ],
         "additionalProperties": false,
         "properties": {
-          "term": {"type": "string", "minLength": 1},
-          "meaning": {"type": "string", "minLength": 1}
+          "term": {
+            "type": "string",
+            "minLength": 1
+          },
+          "meaning": {
+            "type": "string",
+            "minLength": 1
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Other forms of the term that the page uses, for example a plural or an acronym."
+          }
         }
       }
     },
@@ -54,174 +148,621 @@
       "description": "Strict STE. One line for each verdict group in the explainer.",
       "additionalProperties": false,
       "properties": {
-        "Proven": {"type": "string", "minLength": 1},
-        "Backed": {"type": "string", "minLength": 1},
-        "Asserted": {"type": "string", "minLength": 1},
-        "Gap": {"type": "string", "minLength": 1}
+        "Proven": {
+          "type": "string",
+          "minLength": 1
+        },
+        "Backed": {
+          "type": "string",
+          "minLength": 1
+        },
+        "Asserted": {
+          "type": "string",
+          "minLength": 1
+        },
+        "Gap": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "promises": {
+      "type": "array",
+      "description": "Strict STE. Three to six plain promises that the PR makes. Each claim belongs to exactly one promise. The strength of a promise is the verdict of its weakest claim; explain.py derives it, and the map never stores it.",
+      "items": {
+        "$ref": "#/$defs/promise"
       }
     }
   },
   "$defs": {
-    "id": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9_.-]*$"},
-    "verdict": {"type": "string", "enum": ["Proven", "Backed", "Asserted", "Gap"]},
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9_.-]*$"
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "Proven",
+        "Backed",
+        "Asserted",
+        "Gap"
+      ]
+    },
     "codeRef": {
       "type": "object",
-      "required": ["path"],
+      "required": [
+        "path"
+      ],
       "additionalProperties": false,
       "properties": {
-        "path": {"type": "string", "minLength": 1},
-        "start": {"type": "integer", "minimum": 1},
-        "end": {"type": "integer", "minimum": 1},
-        "note": {"type": "string"}
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "note": {
+          "type": "string"
+        }
       }
     },
     "claim": {
       "type": "object",
-      "required": ["id", "text", "stated", "source"],
+      "required": [
+        "id",
+        "text",
+        "stated",
+        "source"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": {"$ref": "#/$defs/id"},
-        "cc_id": {"type": ["string", "null"], "description": "The Code Contracts @cc ID, when one exists."},
-        "text": {"type": "string", "minLength": 1, "description": "Strict STE. One thing the PR asserts."},
-        "stated": {"type": "boolean", "description": "True when the PR narrative states the claim."},
-        "source": {"type": "string", "minLength": 1},
-        "layer": {"type": "string", "description": "Group name for the explainer overview."},
-        "code": {"type": "array", "items": {"$ref": "#/$defs/codeRef"}},
-        "verdict": {"$ref": "#/$defs/verdict"},
-        "reason": {"type": "string"},
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "cc_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The Code Contracts @cc ID, when one exists."
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Strict STE. One thing the PR asserts."
+        },
+        "stated": {
+          "type": "boolean",
+          "description": "True when the PR narrative states the claim."
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layer": {
+          "type": "string",
+          "description": "Group name for the explainer overview."
+        },
+        "code": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/codeRef"
+          }
+        },
+        "verdict": {
+          "$ref": "#/$defs/verdict"
+        },
+        "reason": {
+          "type": "string"
+        },
         "plain": {
           "type": "object",
           "description": "Strict STE for a reader who does not know the code.",
-          "required": ["what", "proof"],
+          "required": [
+            "what",
+            "proof"
+          ],
           "additionalProperties": false,
           "properties": {
-            "what": {"type": "string", "minLength": 1, "description": "What it is: the rule that the claim states."},
-            "proof": {"type": "string", "minLength": 1, "description": "How it is proven: the check and the control result."},
-            "warning": {"type": "string", "minLength": 1, "description": "A limit on the proof, when one exists."}
+            "what": {
+              "type": "string",
+              "minLength": 1,
+              "description": "What it is: the rule that the claim states."
+            },
+            "proof": {
+              "type": "string",
+              "minLength": 1,
+              "description": "How it is proven: the check and the control result."
+            },
+            "warning": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A limit on the proof, when one exists."
+            }
           }
         }
       }
     },
     "command": {
       "type": "object",
-      "required": ["argv"],
+      "required": [
+        "argv"
+      ],
       "additionalProperties": false,
       "properties": {
-        "cwd": {"type": "string", "description": "Relative to the worktree root."},
-        "argv": {"type": "array", "minItems": 1, "items": {"type": "string"}},
-        "env_file": {"type": "boolean", "description": "True: source the --env-file before the command."},
-        "timeout_s": {"type": "integer", "minimum": 1},
-        "red_exits": {"type": "array", "items": {"type": "integer"}, "description": "Exit codes that mean the verifier found a defect. Other non-zero codes mean error. The default is [1]."}
+        "cwd": {
+          "type": "string",
+          "description": "Relative to the worktree root."
+        },
+        "argv": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "env_file": {
+          "type": "boolean",
+          "description": "True: source the --env-file before the command."
+        },
+        "timeout_s": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "red_exits": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "description": "Exit codes that mean the verifier found a defect. Other non-zero codes mean error. The default is [1]."
+        }
       }
     },
     "result": {
       "type": "object",
-      "required": ["status"],
+      "required": [
+        "status"
+      ],
       "additionalProperties": false,
       "properties": {
-        "status": {"type": "string", "enum": ["green", "red", "error", "skipped"]},
-        "exit": {"type": ["integer", "null"]},
-        "seconds": {"type": "number"},
-        "output_tail": {"type": "string"},
-        "matched": {"type": ["boolean", "null"]},
-        "ran_at": {"type": "string"},
-        "head": {"type": "string"},
-        "note": {"type": "string"}
+        "status": {
+          "type": "string",
+          "enum": [
+            "green",
+            "red",
+            "error",
+            "skipped"
+          ]
+        },
+        "exit": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "seconds": {
+          "type": "number"
+        },
+        "output_tail": {
+          "type": "string"
+        },
+        "matched": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "ran_at": {
+          "type": "string"
+        },
+        "head": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
       }
     },
     "verifier": {
       "type": "object",
-      "required": ["id", "kind", "claims", "tier", "description", "independence", "cost", "provenance"],
+      "required": [
+        "id",
+        "kind",
+        "claims",
+        "tier",
+        "description",
+        "independence",
+        "cost",
+        "provenance"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": {"$ref": "#/$defs/id"},
-        "kind": {"type": "string", "enum": ["e2e", "integration", "unit", "type-pin", "golden", "parity", "boundary", "property", "fuzz", "lean", "eval", "measurement", "model", "contract-format"]},
-        "claims": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/id"}},
-        "tier": {"type": "string", "enum": ["fact", "guess"]},
-        "description": {"type": "string", "minLength": 1, "description": "Strict STE."},
-        "command": {"$ref": "#/$defs/command"},
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "e2e",
+            "integration",
+            "unit",
+            "type-pin",
+            "golden",
+            "parity",
+            "boundary",
+            "property",
+            "fuzz",
+            "lean",
+            "eval",
+            "measurement",
+            "model",
+            "contract-format"
+          ]
+        },
+        "claims": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "tier": {
+          "type": "string",
+          "enum": [
+            "fact",
+            "guess"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Strict STE."
+        },
+        "command": {
+          "$ref": "#/$defs/command"
+        },
         "recorded": {
           "type": "object",
           "description": "Evidence that understando records and does not run again, for example an eval.",
-          "required": ["source", "result"],
+          "required": [
+            "source",
+            "result"
+          ],
           "additionalProperties": false,
           "properties": {
-            "source": {"type": "string"},
-            "result": {"type": "string"},
-            "at": {"type": "string"}
+            "source": {
+              "type": "string"
+            },
+            "result": {
+              "type": "string"
+            },
+            "at": {
+              "type": "string"
+            }
           }
         },
         "independence": {
           "type": "object",
-          "required": ["by"],
+          "required": [
+            "by"
+          ],
           "additionalProperties": false,
           "properties": {
-            "by": {"type": "string", "enum": ["tool", "model", "human"]},
-            "tool": {"type": "string"},
-            "family": {"type": "string", "description": "Model family, for example openai or anthropic."},
-            "context": {"type": "string", "enum": ["fresh", "shared"]}
+            "by": {
+              "type": "string",
+              "enum": [
+                "tool",
+                "model",
+                "human"
+              ]
+            },
+            "tool": {
+              "type": "string"
+            },
+            "family": {
+              "type": "string",
+              "description": "Model family, for example openai or anthropic."
+            },
+            "context": {
+              "type": "string",
+              "enum": [
+                "fresh",
+                "shared"
+              ]
+            }
           }
         },
         "cost": {
           "type": "object",
-          "required": ["usd"],
+          "required": [
+            "usd"
+          ],
           "additionalProperties": false,
           "properties": {
-            "usd": {"type": ["number", "null"]},
-            "seconds": {"type": ["number", "null"]},
-            "note": {"type": "string"}
+            "usd": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "seconds": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "note": {
+              "type": "string"
+            }
           }
         },
-        "provenance": {"type": "string", "minLength": 1},
-        "baseline": {"$ref": "#/$defs/result"},
-        "state": {"type": "string", "enum": ["proven", "cannot-fail", "untested", "recorded", "failing", "broken"]}
+        "provenance": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baseline": {
+          "$ref": "#/$defs/result"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "proven",
+            "cannot-fail",
+            "untested",
+            "recorded",
+            "failing",
+            "broken",
+            "checked"
+          ]
+        },
+        "mechanical": {
+          "type": "object",
+          "description": "A cheap check that reads Git objects only: a grep at the head or a line count of the diff. scripts/mechanical.py runs it and records the result.",
+          "required": [
+            "op",
+            "paths"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "type": "string",
+              "enum": [
+                "grep-absent",
+                "grep-present",
+                "net-lines"
+              ]
+            },
+            "paths": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Git pathspecs."
+            },
+            "pattern": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Extended regex for git grep -E."
+            },
+            "expect": {
+              "type": "integer",
+              "description": "net-lines: the net line change that the claim states."
+            },
+            "result": {
+              "type": "object",
+              "required": [
+                "status",
+                "detail",
+                "command"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pass",
+                    "fail"
+                  ]
+                },
+                "detail": {
+                  "type": "string"
+                },
+                "command": {
+                  "type": "string"
+                },
+                "head": {
+                  "type": "string"
+                },
+                "ran_at": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "edit": {
       "type": "object",
-      "required": ["op", "path"],
+      "required": [
+        "op",
+        "path"
+      ],
       "additionalProperties": false,
       "properties": {
-        "op": {"type": "string", "enum": ["replace", "corrupt-byte", "delete-file", "append"]},
-        "path": {"type": "string", "minLength": 1},
-        "find": {"type": "string"},
-        "replace": {"type": "string"},
-        "count": {"type": "integer", "minimum": 1},
-        "offset": {"type": "integer"},
-        "text": {"type": "string"}
+        "op": {
+          "type": "string",
+          "enum": [
+            "replace",
+            "corrupt-byte",
+            "delete-file",
+            "append"
+          ]
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "find": {
+          "type": "string"
+        },
+        "replace": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "offset": {
+          "type": "integer"
+        },
+        "text": {
+          "type": "string"
+        }
       }
     },
     "control": {
       "type": "object",
-      "required": ["id", "verifier", "recipe", "description", "edits", "expect"],
+      "required": [
+        "id",
+        "verifier",
+        "recipe",
+        "description",
+        "edits",
+        "expect"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": {"$ref": "#/$defs/id"},
-        "verifier": {"$ref": "#/$defs/id"},
-        "recipe": {"type": "string", "enum": ["remove-guard-line", "invert-condition", "remove-type-pin", "drop-allowlist-row", "corrupt-golden-byte", "remove-covered-code", "plant-violation"]},
-        "description": {"type": "string", "minLength": 1, "description": "Strict STE."},
-        "edits": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/edit"}},
-        "expect": {
-          "type": "object",
-          "required": ["status"],
-          "additionalProperties": false,
-          "properties": {
-            "status": {"type": "string", "enum": ["red"]},
-            "pattern": {"type": "string", "description": "Regex that the red output must hold. A red run without it is an error: red for the wrong reason."}
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "verifier": {
+          "$ref": "#/$defs/id"
+        },
+        "recipe": {
+          "type": "string",
+          "enum": [
+            "remove-guard-line",
+            "invert-condition",
+            "remove-type-pin",
+            "drop-allowlist-row",
+            "corrupt-golden-byte",
+            "remove-covered-code",
+            "plant-violation"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Strict STE."
+        },
+        "edits": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/edit"
           }
         },
-        "result": {"$ref": "#/$defs/result"}
+        "expect": {
+          "type": "object",
+          "required": [
+            "status"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "red"
+              ]
+            },
+            "pattern": {
+              "type": "string",
+              "description": "Regex that the red output must hold. A red run without it is an error: red for the wrong reason."
+            }
+          }
+        },
+        "result": {
+          "$ref": "#/$defs/result"
+        }
       }
     },
     "flag": {
       "type": "object",
-      "required": ["flag", "subject", "detail"],
+      "required": [
+        "flag",
+        "subject",
+        "detail"
+      ],
       "additionalProperties": false,
       "properties": {
-        "flag": {"type": "string", "enum": ["cannot-fail", "control-missed", "control-error", "fails-at-head", "baseline-error", "baseline-not-run", "same-family", "shared-context"]},
-        "subject": {"$ref": "#/$defs/id"},
-        "loud": {"type": "boolean"},
-        "detail": {"type": "string"}
+        "flag": {
+          "type": "string",
+          "enum": [
+            "cannot-fail",
+            "control-missed",
+            "control-error",
+            "fails-at-head",
+            "baseline-error",
+            "baseline-not-run",
+            "same-family",
+            "shared-context"
+          ]
+        },
+        "subject": {
+          "$ref": "#/$defs/id"
+        },
+        "loud": {
+          "type": "boolean"
+        },
+        "detail": {
+          "type": "string"
+        }
+      }
+    },
+    "promise": {
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "sentence",
+        "claims"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Two to five plain words for the promise chip."
+        },
+        "sentence": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Strict STE. One plain sentence, with no code name and no ID."
+        },
+        "claims": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "reviewer_action": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Strict STE. What a reviewer must do, or not rely on, because the promise is weak. Required when the weakest claim is not Proven."
+        }
       }
     }
   }

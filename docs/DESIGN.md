@@ -1,4 +1,4 @@
-# understando: design spec, agreed with Clayton on 2026-10-10
+# understando: design spec, agreed with Clayton on 2026-10-10 (explainer ladder revised the same day)
 
 ## Purpose
 
@@ -10,12 +10,15 @@ understando helps a reviewer decide what to trust in a large PR without reading 
 ## Output (per PR)
 
 1. **PR-body section.** It is short: a diagram, the headline claims-and-verdicts table, and short bullets. No long samples.
-2. **Explainer.** Editable source plus HTML, built with the visual-explainer runtime and cards. It is teaching material: it gets a developer up to speed on the PR, then shows how strong the verification is. One self-contained MDX unit per chapter:
-   - **Orientation:** what the PR does and why, and one architecture diagram.
-   - **Guided tour:** the code path in execution order, with each claim at the step that it protects.
-   - **Confidence:** the claims ranked by risk, each weak claim with its cheapest fix, then what is solid, and the map from each verifier to its claims.
-   - **Evidence:** for each claim, the exact code snippet and the verifier's evidence: the command, its output, and its control result.
+2. **Explainer.** Editable source plus HTML, built with the visual-explainer runtime and its default components. It is teaching material for a newcomer, also one outside the team: it gets a developer up to speed on the PR, then shows how strong the verification is. It is a level ladder: each level is one screen deep, and detail waits in collapsed blocks. One self-contained MDX unit per level:
+   - **The story:** the problem, the change and why to trust it; one before-and-after diagram; one chip per promise with its weakest verdict; the glossary, collapsed.
+   - **The loop:** the run steps, one plain sentence each, each tagged with its promise.
+   - **What changed:** a before-and-after diagram and a "replaced by" table, both from the diff.
+   - **The promises:** three to six plain promises, weakest first, each with its strength, a reviewer action when it is weak, and its claims collapsed; under each claim, collapsed, the code, the verifiers and the control results.
+   - **Verify the verifiers:** red, green and cannot-fail; the controls animation; the verifier map with every layer.
+   - **Changed code that no claim covers,** from the diff and the claim code refs.
    - **Trade-offs and concerns,** and the verifications of the explainer. **Exercises** is a placeholder for the learning app.
+   - Levels 1 to 3 show no ID and no code name, except in the Detailed mode of a two-mode architecture diagram, in a table, or in a collapsed block. Each architecture diagram has a Simple (ELI5) and a Detailed mode.
 3. **`trust-map.json`:** claims, verifiers, controls and verdicts, so a later run can diff against an earlier one.
 4. **Storage:** everything lives under `~/dev/understando/runs/<repo>/<pr>/`, outside the repo under review.
 

@@ -138,7 +138,7 @@ def main() -> int:
     if args.add:
         data = tm.load(args.add)
         report["claims_added"] = add(data, found, gaps)
-        errors = tm.validate(data)
+        errors = tm.validate(data, promises=False)
         if errors:
             tm.fail("invalid trust map after scan:\n" + "\n".join(errors), 1)
         tm.save(data, args.add)

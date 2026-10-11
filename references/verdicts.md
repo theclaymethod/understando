@@ -17,7 +17,8 @@ The script sets `state` on each verifier from its baseline and its control resul
 | `cannot-fail` | Green at the head, no control went red, and at least one control stayed green. | No |
 | `untested` | No control ran, or each control gave an error. | Yes |
 | `recorded` | No command. The evidence is recorded with its provenance and is not run again. | Yes |
-| `failing` | Red at the head with no control. | No |
+| `checked` | A mechanical check (a grep or a line count, `scripts/mechanical.py`) passed at the head. No control ran. | Yes |
+| `failing` | Red at the head with no control, or a mechanical check that failed. | No |
 | `broken` | The baseline did not complete. | No |
 
 A red result counts as caught only when the exit code is in `red_exits` (default `[1]`) and the output holds `expect.pattern`. A red for a different reason (an import error, a syntax error) is an error, not a catch.
@@ -29,7 +30,7 @@ The script applies the first rule that holds.
 | Verdict | Rule |
 |---|---|
 | **Proven** | A backing verifier is `proven`, and it is fact tier. A model verifier also qualifies when its family is not the author's family, its context is fresh, and it went red on a control. |
-| **Backed** | A backing verifier is `proven`, `untested` or `recorded`. A same-family model verifier stays here, also after a control. |
+| **Backed** | A backing verifier is `proven`, `untested`, `recorded` or `checked`. A same-family model verifier stays here, also after a control. |
 | **Asserted** | No backing verifier counts, and the PR narrative states the claim. |
 | **Gap** | No backing verifier counts, and the PR does not state the claim. The reviewer decides. |
 

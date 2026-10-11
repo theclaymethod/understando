@@ -4,14 +4,26 @@
     "C02": "Asserted",
     "C03": "Gap",
     "C04": "Asserted",
-    "C05": "Backed"
+    "C05": "Backed",
+    "C06": "Backed"
   },
   "states": {
     "V01": "proven",
     "V02": "cannot-fail",
     "V03": "proven",
-    "V05": "recorded"
+    "V05": "recorded",
+    "V06": "checked"
   },
-  "loud_flags": [["cannot-fail", "V02"]],
-  "summary": {"Proven": 1, "Backed": 1, "Asserted": 2, "Gap": 1}
+  "loud_flags": [
+    [
+      "cannot-fail",
+      "V02"
+    ]
+  ],
+  "summary": {
+    "Proven": 1,
+    "Backed": 2,
+    "Asserted": 2,
+    "Gap": 1
+  }
 }

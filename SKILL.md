@@ -16,7 +16,7 @@ Set `U` to the directory of this file. Every script is stdlib Python or bash und
 | `setup` | Global installs, then `doctor`. Per-repo setup. | The user only | [commands/setup.md](commands/setup.md) |
 | `map` | Build the claim ledger and the verifier inventory. | You or the user | [commands/map.md](commands/map.md) |
 | `controls` | Run model-free controls in scratch worktrees. | The user only | [commands/controls.md](commands/controls.md) |
-| `explain` | Build the explainer (a guided tour, then how far to trust each claim) and the PR-body section. | You or the user | [commands/explain.md](commands/explain.md) |
+| `explain` | Build the explainer (a level ladder: the story, the loop, what changed, then each promise and how far to trust it) and the PR-body section. | You or the user | [commands/explain.md](commands/explain.md) |
 | `rerun` | Diff a new trust map against the previous one. | You or the user | [commands/rerun.md](commands/rerun.md) |
 
 Read the file of the sub-command before you act. Start `controls` and per-repo setup only on an explicit request from the user in this conversation. A `map` without controls rates no claim Proven, and that is a valid result.

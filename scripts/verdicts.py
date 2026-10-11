@@ -42,6 +42,16 @@ def verifier_state(v: dict, controls: list[dict], flags: list[dict]) -> str:
         if ind.get("context") != "fresh":
             flag("shared-context", f"{v['id']} saw the PR context. It is one opinion counted twice.")
 
+    if "mechanical" in v:
+        result = v["mechanical"].get("result")
+        if not result:
+            flag("baseline-not-run", f"{v['id']} is a mechanical check that did not run. Run scripts/mechanical.py.")
+            return "untested"
+        if result["status"] == "fail":
+            flag("fails-at-head", f"{v['id']} failed at the PR head: {result['detail'].splitlines()[0]}", loud=True)
+            return "failing"
+        return "checked"
+
     if "command" not in v:
         return "recorded"
 
@@ -111,7 +121,7 @@ def apply(data: dict) -> dict:
     for c in data["claims"]:
         backing = [v for v in data["verifiers"] if c["id"] in v["claims"]]
         proven = [v for v in backing if v["state"] == "proven" and can_prove(v, author)]
-        counted = [v for v in backing if v["state"] in ("proven", "untested", "recorded")]
+        counted = [v for v in backing if v["state"] in ("proven", "untested", "recorded", "checked")]
         dead = [v for v in backing if v["state"] in ("cannot-fail", "failing", "broken")]
         if proven:
             hit = proven[0]
@@ -125,6 +135,7 @@ def apply(data: dict) -> dict:
             why = {
                 "untested": "no control went red",
                 "recorded": "the evidence is recorded, not run again",
+                "checked": "it is a mechanical check (a grep or a line count) with no control",
                 "proven": "a model verifier from the author family went red",
             }
             c["reason"] = f"{ids} backs this claim, but " + " and ".join(why[s] for s in kinds) + "."

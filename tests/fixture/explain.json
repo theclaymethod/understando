@@ -1,0 +1,207 @@
+{
+ "story": {
+  "summary": "The wallet now refuses an overdraft. This page explains the change, then shows how far each promise is proven.",
+  "problem": "Before this PR, a withdrawal could take the balance below zero.",
+  "change": "The withdraw function now refuses an amount above the balance, and a new function adds a fee.",
+  "trust": "A planted bug proves the overdraft rule. The promises below show the weak parts.",
+  "picture": "story"
+ },
+ "diagrams": {
+  "story": {
+   "title": "Before and after",
+   "description": "Before the PR, the wallet paid out any amount. After it, the wallet checks the balance first.",
+   "eli5": {
+    "nodes": [
+     {
+      "id": "before",
+      "label": "Before: pay out any amount"
+     },
+     {
+      "id": "after",
+      "label": "After: check the balance first"
+     },
+     {
+      "id": "refuse",
+      "label": "Refuse an overdraft",
+      "shape": "oval"
+     }
+    ],
+    "edges": [
+     {
+      "from": "before",
+      "to": "after",
+      "label": "becomes"
+     },
+     {
+      "from": "after",
+      "to": "refuse",
+      "label": "stops"
+     }
+    ]
+   },
+   "detailed": {
+    "nodes": [
+     {
+      "id": "before",
+      "label": "withdraw: return balance - amount"
+     },
+     {
+      "id": "after",
+      "label": "withdraw: if amount > balance"
+     },
+     {
+      "id": "refuse",
+      "label": "raise OverdraftError",
+      "shape": "oval"
+     }
+    ],
+    "edges": [
+     {
+      "from": "before",
+      "to": "after",
+      "label": "PR"
+     },
+     {
+      "from": "after",
+      "to": "refuse",
+      "label": "yes"
+     }
+    ]
+   }
+  },
+  "loop": {
+   "title": "One withdrawal",
+   "description": "What the wallet does with one call.",
+   "eli5": {
+    "nodes": [
+     {
+      "id": "ask",
+      "label": "A withdrawal",
+      "shape": "oval"
+     },
+     {
+      "id": "guard",
+      "label": "Check the balance",
+      "shape": "diamond"
+     },
+     {
+      "id": "pay",
+      "label": "Pay out"
+     },
+     {
+      "id": "refuse",
+      "label": "Refuse it",
+      "shape": "oval"
+     }
+    ],
+    "edges": [
+     {
+      "from": "ask",
+      "to": "guard",
+      "label": "asks"
+     },
+     {
+      "from": "guard",
+      "to": "pay",
+      "label": "allows"
+     },
+     {
+      "from": "guard",
+      "to": "refuse",
+      "label": "stops"
+     }
+    ]
+   },
+   "detailed": {
+    "nodes": [
+     {
+      "id": "ask",
+      "label": "withdraw(balance, amount)",
+      "shape": "oval"
+     },
+     {
+      "id": "guard",
+      "label": "amount > balance?",
+      "shape": "diamond"
+     },
+     {
+      "id": "pay",
+      "label": "return balance - amount"
+     },
+     {
+      "id": "refuse",
+      "label": "raise OverdraftError",
+      "shape": "oval"
+     }
+    ],
+    "edges": [
+     {
+      "from": "ask",
+      "to": "guard"
+     },
+     {
+      "from": "guard",
+      "to": "pay",
+      "label": "no"
+     },
+     {
+      "from": "guard",
+      "to": "refuse",
+      "label": "yes"
+     }
+    ]
+   }
+  }
+ },
+ "loop": {
+  "intro": "One call takes an amount from a balance. Each step links to the promise that protects it.",
+  "diagram": "loop",
+  "steps": [
+   {
+    "text": "A caller asks the wallet to take an amount from the balance.",
+    "promise": "P1",
+    "code": [
+     {
+      "path": "wallet/core.py",
+      "start": 8,
+      "end": 15
+     }
+    ]
+   },
+   {
+    "text": "The wallet refuses an amount above the balance, and else it gives the balance minus the amount.",
+    "promise": "P1"
+   },
+   {
+    "text": "The PR also adds a fee function and a denial message, but the withdraw function does not call them yet.",
+    "promise": "P4"
+   }
+  ]
+ },
+ "change": {
+  "intro": "The PR changes the wallet core and adds two modules and a report script."
+ },
+ "unclaimed": {
+  "notes": {
+   "bin/report.py": "New. It reads a file of accounts and prints each balance. No claim covers it."
+  }
+ },
+ "risks": [
+  {
+   "claims": [
+    "C02"
+   ],
+   "why": "The balance test checks only the type of the result.",
+   "fix": "Assert the exact new balance in the test."
+  }
+ ],
+ "tradeoffs": [
+  "The fixture is small, so each level is short."
+ ],
+ "concerns": [
+  "V02 cannot fail."
+ ],
+ "verifications": [
+  "The e2e test runs each step on this fixture."
+ ]
+}

@@ -30,7 +30,7 @@ def main(argv: list[str]) -> int:
         tm.fail(__doc__.strip())
     old, new = tm.load(paths[0]), tm.load(paths[1])
     for path, data in zip(paths, (old, new)):
-        errors = tm.validate(data)
+        errors = tm.validate(data, promises=False)
         if errors:
             tm.fail(f"{path} is invalid:\n" + "\n".join(errors), 1)
     lines = [f"# Trust-map diff: {new['repo']} #{new.get('pr')}", ""]

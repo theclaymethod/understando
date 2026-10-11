@@ -78,6 +78,18 @@
         "what": "A denial message does not show the account number.",
         "proof": "A model reviewer (V05) read each message. This is a model opinion, not a tool check."
       }
+    },
+    {
+      "id": "C06",
+      "cc_id": null,
+      "text": "No wallet module imports a network library.",
+      "stated": true,
+      "source": "PR.md bullet 5",
+      "layer": "Messages",
+      "plain": {
+        "what": "The wallet sends nothing over the network: no wallet module imports a network library.",
+        "proof": "A grep (V06) finds no import of a network library in the wallet modules."
+      }
     }
   ],
   "verifiers": [
@@ -188,6 +200,31 @@
         "note": "recorded, not run again"
       },
       "provenance": "The PR author ran the reviewer. understando recorded the result and did not run it."
+    },
+    {
+      "id": "V06",
+      "kind": "boundary",
+      "claims": [
+        "C06"
+      ],
+      "tier": "fact",
+      "description": "A grep at the head looks for an import of socket, urllib or http in the wallet modules.",
+      "mechanical": {
+        "op": "grep-absent",
+        "pattern": "^[[:space:]]*(import|from)[[:space:]]+(socket|urllib|http)",
+        "paths": [
+          "wallet/"
+        ]
+      },
+      "independence": {
+        "by": "tool",
+        "tool": "git grep"
+      },
+      "cost": {
+        "usd": 0,
+        "seconds": 1
+      },
+      "provenance": "understando runs it at the PR head (scripts/mechanical.py)."
     }
   ],
   "controls": [
@@ -254,6 +291,10 @@
     {
       "term": "Control",
       "meaning": "a bug that we put in the code on purpose, to see if a check finds it."
+    },
+    {
+      "term": "Balance",
+      "meaning": "the amount of money in an account."
     }
   ],
   "verdict_intros": {

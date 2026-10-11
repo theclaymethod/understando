@@ -1,6 +1,6 @@
 # Trust map card
 
-A visual-explainer card for one PR's trust map. The explainer is teaching material: it gets a developer up to speed on the PR, then shows how strong the verification is. It reuses the visual-explainer runtime and its cards `explain-diff`, `code-walkthrough` and `web-diagram`. It adds no component and no fork. `scripts/explain.py` fills `templates/three-level.mdx` and writes each chapter from `trust-map.json` and `explain.json`. Edit the generated files to tune one PR, then export again.
+A visual-explainer card for one PR's trust map. The explainer is teaching material: it gets a developer up to speed on the PR, then shows how strong the verification is. It reuses the visual-explainer runtime, its cards `explain-diff`, `code-walkthrough` and `web-diagram`, and its default components (`Disclosure`, `ChipLinks` and `DiagramModes` among them). It adds no page CSS and no fork. `scripts/explain.py` fills `templates/three-level.mdx` and writes each chapter from `trust-map.json` and `explain.json`. Edit the generated files to tune one PR, then export again.
 
 ## The PR-body section
 
@@ -8,22 +8,30 @@ Keep it short. It holds three things and nothing more:
 
 1. One Mermaid diagram: each claim layer, with an edge to each verdict and the count on the edge.
 2. The claims-and-verdicts table: claim, verdict and the reason in one strict-STE sentence.
-3. Short bullets: the verdict counts, each `cannot-fail` verifier, each other loud flag, the control count and cost, and the explainer path.
+3. Short bullets: the verdict counts, the strength of each promise, each `cannot-fail` verifier, each other loud flag, the control count and cost, and the explainer path.
 
 Put long samples, command output and code in the explainer, not in the PR body.
 
-## The chapters
+## The levels
 
-Each chapter is one self-contained MDX unit in `chapters/NN-<name>.mdx`, with its own imports, so an app can embed it alone. `explainer.mdx` puts each chapter in a `Section` of an `ExplainerShell` with the chapter rail.
+The explainer is a level ladder for a reader who does not know the code, also a reader outside the team. Each level is one screen deep. Detail waits in a `Disclosure` (a collapsed block). Each level is one self-contained MDX unit in `chapters/NN-<name>.mdx`, with its own imports, so an app can embed it alone. `explainer.mdx` puts each level in a `Section` of an `ExplainerShell` with the chapter rail.
 
-| # | Chapter | Holds | Visuals |
+| # | Level | Holds | Visuals |
 |---|---|---|---|
-| 1 | Orientation | About five STE sentences: what the PR does and why. The glossary. | One static architecture diagram. |
-| 2 | Guided tour | The code path in execution order, with the PR body's "How it works" text and the code at the head. At each step, the claims that protect it: `plain.what` and a verdict chip. Each claim shows at a step at least once; `explain.py` fails when one does not. | Static diagrams where they help, for example the import boundary. One animated walkthrough of a finding through the loop. |
-| 3 | Confidence | The claims ranked by risk, not by count: the weak high-stakes claims first, each with the cheapest fix. Then a short "what is solid" summary and the verifier map. | One animated walkthrough of controls: a planted bug and the check that turns red, and a pin that stays green while a wider check turns red. A static map from verifier kinds to claim layers. |
-| 4 | Evidence | A claim index, then per claim: the plain text (what it is, how it is proven, a warning), the code, each verifier, and each control with its edit as a diff and its output. | Code and diffs with syntax colours. |
-| 5 | Trade-offs and concerns | The trade-offs, the concerns, and the verifications of the explainer itself. | None. |
-| 6 | Exercises | A placeholder. The learning app fills it. | None. |
+| 1 | The story | Three ideas: the problem, the change, and why you can trust it. One chip for each promise, with its weakest verdict. The glossary, collapsed. No code name, no ID and no count beyond the chips. | One before-and-after diagram in two modes. |
+| 2 | The loop | The run steps, one plain sentence each, each with a link to its promise. Code excerpts collapsed under each step. | The loop diagram in two modes, then the animated walkthrough of one finding. |
+| 3 | What changed | A plain intro. A "replaced by" table of deleted code with line counts from `git diff --numstat`. Paths go in the table only. | A before-and-after diagram from the diff, in two modes. Other architecture diagrams, such as the import rules, in two modes. |
+| 4 | The promises | One block per promise, weakest first: its sentence, its strength (its weakest claim), a reviewer action when it is weak, and the cheapest fix for each weak claim. Collapsed: its claims, as `plain.what` with a verdict pill. Collapsed under each claim: the proof, the warning, the code, each verifier and each control with its output. | Code and diffs with syntax colours, inside the claim blocks. |
+| 5 | Verify the verifiers | What red, green and cannot-fail mean. The control count. | The controls animation, labelled from each mutation's own text. The map from each check kind to each claim layer, with every layer, also "Narrative only" and "Unstated changes"; a layer with no check is red. The verifier table, collapsed. |
+| 6 | Changed code that no claim covers | Each changed source file that no claim cites, or that is large and mostly uncited, with its line counts and a note on why it matters. | A table; the long tail collapsed. |
+| 7 | Trade-offs and concerns | The trade-offs, the concerns, and the verifications of the explainer itself. | None. |
+| 8 | Exercises | A placeholder. The learning app fills it. | None. |
+
+Each claim's sentence (`plain.what`) shows once, in its claim block. Other places link to the block, and a link opens each block around it.
+
+## Diagram modes
+
+Each architecture diagram is a `DiagramModes` with a Simple (ELI5) and a Detailed mode, and one labelled switch that the whole page shares and remembers. The Simple mode has about four to six plain boxes and plain-verb edges. The Detailed mode keeps the same node ids, so each box keeps its place, names each box by its real module or function, and adds a few boxes at most. The controls animation and the verifier map stay in one mode.
 
 ## One colour key
 
