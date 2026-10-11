@@ -659,6 +659,11 @@ def situation(c: context.Ctx, s: dict, st: dict, sig: dict, doc: list[dict]) -> 
         details.append(f"{st['branch']} at {st['tip'][:10]}; the map is at {(tmap.get('head') or '')[:10]}")
     if data.get("claims"):
         import onto
+        unsure = [x for x in data["claims"] if onto.surface(data, x) == "unsure"]
+        if unsure:
+            lines.append(f"I am not sure of the surface of {names.listing([names.of(data, x['id']) for x in unsure])}: frontend, backend, LLM or other? "
+                         "Tell me, and I set it (understando map --surface).")
+            details.append("unsure surface: " + ", ".join(x["id"] for x in unsure))
         below = [x for x in data["claims"] if not x.get("waiver") and onto.risky(x) and not onto.bar(data, x)["met"]]
         if below:
             lines.append(f"{prompt.n_of(len(below), 'risky claim')} {'is' if len(below) == 1 else 'are'} below {'its' if len(below) == 1 else 'their'} bar: "

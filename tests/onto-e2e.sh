@@ -203,7 +203,7 @@ PY
 step "bars: the surface of each claim, the frontend bar, the llm bar and the merge rule"
 python3 "$S/onto.py" bars "$MAP" | tee "$O/bars.txt"
 grep -q "^C01	backend	normal	Bar: property test or static rule · met" "$O/bars.txt"
-grep -q "^C05	llm (mixed)	normal	Bar: eval with a degraded control · below the bar: only a model judgment, no eval" "$O/bars.txt"
+grep -q "^C05	llm	normal	Bar: eval with a degraded control · below the bar: only a model judgment, no eval" "$O/bars.txt"
 grep -q "^C04	other	" "$O/bars.txt"
 B="$O/bars"; mkdir -p "$B/media"
 python3 - "$MAP" "$B" <<'PY'
@@ -212,6 +212,16 @@ data, out = json.load(open(sys.argv[1])), pathlib.Path(sys.argv[2])
 tsx = json.loads(json.dumps(data))
 next(c for c in tsx["claims"] if c["id"] == "C07")["code"] = [{"path": "web/Denial.tsx", "symbol": "Denial"}]
 json.dump(tsx, open(out / "tsx.json", "w"), indent=2)
+# A gate that filters model findings is deterministic code: backend, not llm. Words about model
+# output with only code checks are unsure.
+gate = json.loads(json.dumps(data))
+c07 = next(c for c in gate["claims"] if c["id"] == "C07")
+c07.update({"text": "The judge gate keeps each model finding that is not editable away from the editor.",
+            "plain": {"what": "The judge reports findings. The gate sends the editor only the findings that it may fix.", "proof": "A unit test."},
+            "code": [{"path": "src/judge/gate.py", "symbol": "fixable"}]})
+c01 = next(c for c in gate["claims"] if c["id"] == "C01")
+c01.update({"text": "Blind labellers agree that the new notes have fewer failures.", "plain": {"what": "The new notes are better.", "proof": "A test."}})
+json.dump(gate, open(out / "gate.json", "w"), indent=2)
 def variant(name, change):
     d = json.loads(json.dumps(data))
     change(d)
@@ -245,6 +255,11 @@ variant("llm-flagged", llm(False, True)); variant("llm-degraded", llm(True, Fals
     "1f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082"))
 PY
 python3 "$S/onto.py" bars "$B/tsx.json" | grep -q "^C07	frontend	normal	Bar: browser video · below the bar: only unit or component tests"
+python3 "$S/onto.py" bars "$B/gate.json" > "$B/gate.txt"
+grep -q "^C07	backend	" "$B/gate.txt" || { cat "$B/gate.txt"; echo "FAIL: a gate that filters model findings is not backend"; exit 1; }
+grep -q "^C01	unsure (mixed)	" "$B/gate.txt" || { cat "$B/gate.txt"; echo "FAIL: words about model output with only code checks are not unsure"; exit 1; }
+python3 "$S/onto.py" lint "$B/gate.json" | grep -q "^surface: 'the overdraft refusal' is unsure" || { echo "FAIL: no surface question for an unsure claim"; exit 1; }
+echo "a gate that filters model findings is backend; words about model output with only code checks are unsure, and map asks"
 for v in fe-unit fe-video llm-flagged llm-degraded; do
   python3 "$S/verdicts.py" "$B/$v/trust-map.json" > /dev/null
   cp "$FIX/explainer.mdx" "$B/$v/explainer.mdx"

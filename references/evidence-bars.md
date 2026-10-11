@@ -10,12 +10,12 @@ Each claim has a surface, and each surface has a bar. A claim meets its bar when
 
 | Surface | Detected from | Bar | Control |
 |---|---|---|---|
-| frontend | A TSX, JSX, CSS or HTML file, or a UI route. | An e2e run in a real browser against the real app, with a recorded video (`artifact.video`). A unit or component test is below the bar. | Break the UI. The e2e must fail. |
-| backend | Other code. | Risky: a proof (Formal). Not risky: a property test, types, a contract or a static rule. An example test is below the bar. | As above. |
-| llm | A prompt, a model call, a judge, a cartridge, a generator or a scoring rubric, or an eval or a model judgment as the check. | An eval: pre-registered, with a frozen judge or labels, blind when possible, with k ≥ 3 runs or a stated sample size, and recorded. | A planted-degraded variant (`eval.degraded`) must score worse. An eval with no degraded variant cannot show that it can fail. |
+| frontend | The claim is about a user-visible UI behaviour. It cites a TSX, JSX, CSS or HTML file, or a UI route. | An e2e run in a real browser against the real app, with a recorded video (`artifact.video`). A unit or component test is below the bar. | Break the UI. The e2e must fail. |
+| backend | The claim is about deterministic code. Code that handles model output is backend, for example a gate, a confirmation rule, a refusal or a wiring path. | Risky: a proof (Formal). Not risky: a property test, types, a contract or a static rule. An example test is below the bar. | As above. |
+| llm | The claim is about the quality or the behaviour of model output. Examples: an eval outcome, the agreement of a judge, a gaming audit of edits. An eval or a model judgment backs it, or its words are about model output. | An eval: pre-registered, with a frozen judge or labels, blind when possible, with k ≥ 3 runs or a stated sample size, and recorded. | A planted-degraded variant (`eval.degraded`) must score worse. An eval with no degraded variant cannot show that it can fail. |
 | other | No code and no llm check. | A check backs it. | As above. |
 
-The user can set `surface` and `risk` on a claim. When a claim touches two surfaces, `map` prints a `surface:` line, and the agent asks the user once. `understando.toml` `[bars]` can change the bar of each surface and risk.
+Classify a claim by what it asserts, not by the names in its code. When the signals conflict or are weak, the surface is `unsure`. Then `map` prints a `surface:` line, and the review asks the user one question. `understando map --surface C05=backend` records the answer. Until then, the claim gets the backend bar. The user can also set `risk` on a claim. `understando.toml` `[bars]` can change the bar of each surface and risk.
 
 The merge verdict uses the bars. A risky claim below its bar blocks. A claim below its bar that is not risky is a risk to accept. The ladder tier stays visible as detail.
 

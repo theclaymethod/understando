@@ -82,9 +82,20 @@ def do_map(c: context.Ctx, argv: list[str]) -> int:
     ap.add_argument("--scan-src")
     ap.add_argument("--scan-tests")
     ap.add_argument("--fail-on-drop", action="store_true")
+    ap.add_argument("--surface", action="append", default=[], metavar="CLAIM=SURFACE",
+                    help="the user's answer: set the surface of a claim (frontend, backend, llm or other)")
     args = ap.parse_args(argv)
     data = c.need_map()
     snapshot_before(c)
+    if args.surface:
+        import onto
+        for pair in args.surface:
+            cid, _, surf = pair.partition("=")
+            claim = next((x for x in data["claims"] if x["id"] == cid), None)
+            if not claim or surf not in onto.SURFACES:
+                tm.fail(f"map: --surface {pair}: name a claim and one of {', '.join(onto.SURFACES)}", 2)
+            claim["surface"] = surf
+        tm.save(data, c.map)
     if args.scan_src:
         repo = c.need_repo()
         if py("scan.py", "--repo", str(repo), "--base", data["base"], "--head", data["head"], "--src-prefix", args.scan_src,

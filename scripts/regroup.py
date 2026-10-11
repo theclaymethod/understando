@@ -74,6 +74,12 @@ def merge(old: dict, proposal: dict) -> dict:
     onto.upgrade(data)
     verdicts.apply(data)
     data["_splits"] = split_checks(data, proposal.get("split_checks"))
+    # New controls, for example a planted-wrong spec for a property that had none (recorded runs).
+    have = {k["id"] for k in data["controls"]}
+    for k in proposal.get("new_controls") or []:
+        if k["id"] in have or not any(v["id"] == k["verifier"] for v in data["verifiers"]):
+            tm.fail(f"regroup: new control {k['id']}: its id exists, or its check {k['verifier']} does not", 2)
+        data["controls"].append(k)
     claims = {c["id"]: c for c in data["claims"]}
     seen: dict[str, str] = {}
     new_claims = []
@@ -161,7 +167,8 @@ def proof(old: dict, new: dict, refs: dict | None, old_extra: dict, new_extra: d
     lost = sorted({k["id"] for k in old["controls"]} - {k["id"] for k in new["controls"]})
     split_text = "; ".join(f"{a} is now {len(b)} checks, one for each property" for a, b in splits.items())
     rows.append((not bad and not lost, (f"each of the {len([v for v in old['verifiers'] if onto.is_tool(v)])} old tool checks is under exactly one claim"
-                                        + (f" ({split_text})" if split_text else "") + ", and each old control is kept") if not bad and not lost else
+                                        + (f" ({split_text})" if split_text else "") + ", and each old control is kept"
+                                        + (f"; {len(new['controls']) - len(old['controls'])} new controls" if len(new['controls']) > len(old['controls']) else "")) if not bad and not lost else
                  "a check is not under exactly one claim, or a control is lost: " + "; ".join(bad + lost)))
     cards = derive.claim_rows(new, new_extra)
     wrong = []

@@ -277,35 +277,56 @@ def flagged(data: dict, claim: dict) -> list[dict]:
 
 SURFACES = ("frontend", "backend", "llm", "other")
 FRONTEND = re.compile(r"(?i)\.(tsx|jsx|css|scss|html|vue|svelte)$|(^|/)(routes|pages)/")
-LLM = re.compile(r"(?i)prompt|judge|judiciary|cartridge|rubric|model_client|openai|llm|generator|reflect|scoring")
+# llm: the claim is about the quality or the behaviour of model output: an eval outcome, the
+# agreement of a judge or of labellers, a gaming audit of edits. Code that handles model output
+# (a gate, a confirmation rule, a refusal, a wiring path) is backend.
+LLM_WORDS = re.compile(r"(?i)\b(evals?|labell?ers?|labell?ed|blind|non-inferior\w*|agreement|agree|failures? (per|for each)|"
+                       r"gaming audit|audit found|scor(e|es|ed) (higher|lower|better|worse)|better than production|as good as)\b")
+UI_WORDS = re.compile(r"(?i)\b(page|screen|button|browser|the user sees|shows the user|form|click\w*|ui)\b")
 # The bar for each surface and risk. understando.toml [bars] can change it.
 BARS = {"frontend": {"risky": "video", "normal": "video"}, "backend": {"risky": "formal", "normal": "property"},
-        "llm": {"risky": "degraded-eval", "normal": "degraded-eval"}, "other": {"risky": "check", "normal": "check"}}
+        "llm": {"risky": "degraded-eval", "normal": "degraded-eval"}, "other": {"risky": "check", "normal": "check"},
+        "unsure": {"risky": "formal", "normal": "property"}}
 BAR_WORDS = {"video": "browser video", "e2e": "browser e2e", "formal": "proof", "static": "types or static rules",
              "property": "property test or static rule", "test": "a test", "degraded-eval": "eval with a degraded control",
              "eval": "eval", "check": "a check"}
 LEVEL_RUNG = {"formal": 4, "static": 3, "property": 2, "test": 1}
 
 
+def _claim_words(claim: dict) -> str:
+    return " ".join([claim.get("text", ""), (claim.get("plain") or {}).get("what", ""), *[p.get("text", "") for p in claim.get("parts") or []]])
+
+
 def surfaces(data: dict, claim: dict) -> list[str]:
-    """The surfaces that the code of a claim touches: a TSX, JSX, CSS or HTML file or a UI route is
-    frontend; a prompt, a model call, a judge, a cartridge, a generator or a scoring rubric is llm;
-    an eval or a model judgment as a check is llm; other code is backend. No code and no hint: other."""
+    """The surface signals of a claim, by what it asserts. llm: an eval or a model judgment backs it,
+    or its words are about the quality of model output. frontend: it cites UI code (TSX, JSX, CSS,
+    HTML, a UI route). backend: it cites other code. No signal: other."""
     out = []
-    for r in claim.get("code") or []:
-        where = r["path"] + " " + str(r.get("symbol") or "")
-        out.append("frontend" if FRONTEND.search(r["path"]) else "llm" if LLM.search(where) else "backend")
-    if any(v["kind"] in ("eval", "model") for v in checks_of(data, claim)):
+    kinds = {v["kind"] for v in checks_of(data, claim)}
+    if kinds & {"eval", "model"} or LLM_WORDS.search(CODEY.sub(" ", _claim_words(claim))):
         out.append("llm")
+    for r in claim.get("code") or []:
+        out.append("frontend" if FRONTEND.search(r["path"]) else "backend")
     return list(dict.fromkeys(out)) or ["other"]
 
 
 def surface(data: dict, claim: dict) -> str:
-    """The surface of a claim: the user's `surface`, else the first of frontend, llm, backend that it touches."""
+    """The surface of a claim: the user's `surface`, else the one that its signals agree on.
+    Signals that conflict give `unsure`, and the review asks the user once:
+      - an eval or a model judgment backs it: llm (frontend code too: unsure);
+      - its words are about model output, but only code checks back it: unsure;
+      - frontend and backend code: frontend when its words name a UI behaviour, else unsure."""
     if claim.get("surface") in SURFACES:
         return claim["surface"]
     found = surfaces(data, claim)
-    return next(x for x in ("frontend", "llm", "backend", "other") if x in found)
+    strong_llm = bool({v["kind"] for v in checks_of(data, claim)} & {"eval", "model"})
+    if "llm" in found:
+        if strong_llm:
+            return "unsure" if "frontend" in found else "llm"
+        return "unsure" if ("backend" in found or "frontend" in found) else "llm"
+    if "frontend" in found and "backend" in found:
+        return "frontend" if UI_WORDS.search(_claim_words(claim)) else "unsure"
+    return found[0]
 
 
 def risky(claim: dict) -> bool:
@@ -388,7 +409,7 @@ def bar(data: dict, claim: dict, cfg: dict | None = None) -> dict:
     need = BAR_WORDS.get(level, level)
     why = below_reason(data, miss, level) if miss else ""
     text = f"Bar: {need} · met" if not miss else f"Bar: {need} · below the bar: {why}"
-    return {"surface": surf, "surfaces": found, "mixed": len([x for x in found if x != "other"]) > 1 and "surface" not in claim,
+    return {"surface": surf, "surfaces": found, "mixed": surf == "unsure",
             "risky": kind == "risky", "level": level, "need": need, "met": not miss, "why": why,
             "part": miss["id"] if miss and len(rows) > 1 else None, "text": text}
 
@@ -512,10 +533,10 @@ def group_lint(data: dict) -> list[str]:
             out.append(f"split: {names.of(data, v['id'])} backs {len(own)} claims. Make one check for each property (a TLA+ invariant or "
                        f"property, or a Lean theorem group), each with its own controls, under the claim that states it." + names.ref([v["id"]]))
     for c in data["claims"]:
-        found = [x for x in surfaces(data, c) if x != "other"]
-        if len(found) > 1 and "surface" not in c:
-            out.append(f"surface: '{names.of(data, c['id'])}' touches {' and '.join(found)} code. Ask the user once, and set its surface "
-                       f"(frontend, backend, llm or other); it decides the evidence bar." + names.ref([c["id"]]))
+        if surface(data, c) == "unsure":
+            found = [x for x in surfaces(data, c) if x != "other"]
+            out.append(f"surface: '{names.of(data, c['id'])}' is unsure: its signals say {' and '.join(found)}. Ask the user once, and set its "
+                       f"surface (frontend, backend, llm or other); it decides the evidence bar." + names.ref([c["id"]]))
     lo, hi = BUDGET["promises"]
     if not lo <= len(data.get("promises", [])) <= hi:
         out.append(f"budget: {len(data.get('promises', []))} promises; write {lo} to {hi}.")
