@@ -2,6 +2,8 @@
 
 Run map, probe, close, trim and explain, then print the four-gate checklist. The full run is for the user to start. `understando ready --report` only reads and computes the gates, so you may run it.
 
+Each stop of this playbook ends with one question to the user. Ask it as [Asking the user](../references/working-rules.md#asking-the-user) tells you: the situation, a Next line, and numbered options.
+
 The gates:
 1. **verified:** each claim is Formal, Proven or Backed, or the user waived it.
 2. **no excess code:** trim found nothing that can go, and the user decided each "excess or untested" item.

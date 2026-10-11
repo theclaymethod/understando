@@ -51,7 +51,7 @@
     {
       "id": "snippet",
       "category": "Understand",
-      "line": "Print the code of a ref at the head, with its line numbers and its GitHub permalink. Preview a ref with it; never paste code.",
+      "line": "Print the code of a ref at the head, with its line numbers and its GitHub permalink. Preview a ref with it. Never paste code.",
       "args": "PATH[::SYMBOL] [--match RE] [--part whole|signature|body] [--context N[,M]] [--head SHA] [--lines A-B --suggest]",
       "invoke": "model",
       "doc": "commands/map.md"
@@ -60,7 +60,7 @@
       "id": "close",
       "category": "Get ready",
       "line": "Close each Asserted or Gap claim, riskiest first: a check that probe proves red, evidence, a new wording, or a waiver.",
-      "args": "[--answers FILE] [--list]",
+      "args": "[--answers FILE] [--list] [--next]",
       "invoke": "user",
       "doc": "commands/close.md"
     },
@@ -92,8 +92,8 @@
     {
       "id": "review",
       "category": "Run all",
-      "line": "A full PR review from the PR number. It finds the run, the ready worktree and the CI profile, and shows the state. Then it runs map, probe, close, trim, ready and explain, with a stop between steps.",
-      "args": "<pr> [--go | --through] [--answers FILE] [--guard PATH]",
+      "line": "A full PR review from the PR number. It finds the run, the ready worktree and the CI profile, then asks one question. The steps chain into four stops: map + probe, close (one claim per question), trim, and ready + explain.",
+      "args": "<pr> [--go | --through] [--answers FILE] [--guard PATH] [--full]",
       "invoke": "user",
       "doc": "commands/review.md"
     },
@@ -126,7 +126,7 @@
       "id": "ci",
       "category": "Maintain",
       "line": "Derive the repo's reviewed CI profile for the PR (workflows, the catalog, AGENTS.md, formal tools) into ci.json. Only the user approves it.",
-      "args": "[--head SHA] [--base REF] [--ready REF] [--approve] [--check-argv ARG...]",
+      "args": "[--head SHA] [--base REF] [--ready REF] [--question] [--approve [--project NAME]] [--check-argv ARG...]",
       "invoke": "model",
       "approve_invoke": "user",
       "doc": "commands/ci.md"
@@ -150,8 +150,8 @@
     {
       "id": "menu",
       "category": "Mode",
-      "line": "The bare-invocation menu: two or three recommended verbs from signals, then the full table.",
-      "args": "",
+      "line": "The bare-invocation question: two or three recommended verbs from signals, each with its concrete reason. --all adds the verb table.",
+      "args": "[--all]",
       "invoke": "model",
       "doc": null
     },

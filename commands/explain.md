@@ -2,6 +2,8 @@
 
 Build the PR-body section and the explainer from `M`. Read [../cards/trust-map.md](../cards/trust-map.md) first. It says what each level holds and which components it uses.
 
+Each stop of this playbook ends with one question to the user. Ask it as [Asking the user](../references/working-rules.md#asking-the-user) tells you: the situation, a Next line, and numbered options.
+
 The explainer is a **level ladder**. Each level is one screen deep, and detail waits in collapsed blocks. A newcomer meets the big picture first and an ID or a code name only when they open a block.
 
 ## Never paste code

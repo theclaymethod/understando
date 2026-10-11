@@ -2,6 +2,8 @@
 
 Find the invariants of a PR, a code area or a claim **with the user**, before any verifier exists. Start it only on an explicit request from the user. The user's answers define each invariant. This verb stops for the user at each decision, also under full autonomy.
 
+Each stop of this playbook ends with one question to the user. Ask it as [Asking the user](../references/working-rules.md#asking-the-user) tells you: the situation, a Next line, and numbered options.
+
 For the question rounds, use the grilling skill when `understando routes` shows it installed, else [../references/adapted/grilling.md](../references/adapted/grilling.md).
 
 ## Steps

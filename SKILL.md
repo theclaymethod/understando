@@ -7,18 +7,27 @@ description: "Trust map for a PR: which claims are proven, and which checks cann
 
 A **trust map** tells a reviewer which parts of a PR to trust without a read of every line. A check earns trust only when it goes **red** on a planted bug, a **control**. The design is [docs/DESIGN.md](docs/DESIGN.md).
 
-Every action is a CLI verb. Run `understando <verb>` from a shell (`bin/understando` in this folder when it is not on PATH). Each verb takes `--repo DIR` (a local clone of the reviewed repo), `--pr N`, `--run DIR` and `--json`.
+## Invocation: the arguments decide
+
+Do this first, before you read the rest of this file:
+
+1. When the invocation has arguments and the first word is a verb, run the playbook of that verb. Examples: `/understando review 489`, `/understando map`, `/understando close C35`. Read the file of the verb (the table below), then run the verb.
+2. When the first argument is a number, it is a PR number. `/understando 489` is `/understando review 489`.
+3. Only a bare invocation (no arguments) turns the mode on and asks the menu question. See "Bare invocation" below.
+4. Each stop ends with one question. Relay the `prompt` of the CLI as [Asking the user](references/working-rules.md#asking-the-user) tells you. Do not restate the CLI output, and do not show the verb table.
+
+Run each verb as `understando <verb>`. When `understando` is not on PATH, run `bin/understando` in this folder. Then tell the user one time: "Run `bash scripts/setup.sh --links-only` to put `understando` on PATH." Each verb takes `--repo DIR` (a local clone of the reviewed repo), `--pr N`, `--run DIR` and `--json`.
 
 ## A PR review from one line
 
-`/understando review <pr>` (Codex: `$understando review <pr>`): read [commands/review.md](commands/review.md), then run `understando review <pr>`. The CLI finds the repo, the run folder, the ready worktree, the CI profile, the rules and the state. It stops for the user's go before each step.
+`/understando review <pr>` (Codex: `$understando review <pr>`): read [commands/review.md](commands/review.md), then run `understando review <pr> --json`. The CLI finds the repo, the run folder, the ready worktree, the CI profile, the rules and the state. Then it gives one question in `prompt`. Relay the question, and wait for the user's pick.
 
 ## Bare invocation: the mode
 
 1. Turn the mode on: `understando mode on --repo <clone> --pr <n>`, or `--run <run folder>`.
    - **Done when** `understando mode status` prints `on` and the run folder.
-2. Run `understando menu`. Give the user its two or three picks, each with its reason, then the verb table below.
-   - **Done when** the user has the picks. Start no verb until the user chooses one.
+2. Run `understando menu --json`. Relay its `prompt`: the situation, the question, and two or three numbered picks. Show the verb table only when the user asks for it ("help", "all verbs"): run `understando menu --all`.
+   - **Done when** the user has the question. Start no verb until the user picks one.
 
 While the mode is on, record each user prompt: `understando note prompt "<the prompt>" [--claims C01,C02]`. Record each decision: `understando note decision "<what>" --why "<why>" --evidence "<pointer>" --result "<result>"`. Turn it off with `understando mode off`.
 
@@ -32,19 +41,19 @@ While the mode is on, record each user prompt: `understando note prompt "<the pr
 | `probe` | Understand | Plant model-free controls in scratch worktrees and record which checks go red. | the user only | [commands/probe.md](commands/probe.md) |
 | `formalize` | Understand | Climb to tier 4 or 5: a TLA+ model check, or a Lean proof with a conformance link. | the user only | [commands/formalize.md](commands/formalize.md) |
 | `import` | Understand | Record outside evidence (evo, impeccable, Lean, nemesis-review, show-me-your-work, `verify-<app>` feature files). A file with a wrong format is stale. | you or the user | [commands/import.md](commands/import.md) |
-| `snippet` | Understand | Print the code of a ref at the head, with its line numbers and its GitHub permalink. Preview a ref with it; never paste code. | you or the user | [commands/map.md](commands/map.md) |
+| `snippet` | Understand | Print the code of a ref at the head, with its line numbers and its GitHub permalink. Preview a ref with it. Never paste code. | you or the user | [commands/map.md](commands/map.md) |
 | `close` | Get ready | Close each Asserted or Gap claim, riskiest first: a check that probe proves red, evidence, a new wording, or a waiver. | the user only | [commands/close.md](commands/close.md) |
 | `trim` | Get ready | Find excess code, and delete unit tests that an e2e test already covers. | the user only | [commands/trim.md](commands/trim.md) |
 | `explain` | Share | Build the explainer and the PR-body section. | you or the user | [commands/explain.md](commands/explain.md) |
 | `learn` | Share | Paused. The learn app (chapters, exercises, a sandboxed tutor) stays merged and tested, but gets no new features. | the user only | [commands/learn.md](commands/learn.md) |
-| `review` | Run all | A full PR review from the PR number. It finds the run, the ready worktree and the CI profile, and shows the state. Then it runs map, probe, close, trim, ready and explain, with a stop between steps. | the user only | [commands/review.md](commands/review.md) |
+| `review` | Run all | A full PR review from the PR number. It finds the run, the ready worktree and the CI profile, then asks one question. The steps chain into four stops: map + probe, close (one claim per question), trim, and ready + explain. | the user only | [commands/review.md](commands/review.md) |
 | `ready` | Run all | Run map, probe, close, trim and explain, then print the four-gate checklist. | the user only. With `--report`: you or the user | [commands/ready.md](commands/ready.md) |
 | `build` | Run all | The verifier-first playbook for new work: discover, the @cc contract, a verifier that goes red before the code exists, code, probe, gates, explain. | the user only | [commands/build.md](commands/build.md) |
 | `setup` | Maintain | Install the CLI and the skill links. With --repo, write the per-repo understando.toml with the user. | the user only | [commands/setup.md](commands/setup.md) |
 | `ci` | Maintain | Derive the repo's reviewed CI profile for the PR (workflows, the catalog, AGENTS.md, formal tools) into ci.json. Only the user approves it. | you or the user. `--approve`: the user only | [commands/ci.md](commands/ci.md) |
 | `doctor` | Maintain | Find drift and setup problems. Each finding is auto, mention or route. | you or the user | [commands/doctor.md](commands/doctor.md) |
 | `signals` | Mode | Print the state of the run as JSON: map freshness, open claims, probe time, tiers, gates, mode, ledger, toolchains. | you or the user | `--help` |
-| `menu` | Mode | The bare-invocation menu: two or three recommended verbs from signals, then the full table. | you or the user | `--help` |
+| `menu` | Mode | The bare-invocation question: two or three recommended verbs from signals, each with its concrete reason. --all adds the verb table. | you or the user | `--help` |
 | `routes` | Mode | For each routed step: the installed original skill, else understando's adapted copy, else the built-in rule. | you or the user | [references/working-rules.md](references/working-rules.md) |
 | `mode` | Mode | Turn the mode on or off, or show it. The state file holds the run folder, the repo and the PR. | you or the user | `--help` |
 | `lock` | Mode | Show, take or release the run lock. Each writing verb takes it for the paths that it writes. | you or the user | `--help` |

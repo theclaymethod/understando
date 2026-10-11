@@ -4,6 +4,44 @@ understando works on its own. When you install an original skill, understando ro
 
 When Poteto Mode is active, it owns reply style, subagent rules and autonomy. understando keeps only its exceptions. `discover`, claim wording and waivers stop for the user, even under full autonomy.
 
+## Asking the user
+
+Each stop of each playbook ends with one decision. Ask it as one question with numbered options.
+
+1. Start with the situation, in 5 lines or fewer:
+   - What moved: the PR head, and the commits on the ready branch after the last map.
+   - Where the PR stands: the verdict counts, the merge verdict and the number of blockers.
+   - What changed that affects the next step.
+2. Then write one "Next:" line. It tells what the step does, its scope (the claim or check IDs), its cost ($ and model calls), its time and what it writes.
+3. Then ask one question with 2 to 4 numbered options:
+   - Option 1 is the recommended default, and it shows "(recommended)".
+   - The last option is "Something else".
+   - Each option tells what happens when the user picks it.
+4. Stop. Wait for the pick. A pick in this conversation is the user's yes for that one option only.
+
+The CLI writes the words. `understando review --json`, `menu --json`, `ci --question --json` and `close --next --json` give a `prompt` object: `{situation: [lines], next: {step, does, scope, cost, time, writes}, question, options: [{id, label, does, run, recommended}]}`. Relay it in this text format:
+
+```text
+<situation line 1>
+<situation line 2>
+Next: <does>. Scope: <scope>. Cost: <cost>. Time: <time>. Writes: <writes>.
+
+<question>
+  1. <label> (recommended): <does>
+  2. <label>: <does>
+  3. Something else: <does>
+```
+
+The text output of each of these commands is this render. Give it to the user as it is.
+
+- Do not restate the CLI output. Summarise a long step output in 3 lines or fewer, then ask the next question.
+- Do not show the verb table. Show it only when the user asks for it ("help", "all verbs", `menu --all`).
+- Ask about one claim at a time, never all claims in one question.
+- When the harness has a tool for a structured question, you can use it with the same options. The numbered text is the default: it works in each harness (Claude Code, Codex, Cursor).
+- When the user picks an option, run its `run` command. When `run` names an answer file, write that file with the pick.
+
+## Routes
+
 | Rule area | Adapted file | Original skill | Used by |
 |---|---|---|---|
 | reply-rules | `adapted/reply-rules.md` | poteto-mode | explain, ready, close |

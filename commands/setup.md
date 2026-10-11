@@ -2,6 +2,8 @@
 
 Start this sub-command only on an explicit request from the user.
 
+Each stop of this playbook ends with one question to the user. Ask it as [Asking the user](../references/working-rules.md#asking-the-user) tells you: the situation, a Next line, and numbered options.
+
 ## A. Global setup
 
 1. Run `understando setup` (or `bash $U/scripts/setup.sh`). The script is idempotent. It links the CLI into `~/.local/bin` and the skill into the four skill folders. It asks whether the optional skills go to the project or to the global skill folders (`--scope project|global`), and installs the Code Contracts skill. It puts `cc-check` in the npm cache through `npx`. It installs a missing pstack verification skill, asd-ste100 or visual-explainer. It ends with `doctor`.

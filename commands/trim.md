@@ -2,6 +2,8 @@
 
 Gate 2 (no excess code) and gate 3 (no unit test that an e2e test already covers). Start it only on an explicit request from the user. Apply subtract-before-you-add and laziness-protocol.
 
+Each stop of this playbook ends with one question to the user. Ask it as [Asking the user](../references/working-rules.md#asking-the-user) tells you: the situation, a Next line, and numbered options.
+
 ## Steps
 
 1. **Report first.** Run `understando trim --report`. Gate 3: a unit test can go only when each control that turns it red also turns an e2e test red. Gate 2: a function that the e2e suite runs, and without which the suite stays green, can go. A function that no e2e test runs is "excess or untested".

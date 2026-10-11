@@ -2,6 +2,8 @@
 
 Run `understando doctor`. Each finding has a severity that says what to do:
 
+Each stop of this playbook ends with one question to the user. Ask it as [Asking the user](../references/working-rules.md#asking-the-user) tells you: the situation, a Next line, and numbered options.
+
 - **auto:** no decision. Run `understando doctor --fix` once, and report what it moved in one line.
 - **mention:** the user must know. Say each one in one sentence with its fix. A missing optional skill is a mention, never an error: understando then uses its adapted copy or its built-in rule.
 - **route:** a verb closes it. Name the verb and the gap. Run the verb only when the user asks.

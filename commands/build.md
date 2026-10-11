@@ -2,6 +2,8 @@
 
 The verifier-first playbook for new work. Start it only on an explicit request from the user. Run `understando build` at any time: it prints each step and whether its completion criterion holds. For the general feature workflow, use Poteto Mode's Feature playbook or the tdd skill when `understando routes` shows them, else [../references/adapted/feature-playbook.md](../references/adapted/feature-playbook.md) and [../references/adapted/tdd-red-first.md](../references/adapted/tdd-red-first.md).
 
+Each stop of this playbook ends with one question to the user. Ask it as [Asking the user](../references/working-rules.md#asking-the-user) tells you: the situation, a Next line, and numbered options.
+
 ## Steps
 
 1. **discover.** Find the invariants with the user ([discover.md](discover.md)).

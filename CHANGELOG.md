@@ -8,3 +8,8 @@
 - The intent ledger `journal.jsonl`, the level that tells why the author made each choice, and the ready checklist.
 - Adapted copies of pstack and Matt Pocock skill text under `references/adapted/` (MIT, see THIRD_PARTY_NOTICES.md).
 - Deprecated: `controls` (now `probe`) and `rerun` (now `map`). Both aliases print the new verb. They go away in the next release.
+- The arguments decide: `/understando review 489` runs review, and `/understando 489` is `review 489`. Only a bare invocation shows the menu.
+- Each stop ends with one question: at most 5 situation lines, a Next line (scope, cost, time, writes), and at most 4 numbered options. `review`, `menu`, `ci --question` and `close --next` give it as `prompt` in `--json`. `menu --all` adds the verb table.
+- review chains its steps into four stops: map + probe on the changed code, close (one claim per question), trim, and ready + explain.
+- A possible bug whose code changed on the ready branch asks for a re-check (map + probe), not for discover.
+- `ci --approve --project NAME` approves only the commands of one catalog project.

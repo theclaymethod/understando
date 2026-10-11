@@ -2,6 +2,8 @@
 
 Build the **claim ledger** and the **verifier inventory** for one PR. This verb reads and writes data only. It runs no verifier: `probe` runs them. Each run diffs the map against the previous one, so a new PR head needs no other verb.
 
+Each stop of this playbook ends with one question to the user. Ask it as [Asking the user](../references/working-rules.md#asking-the-user) tells you: the situation, a Next line, and numbered options.
+
 Set `R` to the run folder `$U/runs/<repo name>/<pr number>/` and `M` to `$R/trust-map.json`. With the mode on, each `understando` verb finds `R` by itself.
 
 ## Never paste code

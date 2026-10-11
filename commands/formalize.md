@@ -2,6 +2,8 @@
 
 Lift a claim up the verification ladder and prove that its verifier can fail. One claim area at a time is one **frog**. The loop runs a frog to an artifact record, then picks the next frog.
 
+Each stop of this playbook ends with one question to the user. Ask it as [Asking the user](../references/working-rules.md#asking-the-user) tells you: the situation, a Next line, and numbered options.
+
 Ladder, weakest to strongest: 1 e2e/integration, 2 property/fuzz, 3 types/contracts/static rules, 4 TLA+ model check, 5 Lean proof plus conformance. This command builds tiers 2, 4 and 5.
 
 ## Before you start
