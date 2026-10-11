@@ -174,7 +174,7 @@ def checks(run: Path, repo: Path, data: dict, cfg: dict, files: dict[str, bytes]
     for rel, blob in files.items():
         top = rel.split("/", 1)[0]
         if top == ".github":
-            out.append(f".github check: the tree would hold {rel}; a review branch must never start CI")
+            out.append(f".github check: the tree would hold {rel}, and a review branch must not start CI")
         if top in NEVER or rel in NEVER or KEY_FILE.search(rel):
             out.append(f"never published: {rel}")
         g = config.secret(cfg, rel)
@@ -190,6 +190,21 @@ def checks(run: Path, repo: Path, data: dict, cfg: dict, files: dict[str, bytes]
         g = config.secret(cfg, rel)
         if g:
             out.append(f"secret_paths: trust-map.json {where} cites {rel}, which matches {g}")
+    out += ste_refusals(files)
+    return out
+
+
+def ste_refusals(files: dict[str, bytes]) -> list[str]:
+    """The prose that a reader of the branch sees (README.md, pr-section.md) is strict STE: 0 hard violations of asd-ste100."""
+    import ste
+    out = []
+    for rel in ("README.md", "pr-section.md"):
+        if rel not in files:
+            continue
+        try:
+            out += [f"not strict STE: {rel}: {b}" for b in ste.hard_violations(files[rel].decode("utf-8", errors="ignore"))]
+        except ste.SteMissing as exc:
+            return [str(exc)]
     return out
 
 
@@ -246,7 +261,7 @@ def build_commit(repo: Path, entries: dict[str, tuple[str, str]], blobs: dict[st
         tree = _git(repo, "write-tree", env=env)
     paths = _git(repo, "ls-tree", "-r", "--name-only", tree).splitlines()
     if any(p == ".github" or p.startswith(".github/") for p in paths):
-        raise PublishError("refuse: the review tree holds .github/; a review branch must never start CI")
+        raise PublishError("refuse: the review tree holds .github/, and a review branch must not start CI")
     if parent and _git(repo, "rev-parse", f"{parent}^{{tree}}") == tree:
         return parent, tree
     commit = _git(repo, "commit-tree", tree, *(["-p", parent] if parent else []), "-m", msg)
@@ -272,8 +287,8 @@ def question(repo: Path, branch: str, files: list[str], kept: list[str], parent:
     lines += [f"    {f}" for f in files]
     if kept:
         lines += ["  kept from the branch:"] + [f"    {f}" for f in kept]
-    lines += [f"  push: git push origin {branch} (never a force push)",
-              "Answer yes to publish. Any other answer publishes nothing."]
+    lines += [f"  push: git push origin {branch}",
+              "Answer yes to publish."]
     return "\n".join(lines)
 
 
@@ -313,18 +328,18 @@ def publish_review(c, answers: str | None, dry_run: bool) -> int:
     if refusals:
         print(("dry run: " if dry_run else "") + "publish refuses:\n  " + "\n  ".join(refusals))
         if dry_run:
-            print("\n" + q + "\n\ndry run: nothing written, nothing fetched or pushed; the branch tip comes from local refs.")
+            print("\n" + q + "\n\ndry run: stopped before the commit. The branch tip comes from local refs.")
         return 1
     print(q)
     if dry_run:
-        print("\ndry run: nothing written, nothing fetched or pushed; the branch tip comes from local refs.")
+        print("\ndry run: stopped before the commit. The branch tip comes from local refs.")
         return 0
     got = answer(answers)
     if got is None:
         print("\npublish: no terminal and no --answers FILE. Ask the user the question above; on a yes, pass {\"answer\": \"yes\"}.")
         return 2
     if got not in YES:
-        print("publish: the answer is not yes; nothing is published.")
+        print("publish: the answer is not yes, so I did not publish.")
         return 1
     entries = {p: v for p, v in tree_entries(repo, parent).items() if p.startswith("feedback/")}
     commit, _ = build_commit(repo, entries, blobs, parent, msg)
@@ -387,14 +402,14 @@ def publish_feedback(c, reviewer: str | None, answers: str | None, dry_run: bool
     print(q)
     print("  rows:\n" + "\n".join(f"    {json.loads(x).get('what', '')[:100]}" for x in new))
     if dry_run:
-        print("\ndry run: nothing written, nothing pushed.")
+        print("\ndry run: stopped before the commit.")
         return 0
     got = answer(answers)
     if got is None:
         print("\npublish --feedback: no terminal and no --answers FILE. Ask the user the question above; on a yes, pass {\"answer\": \"yes\"}.")
         return 2
     if got not in YES:
-        print("publish --feedback: the answer is not yes; nothing is published.")
+        print("publish --feedback: the answer is not yes, so I did not publish.")
         return 1
     commit, _ = build_commit(repo, entries, blob, parent, msg)
     push(repo, branch, commit)

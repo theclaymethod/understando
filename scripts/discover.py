@@ -343,6 +343,11 @@ def answer(c: context.Ctx, path: str) -> dict:
         text = a.get("text") if decision == "reword" else (a.get("text") or cand["text"])
         if decision == "reword" and not a.get("text"):
             tm.fail(f"discover: {cid}: a reword needs the user's text", 2)
+        import ste
+        try:
+            ste.require([text], f"discover: {cid}: the invariant text")
+        except (ValueError, ste.SteMissing) as exc:
+            tm.fail(f"{exc} Word the invariant again (decision reword).", 2)
         author = "user" if a.get("confirmed") is True else "agent"
         bugs = check_examples(repo, data, cand, a.get("examples", []))
         shape = a.get("shape") or shape_of(cand)

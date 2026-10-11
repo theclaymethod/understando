@@ -16,7 +16,12 @@ VE="${UNDERSTANDO_VE_RUNTIME:-}"
 [ -n "$VE" ] || fail "no visual-explainer runtime: set ve_runtime with understando setup --ve-runtime PATH"
 rm -rf "$T"; mkdir -p "$T"
 export npm_config_cache="${npm_config_cache:-$HOME/.npm}"
-FH="$T/home"; mkdir -p "$FH"
+FH="$T/home"; mkdir -p "$FH/.agents/skills"
+# asd-ste100 is required (the prompt render and publish run its lint), so the fake HOME links the real one.
+for d in "$HOME/.agents/skills/asd-ste100" "$HOME/.claude/skills/asd-ste100"; do
+  [ -f "$d/SKILL.md" ] && { ln -s "$(readlink -f "$d")" "$FH/.agents/skills/asd-ste100"; break; }
+done
+[ -e "$FH/.agents/skills/asd-ste100" ] || fail "the required skill asd-ste100 is not installed"
 export HOME="$FH" UNDERSTANDO_OFFLINE=1
 unset UNDERSTANDO_HOME UNDERSTANDO_RUNS
 gq() { git -C "$1" -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false "${@:2}"; }
@@ -69,7 +74,7 @@ has "$T/pub-noyes.txt" "    explainer.html"; has "$T/pub-noyes.txt" "    trust-m
 lacks "$T/pub-noyes.txt" "journal.jsonl"
 echo '{"answer": "no"}' > "$T/no.json"
 if "$U" --run "$R" --repo "$A" publish 1 --answers "$T/no.json" > "$T/pub-no.txt"; then fail "publish with a no passed"; fi
-has "$T/pub-no.txt" "nothing is published"
+has "$T/pub-no.txt" "did not publish"
 git -C "$T/wallet.git" rev-parse -q --verify "refs/heads/$BR" > /dev/null && fail "the branch exists without a yes"
 git -C "$A" rev-parse -q --verify "refs/heads/$BR" > /dev/null && fail "a local branch exists without a yes"
 echo "without a yes, publish prints the question and writes no branch"

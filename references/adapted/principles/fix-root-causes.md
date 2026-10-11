@@ -15,7 +15,7 @@ When debugging, trace every problem to its root cause and fix it there. Do not f
 - Ask why until you reach the root cause.
 - Add no guard. A nil check that silences a crash is a symptom fix.
 - If a workaround needs a paragraph of comment to justify it, fix the code, not the comment.
-- Check for the pattern, not just the instance. Search for the same pattern and fix every instance.
+- Check for the pattern, not only the instance. Search for the same pattern and fix every instance.
 - When stuck, instrument. Add logging and read the actual error instead of guessing.
 
 **Restart bugs.** When something fails after a restart, suspect stale persistent state first: config files, caches, lock files, serialized state. If clearing a state file restores behavior, make state validation the fix.

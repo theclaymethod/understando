@@ -6,19 +6,28 @@ Each claim has an evidence bar for its surface (frontend, backend, llm or other)
 
 When Poteto Mode is active, it owns reply style, subagent rules and autonomy. understando keeps only its exceptions. `discover`, claim wording and waivers stop for the user, even under full autonomy.
 
+## Writing for the reader
+
+Write every reviewer-facing or user-facing text by **applying the asd-ste100 skill**. This covers claims, plain text, names, promises, the explainer narrative (MDX), prompts, reports, the PR section and journal summaries. Read `~/.agents/skills/asd-ste100/SKILL.md` (or the installed copy that `understando routes` names). Follow its rules while you write. A lint run after you write is not enough on its own.
+
+The CLI runs the lint of the skill (`python3 -I <asd-ste100>/scripts/ste-lint.py`, through `scripts/ste.py`) as a gate. The gate covers the prompt render, the claims and names of map, the invariant text of discover, the wording of `close`, the PR section and the README of publish. Each needs 0 hard violations. The skill is required. It has no adapted copy, `understando setup` installs it, and `doctor` flags it when it is missing.
+
+Say what happens, once, in the place where it applies. [copy-rules.md](copy-rules.md) lists the banned copy and the positive rule. `scripts/prompt.py` and `doctor` refuse it.
+
 ## Asking the user
 
 Each stop of each playbook ends with one decision. Ask it as one question with numbered options.
 
-1. Start with the situation, in 5 lines or fewer, in plain words:
+1. Start with the situation, in 5 lines or fewer. Each line reports a state, with plain names:
    - What moved: new PR commits that the review branch does not have, and fixes on the review branch that are not checked yet.
    - Where the PR stands: the verdict counts in words ("5 proven formally, 22 proven by tests") and the merge verdict with its blocker count. The count is the count of the explainer's merge verdict.
    - What changed that affects the next step. Examples: the explainer (open, or out of date), the CI approval, a lock, and code excerpts that point at moved code.
-2. Then the Next line: one short sentence. Under it, one line with the scope, the cost ($ and model calls), the time and what the step writes.
+2. Then the Next line: one short sentence. Under it, one line with the scope, the cost ($ and model calls), the time and what the step writes. A fact that changes the decision (a commit, a push, a paid call, a written file) goes here, once. It does not go in an option as well.
 3. Then ask one question with 2 to 4 numbered options:
    - Option 1 is the recommended default, and it shows "(recommended)".
    - The last option is "Something else".
-   - Each option tells what happens when the user picks it.
+   - Each option has a `label` and a `does`. The `does` says only what happens when the user picks it.
+   - The "Something else" option has the label "Something else". Its `does`, when it needs one, is "Tell me what to do instead."
 4. Stop. Wait for the pick. A pick in this conversation is the user's yes for that one option only.
 
 The order of the first questions is fixed. First bring in the new PR commits (a merge). Then ask for the CI approval, then link each new test on the review branch, then run the re-check. Each one is its own question.
@@ -50,6 +59,7 @@ The text output of each of these commands is this render. Give it to the user as
 These rules come from concisely ([adapted/concisely.md](adapted/concisely.md)). They apply to each prompt, each stop report and each final report.
 
 - **Lead with the outcome.** Say first what changed, what passed, or what the state is now.
+- **Say what happens, once, in the place where it applies.** Do not add a reassurance, a slogan or a stock word. Do not repeat a fact in a prompt, a report or a progress line. [copy-rules.md](copy-rules.md) holds the list and the rule.
 - **Plain names in prose.** Name a claim by its `name` or its promise. Name a check by what it checks, and a commit by what it did. IDs, SHAs, paths and line numbers go only in a trailing `(ref: ...)` part, in `--verbose` output, or in JSON fields. `scripts/prompt.py` refuses a prompt that shows a bare ID, a SHA or a `path:line`.
 - **Prioritise.** When a list has more than three items, name the top three and give the count.
 - **Call out decisions, blockers and residual risk.**
@@ -122,4 +132,5 @@ When the original is missing, the step uses the built-in rule that `understando 
 | simplify, ultra-clean, deslop | trim gate 2. Else the built-in pass: probe-proven deletion plus a dead-code tool |
 | no-comments | comment cleanup. It keeps each `@cc` contract comment |
 | technical-writing | docs and PR text. Else the reply rules and the STE lint |
-| asd-ste100, visual-explainer | required. They are the STE lint and the explainer runtime, and setup installs them |
+| asd-ste100 | required, with no adapted copy and no built-in fallback. Apply it while you write every text that a reader sees, then run its lint (`scripts/ste.py`). Setup installs it, and doctor flags it when it is missing |
+| visual-explainer | required. It is the explainer runtime, and setup installs it |

@@ -7,6 +7,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 U="$ROOT/bin/understando"
 REAL_HOME="$HOME"
+ORIG_PATH="$PATH"  # before this test puts a fake gh on PATH
 RUN="$WORK/run"
 step() { printf '\n== %s\n' "$*"; }
 fail() { echo "FAIL: $*"; exit 1; }
@@ -524,14 +525,14 @@ assert any(s.startswith("Why it is weak:") for s in p["situation"]), p["situatio
 print(f"close asks about {p['claim']} only; {len(others)} other open claims wait")
 PY
 
-step "review: a scripted 'run through' runs close, trim, ready --report and explain, and edits no PR"
+step "review: a scripted 'run through' runs close, trim, ready --report and explain"
 python3 - "$FIX/ready/close-answers.json" "$WORK/through.json" <<'PY'
 import json, sys
 json.dump({"go": "run through", "ci": "approve", "close": json.load(open(sys.argv[1]))}, open(sys.argv[2], "w"))
 PY
 (cd "$CL" && "$U" review 1 --verbose --answers "$WORK/through.json") > "$O/through.txt" 2>&1 || { tail -40 "$O/through.txt"; fail "the run through failed"; }
 for s in "== review: close --answers" "== review: trim" "== review: ready --report" "== review: explain" \
-         "C03: V11 goes green, and red on control K09" "### Ready checklist" "understando never edits the PR" "review: every step is done."; do
+         "C03: V11 goes green, and red on control K09" "### Ready checklist" "review: every step is done."; do
   has "$O/through.txt" "$s"
 done
 lacks "$O/through.txt" "STOP:"
@@ -637,16 +638,16 @@ sys.path.insert(0, sys.argv[2] + "/scripts")
 import prompt as P
 d = json.load(open(sys.argv[1]))
 p = d["prompt"]
-assert p["question"].startswith("Bring the new commit into the review branch? (a merge, no force-push)"), p["question"]
+assert p["question"] == "Bring the new commit into the review branch?", p["question"]
 assert p["situation"][0] == "Your PR has 1 new commit that the review branch does not have yet.", p["situation"]
 assert [o["label"] for o in p["options"]][0].startswith("Merge, then re-check everything"), p["options"]
-assert p["options"][1]["label"].startswith("Show what") and p["options"][2]["label"].startswith("Skip; re-check only"), p["options"]
+assert p["options"][1]["label"].startswith("Show what") and p["options"][2]["label"].startswith("Skip the merge and re-check only"), p["options"]
 assert not [x for t in P.user_texts(p) for x in P.plain_problems(t)], p
 for line in p["situation"]:
     assert not re.search(r"\b[0-9a-f]{7,40}\b", line) and not re.search(r"\.\w+:\d+", line), line
 assert any(l.startswith("I opened the explainer: start with 'Can you merge it?'") for l in p["situation"]), p["situation"]
 # The blocker count is the count of the explainer's merge verdict.
-n = int(re.search(r"Not ready: (\d+) blockers?", " ".join(p["situation"])).group(1))
+n = int(re.search(r"not ready, with (\d+) blockers?", " ".join(p["situation"])).group(1))
 page = open(sys.argv[3] + "/explainer.html").read().split('<div id="root">', 1)[1]
 # The guided review lists each blocker as a checklist item that blocks the merge.
 items = len(re.findall(r'data-ve-blocks="true"', page))
@@ -898,7 +899,7 @@ has "$O/open-r.txt" "1. Walk me through it (recommended)"
 (cd "$CL" && UNDERSTANDO_RUNS="$WORK/runs" "$U" open 1 --teach --no-open) > "$O/open-teach.txt"
 has "$O/open-teach.txt" "the story"
 (cd "$CL" && UNDERSTANDO_RUNS="$WORK/runs" "$U" open 1 --ask "I do not get the restore step." --anchor C03 --no-open) > "$O/open-ask.txt"
-has "$O/open-ask.txt" "nothing is pushed"
+has "$O/open-ask.txt" "in your own run journal"
 python3 -c 'import json,sys; r=[json.loads(l) for l in open(sys.argv[1])][-1]; assert r["kind"]=="confusion" and r["anchor"]=="claim-c03", r' "$WORK/runs/wallet/1/journal.jsonl" \
   || fail "no confusion row with its anchor"
 step "review offline: gh exits 1 and the remote is unreachable; the last known head, offline mode, the merge question skipped"
@@ -977,5 +978,123 @@ has "$ROOT/SKILL.md" "only a diagnostic"
 has "$ROOT/SKILL.md" "Never retry a refused command another way."
 has "$ROOT/references/working-rules.md" "Do not poll processes."
 echo "tool probes: timeout is a mention, the cache is reused, the router has the new rules"
+
+step "copy: banned copy and non-STE text fail the prompt render; the real prompt and the docs pass (references/copy-rules.md)"
+python3 - "$ROOT" <<'PY'
+import sys
+sys.path.insert(0, sys.argv[1] + "/scripts")
+import prompt as P
+
+def build(does, situation=("The map has 3 claims in 2 promises.",), question="What next?"):
+    return P.make(list(situation), question, [P.option("Run the check", does), P.option("Show the claims", "Lists the claims of the map in order.")])
+
+build("Runs the check again from the start.")  # a clean prompt renders
+slogans = {
+    "nothing-claim": "Runs the check again from the start. Nothing runs until you say.",
+    "nothing-claim ": "Prints each command with its workflow file and line. Nothing is approved.",
+    "only-copies": "It only copies the text to your clipboard for you.",
+    "browser-only": "Keeps your note in the page. Saved in this browser only.",
+    "tacked-on-no": "Merges the review branch into the PR branch, no commit and no push.",
+    "stock-word": "Just runs the check again from the start.",
+    "run-in-label": "In plain words. Runs the check again from the start.",
+    "tool-promise": "Prints the text for you to paste. understando never edits the PR.",
+    "fragment": "Runs the check again from the start. Nothing else.",
+    "fragment-2": "Runs the check again from the start. Done.",
+}
+for rule, does in slogans.items():
+    try:
+        build(does)
+    except ValueError as e:
+        assert "banned copy" in str(e), (rule, e)
+    else:
+        raise SystemExit(f"FAIL: a planted slogan passed the render: {does}")
+# A prompt that was altered after make() still fails the render.
+p = build("Runs the check again from the start.")
+p["options"][0]["does"] = "Runs the check again from the start. Nothing is posted."
+try:
+    P.render(p)
+except ValueError as e:
+    assert "banned copy" in str(e), e
+else:
+    raise SystemExit("FAIL: render accepted a planted slogan")
+# A sentence that repeats across the options of one prompt fails.
+try:
+    P.make(["The map has 3 claims in 2 promises."], "What next?", [P.option("Run the check", "Runs the check again from the start."),
+           P.option("Run it all", "Runs the check again from the start.")])
+except ValueError as e:
+    assert "repeated sentence" in str(e), e
+else:
+    raise SystemExit("FAIL: a sentence that repeats across the options passed")
+# "Something else" has the label "Something else" and, at most, one fixed line.
+q = build("Runs the check again from the start.")
+assert q["options"][-1] == {"label": "Something else", "does": "Tell me what to do instead.", "id": 3}, q["options"][-1]
+# A sentence that is not strict STE (asd-ste100) fails: a semicolon, a marketing word, a rotating synonym.
+for does in ("Runs the check again from the start; then it stops.", "Runs a seamless check of the whole map.",
+             "Runs the check and verifies and confirms the result."):
+    try:
+        build(does)
+    except ValueError as e:
+        assert "not strict STE" in str(e), (does, e)
+    else:
+        raise SystemExit(f"FAIL: a text that is not strict STE passed the render: {does}")
+print("banned copy and non-STE text fail the render; a clean prompt, the fixed else line and a repeated-sentence check hold")
+PY
+mkdir -p "$WORK/docs-bad/commands" "$WORK/docs-good/commands"
+printf '# bad\n\nTell the user: Nothing runs until you say.\n' > "$WORK/docs-bad/commands/bad.md"
+printf '# good\n\nTell the user what the step writes.\n' > "$WORK/docs-good/commands/good.md"
+UNDERSTANDO_DOCS_ROOT="$WORK/docs-bad" "$U" --json doctor > "$O/doctor-copy-bad.json"
+UNDERSTANDO_DOCS_ROOT="$WORK/docs-good" "$U" --json doctor > "$O/doctor-copy-good.json"
+python3 - "$O/doctor-copy-bad.json" "$O/doctor-copy-good.json" "$ROOT" <<'PY'
+import json, sys
+bad = [f for f in json.load(open(sys.argv[1]))["findings"] if f["id"] == "copy-banned"]
+assert bad and "commands/bad.md:3" in bad[0]["summary"] and "nothing-claim" in bad[0]["summary"], bad
+assert not [f for f in json.load(open(sys.argv[2]))["findings"] if f["id"] == "copy-banned"]
+sys.path.insert(0, sys.argv[3] + "/scripts")
+import doctor
+assert doctor.copy_banned() == [], doctor.copy_banned()
+print("doctor flags a doc with a banned phrase, and understando's own docs hold none")
+PY
+# asd-ste100 is required: no adapted fallback, applied while writing, doctor flags it when missing.
+"$U" --json routes > "$O/routes-ste.json"
+python3 - "$O/routes-ste.json" <<'PY'
+import json, sys
+r = next(x for x in json.load(open(sys.argv[1]))["routes"] if x["skill"] == "asd-ste100")
+assert r["required"] and r["use"] == "original" and r["verbs"] == ["*"] and "follow its rules while you write" in r["apply"], r
+PY
+FH3="$WORK/home-no-ste"; mkdir -p "$FH3/.agents/skills"
+HOME="$FH3" "$U" --json routes > "$O/routes-no-ste.json"
+python3 - "$O/routes-no-ste.json" <<'PY'
+import json, sys
+r = next(x for x in json.load(open(sys.argv[1]))["routes"] if x["skill"] == "asd-ste100")
+assert r["use"] == "missing" and r["required"], r
+PY
+HOME="$FH3" "$U" --json doctor > "$O/doctor-no-ste.json"
+python3 -c 'import json,sys; f=[x for x in json.load(open(sys.argv[1]))["findings"] if x["id"]=="skill-asd-ste100"]; assert f and f[0]["severity"]=="route" and "required" in f[0]["summary"], f' "$O/doctor-no-ste.json"
+if HOME="$FH3" python3 "$ROOT/scripts/ste.py" "$ROOT/references/copy-rules.md" 2> "$O/ste-missing.txt"; then fail "the STE gate passed without asd-ste100"; fi
+has "$O/ste-missing.txt" "asd-ste100"
+echo "asd-ste100: required with no fallback, applied by the agent, flagged by doctor, and the gate fails when it is missing"
+
+step "copy: the first prompt of the real review of PR 489 passes both lints (on a copy of the run folder; skipped when this machine has no such run)"
+REAL_RUN="$REAL_HOME/.understando/runs/function-intelligence"
+REAL_REPO="$REAL_HOME/dev/function-intelligence"
+if [ -f "$REAL_RUN/489/trust-map.json" ] && [ -e "$REAL_REPO/.git" ] && PATH="$ORIG_PATH" command -v gh > /dev/null; then
+  # Never write the user's own run folder, mode state or journal: the review runs on a copy, with the real gh.
+  T489="$WORK/real-489"; mkdir -p "$T489/runs/function-intelligence" "$T489/uhome"
+  rsync -a --exclude shots --exclude backups --exclude learn --exclude history --exclude my-work --exclude onto --exclude formal \
+    "$REAL_RUN/" "$T489/runs/function-intelligence/"
+  (cd "$REAL_REPO" && env -u UNDERSTANDO_OFFLINE -u UNDERSTANDO_ENV_FILES HOME="$REAL_HOME" PATH="$ORIG_PATH" \
+     UNDERSTANDO_RUNS="$T489/runs" UNDERSTANDO_HOME="$T489/uhome" "$U" review 489 --json --no-open) > "$O/real-489.json"
+  python3 - "$O/real-489.json" "$ROOT" <<'PY'
+import json, sys
+sys.path.insert(0, sys.argv[2] + "/scripts")
+import prompt as P
+p = json.load(open(sys.argv[1]))["prompt"]
+text = P.render(p)  # raises on a bare ID, banned copy or a hard STE violation
+assert not P.banned_copy(p), P.banned_copy(p)
+print(text)
+PY
+else
+  echo "skip: no run folder for PR 489, no checkout or no gh on this machine"
+fi
 
 echo "PASS: mode e2e"

@@ -5,8 +5,8 @@
 
 For the reviewer: with a PR number and no local run, it fetches the review branch
 understando/<pr>-review into a read-only worktree (scripts/publish.py) and opens its explainer.
-Then one question: walk through it (teach), ask about one part, or done. --ask records the question
-as a `confusion` row with its anchor in the reviewer's own run journal; nothing is pushed.
+Then one question: walk through it (teach), or ask about one part. --ask records the question
+as a `confusion` row with its anchor in the reviewer's own run journal.
 
 It opens $R/explainer.html with `open` (macOS) or `xdg-open` (Linux, with a display). With no
 display, with --no-open, or with $UNDERSTANDO_NO_OPEN set, it prints the file path and the file://
@@ -192,11 +192,11 @@ def question(pr: str, row: dict) -> dict:
     return prompt.make(lines, "How do you want to read it?", [
         prompt.option("Walk me through it", "Opens the explainer one part at a time: the story, the loop, what changed, the weakest promises. "
                       "In chat: at most four ideas, the code by refs, and your questions.", f"understando open {pr} --teach"),
-        prompt.option("Ask about one part", "Opens that part, then answers in at most three sentences. Your question goes to your own run journal only.",
+        prompt.option("Ask about one part", "Opens that part, then answers in at most three sentences.",
                       f"understando open {pr} --ask \"<your question>\""),
-        prompt.option("Done", "Nothing more runs.", "")], 
+        ],
         {"step": "open", "does": "Read the explainer of the PR", "scope": "the whole page", "cost": "$0, no model call",
-         "time": "as long as you want", "writes": "your own run journal only; nothing is pushed"})
+         "time": "as long as you want", "writes": "your own run journal, which the author sees only after publish --feedback"})
 
 
 def main(c: context.Ctx, argv: list[str]) -> int:
@@ -235,9 +235,9 @@ def main(c: context.Ctx, argv: list[str]) -> int:
             open_page(page_dir, data, args.level, args.anchor, no_open, why="question", log_dir=home)
         anchor = last_anchor(home)
         journal.append(c.journal, "confusion", args.ask, c.repo, anchor=anchor, source="reviewer")
-        text = (f"Noted at {section_name(data, anchor)}. It stays in your own run journal; nothing is pushed. "
+        text = (f"Noted at {section_name(data, anchor)} in your own run journal. "
                 "The author sees it only after you run `understando publish --feedback`.") if anchor else \
-            "Noted. It stays in your own run journal; nothing is pushed."
+            "Noted in your own run journal."
         context.emit(c, {"recorded": True, "anchor": anchor}, text)
         return 0
     row = open_page(page_dir, data, args.level or ("verdict" if not args.anchor else None), args.anchor, no_open, why="open", log_dir=home)

@@ -259,6 +259,12 @@ def main() -> int:
     new = merge(old, proposal)
     splits = new.pop("_splits")
     errors = tm.validate(new)
+    if not errors:
+        import ste
+        try:
+            errors = ste.map_problems(new)
+        except ste.SteMissing as exc:
+            errors = [str(exc)]
     if errors:
         print("\n".join(errors))
         print(f"INVALID: {len(errors)} errors")

@@ -230,7 +230,7 @@ async fn main() {
     println!("scratch: {}", app.ws.root.display());
     println!("worktree: {}", app.ws.worktree.display());
     println!("tutor shell: {}", if sandbox_ready { "on, in the OS sandbox" } else { sandbox_detail.as_str() });
-    println!("Keep this terminal open. Press Ctrl+C to stop. The scratch folder is removed on exit.");
+    println!("Keep this terminal open, and press Ctrl+C to stop. The server removes the scratch folder on exit.");
 
     // Prepare the worktree once, so the tutor finds a ready toolchain.
     {

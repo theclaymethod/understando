@@ -256,7 +256,7 @@ async fn run_claude(call: Call, cancel: watch::Receiver<bool>, mut on_event: imp
         return Err("Stopped.".into());
     }
     if out.timed_out {
-        return Err("The tutor took too long. Ask a shorter question.".into());
+        return Err("The tutor took too long, so ask a shorter question.".into());
     }
     if out.overflow {
         return Err("The tutor response is larger than the local limit.".into());
@@ -274,7 +274,7 @@ async fn run_claude(call: Call, cancel: watch::Receiver<bool>, mut on_event: imp
     }
     let text = if final_text.is_empty() { text } else { final_text };
     if text.trim().is_empty() {
-        return Err("The tutor gave no answer. Try again.".into());
+        return Err("The tutor gave no answer, so ask again.".into());
     }
     Ok(Answer { text, model, usage })
 }
@@ -599,7 +599,7 @@ async fn run_codex(call: Call, mut cancel: watch::Receiver<bool>, mut on_event: 
                     _ => {}
                 }
             }
-            _ = &mut deadline => { failure = "The tutor took too long. Ask a shorter question.".into(); break; }
+            _ = &mut deadline => { failure = "The tutor took too long, so ask a shorter question.".into(); break; }
             ch = cancel.changed() => { if ch.is_err() || *cancel.borrow() { failure = "Stopped.".into(); break; } }
         }
     }
@@ -617,7 +617,7 @@ async fn run_codex(call: Call, mut cancel: watch::Receiver<bool>, mut on_event: 
     }
     let text = if final_text.is_empty() { text } else { final_text };
     if text.trim().is_empty() {
-        return Err("The tutor gave no answer. Try again.".into());
+        return Err("The tutor gave no answer, so ask again.".into());
     }
     let _ = thread_id;
     Ok(Answer { text, model, usage })

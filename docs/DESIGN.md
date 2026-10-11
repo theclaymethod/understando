@@ -25,9 +25,9 @@ understando helps a reviewer decide what to trust in a large PR without reading 
 4. **Storage:** run state lives under `~/.understando/runs/<repo>/<pr>/`: local, outside the repo under review, and never in a git repo. `UNDERSTANDO_RUNS`, `runs_root` in `~/.understando/config.toml` or `runs_dir` in the per-repo config moves it. Every verb refuses to write a run folder inside a git repo, and doctor flags run output that any repo tracks. understando's own repo keeps only the test fixture (`tests/fixture`). A review is shared on purpose only: `understando publish` (commands/publish.md).
 
 **Style.**
-- Prose is STE-flavoured.
-- Claims, verdicts and verifier descriptions are strict STE (ASD-STE100).
-- Run `python3 -I ~/.claude/skills/asd-ste100/scripts/ste-lint.py` to 0 hard violations.
+- Every text that a reader sees (claims, plain text, names, promises, the explainer narrative, prompts, reports, the PR section, journal summaries) is strict STE (ASD-STE100). The agent writes it by applying the asd-ste100 skill, which is required and has no adapted copy.
+- The CLI gates the text with `scripts/ste.py`, the lint of that skill, to 0 hard violations: the prompt render, `map`, `validate.py`, `discover answer`, `close` wording, the PR section and the README of `publish`.
+- The text says what happens, once, in the place where it applies. `references/copy-rules.md` lists the banned copy, and `scripts/prompt.py` and `doctor` refuse it.
 
 ## Model
 

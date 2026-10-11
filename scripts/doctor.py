@@ -214,6 +214,14 @@ def findings(c: context.Ctx, explicit_head: str | None, formal: bool = False) ->
                 + "; ".join(f"the {k} '{names.of(data, i)}' ({why})" for k, i, why in bad[:3]) + (" and more" if len(bad) > 3 else "")
                 + names.ref([i for _, i, _ in bad]),
                 "Write each name again: 2 to 6 words, as a reviewer says it, with no path and no tool name.", "map")
+        import ste
+        try:
+            not_ste = ste.map_problems(data)
+        except ste.SteMissing:
+            not_ste = []  # the missing skill is its own finding (skill-asd-ste100)
+        if not_ste:
+            add("map-not-ste", "route", f"{len(not_ste)} texts of the map are not strict STE (asd-ste100): {not_ste[0][:160]}" + (" and more" if len(not_ste) > 1 else "") + ".",
+                "Write each text again by applying the asd-ste100 skill, then run map.", "map")
         head = signals.pr_head(data, explicit_head)
         if head and head != data["head"]:
             add("stale-map", "route", f"The PR head moved: the map is at {data['head'][:10]}, the PR at {head[:10]}.", "Update the map and diff it.", "map")
@@ -238,6 +246,10 @@ def findings(c: context.Ctx, explicit_head: str | None, formal: bool = False) ->
     if restated:
         add("bar-restated", "route", f"{len(restated)} doc lines restate an evidence bar: {', '.join(restated[:3])}" + (" and more" if len(restated) > 3 else "") + ".",
             "Link references/evidence-bars.md, the only source of the bars, and delete the restated words.")
+    banned = copy_banned(Path(os.environ["UNDERSTANDO_DOCS_ROOT"]) if os.environ.get("UNDERSTANDO_DOCS_ROOT") else None)
+    if banned:
+        add("copy-banned", "route", f"{len(banned)} doc lines hold banned copy (references/copy-rules.md): {'; '.join(banned[:3])}" + (" and more" if len(banned) > 3 else "") + ".",
+            "Delete the slogan, or say once what happens, in the place where it applies.")
     import config
     ve = config.ve_runtime()
     if ve and config.ve_missing(ve):
@@ -367,6 +379,35 @@ def bar_restated(root: Path | None = None) -> list[str]:
         for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
             if BAR_TERMS.search(line) and "evidence-bars.md" not in line:
                 out.append(f"{f.relative_to(root)}:{n}")
+    return out
+
+
+def doc_files(root: Path) -> list[Path]:
+    """The docs that tell an agent what to write: SKILL.md, commands, references (also adapted), cards and templates."""
+    found = [root / "SKILL.md", *root.glob("commands/*.md"), *root.glob("references/**/*.md"), *root.glob("cards/*.md"), *root.glob("templates/**/*.md")]
+    return sorted({f for f in found if f.is_file()})
+
+
+def copy_banned(root: Path | None = None) -> list[str]:
+    """Banned copy in the docs (references/copy-rules.json, one list with scripts/prompt.py): a banned
+    phrase anywhere, and a fragment slogan in a quoted sentence that an agent says verbatim. The rule
+    files that list the phrases are exempt."""
+    import prompt
+    root = root or tm.ROOT
+    exempt = set(prompt.copy_rules().get("doc_exempt", []))
+    out = []
+    for f in doc_files(root):
+        rel = str(f.relative_to(root))
+        if rel in exempt:
+            continue
+        for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+            bare = re.sub(r"`[^`]*`", "", line)
+            for problem in prompt.banned_phrases(bare, kind="doc"):
+                out.append(f"{rel}:{n} {problem.split(':')[0].replace('banned copy ', '')}")
+            if line.count('"') % 2 == 0:
+                for quoted in re.findall(r'"([A-Z][^"]{0,200}\.)"', line):
+                    if prompt.fragments(quoted):
+                        out.append(f"{rel}:{n} fragment slogan ({quoted})")
     return out
 
 

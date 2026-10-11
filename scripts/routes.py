@@ -4,7 +4,9 @@
 
 One rule for every route: when the original skill is installed, use it; else use understando's
 adapted copy (references/adapted/, listed in manifest.json); else the built-in fallback line. A
-required piece (the STE lint, the explainer runtime) that is missing is a setup problem. When the
+required piece (asd-ste100, the explainer runtime) that is missing is a setup problem. asd-ste100
+is required with no adapted copy and no built-in fallback: every text that a reviewer or the user
+reads is written by applying it, and scripts/ste.py runs its lint as the mechanical gate. When the
 mode state says that Poteto Mode is active (`understando mode on --with poteto-mode`), it owns the
 reply style, the subagent rules and autonomy. understando keeps only its exceptions: discover,
 claim wording and waivers stop for the user.
@@ -83,11 +85,13 @@ def resolve_all() -> list[dict]:
         found = find_skill(name)
         copy = copies.get(name)
         row = {"skill": name, "for": r["for"], "verbs": r.get("verbs", []), "required": bool(r.get("required"))}
+        if r.get("apply"):
+            row["apply"] = r["apply"]
         if found:
             row.update(use="original", path=str(found), version=installed_version(found))
             if copy and newer(row["version"], copy.get("source_version")):
                 row["drift"] = f"the installed {name} is {row['version']}; the adapted copy is from {copy.get('source_version')}"
-        elif copy and (tm.ROOT / copy["file"]).is_file():
+        elif copy and not r.get("no_fallback") and (tm.ROOT / copy["file"]).is_file():
             row.update(use="adapted", path=copy["file"])
         elif r.get("required"):
             row.update(use="missing", fix="run understando setup")
@@ -108,7 +112,8 @@ def text(rows: list[dict]) -> str:
             continue
         where = {"original": f"skill {r['skill']} ({r.get('path')})", "adapted": f"adapted copy {r.get('path')}",
                  "built-in": f"built-in: {r.get('rule')}", "missing": f"MISSING, required: {r.get('fix')}"}[r["use"]]
-        lines.append(f"{r['skill']:<44} {where}  [{r['for']}]" + (f"  drift: {r['drift']}" if r.get("drift") else ""))
+        lines.append(f"{r['skill']:<44} {where}  [{r['for']}]" + (f"  drift: {r['drift']}" if r.get("drift") else "")
+                     + (f"\n{'':<44} apply: {r['apply']}" if r.get("apply") and r["use"] == "original" else ""))
     return "\n".join(lines)
 
 

@@ -542,12 +542,13 @@
     },
     {
       "skill": "asd-ste100",
-      "for": "the STE lint",
+      "for": "every reviewer-facing or user-facing text: claims, plain text, names, promises, the explainer narrative, prompts, reports, the PR section and journal summaries",
+      "apply": "read its SKILL.md, follow its rules while you write, then run scripts/ste.py (0 hard violations)",
       "verbs": [
-        "explain",
-        "ready"
+        "*"
       ],
-      "required": true
+      "required": true,
+      "no_fallback": true
     },
     {
       "skill": "visual-explainer",

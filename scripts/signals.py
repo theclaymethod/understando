@@ -287,19 +287,18 @@ def recommend(sig: dict, data: dict | None = None) -> list[dict]:
     rv = (sig.get("ready_branch") or {}).get("reverify") or {}
     if fixed:
         b = fixed[0]
-        add("map", f"Runs map + probe on the changed code. The review branch changed the code of the possible bug '{nm(b['invariant'])}' "
-                   f"after your answer" + (f"; {names.listing([nm(x) for x in b['claims']])} use it" if b["claims"] else "") + "."
+        add("map", f"Runs map + probe on the changed code. The review branch changed it after your answer."
+                   + (f" The claims that use it: {names.listing([nm(x) for x in b['claims']])}." if b["claims"] else "")
                    + names.ref([b["invariant"], *b["where"], *b["commits"], *b["claims"]], 10),
             label=f"Re-check the fix for '{nm(b['invariant'])}'")
     elif rv.get("claims"):
-        add("map", f"The review branch changed the code or checks of {names.listing([nm(x) for x in rv['claims']])}: "
-                   "map + probe verify them again at the review-branch tip." + names.ref(rv["claims"] + rv["verifiers"], 10),
+        add("map", f"Changed on the review branch: {names.listing([nm(x) for x in rv['claims']])}. "
+                   "map + probe check them again at the review-branch tip." + names.ref(rv["claims"] + rv["verifiers"], 10),
             label="Re-check the changed code")
     if tmap.get("fresh") is False:
         add("map", "The PR head moved after the last map." + names.ref([tmap["head"][:10], tmap["pr_head"][:10]]))
     if unfixed:
-        add("discover", f"The possible bug '{nm(unfixed[0]['invariant'])}': your answer disagrees with the code, and the review branch "
-                        "did not change that code." + names.ref([b["invariant"] for b in unfixed] + unfixed[0]["where"]),
+        add("discover", "The code disagrees with your answer. The review branch did not change that code." + names.ref([b["invariant"] for b in unfixed] + unfixed[0]["where"]),
             label=f"Discover: '{nm(unfixed[0]['invariant'])}'")
     elif d["possible_bugs"] and not fixed:
         add("discover", f"{len(d['possible_bugs'])} of your answers disagree with the code." + names.ref([x.split()[0] for x in d["possible_bugs"]]))
@@ -308,7 +307,7 @@ def recommend(sig: dict, data: dict | None = None) -> list[dict]:
     elif not d["candidates"]:
         add("discover", "No invariant was found with the user yet.")
     if not sig["last_probe"]:
-        add("probe", "No control ran yet.")
+        add("probe", "No control has run yet.")
     elif sig["untested_verifiers"]:
         add("probe", f"{names.listing([nm(x) for x in sig['untested_verifiers']])} have no control result." + names.ref(sig["untested_verifiers"]))
     open_ids = [i for v in sig["open_claims"].values() for i in v]
@@ -319,7 +318,7 @@ def recommend(sig: dict, data: dict | None = None) -> list[dict]:
     if not sig["gates"] or sig["gates"]["stale"] or not sig["gates"]["pass"]:
         failing = [k.replace("gate", "gate ") for k, v in (sig["gates"] or {}).items() if k.startswith("gate") and not v]
         add("ready", "The four gates were not computed at this head." if not sig["gates"] or sig["gates"]["stale"]
-            else f"{', '.join(failing)} fail at this head. `ready --report` shows why.", command="understando ready --report")
+            else f"{', '.join(failing)} fail at this head. `ready --report` shows why they fail.", command="understando ready --report")
     if not sig["explainer"]["present"] or sig["explainer"]["stale"]:
         add("explain", "The explainer is missing, or older than the trust map.")
     if sig["formal_targets"]:
@@ -368,7 +367,7 @@ def menu(c: context.Ctx, explicit_head: str | None = None, show_all: bool = Fals
     cmds = context.commands()
     q = prompt.make(situation(sig), "What next?",
                     [prompt.option(p["label"], p["why"], p["command"]) for p in picks],
-                    else_does="Name a verb, or say \"all verbs\" for the full list. Nothing runs until you choose.")
+                    details=["say \"all verbs\" for the full list of verbs"])
     payload = {"recommend": picks, "prompt": q, "signals": sig, **({"verbs": cmds["verbs"]} if show_all else {})}
     text = prompt.render(q) + ("\n" + table(cmds) if show_all else "")
     context.emit(c, payload, text)

@@ -29,4 +29,4 @@ Each round the user answers reshapes the tree. Settled decisions push the fronti
 
 Finding facts is your job, never the user's. When a frontier question needs a fact from the environment (files, tools, the code), dispatch a subagent to find it and do not ask the user. Do not block on it: only the questions downstream of the exploration wait for its report. Ask the rest of the frontier now. The decisions are the user's. Put each to them and wait.
 
-Done when: the frontier is empty, every branch of the design tree is visited, and nothing is left silently assumed. Do not act on the result until the user confirms you reached a shared understanding.
+Done when: the frontier is empty, every branch of the design tree is visited, and no assumption stays unspoken. Do not act on the result until the user confirms you reached a shared understanding.

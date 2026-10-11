@@ -13,7 +13,7 @@ export function SetupView() {
   return (
     <section aria-labelledby="setup-title" className="learn-setup">
       <h2 id="setup-title">Setup doctor</h2>
-      <p className="learn-muted">The doctor sends no model request. It checks git, the scratch worktree, the OS sandbox, Claude Code and Codex.</p>
+      <p className="learn-muted">The doctor checks git, the scratch worktree, the OS sandbox, Claude Code and Codex.</p>
       <button type="button" disabled={checking} onClick={() => void check(true)}>{checking ? "Checking…" : "Check again"}</button>
       {error && <p role="alert" className="learn-error">{error}</p>}
       {setup && (

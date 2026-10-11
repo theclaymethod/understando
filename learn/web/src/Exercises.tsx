@@ -96,13 +96,13 @@ function Trace({ x }: { x: Exercise }) {
     <div className="learn-card" data-testid={`exercise-${x.id}`}>
       <h3>{x.title}</h3>
       <p>{String(x.scenario)}</p>
-      {done ? <p className="learn-grade ok" data-testid="grade">You traced every step.</p> : (
+      {done ? <p className="learn-grade ok" data-testid="grade">You traced every step of the scenario.</p> : (
         <>
           <p><strong>Step {step + 1} of {steps.length}:</strong> {steps[step].prompt}</p>
           <div className="learn-col">{steps[step].choices.map((c, i) => <button key={i} type="button" className="learn-option" onClick={() => void choose(i)}>{c}</button>)}</div>
           {feedback && (
             <div className={`learn-grade ${feedback.correct ? "ok" : "no"}`} data-testid="grade">
-              {feedback.correct ? <>Correct. {String(feedback.why ?? "")} <button type="button" onClick={() => { setStep(step + 1); setFeedback(null); }}>Next step</button></> : "Not this one. Try again."}
+              {feedback.correct ? <>Correct: {String(feedback.why ?? "")} <button type="button" onClick={() => { setStep(step + 1); setFeedback(null); }}>Next step</button></> : "That choice is not the next step, so try another one."}
             </div>
           )}
         </>

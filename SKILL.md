@@ -49,7 +49,8 @@ The CLI enforces each rule that it can. The per-repo `understando.toml` (in the 
 - Invariants, claim wording and waivers are the user's call. `discover`, the reword option and the waive option of `close` stop for the user, also under full autonomy.
 - A claim reaches Proven or Formal only when the PR states it, or when it links to an invariant that the user accepted.
 - In chat, use plain names, never bare IDs, SHAs or `path:line` ([Reporting](references/working-rules.md#reporting)).
-- Write reviewer-facing prose in strict STE. Run `python3 -I <asd-ste100>/scripts/ste-lint.py <file>` until it reports 0 hard violations.
+- Write every reviewer-facing or user-facing text by applying the asd-ste100 skill (required: read its SKILL.md and follow its rules while you write), then run `python3 -I <asd-ste100>/scripts/ste-lint.py <file>` until it reports 0 hard violations ([Writing for the reader](references/working-rules.md#writing-for-the-reader)).
+- Say what happens, once, in the place where it applies. No reassurance, no slogan ([references/copy-rules.md](references/copy-rules.md)).
 - When the harness or the permission system refuses a step that the task needs, stop and report the refusal word for word.
 - When a refused command was only a diagnostic (a status check, a listing or a version probe), note it in one line and go on without it.
 - Never retry a refused command another way.

@@ -455,10 +455,10 @@ def why_line(prof: dict) -> str:
     if any(not p.startswith((".github/", "tests/", "scripts/")) for p in out):
         kinds.append("other root files")
     if out:
-        return f"the PR touches {' and '.join(kinds)} outside every project, so the checks of every project run"
+        return f"the PR touches {' and '.join(kinds)} outside every project"
     if cat.get("touched"):
         return f"the PR touches {', '.join(cat['touched'])}"
-    return "the repo has no project catalog, so every workflow counts"
+    return "the repo has no project catalog"
 
 
 def main_project(prof: dict) -> str | None:
@@ -474,14 +474,13 @@ def question(prof: dict, then: str | None = None) -> dict:
     import prompt
     n = len(prof["commands"])
     after = f" Then {then}." if then else ""
-    opts = [prompt.option(f"Approve all {n}" if n > 1 else "Approve it", f"Records your yes for {prompt.n_of(n, 'command')}; only these may run.{after}", "understando ci --approve"),
-            prompt.option("Show the list", "Prints each command with its workflow file and line. Nothing is approved.", "understando ci")]
+    opts = [prompt.option(f"Approve all {n}" if n > 1 else "Approve it", f"Records your yes for {prompt.n_of(n, 'command')}, and only these may run.{after}", "understando ci --approve"),
+            prompt.option("Show the list", "Prints each command with its workflow file and line.", "understando ci")]
     mp = main_project(prof)
     if mp and len({c.get("project") for c in prof["commands"]}) > 1:
         k = len(project_commands(prof, mp))
-        opts.append(prompt.option(f"Approve only {mp}", f"Records your yes for {prompt.n_of(k, 'command')} of {mp}; the other {n - k} stay refused, "
-                                  "so a check outside it does not run.", f"understando ci --approve --project {mp}"))
-    return prompt.make([f"CI: {prompt.n_of(n, 'command')} from your workflows, because {why_line(prof)}."],
+        opts.append(prompt.option(f"Approve only {mp}", f"Records your yes for {prompt.n_of(k, 'command')} of {mp}. The other {n - k} stay refused.", f"understando ci --approve --project {mp}"))
+    return prompt.make([f"CI: you must approve {prompt.n_of(n, 'command')} from your workflows, because {why_line(prof)}."],
                        "Approve the CI profile?", opts)
 
 

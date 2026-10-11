@@ -101,8 +101,8 @@ PY
 
 step "close --add-claim: draft a claim for a file, attach the checks that run it, offer a check"
 "$U" --repo "$REPO" --run "$R" close --add-claim wallet/messages.py | tee "$O/draft.out"
-grep -q "Its changed symbols: denial" "$O/draft.out"
-grep -q "Checks that run it: the denial amount test" "$O/draft.out"
+grep -q "The symbols that the file changes are denial" "$O/draft.out"
+grep -q "The checks that run it are the denial amount test" "$O/draft.out"
 "$U" --repo "$REPO" --run "$R" close --add-claim wallet/messages.py --name "the denial wording" \
   --text "A denial message names the amount and the balance." --promise P3 | tee "$O/added.out"
 grep -q "Added the claim 'the denial wording' to the promise 'the private messages'" "$O/added.out"

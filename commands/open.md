@@ -12,6 +12,6 @@ The anchors are stable. The levels are `#story`, `#why`, `#loop`, `#changed` (`-
 
 1. **Find the page.** `understando open <pr>` uses the local run of the PR when it exists. Else it fetches the review branch `understando/<pr>-review` from origin into a read-only worktree (`publish.fetch_review_branch`), and opens its explainer.
    - **Done when** the page is open, or the CLI printed why it cannot fetch it.
-2. **Ask one question.** "How do you want to read it?": walk me through it (recommended), ask about one part, or done.
+2. **Ask one question.** "How do you want to read it?": walk me through it (recommended), or ask about one part.
 3. **Walk through it.** `understando open <pr> --teach` is the same teach stop as the author's ([../references/adapted/teach.md](../references/adapted/teach.md)). Each turn gives one part of the page, a few sentences, and one question.
-4. **Record what is not clear.** `understando open <pr> --ask "<question>"` writes a `confusion` row with the anchor that is open to the reviewer's own run journal. Nothing is pushed. The author sees the rows only after the reviewer runs `understando publish --feedback`.
+4. **Record what is not clear.** `understando open <pr> --ask "<question>"` writes a `confusion` row with the anchor that is open to the reviewer's own run journal. The author sees the rows only after the reviewer runs `understando publish --feedback`.

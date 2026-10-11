@@ -58,6 +58,15 @@ def py(script: str, *args: str) -> int:
     return subprocess.run([sys.executable, str(S / script), *args]).returncode
 
 
+def ste_errors(data: dict) -> list[str]:
+    """The claim, plain-text, name and promise texts of the map must be strict STE (asd-ste100)."""
+    import ste
+    try:
+        return ste.map_problems(data)
+    except ste.SteMissing as exc:
+        return [str(exc)]
+
+
 def snapshot_before(c: context.Ctx) -> Path | None:
     """Keep the map as it is now in history/ before a verb rewrites it, so that map diffs against it.
     It writes a copy only when history/ has no copy with the same content."""
@@ -112,6 +121,8 @@ def do_map(c: context.Ctx, argv: list[str]) -> int:
         print("map: wrote the map in shape 2: each claim lists its checks, and a claim with no tool check lists a check of kind none")
     named = names.fill(data)
     errors = tm.validate(data)
+    if not errors:
+        errors = ste_errors(data)
     if errors:
         print("\n".join(f"{c.map}: {e}" for e in errors))
         print(f"INVALID: {len(errors)} errors")

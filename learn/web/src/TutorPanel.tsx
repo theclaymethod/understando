@@ -22,14 +22,14 @@ function ProposalCard({ p }: { p: Proposal }) {
   return (
     <div className="learn-proposal" data-testid="proposal" data-target={p.target}>
       <p><strong>The tutor asks for a graded run:</strong> {p.kind === "run-control" ? `control ${p.target} on ${p.verifier}` : `verifier ${p.target}`}. {p.description}</p>
-      <p className="learn-muted">The server resets the worktree, then runs <code>{(p.argv ?? []).join(" ")}</code> in <code>{p.cwd}</code>. Nothing runs until you confirm.</p>
+      <p className="learn-muted">The server resets the worktree, then runs <code>{(p.argv ?? []).join(" ")}</code> in <code>{p.cwd}</code>.</p>
       {state === "pending" && (
         <div className="learn-row">
           <button type="button" onClick={() => { setStateName("confirmed"); void run.start("/api/actions/confirm", { proposalId: p.id }); }}>Confirm and run</button>
           <button type="button" className="learn-link" onClick={() => setStateName("dismissed")}>Dismiss</button>
         </div>
       )}
-      {state === "dismissed" && <p className="learn-muted">Dismissed. Nothing ran.</p>}
+      {state === "dismissed" && <p className="learn-muted">You dismissed the run that the tutor asked for.</p>}
       <RunLog state={run.state} onStop={run.stop} />
     </div>
   );
@@ -121,7 +121,7 @@ export function TutorPanel() {
   return (
     <aside className="learn-tutor" aria-labelledby="tutor-title" data-testid="tutor-panel">
       <h2 id="tutor-title">Tutor</h2>
-      <p className="learn-kicker">Live answers are model-generated. They are guess tier, and they never change a verdict.</p>
+      <p className="learn-kicker">Live answers are model-generated, at guess tier.</p>
       <ProviderPicker setup={setup} />
       <label className="learn-row">Your level{" "}
         <select value={level} onChange={(e) => setLevel(e.target.value)}>{LEVELS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}</select>
@@ -130,10 +130,10 @@ export function TutorPanel() {
         {messages.length === 0 && <p className="learn-muted">Ask about a claim, a verifier or a line of code. The tutor reads and runs code in a sandboxed scratch worktree.</p>}
         {messages.map((m) => (
           <div key={m.id} className={`learn-msg ${m.role}`} data-testid={`msg-${m.role}`}>
-            {m.role === "assistant" && <p className="learn-kicker">Model-generated ({m.provider ?? ""}{m.model ? `, ${m.model}` : ""}). Guess tier.</p>}
+            {m.role === "assistant" && <p className="learn-kicker">Model-generated answer ({m.provider ?? ""}{m.model ? `, ${m.model}` : ""}, guess tier)</p>}
             <Markdownish text={m.text} />
             {(m.tools ?? []).length > 0 && (
-              <details className="learn-tools"><summary>Tutor shell and file tools ({m.tools!.length}). Guess tier.</summary>
+              <details className="learn-tools"><summary>Tutor shell and file tools ({m.tools!.length}), guess tier</summary>
                 <ul>{m.tools!.map((t) => <li key={t.id}><code>{t.name}</code> {t.status}: <code>{t.detail}</code></li>)}</ul>
               </details>
             )}

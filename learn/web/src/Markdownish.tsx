@@ -12,7 +12,7 @@ function Mermaid({ chart }: { chart: string }) {
   const [ready, setReady] = useState(false);
   useEffect(() => { loadMermaid().then(() => setReady(true)).catch(() => setReady(false)); }, []);
   if (!ready) return <pre className="learn-pre">{chart}</pre>;
-  return <MermaidBlock chart={chart} caption="Model-generated diagram. Guess tier." />;
+  return <MermaidBlock chart={chart} caption="Model-generated diagram (guess tier)" />;
 }
 
 /** Plain text with fenced code blocks. Mermaid fences render as diagrams. No HTML from the model. */

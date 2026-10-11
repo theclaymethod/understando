@@ -116,6 +116,21 @@ if python3 "$S/validate.py" "$WORK/no-promise.json" > "$WORK/none.out"; then ech
 grep -q "claim C02: in no promise" "$WORK/none.out"
 echo "validate refuses a claim in two promises and a claim in none"
 
+step "validate: a claim, a plain text or a name that is not strict STE (asd-ste100) fails"
+python3 - "$MAP" "$WORK/not-ste.json" "$WORK/not-ste-name.json" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1]))
+claim = json.loads(json.dumps(data)); claim["claims"][0]["text"] += "; the rule also holds when the balance is zero"
+name = json.loads(json.dumps(data)); name["claims"][1]["plain"]["what"] = "A seamless and robust refusal of overdrafts."
+json.dump(claim, open(sys.argv[2], "w")); json.dump(name, open(sys.argv[3], "w"))
+PY
+python3 "$S/validate.py" "$MAP" > /dev/null
+if python3 "$S/validate.py" "$WORK/not-ste.json" > "$WORK/not-ste.out"; then echo "FAIL: a claim with a semicolon passed"; exit 1; fi
+grep -q "not strict STE: semicolon" "$WORK/not-ste.out"
+if python3 "$S/validate.py" "$WORK/not-ste-name.json" > "$WORK/not-ste-name.out"; then echo "FAIL: a plain text with a marketing word passed"; exit 1; fi
+grep -q "not strict STE: marketing-adjective" "$WORK/not-ste-name.out"
+echo "validate refuses a claim with a semicolon and a plain text with a marketing word"
+
 step "controls: baseline at the head, then one scratch worktree per control"
 python3 "$S/run_control.py" --map "$MAP" --repo "$REPO" --baseline --scratch "$WORK/scratch"
 python3 "$S/run_control.py" --map "$MAP" --repo "$REPO" --all --scratch "$WORK/scratch"

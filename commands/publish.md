@@ -7,7 +7,7 @@ The user starts `publish`. It writes outside this machine, so it always asks for
 The author publishes the explainer to an orphan branch of the reviewed repo:
 
 ```bash
-understando publish 489 --dry-run   # the checks, the question and the file list; nothing is written
+understando publish 489 --dry-run   # the checks, the question and the file list
 understando publish 489             # asks; on a yes, commits and runs `git push origin understando/489-review`
 ```
 
@@ -46,4 +46,4 @@ The branch never holds `journal.jsonl`, `discover.json`, `history/`, `ci.json`, 
    - the no-hand-copy guard finds pasted code;
    - a published path, or a code ref in the trust map, matches `secret_paths`, or a file holds a key-like string;
    - the tree would hold `.github/`.
-4. **The yes.** On a terminal, publish asks. An agent asks the user the printed question, then passes the answer as `--answers FILE` with `{"answer": "yes"}`. Without a yes, nothing is written.
+4. **The yes.** On a terminal, publish asks. An agent asks the user the printed question, then passes the answer as `--answers FILE` with `{"answer": "yes"}`. Publish writes only after a yes.

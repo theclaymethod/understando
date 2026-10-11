@@ -6,14 +6,14 @@ test("find the line, trace it and close a gap are graded by code", async ({ page
   await learn.open(page, "exercises/find-line");
   const line = page.getByTestId("exercise-line-C01");
   await line.getByRole("button", { name: "Line 2", exact: true }).click();
-  await expect(line.getByTestId("grade")).toContainText("Not that line");
+  await expect(line.getByTestId("grade")).toContainText("not the line");
   await line.getByRole("button", { name: "Line 13", exact: true }).click();
   await expect(line.getByTestId("grade")).toContainText("Correct");
 
   await page.goto(`${learn.origin}/#exercises/trace`);
   const trace = page.getByTestId("exercise-X01");
   await trace.getByRole("button", { name: "It returns -1." }).click();
-  await expect(trace.getByTestId("grade")).toContainText("Not this one");
+  await expect(trace.getByTestId("grade")).toContainText("not the next step");
   await trace.getByRole("button", { name: "It raises OverdraftError." }).click();
   await expect(trace.getByTestId("grade")).toContainText("Correct");
 

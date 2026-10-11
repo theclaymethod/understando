@@ -448,7 +448,7 @@ def _run_step(c: context.Ctx, st: dict, step: str, answers: dict) -> tuple[int, 
             return 1, f"{st['branch']} has {n} commits on origin that the worktree has not pulled. Run `understando review {st['pr']}` again."
     if step == "map":
         if not c.data():
-            return 1, "No trust map yet. Write the claim ledger (commands/map.md), then run review again."
+            return 1, "The trust map does not exist yet. Write the claim ledger (commands/map.md), then run review again."
         reverify_map(c, st)
         return call(c, "map", []), None
     if step == "probe":
@@ -496,7 +496,15 @@ def _run_step(c: context.Ctx, st: dict, step: str, answers: dict) -> tuple[int, 
         code = call(c, "explain", [])
         sec = c.run / "pr-section.md"
         if sec.is_file():
-            print(f"\n== review: pr-section.md ({sec}). Paste it into the PR body yourself; understando never edits the PR.\n")
+            import ste
+            try:
+                bad = ste.hard_violations(sec.read_text(encoding="utf-8"))
+            except ste.SteMissing as exc:
+                bad = [str(exc)]
+            if bad:
+                print("\n".join(f"pr-section.md is not strict STE: {x}" for x in bad))
+                return code or 1, None
+            print(f"\n== review: pr-section.md ({sec}). Paste it into the PR body.\n")
             print(sec.read_text(encoding="utf-8"))
         return code, None
     tm.fail(f"review: unknown step {step}", 2)
@@ -587,8 +595,8 @@ def standing(c: context.Ctx, data: dict) -> str:
     summ = data.get("summary") or {}
     counts = ", ".join(f"{summ[k]} {w}" for k, w in VERDICT_WORDS if summ.get(k))
     form, items = merge_state(c, data)
-    verdict = {"not-ready": f"Not ready: {prompt.n_of(len(items), 'blocker')}.",
-               "accept": f"Ready if you accept {prompt.n_of(len(items), 'risk')}.", "ready": "Ready to merge."}[form]
+    verdict = {"not-ready": f"The merge verdict is not ready, with {prompt.n_of(len(items), 'blocker')}.",
+               "accept": f"The merge verdict is ready if you accept {prompt.n_of(len(items), 'risk')}.", "ready": "The merge verdict is ready."}[form]
     return f"Now: {counts}. {verdict}"
 
 
@@ -617,10 +625,11 @@ def drift_line(doc: list[dict]) -> str | None:
     if anchors:
         import re
         n = max([int(m) for f in anchors for m in re.findall(r"(\d+) code (?:anchors?|refs?)", f.get("summary", ""))] or [len(anchors)])
-        parts.append(f"{prompt.n_of(n, 'code excerpt')} point at code that moved; map will re-point them")
+        parts.append(f"{prompt.n_of(n, 'code excerpt')} point at code that moved, and map points them at the new code")
     if formal:
-        parts.append(f"{prompt.n_of(len(formal), 'formal model')} {'is' if len(formal) == 1 else 'are'} older than the code {'it covers' if len(formal) == 1 else 'they cover'}; the re-check runs {'it' if len(formal) == 1 else 'them'} again")
-    return ("; ".join(parts) + ".")[:1].upper() + ("; ".join(parts) + ".")[1:] if parts else None
+        parts.append(f"{prompt.n_of(len(formal), 'formal model')} {'is' if len(formal) == 1 else 'are'} older than the code {'it covers' if len(formal) == 1 else 'they cover'}, and the re-check runs {'it' if len(formal) == 1 else 'them'} again")
+    text = ". ".join(x[:1].upper() + x[1:] for x in parts) + "."
+    return text if parts else None
 
 
 def rechecked(data: dict, rv: dict, tip: str | None) -> bool:
@@ -685,8 +694,8 @@ def situation(c: context.Ctx, s: dict, st: dict, sig: dict, doc: list[dict]) -> 
         lines.append(ex)
     if s["ci"]["present"] and not s["ci"]["approved"]:
         prof = ci.load(Path(st["run"])) or {}
-        lines.append(f"CI: {prompt.n_of(s['ci']['commands'], 'command')} from your workflows, because {ci.why_line(prof)}; not approved yet." if prof
-                     else "CI: no profile yet.")
+        lines.append(f"CI: you must approve {prompt.n_of(s['ci']['commands'], 'command')} from your workflows, because {ci.why_line(prof)}." if prof
+                     else "The CI profile does not exist yet.")
     if s["locks"]:
         h = s["locks"][0]
         lines.append(f"Another agent ({h['owner']}) is writing with {h['verb']} now.")
@@ -732,22 +741,22 @@ def next_info(c: context.Ctx, st: dict, stage: str, answers: dict) -> tuple[dict
         usd = sum(float((v.get("cost") or {}).get("usd") or 0) for v in keyed)
         calls = sum(int((v.get("cost") or {}).get("model_calls") or 1) for v in keyed)
         info = {"step": "check", "does": what, "scope": scope_txt,
-                "cost": "$0, no model call" if not keyed else f"$0; {prompt.n_of(len(keyed), 'paid check')} (about ${usd:.2f}, {calls} model calls) wait for your yes",
+                "cost": "$0, no model call" if not keyed else f"$0, and {prompt.n_of(len(keyed), 'paid check')} (about ${usd:.2f}, {calls} model calls) wait for your yes",
                 "time": (prompt.human_seconds(sec) + f" (from {n} recorded runs)") if n else (took("map", "probe") or "unknown: no recorded run"),
-                "writes": "the trust map and its history in the run folder; no commit"}
+                "writes": "the trust map and its history in the run folder"}
         return info, [f"claims: {', '.join(claims)}" if claims else "", f"verifiers: {', '.join(scope or [])}" if scope else "",
                       f"formal: {', '.join(formal)}" if formal else "", f"paid: {', '.join(v['id'] for v in keyed)}" if keyed else ""]
     if stage == "trim":
         n = sum(1 for v in data.get("verifiers", []) if "unit" in str(v.get("kind", "")))
         return ({"step": "trim", "does": "Find excess code, and delete each unit test that an end-to-end test already covers",
                  "scope": f"{prompt.n_of(n, 'unit test')} and the changed code", "cost": "$0, no model call",
-                 "time": took("trim") or "unknown: no recorded run", "writes": "trim.json; each deletion is a commit on the review branch"}, [])
+                 "time": took("trim") or "unknown: no recorded run", "writes": "trim.json, and one commit on the review branch for each deletion"}, [])
     if stage == "ship":
         return ({"step": "ship", "does": "Compute the four gates, then build the explainer and the PR section",
                  "scope": "the whole trust map", "cost": "$0, no model call", "time": took("ready", "explain") or "unknown: no recorded run",
-                 "writes": "ready.json, the explainer and pr-section.md in the run folder; nothing edits the PR"}, [])
+                 "writes": "ready.json, the explainer and pr-section.md in the run folder"}, [])
     return ({"step": "close", "does": "One question for each open claim", "scope": "the open claims, riskiest first", "cost": "$0",
-             "time": "a few minutes for each claim", "writes": "the trust map; a new test is a commit on the review branch"}, [])
+             "time": "a few minutes for each claim", "writes": "the trust map, and one commit on the review branch for each new test"}, [])
 
 
 def link_proposals(c: context.Ctx, st: dict) -> list[dict]:
@@ -768,17 +777,17 @@ def merge_question(c: context.Ctx, st: dict, sit: list[str], details: list[str])
     sig_bugs = [b for b in __import__("signals").bug_changes(c, data, st.get("tip")) if b["changed"]] if data else []
     only = f"the fix for '{bug_name(data, sig_bugs[0]['invariant'])}'" if sig_bugs else "the existing items"
     word = prompt.n_of(n, "new commit") if n > 1 else "the new commit"
-    return prompt.make(sit, f"Bring {word} into the review branch? (a merge, no force-push)", [
+    return prompt.make(sit, f"Bring {word} into the review branch?", [
         prompt.option(f"Merge, then re-check everything {'it touches' if n == 1 else 'they touch'}",
-                      f"Merges the PR head into the review branch: a normal merge, no rebase, no force-push, no push. A conflict stops the merge and lists the files. Then the re-check covers the code that {'it changes' if n == 1 else 'they change'}.",
+                      f"Merges the PR head into the review branch. A conflict stops the merge and lists the files. The re-check then covers the code that {'it changes' if n == 1 else 'they change'}.",
                       f"understando review {st['pr']} --merge"),
         prompt.option(f"Show what {'the commit changes' if n == 1 else f'the {n} commits change'} first",
-                      "Lists each new commit and the files that it changes. Nothing changes.", f"understando review {st['pr']} --show-new"),
-        prompt.option(f"Skip; re-check only {only}", "Keeps the review branch as it is. The re-check uses the code that it has now.",
+                      "Lists each new commit and the files that it changes.", f"understando review {st['pr']} --show-new"),
+        prompt.option(f"Skip the merge and re-check only {only}", "Keeps the review branch as it is. The re-check uses the code that it has now.",
                       f"understando review {st['pr']} --skip-merge")],
         {"step": "merge", "does": "Merge the new PR commits into the review branch",
          "scope": f"{prompt.n_of(n, 'commit')}, {prompt.n_of(len(new['files']), 'file')}", "cost": "$0, no model call",
-         "time": "a few seconds", "writes": "one merge commit on the review branch; no push"}, details=details + [f"new: {x}" for x in new["shas"]])
+         "time": "a few seconds", "writes": "one merge commit on the review branch, with no push"}, details=details + [f"new: {x}" for x in new["shas"]])
 
 
 def link_question(c: context.Ctx, st: dict, p: dict, sit: list[str], details: list[str], left: int) -> dict:
@@ -788,15 +797,15 @@ def link_question(c: context.Ctx, st: dict, p: dict, sit: list[str], details: li
     claim = names.of(data, p["claim"])
     words = " ".join(p["words"].split()[:9])
     return prompt.make(sit[:4] + [f"The review branch adds a test that {words}. It most likely checks '{claim}'."
-                                  + (f" {prompt.n_of(left - 1, 'other new test')} wait." if left > 1 else "")],
+                                  + (f" {prompt.n_of(left - 1, 'other new test')} {'waits' if left == 2 else 'wait'}." if left > 1 else "")],
                        f"Link the new test to '{claim}'?", [
-        prompt.option("Link it, then probe it", f"Adds the test as a check of '{claim}', with one planted bug: the code as it was before the fix. "
-                      "The claim moves only after probe shows the test goes red on that bug.",
+        prompt.option("Link it, then probe it", f"Adds the test as a check of '{claim}'. The planted bug is the code as it was before the fix. "
+                      "The claim moves only after probe shows that the test goes red on that bug.",
                       f"understando review {st['pr']} --link yes"),
         prompt.option("Do not link it", "Keeps the test out of the trust map. The claim keeps its old evidence.", f"understando review {st['pr']} --link no")],
         {"step": "link", "does": "Link the new test to its claim", "scope": "one test", "cost": "$0, no model call", "time": "about 1 s",
-         "writes": "the trust map; no commit"},
-        else_does="Name another claim for it, or tell me what to do instead. Nothing runs until you say.",
+         "writes": "the trust map"},
+        else_does="Name another claim for it, or tell me what to do instead.",
         details=details + [f"test {p['test']} in {p['file']}; claim {p['claim']} (score {p['score']}); command {' '.join(p['argv'])}"]) | {"test": p["test"]}
 
 
@@ -814,11 +823,11 @@ def teach_question(c: context.Ctx, st: dict, sit: list[str], details: list[str],
                                   f"understando explain --html; then understando review {pr} --teach"))
     opts.append(prompt.option("Walk me through the change", "Opens the explainer one part at a time: the story, the loop, what changed, the weakest promises. "
                               "In chat: at most four ideas, the code by refs, and your questions.", f"understando review {pr} --teach"))
-    opts.append(prompt.option(f"Go on to {STAGE_NAME.get(nxt_stage or 'close', 'close')}", "Skips the walk-through. You can ask for it later.",
+    opts.append(prompt.option(f"Go on to {STAGE_NAME.get(nxt_stage or 'close', 'close')}", "Skips the walk-through and moves to the next stop.",
                               f"understando review {pr} --skip-teach"))
     return prompt.make(sit, "Walk through the change before the next stop?", opts,
                        {"step": "teach", "does": "Walk through the change with the explainer", "scope": "two to four ideas, weakest promise first",
-                        "cost": "$0, no model call", "time": "a few minutes, at your pace", "writes": "nothing"}, details=details)
+                        "cost": "$0, no model call", "time": "a few minutes, at your pace", "writes": "no files"}, details=details)
 
 
 def build_prompt(c: context.Ctx, st: dict, s: dict, sig: dict, answers: dict, doc: list[dict] | None = None) -> dict:
@@ -830,12 +839,18 @@ def build_prompt(c: context.Ctx, st: dict, s: dict, sig: dict, answers: dict, do
     prof = ci.load(c.run)
     if st.get("failed"):
         f = st["failed"]
-        return prompt.make(sit[:4] + [f"The last {f['step']} step stopped: {f['plain']}"], f"Retry the {f['step']} step?", [
-            prompt.option(f"Retry {f['step']}", "Runs the step again from the start.", f"understando review {pr} --go"),
-            prompt.option(f"Skip {f['step']}", "Marks the step as skipped and goes on. The report says that it was skipped.",
-                          f"understando review {pr} --skip {f['step']}")],
-            {"step": f["step"], "does": f"Run {f['step']} again", "scope": "the same scope", "cost": "$0, no model call",
-             "time": "as before", "writes": "the same files as before"}, details=details + [f"failed: {f['reason']}"])
+
+        def retry(why: str) -> dict:
+            return prompt.make(sit[:4] + [f"The last {f['step']} step stopped: {why}"], f"Retry the {f['step']} step?", [
+                prompt.option(f"Retry {f['step']}", "Runs the step again from the start.", f"understando review {pr} --go"),
+                prompt.option(f"Skip {f['step']}", "Marks the step as skipped and goes on. The report says that it was skipped.",
+                              f"understando review {pr} --skip {f['step']}")],
+                {"step": f["step"], "does": f"Run {f['step']} again", "scope": "the same scope", "cost": "$0, no model call",
+                 "time": "as before", "writes": "the same files as before"}, details=details + [f"failed: {f['reason']}"])
+        try:
+            return retry(f["plain"])
+        except ValueError:  # the reason came from a tool, and it breaks a copy rule: the details hold it word for word
+            return retry("its output holds the reason, and the details repeat it")
     new = st.get("pr_new") or {}
     if new.get("commits") and (st.get("merge") or {}).get("head") != st["head"]:
         return merge_question(c, st, sit, details)
@@ -844,8 +859,8 @@ def build_prompt(c: context.Ctx, st: dict, s: dict, sig: dict, answers: dict, do
         teach = [] if (st.get("teach") or {}).get("turn") else [
             prompt.option("Walk me through the change", "Opens the explainer one part at a time, with at most four ideas and the code by refs.",
                           f"understando review {pr} --teach")]
-        return prompt.make(sit, "The review is complete. What next?",
-                           teach + [prompt.option("Show the PR section", "Prints the text for you to paste into the PR body. understando never edits the PR.",
+        return prompt.make(sit, "All stops of the review are done: what next?",
+                           teach + [prompt.option("Show the PR section", "Prints the text for you to paste into the PR body.",
                                           f"cat {sec}"),
                             prompt.option("Review again", "Resolves the PR again, pulls the review branch, and asks the next question.",
                                           f"understando review {pr}")], details=details)
@@ -878,12 +893,12 @@ def build_prompt(c: context.Ctx, st: dict, s: dict, sig: dict, answers: dict, do
             q["details"] = details + q.get("details", [])
             prompt.check(q)
             return q
-    opts = [prompt.option(f"Run {STAGE_NAME[stage]}", nxt["does"] + ".", f"understando review {pr} --go")]
+    opts = [prompt.option(f"Run {STAGE_NAME[stage]}", "Runs this stop as the Next line says, then asks the next question.", f"understando review {pr} --go")]
     if stage == "check":
         import opener
         page = opener.status(c.run, c.data())
         if page["present"] and page["stale"]:
-            opts.append(prompt.option("Rebuild the explainer first", f"The page is out of date ({page['why']}). Builds it again; nothing else runs.",
+            opts.append(prompt.option("Rebuild the explainer first", f"Builds the page again, because it is out of date ({page['why']}).",
                                       "understando explain --html"))
         keyed = paid_in(c, c.data() or {}, None if probe_scope(c, st) is None else set(probe_scope(c, st) or []),
                         answers.get("paid") or []) if c.data() else []
@@ -891,7 +906,7 @@ def build_prompt(c: context.Ctx, st: dict, s: dict, sig: dict, answers: dict, do
             ids = [v["id"] for v in keyed]
             usd = sum(float((v.get("cost") or {}).get("usd") or 0) for v in keyed)
             opts.append(prompt.option(f"Also run the {prompt.n_of(len(keyed), 'paid check')} (about ${usd:.2f})",
-                                      "Runs them with the model key from the key file, after this yes only.",
+                                      "Runs them with the model key from the key file.",
                                       f"understando review {pr} --go --answers <file with {{\"paid\": {json.dumps(ids)}}}>"))
     opts.append(prompt.option("Run through", "Runs every stop that needs no decision. It still stops for each open claim, the CI approval "
                               "and each paid step.", f"understando review {pr} --through"))
@@ -916,7 +931,7 @@ def teach_turn(c: context.Ctx, st: dict, no_open: bool, page_dir: Path | None = 
     st["teach"] = t
     i = t.get("turn", 0)
     if i >= len(TEACH_LEVELS):
-        return "The walk-through is done. Ask about any part, or go on to the next stop."
+        return "Ask about any part, or go on to the next stop."
     level, anchor = TEACH_LEVELS[i]
     order = derive.promises_in_order(data) if data.get("promises") else []
     if anchor is None and order:
@@ -935,7 +950,7 @@ def teach_turn(c: context.Ctx, st: dict, no_open: bool, page_dir: Path | None = 
     out = [lead]
     if i == 0:
         picks = order[:4]
-        out.append(f"{len(picks)} ideas matter most in this PR; the rest can wait." if picks else "The map has no promises yet.")
+        out.append(f"{len(picks)} ideas matter most in this PR." if picks else "The map has no promises yet.")
         for n, (p, strength, cids) in enumerate(picks, 1):
             weak = claims[cids[0]]
             ver = next((v for v in vers if weak["id"] in v["claims"] and v.get("state") == "proven"), None) \
@@ -1206,7 +1221,7 @@ def _main(c: context.Ctx, argv: list[str], capture: bool = False):
             st["done"] = [x for x in st.get("done", []) if x not in ("map", "probe", "formal")]
             journal.append(c.journal, "decision", f"review: merge the PR head {st['head'][:10]} into {st['branch']} (the user's pick)", c.repo,
                            result=f"{before_tip[:10]} -> {what[:10]}, no rebase, no push")
-            out_lines.append("Merged the new PR commits into the review branch (a normal merge; nothing was pushed). The re-check covers what they touch.")
+            out_lines.append("Merged the new PR commits into the review branch. The re-check covers what they touch.")
     if answers.get("merge") == "skip" or args.skip_merge:
         st["merge"] = {"head": st["head"], "decision": "skipped", "at": tm.now()}
         journal.append(c.journal, "decision", f"review: skip the merge of {st['head'][:10]} (the user's pick)", c.repo)
@@ -1315,13 +1330,13 @@ def _main(c: context.Ctx, argv: list[str], capture: bool = False):
             code, stop = run_step(c, st, step, answers)
         except Exception as exc:  # noqa: BLE001
             code, stop = 1, None
-            st["failed"] = {"step": step, "reason": f"{type(exc).__name__}: {exc}", "plain": "it hit an internal error. The details say which.", "at": tm.now(), "tip": st.get("tip")}
+            st["failed"] = {"step": step, "reason": f"{type(exc).__name__}: {exc}", "plain": "it hit an internal error, and the details name it", "at": tm.now(), "tip": st.get("tip")}
         st.setdefault("timings", {})[step] = round(time.monotonic() - t0, 1)
         if code == 0 and not stop:
             st["done"] = st.get("done", []) + [step]
             ran.append(step)
         elif code and not st.get("failed"):
-            st["failed"] = {"step": step, "reason": stop or f"{step} exited {code}", "plain": (stop or f"it exited with code {code}; its output is above.").rstrip(".") + ".",
+            st["failed"] = {"step": step, "reason": stop or f"{step} exited {code}", "plain": (stop or f"it exited with code {code}, and its output is above").rstrip(".") + ".",
                             "at": tm.now(), "tip": st.get("tip")}
         st["next"] = next((x for x in STEPS if x not in st["done"]), None)
         save_state(run, st)
@@ -1341,7 +1356,7 @@ def _main(c: context.Ctx, argv: list[str], capture: bool = False):
     if report:
         print("\n" + "\n".join(report))
     if st["next"] is None:
-        print("\nreview: every step is done. The user merges; understando opens no PR and edits no PR.")
+        print("\nreview: every step is done. The user merges the PR.")
         return done(code, {"done": st["done"], "report": report}, "")
     sig = signals.collect(c, ctx["head"])
     s = summary(c, st, sig, doc, ci.load(run), cfg)

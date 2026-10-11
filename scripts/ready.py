@@ -48,20 +48,14 @@ COLD = ("Cold read (optional, paid): a model of a different family reads the exp
         "Show the cost and wait for a clear yes. understando makes no model call.")
 
 
-def ste_lint() -> str | None:
-    for base in (Path.home() / ".agents/skills/asd-ste100", Path.home() / ".claude/skills/asd-ste100"):
-        if (base / "scripts/ste-lint.py").is_file():
-            return str(base / "scripts/ste-lint.py")
-    return None
-
-
 def lint_hard(path: Path) -> tuple[int | None, str]:
-    lint = ste_lint()
-    if not lint:
-        return None, "the STE lint (asd-ste100) is not installed"
-    out = subprocess.run([sys.executable, "-I", lint, str(path)], capture_output=True, text=True)
-    m = re.search(r"\((\d+) hard", out.stdout)
-    return (int(m.group(1)) if m else None), out.stdout.strip().splitlines()[-2] if out.stdout.strip() else out.stderr.strip()
+    """The hard violations of the asd-ste100 lint (scripts/ste.py) in one file."""
+    import ste
+    try:
+        bad = ste.hard_violations(path.read_text(encoding="utf-8"))
+    except ste.SteMissing as exc:
+        return None, str(exc)
+    return len(bad), (f"{len(bad)} hard violations: " + "; ".join(bad[:3])) if bad else "0 hard violations"
 
 
 def gate4(c: context.Ctx, data: dict) -> dict:

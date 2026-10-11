@@ -66,7 +66,7 @@ function Compiled({ chapter, anchor }: { chapter: Chapter; anchor?: string }) {
     requestAnimationFrame(() => document.getElementById(anchor)?.scrollIntoView({ block: "start" }));
   }, [Content, anchor]);
   if (error) return <p role="alert" className="learn-error">This chapter did not render: {error}</p>;
-  if (!Content) return <p role="status">Loading the chapter.</p>;
+  if (!Content) return <p role="status">Loading the chapter…</p>;
   return <Content components={components} />;
 }
 
@@ -79,10 +79,10 @@ export function useChapters() {
 
 export function ChapterView({ data, id, anchor, children }: { data: Chapters; id: string; anchor?: string; children?: React.ReactNode }) {
   const chapter = useMemo(() => data.chapters.find((c) => c.id === id) ?? data.chapters[0], [data, id]);
-  if (!chapter) return <p>No chapters.</p>;
+  if (!chapter) return <p>This run has no chapters.</p>;
   return (
     <article className="learn-chapter" aria-labelledby="chapter-title" data-chapter={chapter.id}>
-      <p className="learn-kicker">Pre-generated chapter. Fact tier: the trust map and the recorded runs.</p>
+      <p className="learn-kicker">This chapter is pre-generated at fact tier, from the trust map and the recorded runs.</p>
       <h1 id="chapter-title" className="learn-sr">{chapter.title}</h1>
       {data.css && <style>{data.css}</style>}
       <Boundary resetKey={chapter.id}><Compiled chapter={chapter} anchor={anchor} /></Boundary>

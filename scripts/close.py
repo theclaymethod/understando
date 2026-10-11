@@ -91,13 +91,13 @@ def add_check(c: context.Ctx, data: dict, claim: dict, a: dict, kind: str, repla
     import review
     bad = review.guard(c.run, sorted(a.get("files", {})), config.load(repoinfo.repo_name(repo)))
     if bad:
-        return f"{claim['id']}: " + " ".join(bad) + " Nothing went to the ready branch."
+        return f"{claim['id']}: " + " ".join(bad)
     import ci
     prof = ci.load(c.run)
     cmd = a["verifier"]["command"]
     if prof and not ci.allowed_by(prof, cmd["argv"], cmd.get("cwd", ".")):
         return (f"{claim['id']}: refuse: the drafted command `{' '.join(cmd['argv'])}` is not in the approved CI profile. "
-                "Use a command of the repo's reviewed CI. Nothing went to the ready branch.")
+                "Use a command of the repo's reviewed CI.")
     vid, kid = ops.next_id(data, "V"), ops.next_id(data, "K")
     spec = a["verifier"]
     v = {"id": vid, "kind": spec.get("kind", kind), "claims": [claim["id"]], "tier": "fact",
@@ -135,7 +135,7 @@ def add_check(c: context.Ctx, data: dict, claim: dict, a: dict, kind: str, repla
             base = (tv.get("baseline") or {}).get("status")
             got = (tk.get("result") or {}).get("status")
             return (f"{claim['id']}: the new {kind} check did not prove itself (baseline {base}, control {got}). "
-                    "Nothing went to the ready branch. Fix the draft and answer again.")
+                    "Fix the draft and answer again.")
         ops.publish(clone, data, commit)
     data["verifiers"].append(tv)
     data["controls"].append(tk)
@@ -228,6 +228,11 @@ def apply_answer(c: context.Ctx, data: dict, a: dict) -> str:
             data["controls"] = [k for k in data["controls"] if k["verifier"] not in gone]
             verdicts.apply(data)
             return f"{claim['id']}: dropped."
+        import ste
+        try:
+            ste.require([a["text"], *[x for x in (a.get("plain") or {}).values() if isinstance(x, str)]], f"close: {claim['id']}: the new wording")
+        except (ValueError, ste.SteMissing) as exc:
+            tm.fail(f"{exc} Word the claim again.", 2)
         claim["text"] = a["text"]
         if a.get("plain"):
             claim["plain"] = a["plain"]
@@ -264,24 +269,23 @@ def kind_of(choice: str) -> str:
 
 
 CHOICE = {
-    "mechanical": ("Add a mechanical check", "I write one grep or line-count check, and probe plants a control for it. "
-                   "The claim becomes Backed. $0, no model call, seconds to run."),
-    "evidence": ("Attach recorded evidence", "I attach the recorded run or review that shows it. The claim becomes Backed. $0, no model call."),
-    "property": ("Add a property test", "I draft one property test and one planted bug. Probe keeps the test only when it goes red on the bug; "
-                 "then the claim becomes Proven. $0, no model call."),
-    "e2e": ("Add an e2e test", "I draft one e2e test and one planted bug. Probe keeps the test only when it goes red on the bug; "
-            "then the claim becomes Proven. $0, no model call."),
-    "reword": ("Reword it", "I propose a wording that the code shows, and you approve the words. Nothing runs."),
-    "waive": ("Waive it", "You give the reason. The ready checklist and the PR section show the waiver. Nothing runs."),
-    "formalize": ("Formalize it", "A TLA+ model check or a Lean proof (tier {tier}). It takes the longest; you start it."),
-    "browser-e2e": ("Record a browser e2e with a video", "I draft one e2e run in a real browser against the real app, with video and "
-                    "screenshots on, and one planted break of the UI. Probe keeps it only when it catches the break. Its bar is a browser video."),
-    "eval": ("Run an eval with a degraded control", "You run the eval, and one planted-degraded variant: an ablated prompt, a removed rule, "
-             "a weaker model or a shuffled input. I record both scores. The eval meets its bar only when the variant scores worse."),
+    "mechanical": ("Add a mechanical check", "I write one grep or line-count check, and probe plants a control for it. The claim then becomes Backed."),
+    "evidence": ("Attach recorded evidence", "I attach the recorded run or review that shows it. The claim then becomes Backed."),
+    "property": ("Add a property test", "I draft one property test and one planted bug. Probe keeps the test only when it goes red on the bug. "
+                 "The claim then becomes Proven."),
+    "e2e": ("Add an e2e test", "I draft one e2e test and one planted bug. Probe keeps the test only when it goes red on the bug. "
+            "The claim then becomes Proven."),
+    "reword": ("Reword it", "I propose a wording that the code shows, and you approve the words."),
+    "waive": ("Waive it", "You give the reason, and the ready checklist and the PR section show the waiver."),
+    "formalize": ("Formalize it", "A TLA+ model check or a Lean proof (tier {tier}). It takes the longest, and you start it."),
+    "browser-e2e": ("Record a browser e2e with a video", "I draft one e2e run in a real browser with video and screenshots on. "
+                    "It runs against the real app, with one planted break of the UI. Probe keeps it only when it catches the break."),
+    "eval": ("Run an eval with a degraded control", "You run the eval and one planted-degraded variant: an ablated prompt, a removed rule, "
+             "a weaker model or a shuffled input. I record both scores, and the eval meets its bar only when the variant scores worse."),
     "fix-check": ("Fix '{check}'", "I draft one test that replaces '{check}', and one planted bug. Probe keeps the test only when it "
-                  "catches the bug; then the claim loses its weakest check. $0, no model call."),
-    "drop-check": ("Drop '{check}'", "It backs nothing: it cannot fail, or it fails. The claim keeps its other checks, or it shows that no "
-                   "check exists. Nothing runs."),
+                  "catches the bug. The claim then loses its weakest check."),
+    "drop-check": ("Drop '{check}'", "It backs nothing, because it cannot fail or it fails. The claim keeps its other checks, "
+                   "or it shows that no check exists."),
 }
 COST_ORDER = ["mechanical", "evidence", "reword", "waive", "property", "e2e", "formalize"]
 
@@ -322,14 +326,14 @@ def weakness(claim: dict, data: dict) -> str:
     row = derive.claim_rows(data).get(claim["id"]) or {}
     w = row.get("weakest")
     if reason.startswith("code disagrees"):
-        why = "the code disagrees with an invariant that you confirmed; a fix is pending"
+        why = "the code disagrees with an invariant that you accepted, and a fix is pending"
     elif not w:
         why = "no check backs it"
     else:
-        why = w["text"].rstrip(".") + "; " + w["action"][0].lower() + w["action"][1:].rstrip(".")
+        why = w["text"].rstrip(".") + ". " + w["action"].rstrip(".")
         ids.append(w["id"])
     if row.get("n", 0) > 1:
-        why = f"{row['summary'].rstrip('.')}. " + why
+        why = f"{row['summary'].rstrip('.')}. " + why[:1].upper() + why[1:]
     return f"Why it is weak: {why}." + names.ref(list(dict.fromkeys(ids)))
 
 
@@ -369,11 +373,11 @@ def question(data: dict, pr: str | None = None) -> dict | None:
     return prompt.make([names.scrub(f"Open claim 1 of {len(q)}, {words}: {what}") + names.ref([claim["id"]]),
                         weakness(claim, data)],
                        f"How do we close '{name}'?", opts,
-                       {"step": "close", "does": "Close this claim with your choice; a drafted check must go green, then red on its planted bug",
-                        "scope": "this claim only", "cost": "$0, no model call",
-                        "time": "about a minute for each drafted check", "writes": "trust-map.json; a kept check is a commit on the ready branch"},
-                       else_does="Another option (" + ", ".join(CHOICE[x][0].lower() for x in COST_ORDER if x not in order[:3] and x in CHOICE)
-                       + "), skip it for now, or drop it.") | {"claim": claim["id"]}
+                       {"step": "close", "does": "Close this claim with your choice, and a drafted check must go green and then red on its planted bug",
+                        "scope": "this claim", "cost": "$0, no model call",
+                        "time": "about a minute for each drafted check", "writes": "trust-map.json, and a commit on the ready branch for each kept check"},
+                       details=["other options: " + ", ".join(CHOICE[x][0].lower() for x in COST_ORDER if x not in order[:3] and x in CHOICE)
+                                + ", skip it for now, or drop it"]) | {"claim": claim["id"]}
 
 
 def exercising(c: context.Ctx, data: dict, path: str) -> list[dict]:
@@ -403,13 +407,13 @@ def add_claim(c: context.Ctx, data: dict, path: str, a: argparse.Namespace) -> i
     who = names.listing([v.get("name") or v["id"] for v in checks])
     if not (a.name and a.text):
         changed = names.listing(row["names"][:6] + ([f"{len(row['names']) - 6} more"] if len(row["names"]) > 6 else []))
-        lines = [f"Draft claim for {path}.",
-                 f"Its changed symbols: {changed or 'none that a parser finds'}.",
-                 (f"Checks that run it: {who}." if checks else "No check runs it yet. After you add the claim, close offers to add one."),
+        lines = [f"The file {path} has no claim yet.",
+                 f"The symbols that the file changes are {changed or 'none that a parser finds'}.",
+                 (f"The checks that run it are {who}." if checks else "No check runs it yet. After you add the claim, close offers to add one."),
                  "Write the claim in your words: one statement that a reviewer can accept or reject, and a plain name of 2 to 6 words.",
                  f"Then run: understando close --add-claim {path} --name '<name>' --text '<claim>' [--promise <id>]"]
         q = prompt.make([names.scrub(lines[0]), names.scrub(lines[1]), names.scrub(lines[2])], "What does this file promise, in your words?",
-                        [prompt.option("Word the claim", "You give the name and the statement. I attach the checks that run the file. Nothing runs."),
+                        [prompt.option("Word the claim", "You give the name and the statement, and I attach the checks that run the file."),
                          prompt.option("Skip it", "The file stays in the unclaimed list.")],
                         {"step": "close", "does": "Add one claim for a file that no claim covers", "scope": path, "cost": "$0, no model call",
                          "time": "seconds", "writes": "trust-map.json"})
@@ -419,6 +423,12 @@ def add_claim(c: context.Ctx, data: dict, path: str, a: argparse.Namespace) -> i
     why = onto.name_problem(a.name, [a.what or "", a.text])
     if why:
         print(f"close: refuse: the name '{a.name}' is not plain: {why}.")
+        return 2
+    import ste
+    try:
+        ste.require([a.name, a.text, a.what or ""], "close --add-claim")
+    except (ValueError, ste.SteMissing) as exc:
+        print(f"close: refuse: {exc} Word the claim again.")
         return 2
     onto.upgrade(data)
     owner = onto.promise_of(data)

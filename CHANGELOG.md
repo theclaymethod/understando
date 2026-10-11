@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Copy rules (`references/copy-rules.md`, data in `references/copy-rules.json`): the CLI says what happens, once, in the place where it applies. A prompt that holds a reassurance, a slogan, a stock word, a fragment sentence of 4 words or fewer, or a sentence that repeats does not render (`prompt.banned_copy`). `doctor` flags the same phrases in the docs (`copy-banned`). The "Something else" option has the label "Something else" and one fixed line.
+- asd-ste100 is required, with no adapted copy: the agent applies it while it writes each text that a reader sees. `scripts/ste.py` runs its lint as a gate on the prompt render, on `map` and `validate.py` (claims, plain text, names, promises), on `discover answer`, on `close` wording, on the PR section and on the README of `publish`. `understando routes` shows it for every verb, and `doctor` flags it when it is missing.
 - A claim holds parts, one for each statement, each with its own checks. A part is as strong as its strongest check; a claim is as strong as its weakest part. A check that missed its bug is a flag with an action, not a score. Each TLA+ property is its own check (`regroup.py split_checks`, the `split:` lint).
 - Evidence bars for each surface (frontend, backend, llm, other): `references/evidence-bars.md` is their only source. The page, the PR section, the review lines, the ready gate 1, close and publish use them. doctor flags a doc that restates a bar.
 

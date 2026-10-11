@@ -218,7 +218,7 @@ def check_action(data: dict, v: dict, claim: dict, result: str, fix: str | None)
         return "No action: it caught its planted bug."
     if result == "none":
         base = ("Only the PR text states it. Add a check (understando close), or accept the risk." if claim.get("stated")
-                else "No check exists, and the PR text does not state it. Decide if it matters. To close it, add a check (understando close).")
+                else "No check exists, and the PR text does not state it. Decide whether it matters, or add a check to close it (understando close).")
         return base + (f" The cheapest way: {fix}" if fix else "")
     if result == "missed":
         other = same_bug_catcher(data, v)

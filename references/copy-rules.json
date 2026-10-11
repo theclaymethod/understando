@@ -1,0 +1,38 @@
+{
+  "schema": "understando.copy-rules/1",
+  "about": "The banned copy of understando. scripts/prompt.py reads this file when it renders a prompt, and `understando doctor` reads it for the docs. The rules are explained in references/copy-rules.md. Patterns are case-insensitive regular expressions.",
+  "fragment_max_words": 4,
+  "phrases": [
+    {"id": "nothing-claim", "in": ["prompt", "doc"], "fields": "all",
+     "pattern": "\\bnothing\\b(?:\\s+\\w+)?\\s+(?:runs?|is|are|was|were|changes?|happens|gets|goes|will|else|more|new|ran|moved)\\b",
+     "say": "A reassurance about what does not happen. Name what the step writes in the Writes field of the Next line, once."},
+    {"id": "until-you-say", "in": ["prompt", "doc"], "fields": "all",
+     "pattern": "\\buntil you (?:say|ask|choose|confirm|approve|pick|decide|tell)\\b",
+     "say": "A slogan. Every prompt already waits for the pick."},
+    {"id": "only-copies", "in": ["prompt", "doc"], "fields": "all",
+     "pattern": "\\bonly copies\\b|\\bit just copies\\b",
+     "say": "A reassurance. Say what the control does."},
+    {"id": "browser-only", "in": ["prompt", "doc"], "fields": "all",
+     "pattern": "\\bsaved in this browser\\b|\\bin this browser only\\b|\\bstays in your browser\\b",
+     "say": "A reassurance. Say where the data is, only where it changes a decision."},
+    {"id": "tacked-on-no", "in": ["prompt"], "fields": "outside-next",
+     "pattern": "\\bno (?:commit|push|force-push|rebase|model call)s?\\b",
+     "say": "A \"no X\" tacked onto an option, a question or a situation line. Put the fact in the Writes or Cost field of the Next line."},
+    {"id": "tool-promise", "in": ["prompt"], "fields": "all",
+     "pattern": "\\b(?:understando|this tool|the cli|i) never\\b",
+     "say": "A promise about the tool. Say what the step does."},
+    {"id": "stock-word", "in": ["prompt", "doc"], "fields": "all",
+     "pattern": "\\b(?:just|simply|easily|merely|basically|essentially|obviously|of course|actually|literally|don'?t worry|do not worry|rest assured|no worries|feel free to|please note|note that|keep in mind|hassle-free|safely)\\b",
+     "say": "A stock word. Delete it."},
+    {"id": "run-in-label", "in": ["prompt", "doc"], "fields": "all",
+     "pattern": "(?:^|[.!?]\\s+)(?:in plain (?:words|terms|english)|in short|in other words|put simply|why this matters|why it matters|the bottom line|bottom line|the short version|the upshot|heads up|key takeaway|takeaway|tip|note)\\s*[:.,\\u2014\\u2013-]",
+     "say": "A run-in label. Write the sentence that the label introduces."},
+    {"id": "comfort", "in": ["prompt", "doc"], "fields": "all",
+     "pattern": "\\bno surprises\\b|\\bnothing to worry about\\b|\\b(?:completely|totally|perfectly) safe\\b|\\bzero risk\\b|\\byou(?:'re| are) in control\\b|\\byou stay in control\\b",
+     "say": "A comfort line. Delete it."}
+  ],
+  "doc_exempt": [
+    "references/copy-rules.md",
+    "references/adapted/unslop-core.md"
+  ]
+}

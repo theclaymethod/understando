@@ -348,7 +348,7 @@ async fn predict(State(app): State<Shared>, Json(body): Json<Value>) -> Response
         let grade = json!({"exercise": ex, "prediction": prediction, "actual": status, "graded": graded, "correct": correct,
             "cannotFail": cannot_fail, "tier": "fact",
             "message": if !graded { "The run did not give red or green, so it grades nothing. Read the output.".to_string() }
-                else if correct { format!("Correct. The check went {status}.") } else { format!("Not this time. The check went {status}.") }});
+                else if correct { format!("Correct: the check went {status}.") } else { format!("Not this time: the check went {status}.") }});
         let ex2 = ex.clone();
         let g2 = grade.clone();
         tokio::spawn(async move {
@@ -384,7 +384,7 @@ async fn find_line(State(app): State<Shared>, Json(body): Json<Value>) -> Respon
     let attempt = json!({"path": path, "line": line, "correct": correct, "at": doctor::now()});
     let _ = app.mywork.record_attempt(&ex, "find-line", attempt).await;
     Json(json!({"correct": correct, "tier": "fact", "answer": if correct { json!(refs) } else { Value::Null },
-        "message": if correct { "Correct. That line is in the code that the claim names." } else { "Not that line. Look again, or ask the tutor for a hint." }}))
+        "message": if correct { "Correct: that line is in the code that the claim names." } else { "That is not the line, so look again or ask the tutor for a hint." }}))
     .into_response()
 }
 
@@ -465,7 +465,7 @@ async fn close_gap_run(State(app): State<Shared>, Json(body): Json<Value>) -> Re
         let passed = result.get("passed").and_then(Value::as_bool) == Some(true);
         let grade = json!({"exercise": id, "correct": passed, "tier": "fact",
             "message": if passed { "Your test passes at the PR head and fails on the planted bug. The gap has a check now." }
-                else { "Not yet. The test must pass at the head and fail on the planted bug." }});
+                else { "Not yet: the test must pass at the head and fail on the planted bug." }});
         let g = grade.clone();
         tokio::spawn(async move {
             let mut a = g;
@@ -536,7 +536,7 @@ async fn explain_back(State(app): State<Shared>, Json(body): Json<Value>) -> Res
             let rec = json!({"text": text, "grade": grade, "provider": provider.id(), "model": a.model, "tier": "guess", "at": doctor::now()});
             let _ = app.mywork.record_attempt(&format!("explain-{claim_id}"), "explain-back", rec).await;
             Json(json!({"grade": grade, "tier": "guess", "provider": provider.id(), "model": a.model,
-                "label": "Model-generated grade. It is a guess, not a fact. It does not change a verdict."}))
+                "label": "Model-generated grade (guess tier)"}))
             .into_response()
         }
         Err(e) => err(StatusCode::BAD_GATEWAY, &e),

@@ -32,6 +32,6 @@ The explainer page holds the story, the loop, what changed and the promises. Do 
 
 ## The reviewer's questions
 
-For a reviewer, `understando open <pr> --ask "<question>"` records the question as a `confusion` row with its anchor in the reviewer's own run journal. Nothing is pushed. The author sees it only after the reviewer runs `understando publish --feedback`.
+For a reviewer, `understando open <pr> --ask "<question>"` records the question as a `confusion` row with its anchor in the reviewer's own run journal. The author sees it only after the reviewer runs `understando publish --feedback`.
 
 Teaching does not give permission to change the code.

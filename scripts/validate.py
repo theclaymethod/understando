@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Validate a trust map against schema/trust-map.schema.json and the cross-reference rules.
+The claim, plain-text, name and promise texts must also be strict STE (asd-ste100, scripts/ste.py).
 
     python3 scripts/validate.py runs/<repo>/<pr>/trust-map.json
 
@@ -18,7 +19,14 @@ import tm  # noqa: E402
 def main(argv: list[str]) -> int:
     if len(argv) != 1:
         tm.fail(__doc__.strip())
-    errors = tm.validate(tm.load(argv[0]))
+    data = tm.load(argv[0])
+    errors = tm.validate(data)
+    if not errors:
+        import ste
+        try:
+            errors = ste.map_problems(data)
+        except ste.SteMissing as exc:
+            errors = [str(exc)]
     for error in errors:
         print(f"{argv[0]}: {error}")
     if errors:

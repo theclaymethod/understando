@@ -50,7 +50,7 @@ export function RunLog({ state, onStop }: { state: RunState; onStop?: () => void
   const status = typeof r?.status === "string" ? r.status : "";
   return (
     <div className="learn-run" aria-live="polite" data-testid="run-log">
-      <p className="learn-kicker">Server run. Fact tier: the server reset the worktree, then ran the recorded command.</p>
+      <p className="learn-kicker">This is a server run at fact tier: the server reset the worktree, then ran the recorded command.</p>
       {state.statuses.length > 0 && <ul className="learn-steps">{state.statuses.map((s, i) => <li key={i}>{s}</li>)}</ul>}
       {state.running && <p role="status">Running… {onStop && <button type="button" className="learn-link" onClick={onStop}>Stop</button>}</p>}
       {r && (
