@@ -15,6 +15,7 @@ for an old map, and the rule that names an invariant:
 from __future__ import annotations
 
 import re
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 
 MAX_WORDS = 7
 CUT_WORDS = {"that", "which", "because", "when", "unless", "so", "while", "and", "but", "or", "with"}

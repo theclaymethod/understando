@@ -18,10 +18,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 FIX="$ROOT/tests/formal"
 S="$ROOT/scripts"
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/understando-formal-e2e.XXXXXX")"
+. "$ROOT/tests/isolate.sh" formal
+WORK="$(mktemp -d "$UNDERSTANDO_TEST_ROOT/understando-formal-e2e.XXXXXX")"
 REPO="$WORK/repo"
 OUT="$WORK/out"
-cleanup() { if [ "${KEEP:-0}" = 1 ]; then echo "kept $WORK"; else rm -rf "$WORK"; fi; }
+cleanup() { if [ "${KEEP:-0}" = 1 ]; then echo "kept $WORK"; else rm -rf "$WORK"; fi; isolate_cleanup; }
 trap cleanup EXIT
 
 step() { printf '\n== %s\n' "$*"; }

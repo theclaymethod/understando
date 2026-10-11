@@ -13,22 +13,29 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FIX="$ROOT/tests/fixture"
 S="$ROOT/scripts"
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/understando-e2e.XXXXXX")"
+# The isolation comes first: the guard, the test root, and a test UNDERSTANDO_HOME and UNDERSTANDO_RUNS.
+. "$ROOT/tests/isolate.sh" e2e
+isolate_snapshot "$UNDERSTANDO_TEST_ROOT/real-before.sha256"
+WORK="$(mktemp -d "$UNDERSTANDO_TEST_ROOT/understando-e2e.XXXXXX")"
 REPO="$WORK/repo"
 MAP="$WORK/trust-map.json"
 export E2E_TELEMETRY_DISABLED=1 DO_NOT_TRACK=1
 # The visual-explainer runtime: ve_runtime in ~/.understando/config.toml (UNDERSTANDO_VE_RUNTIME overrides it).
 # Read it before the fake homes below; explain.py and the later steps get it through the variable.
-UNDERSTANDO_VE_RUNTIME="${UNDERSTANDO_VE_RUNTIME:-$(python3 "$S/config.py" ve-runtime || true)}"
+# config.py only reads, so it may read the real config.toml in a test run.
+UNDERSTANDO_VE_RUNTIME="${UNDERSTANDO_VE_RUNTIME:-$(UNDERSTANDO_HOME="$ISOLATE_REAL_STORE" python3 "$S/config.py" ve-runtime || true)}"
 [ -n "$UNDERSTANDO_VE_RUNTIME" ] && export UNDERSTANDO_VE_RUNTIME || unset UNDERSTANDO_VE_RUNTIME
 JAVA_FOUND="$(python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import ctx; print(ctx.java_bin() or "")' "$S")"
 # The mode state of the user's own session must not leak into the fixture run.
 export UNDERSTANDO_HOME="$WORK/uhome0"
-cleanup() { if [ "${KEEP:-0}" = 1 ]; then echo "kept $WORK"; else rm -rf "$WORK"; fi; }
+cleanup() { if [ "${KEEP:-0}" = 1 ]; then echo "kept $WORK"; else rm -rf "$WORK"; fi; isolate_cleanup; }
 trap cleanup EXIT
 
 step() { printf '\n== %s\n' "$*"; }
 g() { git -C "$REPO" -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false "$@"; }
+
+step "isolation: the guard refuses a planted write, a read of the real data, and review with a fake gh (tests/isolate-e2e.sh)"
+WORK="$WORK" bash "$ROOT/tests/isolate-e2e.sh"
 
 step "build the fixture repo: base commit, then the PR commit"
 mkdir -p "$REPO"
@@ -340,7 +347,7 @@ const url = 'file://' + path.resolve(html);
     await page.goto(url + '#ch-3', { waitUntil: 'load' });
     await page.waitForFunction(() => !document.getElementById('ch-3').hidden);
     const report = await page.$eval('[data-ve-spine-file="bin/report.py"]', (s) => s.innerText);
-    if (!/Low risk: skim|No claim/.test(report)) fail(`bin/report.py has no protection status: ${report}`);
+    if (!/Low risk: read it quickly|No claim/.test(report)) fail(`bin/report.py has no protection status: ${report}`);
     const fees = await page.$eval('[data-ve-spine-file="wallet/fees.py"]', (s) => s.innerText);
     if (!/Protected by 1 claim/.test(fees)) fail(`wallet/fees.py does not show the claim that protects it: ${fees}`);
     const spine = await page.$eval('#ch-3', (s) => s.innerText);
@@ -396,6 +403,9 @@ if command -v lake >/dev/null && [ -n "$JAVA_FOUND" ] && [ -f "${UNDERSTANDO_TLA
 else
   step "formal: skipped, because lake, java or tla2tools.jar is missing (tests/formal/e2e.sh needs them)"
 fi
+
+step "isolation: the real run files have the same sha256 as before the suite"
+isolate_compare "$UNDERSTANDO_TEST_ROOT/real-before.sha256"
 
 echo
 echo "PASS: understando e2e on the fixture"

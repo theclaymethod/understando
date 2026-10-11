@@ -27,11 +27,20 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 import derive  # noqa: E402
 import onto  # noqa: E402
 import tm  # noqa: E402
 import verdicts  # noqa: E402
 
+
+def join_sources(sources: list[str]) -> str:
+    """The sources of the merged claims, each its own sentence: a "; " join is not strict STE, and an
+    "and" join of many sources is a long sentence."""
+    unique = list(dict.fromkeys(s.strip() for s in sources if s and s.strip()))
+    if len(unique) == 1:
+        return unique[0]
+    return " ".join(s.rstrip(".") + "." for s in unique)
 
 def split_checks(data: dict, splits: dict) -> dict[str, list[str]]:
     """One check for each formal property: replace a check that proves many properties with one
@@ -106,7 +115,7 @@ def merge(old: dict, proposal: dict) -> dict:
                     code.append(ref)
         invs = list(dict.fromkeys(i for c in olds for i in onto.invariants_of(c)))
         merged = {"id": row["id"], "name": row["name"], "text": row["text"], "stated": all(c["stated"] for c in olds),
-                  "source": "; ".join(dict.fromkeys(c["source"] for c in olds)), "layer": row.get("layer") or olds[0].get("layer", "Claims"),
+                  "source": join_sources([c["source"] for c in olds]), "layer": row.get("layer") or olds[0].get("layer", "Claims"),
                   "code": code, "plain": row["plain"], "checks": checks}
         if len(olds) > 1 or row["id"] != olds[0]["id"]:
             merged["legacy_ids"] = [c["id"] for c in olds]

@@ -7,6 +7,7 @@ import os
 import sys
 import threading
 import time
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 
 
 @contextlib.contextmanager

@@ -43,6 +43,8 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # also under python3 -I, which drops the script folder
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 
 CHECKS7 = ("statement_parity", "state_parity", "transition_parity", "concurrency_parity",
            "cancel_drain_parity", "runtime_evidence", "drift_gate")

@@ -13,6 +13,7 @@ set -euo pipefail
 [ "${REAL_SANDBOX_CHECK:-0}" = 1 ] || { echo "Set REAL_SANDBOX_CHECK=1. This makes one live model call."; exit 2; }
 PROVIDER="${1:?claude or codex}"
 L="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+. "$L/../tests/isolate.sh" sandbox
 W="$(mktemp -d -t learn-sandbox)"
 trap 'kill -TERM ${PID:-0} 2>/dev/null || true; sleep 1; rm -rf "$W"' EXIT
 bash "$L/web/e2e/make-fixture-run.sh" "$W" >/dev/null

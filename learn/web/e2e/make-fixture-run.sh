@@ -8,6 +8,7 @@
 # No model call. The steps are those of tests/e2e.sh.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+. "$ROOT/tests/isolate.sh" fixture-run
 FIX="$ROOT/tests/fixture"
 S="$ROOT/scripts"
 WORK="$1"
