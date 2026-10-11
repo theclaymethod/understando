@@ -1,7 +1,7 @@
 """understando ci: the repo's reviewed CI profile for one PR, as $R/ci.json.
 
     understando ci [--pr N] [--head SHA] [--base REF] [--ready REF]     derive and write ci.json; run nothing
-    understando ci --approve                                              record the user's yes (the user only)
+    understando ci --approve [--project NAME]                             record the user's yes (the user only)
     understando ci --check-argv ARG...                                    say which profile command allows an argv
 
 It reads repo files as data, at the PR head, with `git show`. It never runs a repo command:
@@ -20,7 +20,8 @@ It reads repo files as data, at the PR head, with `git show`. It never runs a re
    vectors file that formal_tlc.py wrote (its header names the spec, the cfg and the stop rule).
 
 The user approves the command list once, before first use (`--approve`). The approval holds the
-digest of the commands; a changed list needs a new yes. probe, close, trim and review call `gate()`:
+digest of the commands; a changed list needs a new yes. `--approve --project NAME` approves only the
+commands that run in that project's folder; the gate then refuses every other command. probe, close, trim and review call `gate()`:
 each verifier and setup command must match an approved command (the same positional words in the
 same order, extra words after them, in the same folder or below), or a formal tool.
 """
@@ -108,6 +109,27 @@ def catalog(repo: Path, ref: str) -> list[dict] | None:
     except tomllib.TOMLDecodeError:
         return None
     return [{"name": p["name"], "path": p["path"].rstrip("/")} for p in data.get("projects", []) if p.get("name") and p.get("path")]
+
+
+def outside_paths(projects: list[dict] | None, changed: list[str] | None) -> list[str]:
+    if projects is None or changed is None:
+        return []
+    return [p for p in changed if not (p.endswith(".md") or p.startswith("docs/"))
+            and not any(p == x["path"] or p.startswith(x["path"] + "/") for x in projects)]
+
+
+def by_project(projects: list[dict] | None, changed: list[str] | None) -> dict[str, int]:
+    out: dict[str, int] = {}
+    for path in changed or []:
+        owner = next((x["name"] for x in projects or [] if path == x["path"] or path.startswith(x["path"] + "/")), None)
+        if owner:
+            out[owner] = out.get(owner, 0) + 1
+    return dict(sorted(out.items(), key=lambda kv: -kv[1]))
+
+
+def project_of(projects: list[dict] | None, cwd: str) -> str | None:
+    cwd = cwd.strip("./")
+    return next((x["name"] for x in projects or [] if cwd == x["path"] or cwd.startswith(x["path"] + "/")), None)
 
 
 def touched(projects: list[dict] | None, changed: list[str] | None) -> tuple[list[str], str]:
@@ -356,11 +378,14 @@ def build(repo: Path, head: str, base: str | None, ready: str | None, pr: str | 
     cmds = included + formal
     for i, c in enumerate(cmds, 1):
         c["id"] = f"CI{i:02d}"
+        c["project"] = project_of(projects, c["cwd"])
     for row in md["commands"]:
         row["in_profile"] = any(row["command"] == (c.get("shell") or " ".join(c.get("argv", []))) for c in included)
     return {"schema": SCHEMA, "repo": repoinfo.slug(repoinfo.origin_url(repo)) or repo.name, "pr": pr, "head": head, "base": base,
             "ready": ready, "generated_at": tm.now(), "catalog": {"projects": names, "touched": hit, "why": why,
-                                                                   "changed": len(changed) if changed is not None else None},
+                                                                   "changed": len(changed) if changed is not None else None,
+                                                                   "by_project": by_project(projects, changed),
+                                                                   "outside": outside_paths(projects, changed)},
             "agents_md": md, "commands": cmds, "excluded": excluded, "digest": digest(cmds), "approval": None}
 
 
@@ -371,13 +396,93 @@ def load(run: Path | None) -> dict | None:
 
 def save(run: Path, prof: dict) -> None:
     old = load(run)
-    if old and old.get("approval") and old["approval"].get("digest") == prof["digest"]:
+    if old and old.get("approval"):
         prof["approval"] = old["approval"]
+        if not approved(prof):
+            prof["approval"] = None
     (run / "ci.json").write_text(json.dumps(prof, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def project_commands(prof: dict, name: str) -> list[dict]:
+    return [c for c in prof.get("commands", []) if c.get("project") == name]
+
+
+def approved_commands(prof: dict | None) -> list[dict]:
+    """The commands that the user approved: all of them, or the commands of the approved projects.
+    A changed list needs a new yes: the digest of the approved commands must match."""
+    a = (prof or {}).get("approval")
+    if not a:
+        return []
+    if a.get("projects"):
+        cmds = [c for n in a["projects"] for c in project_commands(prof, n)]
+        return cmds if cmds and digest(cmds) == a.get("digest") else []
+    return list(prof["commands"]) if a.get("digest") == prof.get("digest") else []
+
+
 def approved(prof: dict | None) -> bool:
-    return bool(prof and prof.get("approval") and prof["approval"].get("digest") == prof.get("digest"))
+    return bool(approved_commands(prof))
+
+
+def fully_approved(prof: dict | None) -> bool:
+    a = (prof or {}).get("approval") or {}
+    return approved(prof) and not a.get("projects")
+
+
+def approve(prof: dict, project: str | None, by: str) -> str:
+    """Record the user's yes in prof. It returns a one-line report."""
+    if project:
+        cmds = project_commands(prof, project)
+        if not cmds:
+            known = sorted({c["project"] for c in prof["commands"] if c.get("project")})
+            tm.fail(f"ci --approve --project {project}: no command runs in that project. Projects: {', '.join(known) or 'none'}", 2)
+        prof["approval"] = {"digest": digest(cmds), "projects": [project], "commands": [c["id"] for c in cmds], "at": tm.now(), "by": by}
+        import prompt
+        return f"ci: approved {prompt.n_of(len(cmds), 'command')} of {project} ({prof['approval']['digest'][:19]}); every other command stays refused"
+    prof["approval"] = {"digest": prof["digest"], "at": tm.now(), "by": by}
+    return f"ci: approved {len(prof['commands'])} commands ({prof['digest'][:19]})"
+
+
+# ---- the question ------------------------------------------------------------------------------
+
+def why_line(prof: dict) -> str:
+    cat = prof["catalog"]
+    out = cat.get("outside") or []
+    kinds = []
+    for name, test in (("workflow files", lambda p: p.startswith(".github/")), ("root tests", lambda p: p.startswith("tests/")),
+                       ("root scripts", lambda p: p.startswith("scripts/"))):
+        if any(test(p) for p in out):
+            kinds.append(name)
+    if any(not p.startswith((".github/", "tests/", "scripts/")) for p in out):
+        kinds.append("other root files")
+    if out:
+        return f"the PR touches {' and '.join(kinds)} outside every project, so the selector runs every project"
+    if cat.get("touched"):
+        return f"the PR touches {', '.join(cat['touched'])}"
+    return "the repo has no project catalog, so every workflow counts"
+
+
+def main_project(prof: dict) -> str | None:
+    """The project that owns the most changed paths and has commands in the profile."""
+    for name in (prof["catalog"].get("by_project") or {}):
+        if project_commands(prof, name):
+            return name
+    return None
+
+
+def question(prof: dict, then: str | None = None) -> dict:
+    """The CI approval as one question. `then` says what runs after a yes."""
+    import prompt
+    n = len(prof["commands"])
+    after = f" Then {then}." if then else ""
+    opts = [prompt.option(f"Approve all {n}" if n > 1 else "Approve it", f"Records your yes for {prompt.n_of(n, 'command')}; only these may run.{after}", "understando ci --approve"),
+            prompt.option("Show the list", "Prints each command with its workflow file and line. Nothing is approved.", "understando ci")]
+    mp = main_project(prof)
+    if mp and len({c.get("project") for c in prof["commands"]}) > 1:
+        k = len(project_commands(prof, mp))
+        opts.append(prompt.option(f"Approve only {mp}", f"Records your yes for {prompt.n_of(k, 'command')} of {mp}; the other {n - k} stay refused, "
+                                  "so a check outside it does not run.", f"understando ci --approve --project {mp}"))
+    return prompt.make([f"CI: {prompt.n_of(n, 'command')} from your workflows, because {why_line(prof)}."],
+                       "Approve the CI profile?", opts)
 
 
 # ---- the gate ----------------------------------------------------------------------------------
@@ -419,7 +524,8 @@ def gate(c: context.Ctx, data: dict, verifier_ids: set[str] | None = None) -> tu
     prof = load(c.run)
     if not prof:
         return None, ["no CI profile (ci.json) in the run folder: run `understando ci` and show it to the user"]
-    if not approved(prof):
+    prof = {**prof, "commands": approved_commands(prof)}
+    if not prof["commands"]:
         return ("refuse: the CI profile is not approved. Show `understando ci` to the user, and after a clear yes "
                 "the user runs `understando ci --approve`."), []
     bad = []
@@ -460,7 +566,8 @@ def text_of(prof: dict) -> str:
         lines.append("named only in AGENTS.md (data; never run unless a workflow runs it too):")
         lines += [f"  {r['source']}: {r['command']}" for r in doc_only]
     if approved(prof):
-        lines.append(f"approved by the user at {prof['approval']['at']}.")
+        a = prof["approval"]
+        lines.append(f"approved by the user at {a['at']}" + (f", only for {', '.join(a['projects'])}." if a.get("projects") else "."))
     else:
         lines.append("NOT APPROVED. Show this list to the user. After a clear yes, the user runs `understando ci --approve`.")
     return "\n".join(lines)
@@ -494,6 +601,8 @@ def main(c: context.Ctx, argv: list[str]) -> int:
     ap.add_argument("--base")
     ap.add_argument("--ready")
     ap.add_argument("--approve", action="store_true", help="the user only: record the yes for the current list")
+    ap.add_argument("--project", help="with --approve: approve only the commands of this catalog project")
+    ap.add_argument("--question", action="store_true", help="print the approval as one question, not the list")
     ap.add_argument("--check-argv", nargs=argparse.REMAINDER)
     args = ap.parse_args(argv)
     run = c.need_run()
@@ -501,22 +610,27 @@ def main(c: context.Ctx, argv: list[str]) -> int:
         prof = load(run)
         if not prof:
             tm.fail("ci --approve: no ci.json yet; run `understando ci` and show it to the user first", 2)
-        prof["approval"] = {"digest": prof["digest"], "at": tm.now(), "by": "user"}
+        line = approve(prof, args.project, "user")
         (run / "ci.json").write_text(json.dumps(prof, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         import journal
-        journal.append(c.journal, "decision", f"approved the CI profile ({len(prof['commands'])} commands)", c.repo,
-                       evidence=str(run / "ci.json"), result=prof["digest"])
-        print(f"ci: approved {len(prof['commands'])} commands ({prof['digest'][:19]})")
+        journal.append(c.journal, "decision", line, c.repo, evidence=str(run / "ci.json"), result=prof["approval"]["digest"])
+        print(line)
         return 0
     if args.check_argv is not None:
         prof = load(run)
         hit = allowed_by(prof or {}, args.check_argv, ".") if prof else None
-        print(f"allowed by {hit['id']} ({hit['source']})" if hit else "not in the CI profile")
+        ok = hit and allowed_by({"commands": approved_commands(prof)}, args.check_argv, ".")
+        print((f"allowed by {hit['id']} ({hit['source']}), " + ("approved" if ok else "not approved")) if hit else "not in the CI profile")
         return 0 if hit else 1
     repo, head, base, ready = resolve_refs(c, args.head, args.base, args.ready)
     prof = build(repo, head, base, ready, c.pr)
     run.mkdir(parents=True, exist_ok=True)
     save(run, prof)
     prof = load(run)
+    if args.question:
+        import prompt
+        q = question(prof)
+        context.emit(c, {"prompt": q}, prompt.render(q))
+        return 0
     context.emit(c, prof, text_of(prof) + f"\nwrote {run / 'ci.json'}")
     return 0

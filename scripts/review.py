@@ -1,8 +1,9 @@
 """understando review: a full PR review from one line. `understando review <pr>`.
 
-    understando review N [--head SHA]            resolve, set up, summarise, then stop for the user's go
-    understando review N --go                    run the next step, then stop
-    understando review N --through               run every step that is left ("run through")
+    understando review N [--head SHA]            resolve, set up, then ask one question (the prompt)
+    understando review N --go                    run the next stop (its steps chain), then ask the next question
+    understando review N --through               run every stop that is left ("run through")
+    understando review N --full                  also print the full state (the old summary)
     understando review N --answers FILE          the user's answers as a file (the e2e test, or a scripted run)
     understando review N --guard PATH[,PATH]     before a hand edit on the ready branch: may this file change now?
 
@@ -15,10 +16,15 @@ It derives the context from the PR number alone:
      worktree under <repo>/<worktree_root>/understando-<N>-ready. A missing worktree starts at the
      ready branch (from origin when it is there), else at the PR head. A present one pulls with --no-rebase.
 
-Then: mode on, ci (ci.json), signals, doctor, and a short summary. It stops for the user's go.
-The steps after the go: map, probe, formal (only when a formal check must run again), close, trim,
-ready --report, explain. Each step stops for the user, unless the user said "run through". close
-stops for the user's choices in any mode. explain prints pr-section.md; nothing edits the PR.
+Then: mode on, ci (ci.json), signals, doctor, and one question. `--json` puts it in `prompt`:
+{situation: [<= 5 lines], next: {step, does, scope, cost, time, writes}, question,
+ options: [{id, label, does, run?, recommended?}]}. The agent renders it as text and asks it.
+
+The steps chain into four stops: (1) map + probe on the changed code (+ formal, only when a formal
+check must run again), (2) close, one claim per question, (3) trim, (4) ready --report + explain.
+"run through" skips the stops that need no decision. These stops stay in every mode: the CI
+approval, each close choice (claim wording and waivers), and each paid step. explain prints
+pr-section.md; nothing edits the PR.
 
 Answer file: {"go": "step" | "run through", "ci": "approve", "close": {"answers": [...]},
 "paid": ["V36"]}. Write "ci": "approve" and "paid" only after a clear yes from the user.
@@ -32,6 +38,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -44,6 +51,8 @@ import repoinfo  # noqa: E402
 import tm  # noqa: E402
 
 STEPS = ["map", "probe", "formal", "close", "trim", "ready", "explain"]
+STAGES = [("check", ["map", "probe", "formal"]), ("close", ["close"]), ("trim", ["trim"]), ("ship", ["ready", "explain"])]
+STAGE_NAME = {"check": "map + probe on the changed code", "close": "close", "trim": "trim", "ship": "ready + explain"}
 CLOSED = ("Formal", "Proven", "Backed")
 
 
@@ -255,6 +264,10 @@ def formal_step(c: context.Ctx, st: dict) -> int:
     if not ci.approved(prof):
         print("refuse: the CI profile is not approved")
         return 1
+    ok = {x["id"] for x in ci.approved_commands(prof)}
+    for x in [x for x in cmds if x["id"] not in ok]:
+        print(f"  {x['id']} skip: the user did not approve it (the approval covers only {', '.join(prof['approval'].get('projects') or [])})")
+    cmds = [x for x in cmds if x["id"] in ok]
     results = []
     with tempfile.TemporaryDirectory(prefix="understando-formal-") as tmp:
         root = Path(tmp)
@@ -285,7 +298,11 @@ def run_step(c: context.Ctx, st: dict, step: str, answers: dict) -> tuple[int, s
         reverify_map(c, st)
         return call(c, "map", []), None
     if step == "probe":
-        extra = ["--paid", ",".join(answers["paid"])] if answers.get("paid") else []
+        scope = probe_scope(c, st)
+        if scope == []:
+            print("\n== review: probe: no verifier changed on the ready branch, and each one has a control result; skip")
+            return 0, None
+        extra = (["--only", ",".join(scope)] if scope else []) + (["--paid", ",".join(answers["paid"])] if answers.get("paid") else [])
         return call(c, "probe", extra), None
     if step == "formal":
         import signals
@@ -302,15 +319,18 @@ def run_step(c: context.Ctx, st: dict, step: str, answers: dict) -> tuple[int, s
             with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, dir=c.run) as fh:
                 json.dump(answers["close"], fh)
             try:
-                return call(c, "close", ["--answers", fh.name]), None
+                code = call(c, "close", ["--answers", fh.name])
             finally:
                 os.unlink(fh.name)
-        code = call(c, "close", ["--list"])
+            answers.pop("close")
+            if code:
+                return code, None
+            data = c.data() or {}
+            return 0, ("close" if any(x.get("verdict") not in CLOSED and not x.get("waiver") for x in data.get("claims", [])) else None)
         data = c.data() or {}
         if any(x.get("verdict") not in CLOSED and not x.get("waiver") for x in data.get("claims", [])):
-            return code, ("close needs the user's choice for each open claim. Ask one claim at a time (commands/close.md), "
-                          "then run review with --answers holding {\"close\": {...}}.")
-        return code, None
+            return 0, "close"
+        return 0, None
     if step == "trim":
         return call(c, "trim", []), None
     if step == "ready":
@@ -326,6 +346,200 @@ def run_step(c: context.Ctx, st: dict, step: str, answers: dict) -> tuple[int, s
     return 2, None
 
 
+# ---- the prompt ---------------------------------------------------------------------------------
+
+def stage_of(step: str) -> str:
+    return next(name for name, steps in STAGES if step in steps)
+
+
+def next_stage(done: list[str]) -> str | None:
+    return next((name for name, steps in STAGES if any(x not in done for x in steps)), None)
+
+
+def probe_scope(c: context.Ctx, st: dict) -> list[str] | None:
+    """The verifiers that probe runs in the check stop: None for all (no probe ran yet), else the
+    verifiers that the ready branch changed, the verifiers of a possible bug whose code changed, and
+    the verifiers with no control result. An empty list: nothing to probe."""
+    import signals
+    data = c.data()
+    if not data:
+        return None
+    sig = signals.collect(c, st.get("head"))
+    if not sig.get("last_probe"):
+        return None
+    rv = ((sig.get("ready_branch") or {}).get("reverify") or {})
+    bug_claims = {x for b in sig["discover"].get("bug_changes", []) if b["changed"] for x in b["claims"]}
+    ids = set(rv.get("verifiers") or []) | set(sig.get("untested_verifiers") or [])
+    ids |= {v["id"] for v in data["verifiers"] if set(v.get("claims", [])) & bug_claims}
+    return sorted(i for i in ids if any(v["id"] == i and "command" in v for v in data["verifiers"]))
+
+
+def recorded_seconds(data: dict, vids: set[str] | None) -> tuple[float, int]:
+    """The recorded run time of the verifiers and their controls: (seconds, how many runs were recorded)."""
+    total, n = 0.0, 0
+    for v in data["verifiers"]:
+        if "command" not in v or (vids is not None and v["id"] not in vids):
+            continue
+        sec = (v.get("baseline") or {}).get("seconds") or (v.get("cost") or {}).get("seconds")
+        if sec:
+            total, n = total + float(sec), n + 1
+        for k in data["controls"]:
+            if k.get("verifier") == v["id"]:
+                ks = (k.get("result") or {}).get("seconds") or sec
+                if ks:
+                    total, n = total + float(ks), n + 1
+    return total, n
+
+
+def paid_in(c: context.Ctx, data: dict, vids: set[str] | None, paid: list[str]) -> list[dict]:
+    cfg = config.load(repoinfo.repo_name(c.repo)) if c.repo else {}
+    return [v for v in data["verifiers"] if "command" in v and (vids is None or v["id"] in vids) and v["id"] not in paid
+            and config.needs_key(cfg, v["command"]["argv"])]
+
+
+def next_info(c: context.Ctx, st: dict, stage: str, answers: dict) -> dict:
+    import prompt
+    import signals
+    data = c.data() or {}
+    pr = st["pr"]
+    timings = st.get("timings") or {}
+
+    def took(*steps: str) -> str | None:
+        rec = [timings[x] for x in steps if x in timings]
+        return (prompt.human_seconds(sum(rec)) + " (the last recorded run)") if rec else None
+
+    if stage == "check":
+        if not data:
+            return {"step": "map", "does": "Write the claim ledger (commands/map.md), then map", "scope": "every claim",
+                    "cost": "$0, no model call by the CLI", "time": "unknown: no recorded run", "writes": "trust-map.json in the run folder"}
+        scope = probe_scope(c, st)
+        vids = None if scope is None else set(scope)
+        sig = signals.collect(c, st.get("head"))
+        bugs = [b for b in sig["discover"].get("bug_changes", []) if b["changed"]]
+        rv = (sig.get("ready_branch") or {}).get("reverify") or {}
+        claims = sorted({x for b in bugs for x in b["claims"]} | set(rv.get("claims") or []), key=lambda x: (len(x), x))
+        sec, n = recorded_seconds(data, vids)
+        sec += timings.get("map", 5)
+        keyed = paid_in(c, data, vids, answers.get("paid") or [])
+        usd = sum(float((v.get("cost") or {}).get("usd") or 0) for v in keyed)
+        calls = sum(int((v.get("cost") or {}).get("model_calls") or 1) for v in keyed)
+        what = (f"Re-checks possible bug {', '.join(b['invariant'] for b in bugs)} on the changed code: " if bugs else "") \
+            + "map updates the verdicts at the ready tip, then " \
+            + ("probe runs every verifier and control" if scope is None else
+               (f"probe runs {prompt.n_of(len(scope), 'verifier')} and their controls" if scope else "probe has nothing to run (no changed verifier)"))
+        return {"step": "check", "does": what,
+                "scope": "every claim" if scope is None else
+                         "; ".join(x for x in [f"claims {signals.ids(claims)}" if claims else "",
+                                                f"verifiers {signals.ids(scope)}" if scope else "no verifier"] if x),
+                "cost": "$0, no model call" if not keyed else
+                        f"$0, no model call; {signals.ids([v['id'] for v in keyed])} need the model key (about ${usd:.2f}, {calls} model calls) and run only after your yes",
+                "time": (prompt.human_seconds(sec) + f" (from {n} recorded runs)") if n else (took("map", "probe") or "unknown: no recorded run"),
+                "writes": "trust-map.json and history/ in the run folder; no commit"}
+    if stage == "trim":
+        return {"step": "trim", "does": "Finds excess code, and deletes each unit test that an e2e test already covers, after probe shows the e2e test goes red",
+                "scope": f"the {sum(1 for v in data.get('verifiers', []) if 'unit' in str(v.get('kind', '')))} unit-test verifiers and the changed code",
+                "cost": "$0, no model call", "time": took("trim") or "unknown: no recorded run",
+                "writes": f"trim.json; deletions are commits on {st['branch']}"}
+    if stage == "ship":
+        return {"step": "ship", "does": "ready --report prints the four gates; explain builds the explainer and pr-section.md",
+                "scope": "the whole trust map", "cost": "$0, no model call", "time": took("ready", "explain") or "unknown: no recorded run",
+                "writes": "ready.json, explainer.mdx, chapters/, pr-section.md and GLOSSARY.md in the run folder; nothing edits the PR"}
+    return {"step": "close", "does": "One question per open claim", "scope": "the open claims, riskiest first", "cost": "$0",
+            "time": "a few minutes per claim", "writes": f"trust-map.json; a new test is a commit on {st['branch']}"}
+
+
+def situation(s: dict, st: dict, sig: dict) -> list[str]:
+    """At most five lines: what moved, where the PR stands, what affects the next step."""
+    import prompt
+    lines = []
+    tmap = sig.get("trust_map") or {}
+    moved = f"PR head {st['head'][:10]}" + ("" if not tmap.get("present") else
+                                            (" (the map head)" if tmap.get("fresh") else f" (the map is at {tmap['head'][:10]})"))
+    rb = sig.get("ready_branch") or {}
+    rv = rb.get("reverify") or {}
+    if st.get("tip") and st["tip"] != st["head"]:
+        since = rv.get("since") or st["head"]
+        commits = subprocess.run(["git", "-C", st["repo"], "log", "--format=%h", "--reverse", f"{since}..{st['tip']}"],
+                                 capture_output=True, text=True).stdout.split()
+        moved += f". {st['branch']} at {st['tip'][:10]}: {prompt.n_of(len(commits), 'commit')} after the map" + (f" ({', '.join(commits[:4])}{' ...' if len(commits) > 4 else ''})" if commits else "")
+    if st.get("pulled"):
+        moved += f"; pulled {st['pulled']['commits']} just now"
+    lines.append(moved + ".")
+    if s.get("trust_map", 1) is None:
+        lines.append("No trust map yet: the first step writes it.")
+    else:
+        n_open = len(s.get("open") or [])
+        g = s.get("gates")
+        failing = [k for k, v in (g or {}).items() if k.startswith("gate") and not v] if g and not g.get("stale") else []
+        blockers = n_open + len(failing)
+        verdict = "ready to merge" if g and g.get("pass") and not g.get("stale") and not n_open else \
+            f"not ready, {prompt.n_of(blockers, 'blocker')} (" + ", ".join(x for x in [prompt.n_of(n_open, 'open claim') if n_open else "",
+                                                                       f"{', '.join(failing)} fail" if failing else "",
+                                                                       "gates not computed at this head" if not g or g.get("stale") else ""] if x) + ")"
+        lines.append("Verdicts: " + ", ".join(f"{k} {v}" for k, v in (s.get("verdicts") or {}).items()) + f". Merge: {verdict}.")
+    bugs = [b for b in sig.get("discover", {}).get("bug_changes", []) if b["changed"]]
+    if bugs:
+        b = bugs[0]
+        lines.append(f"{st['branch']} changed {', '.join(b['where'])}, the code of possible bug {b['invariant']}"
+                     + (f" ({', '.join(b['commits'])})" if b["commits"] else "") + ": re-check it before discover.")
+    elif rv.get("claims"):
+        lines.append(f"{st['branch']} changed the code or checks of claims {', '.join(rv['claims'][:6])}: re-check them first.")
+    if s["ci"]["present"] and not s["ci"]["approved"]:
+        prof = ci.load(Path(st["run"])) or {}
+        lines.append(f"CI: {prompt.n_of(s['ci']['commands'], 'command')} from your workflows, because {ci.why_line(prof)}; not approved yet." if prof
+                     else "CI: no profile yet.")
+    if s["locks"]:
+        h = s["locks"][0]
+        lines.append(f"Lock: {h['owner']} holds {h['verb']} on {', '.join(h['paths'])}.")
+    return lines[:5]
+
+
+def build_prompt(c: context.Ctx, st: dict, s: dict, sig: dict, answers: dict) -> dict:
+    import close
+    import prompt
+    pr = st["pr"]
+    stage = next_stage(st.get("done", []))
+    sit = situation(s, st, sig)
+    prof = ci.load(c.run)
+    if stage is None:
+        sec = c.run / "pr-section.md"
+        return prompt.make(sit, "The review is complete. What next?",
+                           [prompt.option("Show pr-section.md", f"Prints {sec} for you to paste into the PR body. understando never edits the PR.",
+                                          f"cat {sec}"),
+                            prompt.option("Review again", "Resolves the PR again, pulls the ready branch, and asks the next question.",
+                                          f"understando review {pr}")])
+    nxt = next_info(c, st, stage, answers)
+    if stage != "close" and not ci.approved(prof) and prof:
+        q = ci.question(prof, then=f"review runs {STAGE_NAME[stage]}")
+        for o in q["options"]:
+            if o.get("run", "").startswith("understando ci --approve"):
+                o["run"] += f"; then understando review {pr} --go"
+        q["situation"] = [x for x in sit if not x.startswith("CI:")][:4] + q["situation"]
+        q["next"] = nxt
+        prompt.check(q)
+        return q
+    if stage == "close":
+        data = c.data() or {}
+        q = close.question(data, pr)
+        if q:
+            for o in q["options"]:
+                if o.get("choice"):
+                    o["run"] = f"understando review {pr} --go --answers <file with {{\"close\": {{\"answers\": [{{\"claim\": \"{q['claim']}\", \"choice\": \"{o['choice']}\", ...}}]}}}}>"
+            q["situation"] = sit[1:2] + q["situation"]
+            prompt.check(q)
+            return q
+    opts = [prompt.option(f"Run {STAGE_NAME[stage]}", nxt["does"] + ".", f"understando review {pr} --go"),
+            prompt.option("Run through", "Runs every stop that needs no decision. It still stops for each open claim, the CI approval "
+                          "and each paid step.", f"understando review {pr} --through")]
+    keyed = paid_in(c, c.data() or {}, None if (stage != "check" or probe_scope(c, st) is None) else set(probe_scope(c, st) or []),
+                    answers.get("paid") or []) if stage == "check" and c.data() else []
+    if keyed:
+        ids = ",".join(v["id"] for v in keyed)
+        opts.insert(1, prompt.option(f"Run it with the paid {ids}", f"Also runs {ids} with the model key: {nxt['cost'].split('; ', 1)[-1]}.",
+                                     f"understando review {pr} --go --answers <file with {{\"paid\": {json.dumps(ids.split(','))}}}>"))
+    return prompt.make(sit, f"Run {STAGE_NAME[stage]}?", opts, nxt)
+
+
 # ---- the verb -----------------------------------------------------------------------------------
 
 def main(c: context.Ctx, argv: list[str]) -> int:
@@ -337,6 +551,7 @@ def main(c: context.Ctx, argv: list[str]) -> int:
     ap.add_argument("--through", action="store_true")
     ap.add_argument("--answers")
     ap.add_argument("--guard")
+    ap.add_argument("--full", action="store_true", help="also print the full state")
     args = ap.parse_args(argv)
     pr = args.pr or c.pr
     if not pr:
@@ -375,9 +590,9 @@ def main(c: context.Ctx, argv: list[str]) -> int:
         ci.save(run, prof)
     if answers.get("ci") == "approve" and not ci.approved(ci.load(run)):
         prof = ci.load(run)
-        prof["approval"] = {"digest": prof["digest"], "at": tm.now(), "by": "user (answer file)"}
+        line = ci.approve(prof, answers.get("ci_project"), "user (answer file)")
         (run / "ci.json").write_text(json.dumps(prof, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-        journal.append(c.journal, "decision", "approved the CI profile (answer file)", c.repo, result=prof["digest"])
+        journal.append(c.journal, "decision", line + " (answer file)", c.repo, result=prof["approval"]["digest"])
     import doctor
     import signals
     sig = signals.collect(c, ctx["head"])
@@ -390,37 +605,45 @@ def main(c: context.Ctx, argv: list[str]) -> int:
     remaining = [x for x in STEPS if x not in st.get("done", [])]
     st["next"] = remaining[0] if remaining else None
     save_state(run, st)
+    import prompt
 
-    def report(extra: dict, text: str) -> None:
-        context.emit(c, {**s, **extra, "state": str(state_path(run)), "next": st.get("next"), "done": st.get("done", [])}, text)
+    def ask(extra: dict) -> None:
+        q = build_prompt(c, st, s, sig, answers)
+        text = prompt.render(q) + ("\n\n" + summary_text(s) if args.full else "")
+        context.emit(c, {**s, **extra, "prompt": q, "state": str(state_path(run)), "next": st.get("next"), "done": st.get("done", [])}, text)
 
     if not go:
-        report({"stopped": "before " + (st["next"] or "nothing"), "awaiting": "go"},
-               summary_text(s) + f"\n\nSTOP: wait for the user's go. Next step: {st['next'] or 'none, the review is complete'}. "
-               "On a go, run `understando review " + pr + " --go` (one step) or `--through` (run through).")
+        ask({"stopped": "before " + (st["next"] or "nothing"), "awaiting": "go"})
         return 0
     if not ci.approved(prof):
-        report({"stopped": "ci approval", "awaiting": "ci"},
-               summary_text(s) + "\n\nSTOP: the CI profile is not approved. Show `understando ci` to the user; after a clear yes, "
-               "the user runs `understando ci --approve`.")
+        ask({"stopped": "ci approval", "awaiting": "ci"})
         return 0
-    print(summary_text(s))
     code = 0
+    stage = None
     for step in remaining:
+        if stage and stage_of(step) != stage and not through:
+            break
+        stage = stage_of(step)
+        t0 = time.monotonic()
         code, stop = run_step(c, st, step, answers)
+        st.setdefault("timings", {})[step] = round(time.monotonic() - t0, 1)
         if code == 0 and not stop:
             st["done"] = st.get("done", []) + [step]
         st["next"] = next((x for x in STEPS if x not in st["done"]), None)
         save_state(run, st)
         journal.append(c.journal, "result", f"review step {step}: exit {code}", c.repo, result=stop or "")
+        if stop == "close":
+            break
         if stop:
             print(f"\nSTOP: {stop}")
             return code
         if code:
             print(f"\nSTOP: {step} exited {code}. Fix it, then run `understando review {pr} --go` again.")
             return code
-        if not through:
-            print(f"\nSTOP: {step} is done. Next: {st['next'] or 'none'}. Wait for the user's go.")
-            return 0
-    print("\nreview: every step is done. The user merges; understando opens no PR and edits no PR.")
+    if st["next"] is None:
+        print("\nreview: every step is done. The user merges; understando opens no PR and edits no PR.")
+        return code
+    sig = signals.collect(c, ctx["head"])
+    s = summary(c, st, sig, doc, ci.load(run), cfg)
+    print("\n" + prompt.render(build_prompt(c, st, s, sig, answers)))
     return code

@@ -1,6 +1,7 @@
 """understando close: close each Asserted or Gap claim, riskiest first, with the user.
 
     understando close --list                 the queue, riskiest first, with the seven options
+    understando close --next                 the riskiest open claim as one question (review asks this one)
     understando close --answers FILE         apply the user's answers (the agent asks, then writes the file)
     understando close                        on a terminal: ask each question here
 
@@ -185,6 +186,58 @@ def kind_of(choice: str) -> str:
             "5": "verifier-choice", "waive": "waiver", "7": "waiver"}.get(choice, "decision" if choice in ("reword", "drop", "6") else "verifier-choice")
 
 
+CHOICE = {
+    "mechanical": ("Add a mechanical check", "I write one grep or line-count check, and probe plants a control for it. "
+                   "{id} becomes Backed. $0, no model call, seconds to run."),
+    "evidence": ("Attach recorded evidence", "I attach the recorded run or review that shows it. {id} becomes Backed. $0, no model call."),
+    "property": ("Add a property test", "I draft one property test and one planted bug. Probe keeps the test only when it goes red on the bug; "
+                 "then {id} becomes Proven. $0, no model call."),
+    "e2e": ("Add an e2e test", "I draft one e2e test and one planted bug. Probe keeps the test only when it goes red on the bug; "
+            "then {id} becomes Proven. $0, no model call."),
+    "reword": ("Reword it", "I propose a wording that the code shows, and you approve the words. Nothing runs."),
+    "waive": ("Waive it", "You give the reason. The ready checklist and the PR section show the waiver. Nothing runs."),
+    "formalize": ("Formalize it", "A TLA+ model check or a Lean proof (tier {tier}). It takes the longest; you start it."),
+}
+COST_ORDER = ["mechanical", "evidence", "reword", "waive", "property", "e2e", "formalize"]
+
+
+def recommend_choice(claim: dict, data: dict) -> str:
+    """The cheapest option that can close the claim. The words of the claim and its proof note decide."""
+    text = (claim.get("text", "") + " " + ((claim.get("plain") or {}).get("proof") or "")).lower()
+    if any(w in text for w in ("no caller", "no code calls", "a search of the repo", "grep", "deletes")):
+        return "mechanical"
+    if claim.get("layer", "").lower().startswith("narrative") or any(w in text for w in ("nobody measured", "clinician must")):
+        return "waive"
+    inv = next((i for i in data.get("invariants", []) if i["id"] == claim.get("invariant")), None)
+    return "property" if inv and inv.get("shape") == "input-space" else "e2e"
+
+
+def question(data: dict, pr: str | None = None) -> dict | None:
+    """One open claim as one question: a plain sentence, why it is weak, and the options
+    (the recommended one first, then the rest cheapest first). None when no claim is open."""
+    import prompt
+    q = queue(data)
+    if not q:
+        return None
+    claim = q[0]
+    rec = recommend_choice(claim, data)
+    test = "property" if rec == "property" else "e2e"
+    order = [rec] + [x for x in COST_ORDER if x != rec and x in ("mechanical", "reword", "waive", test)]
+    opts = []
+    for name in order[:3]:
+        label, does = CHOICE[name]
+        opts.append({**prompt.option(label, does.format(id=claim["id"], tier=claim.get("tier_target") or 5)), "choice": name})
+    what = (claim.get("plain") or {}).get("what") or claim["text"]
+    return prompt.make([f"Claim {claim['id']} ({claim['verdict']}, 1 of {len(q)} open): {what}",
+                        f"Why it is weak: {(claim.get('reason') or 'no verifier backs it').rstrip('.')}."],
+                       f"How do we close {claim['id']}?", opts,
+                       {"step": "close", "does": f"Close {claim['id']} with your choice; a drafted check must go green, then red on its planted bug",
+                        "scope": f"claim {claim['id']} only", "cost": "$0, no model call",
+                        "time": "about a minute for each drafted check", "writes": "trust-map.json; a kept check is a commit on the ready branch"},
+                       else_does="Another option (" + ", ".join(CHOICE[x][0].lower() for x in COST_ORDER if x not in order[:3] and x in CHOICE)
+                       + "), skip it for now, or drop it.") | {"claim": claim["id"]}
+
+
 def ask(data: dict) -> list[dict]:
     """The terminal path: one question per claim. A drafted test comes from a JSON file."""
     answers = []
@@ -214,6 +267,7 @@ def main(c: context.Ctx, argv: list[str]) -> int:
     ap = argparse.ArgumentParser(prog="understando close", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--answers")
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--next", action="store_true", help="the riskiest open claim as one question")
     args = ap.parse_args(argv)
     data = c.need_map()
     verdicts.apply(data)
@@ -223,6 +277,11 @@ def main(c: context.Ctx, argv: list[str]) -> int:
         if refusal:
             print(refusal)
             return 1
+    if args.next:
+        import prompt
+        q = question(data, c.pr)
+        context.emit(c, {"prompt": q}, prompt.render(q) if q else "Every claim is Formal, Proven, Backed or waived.")
+        return 0
     if args.list or (not args.answers and not sys.stdin.isatty()):
         q = queue(data)
         rows = [{"claim": x["id"], "verdict": x["verdict"], "text": x["text"], "options": [n for n, _ in OPTIONS]} for x in q]

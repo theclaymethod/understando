@@ -17,6 +17,8 @@ WORK="$(mktemp -d "${TMPDIR:-/tmp}/understando-e2e.XXXXXX")"
 REPO="$WORK/repo"
 MAP="$WORK/trust-map.json"
 export E2E_TELEMETRY_DISABLED=1 DO_NOT_TRACK=1
+# The mode state of the user's own session must not leak into the fixture run.
+export UNDERSTANDO_HOME="$WORK/uhome0"
 cleanup() { if [ "${KEEP:-0}" = 1 ]; then echo "kept $WORK"; else rm -rf "$WORK"; fi; }
 trap cleanup EXIT
 

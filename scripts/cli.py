@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""understando: one entry point for every verb. `understando` with no verb prints the menu.
+"""understando: one entry point for every verb. `understando` with no verb asks one question (the menu).
+`understando N` is `understando review N`. `understando help` prints every verb.
 
     understando <verb> [--repo DIR] [--pr N] [--run DIR] [--json] [verb options]
 
@@ -332,7 +333,7 @@ def lock_paths(verb: str, argv: list[str]) -> list[str]:
     if verb == "probe":
         return ["run:trust-map.json"]
     if verb == "close":
-        return [] if "--list" in argv or not (argv or sys.stdin.isatty()) else ["run:trust-map.json", "ready:"]
+        return [] if "--list" in argv or "--next" in argv or not (argv or sys.stdin.isatty()) else ["run:trust-map.json", "ready:"]
     if verb == "trim":
         if "--accept" in argv:
             return ["run:trim.json"]
@@ -406,7 +407,7 @@ def dispatch(verb: str, argv: list[str], c: context.Ctx) -> int:
         if "--pr-head" in argv:
             head = argv[argv.index("--pr-head") + 1]
         if verb == "menu":
-            return signals.menu(c, head)
+            return signals.menu(c, head, show_all="--all" in argv or "all" in argv)
         sig = signals.collect(c, head)
         print(json.dumps(sig, indent=2, ensure_ascii=False))
         return 0
@@ -455,6 +456,8 @@ def main(argv: list[str]) -> int:
     if not rest:
         return run_verb("menu", [], c)
     verb, args = rest[0], rest[1:]
+    if verb.isdigit():
+        verb, args = "review", rest
     if verb in ("help", "-h", "--help"):
         print(help_text())
         return 0

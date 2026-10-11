@@ -54,9 +54,12 @@ step "mode: off, then on, then status"
 "$U" --json mode status > "$O/mode2.json"
 python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["on"] and d["run"].endswith("/run") and str(d["pr"]) == "1", d' "$O/mode2.json"
 
-step "bare menu: two or three verbs from signals, then the table"
+step "bare menu: one question with two or three picks; the verb table only on --all"
 "$U" > "$O/menu.txt"
-has "$O/menu.txt" "recommended next"; has "$O/menu.txt" "Get ready"; has "$O/menu.txt" "Nothing runs until you choose one."
+has "$O/menu.txt" "What next?"; has "$O/menu.txt" "  1. "; has "$O/menu.txt" " (recommended): "; has "$O/menu.txt" "Something else"
+lacks "$O/menu.txt" "Get ready"; lacks "$O/menu.txt" "Aliases:"
+test "$(grep -cE '^  [0-9]\. ' "$O/menu.txt")" -le 4 || fail "the menu has more than 4 options"
+"$U" menu --all > "$O/menu-all.txt"; has "$O/menu-all.txt" "Get ready"; has "$O/menu-all.txt" "Aliases:"
 "$U" --json menu > "$O/menu.json"
 python3 - "$O/menu.json" <<'PY'
 import json, sys
@@ -426,9 +429,29 @@ has "$O/guard4.txt" "is a secret path"
 
 step "review: --go stops while the CI profile is not approved"
 (cd "$CL" && "$U" review 1 --go) > "$O/review3.txt"
-has "$O/review3.txt" "STOP: the CI profile is not approved"
+has "$O/review3.txt" "Approve the CI profile?"
 if "$U" --run "$R" --repo "$CL" probe > "$O/probe-noci.txt"; then fail "probe ran with an unapproved CI profile"; fi
 has "$O/probe-noci.txt" "refuse: the CI profile is not approved"
+
+step "review prompt: one question, at most 5 situation lines, at most 4 options, a cost and a time, no verb table"
+(cd "$CL" && "$U" review 1 --json) > "$O/review-prompt.json"
+(cd "$CL" && "$U" review 1) > "$O/review-prompt.txt"
+python3 - "$O/review-prompt.json" "$O/review-prompt.txt" <<'PY'
+import json, sys
+p = json.load(open(sys.argv[1]))["prompt"]
+text = open(sys.argv[2]).read()
+assert 1 <= len(p["situation"]) <= 5, p["situation"]
+assert 2 <= len(p["options"]) <= 4, p["options"]
+assert p["options"][0].get("recommended") and p["options"][-1]["label"] == "Something else", p["options"]
+assert "  1. " + p["options"][0]["label"] + " (recommended): " in text, text
+assert p["next"]["cost"].startswith("$") and p["next"]["time"], p["next"]
+assert p["next"]["scope"] and p["next"]["writes"], p["next"]
+assert p["question"] in text and "Next: " in text and "Cost: $" in text and "Time: " in text, text
+for word in ("Get ready", "Aliases:", "| Verb |", "Understand\n", "  discover  "):
+    assert word not in text, word
+assert len(text.strip().splitlines()) <= 5 + 1 + 2 + 4, text
+print(f"review: {len(p['situation'])} situation lines, {len(p['options'])} options, cost {p['next']['cost']!r}, time {p['next']['time']!r}")
+PY
 
 step "lock: a second writer on an overlapping path is refused; a free path is not"
 sleep 60 & P1=$!
@@ -466,13 +489,34 @@ json.dump({"answers": [{"candidate": fee, "decision": "reword", "confirmed": Tru
 PY
 "$U" --run "$R" --repo "$CL" discover answer --answers "$WORK/discover-answers-r.json" > /dev/null
 
-step "review: a scripted 'run through' runs map, probe, close, trim, ready --report and explain, and edits no PR"
+step "review: a go runs map + probe as one stop, then close asks about one claim only"
+printf '{"ci": "approve"}' > "$WORK/ci-yes.json"
+(cd "$CL" && "$U" review 1 --answers "$WORK/ci-yes.json") > "$O/ci-yes.txt"
+has "$O/ci-yes.txt" "Run map + probe on the changed code?"
+(cd "$CL" && "$U" review 1 --go) > "$O/go-check.txt" 2>&1 || { tail -30 "$O/go-check.txt"; fail "the check stop failed"; }
+has "$O/go-check.txt" "== review: map"; has "$O/go-check.txt" "== review: probe"
+lacks "$O/go-check.txt" "== review: trim"
+(cd "$CL" && "$U" review 1 --json) > "$O/close-prompt.json"
+python3 - "$O/close-prompt.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+p = d["prompt"]
+others = [o["id"] for o in d["open"] if o["id"] != p["claim"]]
+assert p["claim"] in [o["id"] for o in d["open"]], p
+assert p["question"] == f"How do we close {p['claim']}?", p["question"]
+assert others and not any(x in json.dumps(p) for x in others), (others, p)
+assert 2 <= len(p["options"]) <= 4 and p["options"][0].get("recommended") and p["options"][-1]["label"] == "Something else", p["options"]
+assert any(s.startswith("Why it is weak:") for s in p["situation"]), p["situation"]
+print(f"close asks about {p['claim']} only; {len(others)} other open claims wait")
+PY
+
+step "review: a scripted 'run through' runs close, trim, ready --report and explain, and edits no PR"
 python3 - "$FIX/ready/close-answers.json" "$WORK/through.json" <<'PY'
 import json, sys
 json.dump({"go": "run through", "ci": "approve", "close": json.load(open(sys.argv[1]))}, open(sys.argv[2], "w"))
 PY
 (cd "$CL" && "$U" review 1 --answers "$WORK/through.json") > "$O/through.txt" 2>&1 || { tail -40 "$O/through.txt"; fail "the run through failed"; }
-for s in "== review: map" "== review: probe" "== review: close --answers" "== review: trim" "== review: ready --report" "== review: explain" \
+for s in "== review: close --answers" "== review: trim" "== review: ready --report" "== review: explain" \
          "C03: V09 goes green, and red on control K09" "### Ready checklist" "understando never edits the PR" "review: every step is done."; do
   has "$O/through.txt" "$s"
 done
@@ -518,6 +562,87 @@ PY
 has "$O/close-protected.txt" "refuse: bin/check_denial.py is protected (owner Ops team"
 git -C "$WT" show HEAD:bin/check_denial.py > /dev/null 2>&1 && fail "close wrote a protected file"
 unset UNDERSTANDO_RUNS
+
+step "signals: a possible bug whose code changed on -ready asks for a re-check, not discover"
+RB="$WORK/run-bug"; cp -R "$RUN" "$RB"
+RBR="$WORK/bug-repo"; git clone -q --single-branch --branch main "$REPO" "$RBR"
+BUG="$(python3 -c 'import json,sys; print(next(i["id"] for i in json.load(open(sys.argv[1]))["invariants"] if i.get("possible_bug")))' "$RB/trust-map.json")"
+BUGLOC="$(python3 -c 'import json,re,sys; i=next(i for i in json.load(open(sys.argv[1]))["invariants"] if i.get("possible_bug")); print(next(e for e in i["evidence"] if re.match(r"[\w/]+\.py:\d", e)))' "$RB/trust-map.json")"
+BUGFILE="${BUGLOC%%:*}"; BUGLINE="${BUGLOC#*:}"; BUGLINE="${BUGLINE%%[-,]*}"
+rg -C "$RBR" checkout -q -b understando/1-ready
+printf '\n# a note far from the bug\n' >> "$RBR/wallet/messages.py"
+rg -C "$RBR" commit -q -am "-ready: a note in messages.py"
+"$U" --run "$RB" --repo "$RBR" --json menu --pr-head "$HEAD" > "$O/bug1.json"
+python3 - "$O/bug1.json" "$BUG" <<'PY'
+import json, sys
+d, bug = json.load(open(sys.argv[1])), sys.argv[2]
+p = {x["verb"]: x for x in d["recommend"]}
+assert "discover" in p and bug in p["discover"]["why"] and "did not change" in p["discover"]["why"], d["recommend"]
+assert not any(x["label"].startswith("re-check " + bug) for x in d["recommend"]), d["recommend"]
+print(f"the code of {bug} is unchanged on -ready: {p['discover']['label']}")
+PY
+sed -i.bak "${BUGLINE}s/\$/  # fixed on -ready/" "$RBR/$BUGFILE" && rm "$RBR/$BUGFILE.bak"
+rg -C "$RBR" commit -q -am "-ready: fix the possible bug"
+FIXSHA="$(git -C "$RBR" rev-parse --short=7 HEAD)"
+"$U" --run "$RB" --repo "$RBR" --json menu --pr-head "$HEAD" > "$O/bug2.json"
+"$U" --run "$RB" --repo "$RBR" menu --pr-head "$HEAD" > "$O/bug2.txt"
+python3 - "$O/bug2.json" "$BUG" "$BUGFILE" "$FIXSHA" <<'PY'
+import json, sys
+d, bug, path, sha = json.load(open(sys.argv[1])), sys.argv[2], sys.argv[3], sys.argv[4]
+first = d["recommend"][0]
+assert first["verb"] == "map" and first["label"] == f"re-check {bug}", d["recommend"]
+assert "map + probe on the changed code" in first["why"] and path in first["why"] and sha in first["why"], first["why"]
+assert all(bug not in x["why"] for x in d["recommend"] if x["verb"] == "discover"), d["recommend"]
+b = d["signals"]["discover"]["bug_changes"][0]
+assert b["changed"] and b["claims"], b
+print(f"-ready changed {path}: {first['label']}: {first['why'][:110]}")
+PY
+has "$O/bug2.txt" "1. re-check $BUG (recommended)"
+
+step "ci: the approval is one question with a project option, and --project approves only that project"
+CR="$WORK/mono"; mkdir -p "$CR/.github/workflows" "$CR/projects/alpha/tests" "$CR/projects/beta/tests"
+printf '[[projects]]\nname = "alpha"\npath = "projects/alpha"\n\n[[projects]]\nname = "beta"\npath = "projects/beta"\n' > "$CR/catalog.toml"
+for pj in alpha beta; do
+  printf 'name: %s\non:\n  pull_request:\njobs:\n  test-%s:\n    runs-on: ubuntu-latest\n    defaults:\n      run:\n        working-directory: projects/%s\n    steps:\n      - name: Tests\n        run: python3 -m unittest discover -s tests\n' "$pj" "$pj" "$pj" > "$CR/.github/workflows/$pj.yml"
+done
+printf 'x = 1\n' > "$CR/projects/alpha/a.py"; printf 'y = 1\n' > "$CR/projects/beta/b.py"
+git -C "$CR" init -q -b main; rg -C "$CR" add -A; rg -C "$CR" commit -q -m base
+MBASE="$(git -C "$CR" rev-parse HEAD)"
+printf 'x = 2\n' > "$CR/projects/alpha/a.py"; printf 'z = 1\n' > "$CR/projects/alpha/c.py"; printf 'y = 2\n' > "$CR/projects/beta/b.py"
+printf '# a root change\n' >> "$CR/.github/workflows/alpha.yml"
+rg -C "$CR" add -A; rg -C "$CR" commit -q -m "the PR"
+MHEAD="$(git -C "$CR" rev-parse HEAD)"
+MR="$WORK/mono-run"; mkdir -p "$MR"
+"$U" --run "$MR" --repo "$CR" --pr 7 ci --head "$MHEAD" --base "$MBASE" > /dev/null
+"$U" --run "$MR" --repo "$CR" --pr 7 --json ci --head "$MHEAD" --base "$MBASE" --question > "$O/ci-q.json"
+"$U" --run "$MR" --repo "$CR" --pr 7 ci --head "$MHEAD" --base "$MBASE" --question > "$O/ci-q.txt"
+python3 - "$O/ci-q.json" <<'PY'
+import json, sys
+p = json.load(open(sys.argv[1]))["prompt"]
+labels = [o["label"] for o in p["options"]]
+assert labels == ["Approve all 2", "Show the list", "Approve only alpha", "Something else"], labels
+assert p["options"][0]["recommended"] and p["options"][2]["run"] == "understando ci --approve --project alpha", p["options"]
+assert "workflow files" in p["situation"][0] and "every project" in p["situation"][0], p["situation"]
+print(p["situation"][0])
+PY
+has "$O/ci-q.txt" "3. Approve only alpha:"
+"$U" --run "$MR" --repo "$CR" --pr 7 ci --approve --project alpha > "$O/ci-proj.txt"
+has "$O/ci-proj.txt" "approved 1 command of alpha"
+"$U" --run "$MR" ci --check-argv python3 -m unittest discover -s tests > "$O/ci-check.txt" || true
+python3 - "$MR/ci.json" "$ROOT" <<'PY'
+import json, sys
+sys.path.insert(0, sys.argv[2] + "/scripts")
+import ci
+prof = json.load(open(sys.argv[1]))
+ok = ci.approved_commands(prof)
+assert [c["project"] for c in ok] == ["alpha"], ok
+assert ci.approved(prof) and not ci.fully_approved(prof)
+beta = next(c for c in prof["commands"] if c["project"] == "beta")
+alpha = next(c for c in prof["commands"] if c["project"] == "alpha")
+assert ci.allowed_by({"commands": ok}, beta["argv"], beta["cwd"]) is None, "a beta command passes the alpha-only approval"
+assert ci.allowed_by({"commands": ok}, alpha["argv"], alpha["cwd"]), "the alpha command is refused"
+print("--project alpha approves only the alpha command; the beta command stays refused")
+PY
 
 step "mode off: the hook writes nothing"
 "$U" mode off > /dev/null
