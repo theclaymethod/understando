@@ -149,8 +149,7 @@
      },
      {
       "id": "keep",
-      "label": "Keep or undo",
-      "shape": "diamond"
+      "label": "Keep or undo"
      },
      {
       "id": "release",
@@ -205,7 +204,7 @@
      {
       "id": "check",
       "label": "reflect",
-      "detail": "code checks + reflectors, including the Judges"
+      "detail": "code checks and the Judges"
      },
      {
       "id": "repair",
@@ -213,13 +212,12 @@
      },
      {
       "id": "keep",
-      "label": "AcceptRule.keep / settle",
-      "shape": "diamond"
+      "label": "AcceptRule.keep / settle"
      },
      {
       "id": "audit",
       "label": "release audit",
-      "detail": "CrReleaseAudit, note under --reflection cr"
+      "detail": "CrReleaseAudit"
      },
      {
       "id": "release",
@@ -274,7 +272,8 @@
       "label": "released, fallback or blocked"
      }
     ]
-   }
+   },
+   "direction": "wrap"
   },
   "boundary": {
    "title": "The import rules",
@@ -429,7 +428,7 @@
   }
  },
  "loop": {
-  "intro": "One run makes one document from one finished CR. Each step below says what the loop does, and it links to the promise that protects that step.",
+  "intro": "One run makes one document from one finished CR. Each step says what the loop does, and it links to the promise that protects that step.",
   "diagram": "loop",
   "steps": [
    {
@@ -444,7 +443,7 @@
     ]
    },
    {
-    "text": "The generator of the document kind writes the first draft, and each kind uses only its own code.",
+    "text": "The generator of the document kind writes the first draft. Each kind uses only its own code.",
     "promise": "G1",
     "code": [
      {
@@ -455,7 +454,7 @@
     ]
    },
    {
-    "text": "The code checks, and the Judges of the chosen reflection mode, read the draft and report findings.",
+    "text": "The code checks, and the Judges of the chosen reflection mode, report findings. A gate sends the editor only the findings that it can repair.",
     "promise": "G2",
     "code": [
      {
@@ -466,11 +465,7 @@
     ]
    },
    {
-    "text": "A gate sends the editor only the findings that a change to the files can repair.",
-    "promise": "G2"
-   },
-   {
-    "text": "The editor repairs the writable files, but it cannot delete a file or finish while a code check still blocks.",
+    "text": "The editor repairs the writable files. It cannot delete a file, and it cannot finish while a code check still blocks.",
     "promise": "G3",
     "code": [
      {
@@ -481,7 +476,7 @@
     ]
    },
    {
-    "text": "The note keeps each edit, but another kind keeps an edit only when the checks give a better score and no new severe finding.",
+    "text": "The note keeps each edit. Another kind keeps an edit only when the score gets better and no new severe finding comes. The rounds stop when no fixable finding is left, when a round changes nothing, or at the round limit.",
     "promise": "G3",
     "code": [
      {
@@ -492,50 +487,18 @@
     ]
    },
    {
-    "text": "The rounds stop when no fixable finding is left, when a round changes nothing, or at the round limit.",
-    "promise": "G3"
-   },
-   {
-    "text": "If the last draft of the note still blocks, the loop goes back to the last draft with no blocking finding.",
+    "text": "If the last draft of the note still blocks, the loop goes back to the last clean draft, and a release audit checks it again. Then the floor releases the document only when no guardrail finding is left.",
     "promise": "G3",
     "code": [
      {
       "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
       "start": 243,
-      "end": 247
-     }
-    ]
-   },
-   {
-    "text": "For the note in the cr mode, a release audit runs the failed major checks again on the final draft.",
-    "promise": "G3",
-    "code": [
-     {
-      "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
-      "start": 248,
       "end": 261
-     }
-    ]
-   },
-   {
-    "text": "The floor releases the document only when no guardrail finding is left, and else it blocks the document or uses a checked fallback.",
-    "promise": "G3",
-    "code": [
+     },
      {
       "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
       "start": 79,
       "end": 98
-     }
-    ]
-   },
-   {
-    "text": "The harness writes the document and a trace, and it sends the same model requests as the old code.",
-    "promise": "G4",
-    "code": [
-     {
-      "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
-      "start": 262,
-      "end": 289
      }
     ]
    }
@@ -738,7 +701,10 @@
    "projects/clinical-reasoning/src/cr/cli.py": "A rewrite: +106 and -355 lines. The old commands now call the harness.",
    "projects/clinical-reasoning/src/cr/scan/__init__.py": "It changes the scan that writes the finished CR. No claim says what changed.",
    "projects/clinical-reasoning/src/cr/decomposed_engine.py": "It changes the CR engine that each scan uses. No claim says what changed."
-  }
+  },
+  "core": [
+   "projects/clinical-reasoning/src/cr/docgen/"
+  ]
  },
  "control_walkthroughs": [
   {
@@ -748,7 +714,7 @@
     "K01b",
     "K35"
    ],
-   "description": "Each control plants one bug in a scratch copy and runs one check. K01b widens what the editor accepts. The type pin stayed green and missed it, but the project-wide type check (K35) went red on the same bug."
+   "description": "Each control plants one bug in a scratch copy and runs one check. One bug widens what the editor accepts. The type pin missed it, but the project-wide type check caught the same bug."
   }
  ],
  "risks": [
@@ -763,15 +729,15 @@
    "claims": [
     "C38"
    ],
-   "why": "V36 skips when judiciary is not built, and it skips in CI. The control K36 stayed green, so the test cannot fail now.",
-   "fix": "Build judiciary in the CI test job, or make V36 fail, not skip, when the build is missing."
+   "why": "The judiciary end-to-end test skips when judiciary is not built, and it skips in CI. Its control missed the bug, so the test cannot fail now.",
+   "fix": "Build judiciary in the CI test job, or make the judiciary test fail, not skip, when the build is missing."
   },
   {
    "claims": [
     "C01"
    ],
-   "why": "Pin V01 stayed green on K01b, which widened the editor contract. Only the project-wide check V35 went red.",
-   "fix": "Add a pin that calls each editor with a plain `Finding` list, so that the pin file goes red on K01b."
+   "why": "The type pin missed the bug that widened the editor contract. Only the project-wide type check caught it.",
+   "fix": "Add a pin that calls each editor with a plain `Finding` list, so that the pin file catches the wider contract."
   },
   {
    "claims": [
@@ -829,22 +795,22 @@
   "The run records the evals and does not run them again, so their verdict stays Backed."
  ],
  "concerns": [
-  "V36 skips without a judiciary build, here and in CI. So C38 has no live verifier.",
-  "The type pin on line 36 (V01) checks that a Finding is not an EditableFinding. It does not check the parameter type of `Editor.edit`. V35 covers that edit.",
-  "C31 has only two greps (V37, V38). A boundary rule in CI that refuses an import of `cr.docgen` in `cr_service` would make it Proven.",
-  "C35, C36 and C37 are changes that the PR text does not name, and no test names their module.",
-  "V30, V31 and V32 use Opus, the same model family as the author.",
+  "The judiciary end-to-end test skips without a judiciary build, here and in CI. So the claim that judiciary mode works has no live verifier.",
+  "The type pin on line 36 checks that a Finding is not an EditableFinding. It does not check the parameter type of `Editor.edit`. The project-wide type check covers that edit.",
+  "The claim that the CR service does not use the harness has only two greps. A boundary rule in CI that refuses an import of `cr.docgen` in `cr_service` would make it Proven.",
+  "Three changes are not in the PR text, and no test names their module: the scope check, the deleted spreadsheet helper and the diagnose-mode error text.",
+  "The gaming audit and two evals use Opus, the same model family as the author.",
   "The unclaimed list shows large new files, such as the UAP adapter and the command, that no claim cites."
  ],
  "verifications": [
   "Each verdict comes from scripts/verdicts.py, and the e2e test on the fixture checks that script.",
   "Each control ran in a new scratch worktree of a local clone. The run deleted each worktree after the control.",
-  "Each red control matched its expected pattern, except K01b. K01b stayed green, and the map flags it.",
+  "Each control that caught its bug matched its expected pattern. One control missed its bug: the type pin did not catch a wider editor contract, and the map flags it.",
   "No model call and no paid step ran. The env file set a dummy key and an unreachable base URL.",
-  "The mechanical checks (V37 to V39) read Git objects only. explain.py runs them again and stops when a result changes."
+  "The three mechanical checks read Git objects only. explain.py runs them again and stops when a result changes."
  ],
  "bullets": [
-  "**Control missed:** pin L36 stayed green when K01b widened Editor.edit, EditorSpec.edit and NoteAuthorEditor.edit. Project-wide basedpyright (V35) went red on the same edit.",
+  "**Control missed:** pin L36 missed the bug when K01b widened Editor.edit, EditorSpec.edit and NoteAuthorEditor.edit. Project-wide basedpyright (V35) caught the same bug.",
   "**Not run:** the evals and the Opus audit are recorded, not run again. Three of them use the author's model family."
  ]
 }
