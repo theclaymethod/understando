@@ -8,6 +8,7 @@ and multi-document files are not supported: a workflow does not need them.
 from __future__ import annotations
 
 import re
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 
 
 class S(str):

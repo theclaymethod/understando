@@ -5,6 +5,47 @@ use std::path::{Path, PathBuf};
 use serde_json::{json, Value};
 use tokio::sync::Mutex;
 
+/// The test-isolation guard of scripts/testguard.py: in a test run (a marker is set), a write
+/// outside UNDERSTANDO_TEST_ROOT is refused, so a test never writes the my-work of a real run.
+pub fn test_guard(path: &Path) -> Result<(), String> {
+    let marked = ["UNDERSTANDO_TEST", "TEST_WORKER_INDEX", "LEARN_E2E_TEMPLATE"]
+        .iter()
+        .any(|m| std::env::var_os(m).is_some_and(|v| !v.is_empty()));
+    if !marked {
+        return Ok(());
+    }
+    let resolve = |p: &Path| -> PathBuf {
+        // The nearest folder that exists, resolved, then the rest of the path.
+        let mut base = p.to_path_buf();
+        let mut rest = Vec::new();
+        while !base.exists() {
+            match (base.file_name().map(|n| n.to_os_string()), base.parent()) {
+                (Some(n), Some(parent)) => {
+                    rest.push(n);
+                    base = parent.to_path_buf();
+                }
+                _ => break,
+            }
+        }
+        let mut out = std::fs::canonicalize(&base).unwrap_or(base);
+        out.extend(rest.iter().rev());
+        out
+    };
+    let p = resolve(path);
+    match std::env::var_os("UNDERSTANDO_TEST_ROOT").filter(|r| !r.is_empty()) {
+        Some(root) if p.starts_with(resolve(Path::new(&root))) => Ok(()),
+        Some(root) => Err(format!(
+            "understando test guard: refuse to write {}: the path is outside the test root {}",
+            p.display(),
+            resolve(Path::new(&root)).display()
+        )),
+        None => Err(format!(
+            "understando test guard: refuse to write {}: a test marker is set and UNDERSTANDO_TEST_ROOT is not set",
+            p.display()
+        )),
+    }
+}
+
 pub struct MyWork {
     dir: PathBuf,
     lock: Mutex<()>,
@@ -32,6 +73,7 @@ impl MyWork {
     }
 
     fn write_unlocked(&self, name: &str, value: &Value) -> Result<(), String> {
+        test_guard(&self.dir)?;
         std::fs::create_dir_all(&self.dir).map_err(|e| e.to_string())?;
         let meta = std::fs::symlink_metadata(&self.dir).map_err(|e| e.to_string())?;
         if meta.file_type().is_symlink() {

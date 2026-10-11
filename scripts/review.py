@@ -42,6 +42,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 import ci  # noqa: E402
 import config  # noqa: E402
 import ctx as context  # noqa: E402
@@ -1185,6 +1186,9 @@ def _main(c: context.Ctx, argv: list[str], capture: bool = False):
 
     ctx = resolve(pr, c.repo if c.explicit_repo else None, args.head)
     run = Path(ctx["run"])
+    fake_gh = testguard.fake_gh_refusal(run)
+    if fake_gh:
+        tm.fail(fake_gh, 1)
     refusal = context.refuse_run_write(run, Path(ctx["repo"]))
     if refusal:
         tm.fail(refusal, 1)

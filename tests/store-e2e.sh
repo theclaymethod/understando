@@ -5,6 +5,7 @@
 # doctor on tracked run output, and the java lookup. No model call, no network.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$ROOT/tests/isolate.sh" store
 U="$ROOT/bin/understando"
 S="$ROOT/scripts"
 T="$WORK/store"
@@ -23,7 +24,9 @@ for d in "$HOME/.agents/skills/asd-ste100" "$HOME/.claude/skills/asd-ste100"; do
 done
 [ -e "$FH/.agents/skills/asd-ste100" ] || fail "the required skill asd-ste100 is not installed"
 export HOME="$FH" UNDERSTANDO_OFFLINE=1
+# This test needs the default runs root, so it unsets the two. They are then in the fake HOME, in the test root.
 unset UNDERSTANDO_HOME UNDERSTANDO_RUNS
+isolate_selfcheck
 gq() { git -C "$1" -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false "${@:2}"; }
 
 # The reviewed repo: a clone of the fixture whose origin is a local bare repo named wallet.git.

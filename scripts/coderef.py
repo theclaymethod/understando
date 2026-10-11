@@ -46,6 +46,8 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # also under python3 -I, which drops the script folder
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 
 MAX_LINES = 30
 MAX_WITH = 80

@@ -4,6 +4,7 @@
 # control, stop. It makes no tutor call. The level count comes from the compiled chapters.json.
 set -euo pipefail
 L="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+. "$L/../tests/isolate.sh" smoke
 W="$(mktemp -d "${TMPDIR:-/tmp}/learn-smoke.XXXXXX")"
 bash "$L/web/e2e/make-fixture-run.sh" "$W" >/dev/null
 RUN="$W/run"

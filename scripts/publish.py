@@ -41,6 +41,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 import tm  # noqa: E402
 
 STAMP = "explain.stamp.json"

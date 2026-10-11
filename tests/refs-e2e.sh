@@ -5,6 +5,7 @@
 #   WORK=... REPO=... MAP=... HEAD=... FIX=... bash tests/refs-e2e.sh    (tests/e2e.sh calls it)
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$ROOT/tests/isolate.sh" refs
 S="$ROOT/scripts"
 U=(python3 "$S/cli.py")
 step() { printf '\n== %s\n' "$*"; }

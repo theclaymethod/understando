@@ -12,6 +12,7 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 
 
 def git(repo: Path, *args: str, check: bool = True) -> str:

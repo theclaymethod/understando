@@ -8,6 +8,7 @@
 #   - old-shape data (schema_version 1) still builds and renders.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$ROOT/tests/isolate.sh" onto
 S="$ROOT/scripts"
 U="$ROOT/bin/understando"
 O="$WORK/onto"
