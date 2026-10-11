@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # End-to-end test: run understando map, controls, verdicts, rerun and explain on the fixture repo,
-# then assert the exact verdicts in tests/fixture/expected.json.
+# then assert the exact verdicts in tests/fixture/expected.json. Then tests/mode-e2e.sh drives the
+# understando CLI: the mode, the menu, discover, close, trim, ready, explain, routes and doctor.
 #
 #   tests/e2e.sh            KEEP=1 tests/e2e.sh keeps the work dir
 #
@@ -253,5 +254,8 @@ PY
 test "$(g status --porcelain)" = "$BEFORE_STATUS" || { echo "FAIL: the fixture checkout changed"; exit 1; }
 test "$(g worktree list | wc -l | tr -d ' ')" = "$BEFORE_TREES" || { echo "FAIL: a scratch worktree is left"; exit 1; }
 test -z "$(ls -A "$WORK/scratch")" || { echo "FAIL: scratch dir is not empty"; exit 1; }
+step "mode: the CLI verbs, the gates and the ledger (tests/mode-e2e.sh)"
+WORK="$WORK" REPO="$REPO" MAP="$MAP" HEAD="$HEAD" FIX="$FIX" bash "$ROOT/tests/mode-e2e.sh"
+
 echo
 echo "PASS: understando e2e on the fixture"

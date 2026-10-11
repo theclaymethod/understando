@@ -1,10 +1,21 @@
 #!/usr/bin/env bash
 # understando global setup. Idempotent. It ends with doctor.
 #
-#   scripts/setup.sh           install what is missing, then run doctor
-#   scripts/setup.sh doctor    only report what is present and what is missing
+#   scripts/setup.sh [--scope project|global]   install what is missing, then run doctor
+#   scripts/setup.sh --links-only               only the skill links and the CLI link
+#   scripts/setup.sh doctor                     only report what is present and what is missing
+#
+# The optional external skills (Code Contracts, the pstack verification skills, asd-ste100,
+# visual-explainer) go to the project (./.agents/skills) or to the user's global skill folders.
+# The script asks which, unless --scope or $UNDERSTANDO_SETUP_SCOPE says it. Without a terminal and
+# without a scope, it installs no optional skill.
+#
+# The prompt hook (hooks/user-prompt-submit.json) is optional. The script prints it and asks before
+# it adds it to ~/.claude/settings.json or ~/.codex/hooks.json. It writes a backup first. Without a
+# terminal it only prints the snippet.
 #
 # Global writes, each one listed by doctor:
+#   0. the CLI: a link ~/.local/bin/understando -> bin/understando, made only when the name is free.
 #   1. symlinks named understando in ~/.agents/skills, ~/.claude/skills, ~/.codex/skills and
 #      ~/.cursor/skills. The script makes a link only when the name is free, or when the name is
 #      already a link to this repo. It never replaces another skill.
@@ -45,13 +56,67 @@ link_skill() {
   ln -s "$ROOT" "$target" && echo "linked $target -> $ROOT"
 }
 
+SCOPE="${UNDERSTANDO_SETUP_SCOPE:-}"
 skills_add() { # url [skills-cli flags...]
-  npx --yes skills add "$@" -g -y -a claude-code -a codex -a cursor
+  case "$SCOPE" in
+    global) npx --yes skills add "$@" -g -y -a claude-code -a codex -a cursor ;;
+    project) npx --yes skills add "$@" -y -a claude-code -a codex -a cursor ;;
+    *) echo "skip: $* (no scope chosen)" ;;
+  esac
+}
+
+ask_scope() {
+  [ -n "$SCOPE" ] && return 0
+  if [ -t 0 ]; then
+    printf 'Install the optional skills for this project or globally? [project/global/skip] '
+    read -r SCOPE
+  fi
+  case "$SCOPE" in project|global) ;; *) SCOPE=skip ;; esac
+}
+
+link_cli() {
+  local bin="$HOME/.local/bin" target="$HOME/.local/bin/understando"
+  mkdir -p "$bin"
+  if [ -L "$target" ] && [ "$(readlink "$target")" = "$ROOT/bin/understando" ]; then return 0; fi
+  if [ -e "$target" ] || [ -L "$target" ]; then echo "refuse: $target exists and is not the understando CLI" >&2; return 1; fi
+  ln -s "$ROOT/bin/understando" "$target" && echo "linked $target -> $ROOT/bin/understando"
+  case ":$PATH:" in *":$bin:"*) ;; *) echo "note: add $bin to PATH" ;; esac
+}
+
+offer_hook() { # settings file
+  local file="$1"
+  echo "Optional prompt hook for $file. It notes each prompt only while the mode is on:"
+  cat "$ROOT/hooks/user-prompt-submit.json"
+  if [ ! -t 0 ]; then echo "not installed: no terminal to ask. Add the snippet by hand, or run setup in a terminal."; return 0; fi
+  printf 'Add it to %s? [y/N] ' "$file"
+  read -r yes
+  [ "$yes" = "y" ] || [ "$yes" = "Y" ] || { echo "not installed"; return 0; }
+  python3 - "$file" "$ROOT/hooks/user-prompt-submit.json" <<'PY'
+import json, shutil, sys
+from pathlib import Path
+target, snippet = Path(sys.argv[1]), json.loads(Path(sys.argv[2]).read_text())
+data = json.loads(target.read_text()) if target.is_file() and target.read_text().strip() else {}
+if target.is_file():
+    shutil.copyfile(target, str(target) + ".understando-backup")
+hooks = data.setdefault("hooks", {}).setdefault("UserPromptSubmit", [])
+entry = snippet["hooks"]["UserPromptSubmit"][0]
+if entry not in hooks:
+    hooks.append(entry)
+target.parent.mkdir(parents=True, exist_ok=True)
+target.write_text(json.dumps(data, indent=2) + "\n")
+print(f"installed the prompt hook in {target} (backup: {target}.understando-backup)")
+PY
+}
+
+links() {
+  local d
+  for d in "${SKILL_DIRS[@]}"; do link_skill "$d"; done
+  link_cli
 }
 
 install() {
-  local d
-  for d in "${SKILL_DIRS[@]}"; do link_skill "$d"; done
+  links
+  ask_scope
   if ! find_skill code-contracts >/dev/null; then
     skills_add https://github.com/spolu/code-contracts -s code-contracts
   fi
@@ -61,6 +126,10 @@ install() {
   fi
   find_skill asd-ste100 >/dev/null || skills_add https://github.com/danyuchn/asd-ste100-skill
   find_skill visual-explainer >/dev/null || skills_add https://github.com/theclaymethod/artifacture -s visual-explainer
+  offer_hook "$HOME/.claude/settings.json"
+  if command -v codex >/dev/null && codex features list 2>/dev/null | grep -Eq '^hooks[[:space:]]+[a-z]+[[:space:]]+true'; then
+    offer_hook "$HOME/.codex/hooks.json"
+  fi
 }
 
 doctor() {
@@ -88,6 +157,8 @@ doctor() {
   else bad "cc-check" "run scripts/setup.sh"; fi
   if d="$(find_skill visual-explainer)" && p="$(node "$d/scripts/artifacture.mjs" path 2>/dev/null | tail -1)" && [ -d "$p/visual-explainer-mdx" ]
   then ok "visual-explainer runtime" "$p"; else bad "visual-explainer runtime" "artifacture.mjs path failed"; fi
+  if [ -L "$HOME/.local/bin/understando" ] && [ "$(readlink "$HOME/.local/bin/understando")" = "$ROOT/bin/understando" ]; then ok "cli ~/.local/bin/understando" "-> $ROOT/bin/understando"
+  else bad "cli ~/.local/bin/understando" "absent"; fi
   if command -v gh >/dev/null; then ok "gh (optional)" "$(command -v gh)"; else warn "gh (optional)" "needed to read a PR"; fi
   if command -v uv >/dev/null; then ok "uv (optional)" "$(command -v uv)"; else warn "uv (optional)" "needed by Python targets"; fi
   warn "tester-army e2e" "per repo only, after approval: E2E_TELEMETRY_DISABLED=1 npx e2e init"
@@ -95,8 +166,18 @@ doctor() {
   echo "doctor: $missing required pieces are missing"; return 1
 }
 
-case "${1:-install}" in
+ACTION=install
+while [ $# -gt 0 ]; do
+  case "$1" in
+    doctor) ACTION=doctor ;;
+    --links-only) ACTION=links ;;
+    --scope) SCOPE="$2"; shift ;;
+    *) echo "usage: scripts/setup.sh [doctor | --links-only | --scope project|global]" >&2; exit 2 ;;
+  esac
+  shift
+done
+case "$ACTION" in
   doctor) doctor ;;
+  links) links ;;
   install) install; doctor ;;
-  *) echo "usage: scripts/setup.sh [doctor]" >&2; exit 2 ;;
 esac

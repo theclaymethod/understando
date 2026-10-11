@@ -603,7 +603,8 @@
             "recorded",
             "failing",
             "broken",
-            "checked"
+            "checked",
+            "stale"
           ]
         },
         "mechanical": {
@@ -787,6 +788,48 @@
               "type": "string"
             },
             "ran_at": {
+              "type": "string"
+            }
+          }
+        },
+        "import": {
+          "type": "object",
+          "description": "Outside evidence that understando import recorded. A file that fails its format check, or changed after the import, is stale and backs nothing.",
+          "required": [
+            "kind",
+            "path",
+            "status"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "show-me-your-work",
+                "lean",
+                "verify-feature",
+                "nemesis-review",
+                "evo",
+                "impeccable"
+              ]
+            },
+            "path": {
+              "type": "string"
+            },
+            "sha256": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "ok",
+                "stale"
+              ]
+            },
+            "detail": {
+              "type": "string"
+            },
+            "checked_at": {
               "type": "string"
             }
           }

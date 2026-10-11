@@ -37,6 +37,9 @@ def verifier_state(v: dict, controls: list[dict], flags: list[dict]) -> str:
     def flag(name: str, detail: str, loud: bool = False) -> None:
         flags.append({"flag": name, "subject": v["id"], "loud": loud, "detail": detail})
 
+    if (v.get("import") or {}).get("status") == "stale":
+        flag("stale-import", f"{v['id']}: the imported evidence failed its format check or changed: {v['import'].get('detail', '')}")
+        return "stale"
     ind = v["independence"]
     if ind["by"] == "model":
         if ind.get("context") != "fresh":
@@ -139,7 +142,7 @@ def apply(data: dict) -> dict:
         backing = [v for v in data["verifiers"] if c["id"] in v["claims"]]
         proven = [v for v in backing if v["state"] == "proven" and can_prove(v, author)]
         counted = [v for v in backing if v["state"] in ("proven", "untested", "recorded", "checked")]
-        dead = [v for v in backing if v["state"] in ("cannot-fail", "failing", "broken")]
+        dead = [v for v in backing if v["state"] in ("cannot-fail", "failing", "broken", "stale")]
         rungs = [tm.ladder(v) for v in proven if tm.ladder(v)]
         c["tier"] = max(rungs) if rungs else None
         formal = [v for v in proven if (tm.ladder(v) or 0) >= 4]

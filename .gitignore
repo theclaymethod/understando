@@ -4,3 +4,7 @@ node_modules/
 __pycache__/
 runs/*/*/my-work/
 runs/*/*/learn/
+runs/*/*/journal.jsonl
+runs/*/*/decisions.tsv
+runs/*/*/history/
+runs/*/*/discover.json

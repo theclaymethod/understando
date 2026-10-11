@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# understando: the one CLI. Every agent runs it from a shell. It needs bash, git and python3.
+set -euo pipefail
+SELF="${BASH_SOURCE[0]}"
+while [ -L "$SELF" ]; do
+  DIR="$(cd -P "$(dirname "$SELF")" && pwd)"
+  SELF="$(readlink "$SELF")"
+  case "$SELF" in /*) ;; *) SELF="$DIR/$SELF" ;; esac
+done
+ROOT="$(cd -P "$(dirname "$SELF")/.." && pwd)"
+exec python3 "$ROOT/scripts/cli.py" "$@"

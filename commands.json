@@ -1,0 +1,486 @@
+{
+  "categories": [
+    "Understand",
+    "Get ready",
+    "Share",
+    "Run all",
+    "Maintain",
+    "Mode"
+  ],
+  "verbs": [
+    {
+      "id": "map",
+      "category": "Understand",
+      "line": "Build or update the claim ledger, verifiers, tiers and promises, then diff against the previous map.",
+      "args": "[--scan-src DIR/ --scan-tests DIR/] [--fail-on-drop]",
+      "invoke": "model",
+      "doc": "commands/map.md"
+    },
+    {
+      "id": "discover",
+      "category": "Understand",
+      "line": "Find the invariants with the user: mine candidates, ask edge-case questions, and record only what the user confirms.",
+      "args": "[mine | questions | answer --answers FILE | status] [--paths P] [--claim C01]",
+      "invoke": "user",
+      "doc": "commands/discover.md"
+    },
+    {
+      "id": "probe",
+      "category": "Understand",
+      "line": "Plant model-free controls in scratch worktrees and record which checks go red.",
+      "args": "[--control K01] [--only V01,V02] [--env-file FILE]",
+      "invoke": "user",
+      "doc": "commands/probe.md"
+    },
+    {
+      "id": "formalize",
+      "category": "Understand",
+      "line": "Climb to tier 4 or 5: a TLA+ model check, or a Lean proof with a conformance link.",
+      "args": "[--claim C01]",
+      "invoke": "user",
+      "doc": "commands/formalize.md"
+    },
+    {
+      "id": "import",
+      "category": "Understand",
+      "line": "Record outside evidence (evo, impeccable, Lean, nemesis-review, show-me-your-work, verify feature files). It checks the format; a mismatch is stale.",
+      "args": "KIND FILE --claim C01 --description TEXT",
+      "invoke": "model",
+      "doc": "commands/import.md"
+    },
+    {
+      "id": "close",
+      "category": "Get ready",
+      "line": "Close each Asserted or Gap claim, riskiest first: a check that probe proves red, evidence, a new wording, or a waiver.",
+      "args": "[--answers FILE] [--list]",
+      "invoke": "user",
+      "doc": "commands/close.md"
+    },
+    {
+      "id": "trim",
+      "category": "Get ready",
+      "line": "Find excess code, and delete unit tests that an e2e test already covers.",
+      "args": "[--report] [--candidates FILE] [--coverage FILE] [--accept PATH[:NAME] --reason TEXT]",
+      "invoke": "user",
+      "doc": "commands/trim.md"
+    },
+    {
+      "id": "explain",
+      "category": "Share",
+      "line": "Build the explainer and the PR-body section.",
+      "args": "[--explainer-url URL]",
+      "invoke": "model",
+      "doc": "commands/explain.md"
+    },
+    {
+      "id": "learn",
+      "category": "Share",
+      "line": "Paused. The learn app (chapters, exercises, a sandboxed tutor) stays merged and tested, but gets no new features.",
+      "args": "[--port N] [--no-open]",
+      "invoke": "user",
+      "doc": "commands/learn.md",
+      "paused": true
+    },
+    {
+      "id": "ready",
+      "category": "Run all",
+      "line": "Run map, probe, close, trim and explain, then print the four-gate checklist.",
+      "args": "[--report] [--answers FILE] [--cold-read]",
+      "invoke": "user",
+      "report_invoke": "model",
+      "doc": "commands/ready.md"
+    },
+    {
+      "id": "build",
+      "category": "Run all",
+      "line": "The verifier-first playbook for new work: discover, the @cc contract, a verifier that goes red before the code exists, code, probe, gates, explain.",
+      "args": "[status | red-first --verifier V01 --at REF]",
+      "invoke": "user",
+      "doc": "commands/build.md"
+    },
+    {
+      "id": "setup",
+      "category": "Maintain",
+      "line": "Install the CLI and the skill links. Ask project or global for the optional skills, and offer the prompt hook.",
+      "args": "[--scope project|global] [--links-only]",
+      "invoke": "user",
+      "doc": "commands/setup.md"
+    },
+    {
+      "id": "doctor",
+      "category": "Maintain",
+      "line": "Find drift and setup problems. Each finding is auto, mention or route.",
+      "args": "[--fix] [--pr-head SHA]",
+      "invoke": "model",
+      "doc": "commands/doctor.md"
+    },
+    {
+      "id": "signals",
+      "category": "Mode",
+      "line": "Print the state of the run as JSON: map freshness, open claims, probe time, tiers, gates, mode, ledger, toolchains.",
+      "args": "[--pr-head SHA]",
+      "invoke": "model",
+      "doc": null
+    },
+    {
+      "id": "menu",
+      "category": "Mode",
+      "line": "The bare-invocation menu: two or three recommended verbs from signals, then the full table.",
+      "args": "",
+      "invoke": "model",
+      "doc": null
+    },
+    {
+      "id": "routes",
+      "category": "Mode",
+      "line": "For each routed step: the installed original skill, else understando's adapted copy, else the built-in rule.",
+      "args": "",
+      "invoke": "model",
+      "doc": "references/working-rules.md"
+    },
+    {
+      "id": "mode",
+      "category": "Mode",
+      "line": "Turn the mode on or off, or show it. The state file holds the run folder, the repo and the PR.",
+      "args": "on [--autonomy] [--with poteto-mode] | off | status",
+      "invoke": "model",
+      "doc": null
+    },
+    {
+      "id": "note",
+      "category": "Mode",
+      "line": "Append one row to the intent ledger. It redacts secrets.",
+      "args": "prompt|decision|verifier-choice|waiver|result TEXT [--why --evidence --result --claims C01,C02]",
+      "invoke": "model",
+      "doc": null
+    },
+    {
+      "id": "hook",
+      "category": "Mode",
+      "line": "The prompt-hook entry: reads the hook JSON on stdin and notes the prompt only when the mode is on.",
+      "args": "user-prompt",
+      "invoke": "hook",
+      "doc": null
+    }
+  ],
+  "aliases": {
+    "controls": "probe",
+    "rerun": "map"
+  },
+  "invokers": {
+    "model": "The agent may start it.",
+    "user": "Only the user starts it.",
+    "hook": "Only a prompt hook calls it."
+  },
+  "routes": [
+    {
+      "skill": "poteto-mode",
+      "for": "reply style, subagent rules and autonomy",
+      "verbs": [
+        "*"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "grilling",
+      "for": "discover question rounds",
+      "verbs": [
+        "discover"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "code-contracts",
+      "for": "@cc contracts, tier 3",
+      "verbs": [
+        "build",
+        "close"
+      ],
+      "fallback": "Write the contract as a @cc comment by hand; cc-check format checks its syntax.",
+      "optional": true
+    },
+    {
+      "skill": "create-verification-skill",
+      "for": "e2e drivers for a CLI, TUI or service (user-invoked)",
+      "verbs": [
+        "build",
+        "close"
+      ],
+      "fallback": "Write a plain e2e test that runs the real CLI or service in a subprocess.",
+      "optional": true
+    },
+    {
+      "skill": "expect",
+      "for": "e2e checks of a web UI",
+      "verbs": [
+        "build",
+        "close"
+      ],
+      "fallback": "Use tester-army `npx e2e` with E2E_TELEMETRY_DISABLED=1, or a Playwright test.",
+      "optional": true
+    },
+    {
+      "skill": "lean-formal-feedback-loop",
+      "for": "formalize, tier 5",
+      "verbs": [
+        "formalize"
+      ],
+      "fallback": "Follow commands/formalize.md by hand.",
+      "optional": true
+    },
+    {
+      "skill": "interrogate",
+      "for": "the independent review in ready",
+      "verbs": [
+        "ready"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "nemesis-review",
+      "for": "the independent review in ready",
+      "verbs": [
+        "ready"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "code-review",
+      "for": "the independent review in ready",
+      "verbs": [
+        "ready"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "show-me-your-work",
+      "for": "the decision-trail format of the journal",
+      "verbs": [
+        "note"
+      ],
+      "fallback": "`understando note --export-tsv` writes the same columns.",
+      "optional": true
+    },
+    {
+      "skill": "simplify",
+      "for": "trim gate 2 cleanup",
+      "verbs": [
+        "trim"
+      ],
+      "fallback": "The built-in pass: probe-proven deletion plus dead-code tools.",
+      "optional": true
+    },
+    {
+      "skill": "ultra-clean",
+      "for": "trim gate 2 cleanup",
+      "verbs": [
+        "trim"
+      ],
+      "fallback": "The built-in pass: probe-proven deletion plus dead-code tools.",
+      "optional": true
+    },
+    {
+      "skill": "deslop",
+      "for": "trim gate 2 cleanup",
+      "verbs": [
+        "trim"
+      ],
+      "fallback": "The built-in pass: probe-proven deletion plus dead-code tools.",
+      "optional": true
+    },
+    {
+      "skill": "no-comments",
+      "for": "trim comment cleanup; keep each @cc comment",
+      "verbs": [
+        "trim"
+      ],
+      "fallback": "Keep comments that say why; keep each @cc contract comment.",
+      "optional": true
+    },
+    {
+      "skill": "unslop",
+      "for": "reviewer-facing prose",
+      "verbs": [
+        "explain",
+        "ready"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "technical-writing",
+      "for": "docs and PR text",
+      "verbs": [
+        "explain"
+      ],
+      "fallback": "Follow the reply rules and the STE lint.",
+      "optional": true
+    },
+    {
+      "skill": "writing-for-agents",
+      "for": "agent-facing files",
+      "verbs": [
+        "*"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "tdd",
+      "for": "the red-first loop in build",
+      "verbs": [
+        "build"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "to-spec",
+      "for": "claims as a spec",
+      "verbs": [
+        "map",
+        "build"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "domain-modeling",
+      "for": "the GLOSSARY.md format",
+      "verbs": [
+        "explain"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "handoff",
+      "for": "a hand-off between agents or sessions",
+      "verbs": [
+        "*"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "principle-prove-it-works",
+      "for": "probe, trim",
+      "verbs": [
+        "probe",
+        "trim"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "principle-test-behavior-not-implementation",
+      "for": "probe, trim",
+      "verbs": [
+        "probe",
+        "trim"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "principle-sequence-verifiable-units",
+      "for": "build, close",
+      "verbs": [
+        "build",
+        "close"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "principle-subtract-before-you-add",
+      "for": "trim",
+      "verbs": [
+        "trim"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "principle-laziness-protocol",
+      "for": "trim",
+      "verbs": [
+        "trim"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "principle-model-the-domain",
+      "for": "tier 3 contracts, invariants",
+      "verbs": [
+        "discover",
+        "build"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "principle-type-system-discipline",
+      "for": "tier 3 contracts, invariants",
+      "verbs": [
+        "discover",
+        "build"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "principle-fix-root-causes",
+      "for": "code-first routes from formalize",
+      "verbs": [
+        "formalize"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "principle-attack-the-premise",
+      "for": "code-first routes from formalize",
+      "verbs": [
+        "formalize"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "principle-encode-lessons-in-structure",
+      "for": "doctor",
+      "verbs": [
+        "doctor"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "principle-build-the-lever",
+      "for": "controls and generators that a reviewer runs again",
+      "verbs": [
+        "probe"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "principle-guard-the-context-window",
+      "for": "subagents",
+      "verbs": [
+        "*"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "principle-never-block-on-the-human",
+      "for": "every verb; discover, claim wording and waivers stop for the user",
+      "verbs": [
+        "*"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "asd-ste100",
+      "for": "the STE lint",
+      "verbs": [
+        "explain",
+        "ready"
+      ],
+      "required": true
+    },
+    {
+      "skill": "visual-explainer",
+      "for": "the explainer runtime",
+      "verbs": [
+        "explain"
+      ],
+      "required": true
+    }
+  ]
+}

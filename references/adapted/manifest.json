@@ -1,0 +1,313 @@
+[
+  {
+    "id": "reply-rules",
+    "file": "references/adapted/reply-rules.md",
+    "original_skill": "poteto-mode",
+    "source": "pstack",
+    "source_path": "skills/poteto-mode/SKILL.md",
+    "source_version": "0.15.5",
+    "used_by": [
+      "explain",
+      "ready",
+      "close"
+    ]
+  },
+  {
+    "id": "subagents",
+    "file": "references/adapted/subagents.md",
+    "original_skill": "poteto-mode",
+    "source": "pstack",
+    "source_path": "skills/poteto-mode/SKILL.md",
+    "source_version": "0.15.5",
+    "used_by": [
+      "probe",
+      "ready",
+      "build",
+      "close"
+    ]
+  },
+  {
+    "id": "principle-prove-it-works",
+    "file": "references/adapted/principles/prove-it-works.md",
+    "original_skill": "principle-prove-it-works",
+    "source": "pstack",
+    "source_path": "skills/principle-prove-it-works/SKILL.md",
+    "source_version": "0.15.5",
+    "used_by": [
+      "probe",
+      "trim",
+      "ready"
+    ]
+  },
+  {
+    "id": "principle-test-behavior-not-implementation",
+    "file": "references/adapted/principles/test-behavior-not-implementation.md",
+    "original_skill": "principle-test-behavior-not-implementation",
+    "source": "pstack",
+    "source_path": "skills/principle-test-behavior-not-implementation/SKILL.md",
+    "source_version": "0.15.5",
+    "used_by": [
+      "probe",
+      "trim",
+      "close",
+      "build"
+    ]
+  },
+  {
+    "id": "principle-sequence-verifiable-units",
+    "file": "references/adapted/principles/sequence-verifiable-units.md",
+    "original_skill": "principle-sequence-verifiable-units",
+    "source": "pstack",
+    "source_path": "skills/principle-sequence-verifiable-units/SKILL.md",
+    "source_version": "0.15.5",
+    "used_by": [
+      "build",
+      "close"
+    ]
+  },
+  {
+    "id": "principle-subtract-before-you-add",
+    "file": "references/adapted/principles/subtract-before-you-add.md",
+    "original_skill": "principle-subtract-before-you-add",
+    "source": "pstack",
+    "source_path": "skills/principle-subtract-before-you-add/SKILL.md",
+    "source_version": "0.15.5",
+    "used_by": [
+      "trim",
+      "build",
+      "ready"
+    ]
+  },
+  {
+    "id": "principle-laziness-protocol",
+    "file": "references/adapted/principles/laziness-protocol.md",
+    "original_skill": "principle-laziness-protocol",
+    "source": "pstack",
+    "source_path": "skills/principle-laziness-protocol/SKILL.md",
+    "source_version": "0.15.5",
+    "used_by": [
+      "trim",
+      "ready"
+    ]
+  },
+  {
+    "id": "principle-model-the-domain",
+    "file": "references/adapted/principles/model-the-domain.md",
+    "original_skill": "principle-model-the-domain",
+    "source": "pstack",
+    "source_path": "skills/principle-model-the-domain/SKILL.md",
+    "source_version": "0.15.5",
+    "used_by": [
+      "discover",
+      "formalize",
+      "build"
+    ]
+  },
+  {
+    "id": "principle-type-system-discipline",
+    "file": "references/adapted/principles/type-system-discipline.md",
+    "original_skill": "principle-type-system-discipline",
+    "source": "pstack",
+    "source_path": "skills/principle-type-system-discipline/SKILL.md",
+    "source_version": "0.15.5",
+    "used_by": [
+      "formalize",
+      "build",
+      "discover"
+    ]
+  },
+  {
+    "id": "principle-fix-root-causes",
+    "file": "references/adapted/principles/fix-root-causes.md",
+    "original_skill": "principle-fix-root-causes",
+    "source": "pstack",
+    "source_path": "skills/principle-fix-root-causes/SKILL.md",
+    "source_version": "0.15.5",
+    "used_by": [
+      "formalize",
+      "close"
+    ]
+  },
+  {
+    "id": "principle-attack-the-premise",
+    "file": "references/adapted/principles/attack-the-premise.md",
+    "original_skill": "principle-attack-the-premise",
+    "source": "pstack",
+    "source_path": "skills/principle-attack-the-premise/SKILL.md",
+    "source_version": "0.15.5",
+    "used_by": [
+      "formalize",
+      "close"
+    ]
+  },
+  {
+    "id": "principle-encode-lessons-in-structure",
+    "file": "references/adapted/principles/encode-lessons-in-structure.md",
+    "original_skill": "principle-encode-lessons-in-structure",
+    "source": "pstack",
+    "source_path": "skills/principle-encode-lessons-in-structure/SKILL.md",
+    "source_version": "0.15.5",
+    "used_by": [
+      "doctor",
+      "ready"
+    ]
+  },
+  {
+    "id": "principle-build-the-lever",
+    "file": "references/adapted/principles/build-the-lever.md",
+    "original_skill": "principle-build-the-lever",
+    "source": "pstack",
+    "source_path": "skills/principle-build-the-lever/SKILL.md",
+    "source_version": "0.15.5",
+    "used_by": [
+      "probe",
+      "build",
+      "formalize"
+    ]
+  },
+  {
+    "id": "principle-guard-the-context-window",
+    "file": "references/adapted/principles/guard-the-context-window.md",
+    "original_skill": "principle-guard-the-context-window",
+    "source": "pstack",
+    "source_path": "skills/principle-guard-the-context-window/SKILL.md",
+    "source_version": "0.15.5",
+    "used_by": [
+      "probe",
+      "ready",
+      "build"
+    ]
+  },
+  {
+    "id": "principle-never-block-on-the-human",
+    "file": "references/adapted/principles/never-block-on-the-human.md",
+    "original_skill": "principle-never-block-on-the-human",
+    "source": "pstack",
+    "source_path": "skills/principle-never-block-on-the-human/SKILL.md",
+    "source_version": "0.15.5",
+    "used_by": [
+      "discover",
+      "close",
+      "build",
+      "ready"
+    ]
+  },
+  {
+    "id": "feature-playbook",
+    "file": "references/adapted/feature-playbook.md",
+    "original_skill": "poteto-mode",
+    "source": "pstack",
+    "source_path": "skills/poteto-mode/playbooks/feature.md",
+    "source_version": "0.15.5",
+    "used_by": [
+      "build"
+    ]
+  },
+  {
+    "id": "pr-verification",
+    "file": "references/adapted/pr-verification.md",
+    "original_skill": "poteto-mode",
+    "source": "pstack",
+    "source_path": "skills/poteto-mode/playbooks/opening-a-pr.md and skills/poteto-mode/playbooks/shipping.md",
+    "source_version": "0.15.5",
+    "used_by": [
+      "ready"
+    ]
+  },
+  {
+    "id": "unslop-core",
+    "file": "references/adapted/unslop-core.md",
+    "original_skill": "unslop",
+    "source": "pstack",
+    "source_path": "skills/unslop/SKILL.md",
+    "source_version": "0.15.5",
+    "used_by": [
+      "explain",
+      "ready"
+    ]
+  },
+  {
+    "id": "grilling",
+    "file": "references/adapted/grilling.md",
+    "original_skill": "grilling",
+    "source": "mattpocock-skills",
+    "source_path": "skills/productivity/grilling/SKILL.md",
+    "source_version": "1.3.1",
+    "used_by": [
+      "discover"
+    ]
+  },
+  {
+    "id": "writing-for-agents",
+    "file": "references/adapted/writing-for-agents.md",
+    "original_skill": "writing-for-agents",
+    "source": "mattpocock-skills",
+    "source_path": "skills/productivity/writing-for-agents/SKILL.md and skills/productivity/writing-for-agents/SKILL-MECHANICS.md",
+    "source_version": "1.3.1",
+    "used_by": [
+      "explain",
+      "doctor",
+      "build"
+    ]
+  },
+  {
+    "id": "tdd-red-first",
+    "file": "references/adapted/tdd-red-first.md",
+    "original_skill": "tdd",
+    "source": "mattpocock-skills",
+    "source_path": "skills/engineering/tdd/SKILL.md",
+    "source_version": "1.3.1",
+    "used_by": [
+      "build",
+      "close"
+    ]
+  },
+  {
+    "id": "to-spec",
+    "file": "references/adapted/to-spec.md",
+    "original_skill": "to-spec",
+    "source": "mattpocock-skills",
+    "source_path": "skills/engineering/to-spec/SKILL.md",
+    "source_version": "1.3.1",
+    "used_by": [
+      "formalize",
+      "explain"
+    ]
+  },
+  {
+    "id": "glossary-format",
+    "file": "references/adapted/glossary-format.md",
+    "original_skill": "domain-modeling",
+    "source": "mattpocock-skills",
+    "source_path": "skills/engineering/domain-modeling/GLOSSARY-FORMAT.md",
+    "source_version": "1.3.1",
+    "used_by": [
+      "discover",
+      "explain",
+      "formalize"
+    ]
+  },
+  {
+    "id": "code-review",
+    "file": "references/adapted/code-review.md",
+    "original_skill": "code-review",
+    "source": "mattpocock-skills",
+    "source_path": "skills/engineering/code-review/SKILL.md",
+    "source_version": "1.3.1",
+    "used_by": [
+      "ready"
+    ]
+  },
+  {
+    "id": "handoff",
+    "file": "references/adapted/handoff.md",
+    "original_skill": "handoff",
+    "source": "mattpocock-skills",
+    "source_path": "skills/productivity/handoff/SKILL.md",
+    "source_version": "1.3.1",
+    "used_by": [
+      "build",
+      "close"
+    ]
+  }
+]
