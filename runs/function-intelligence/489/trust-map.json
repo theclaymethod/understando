@@ -4268,10 +4268,11 @@
       "description": "A planted wrong model from the formal pilot.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "Accept/Model.lean",
-          "find": "else (cleanIdx states).getLast?",
-          "replace": "else (cleanIdx states).head?"
+          "symbol": "settleLC",
+          "match": "/cleanIdx states\\)\\.(getLast\\?)/",
+          "with": "head?"
         }
       ],
       "expect": {
@@ -4293,10 +4294,10 @@
       "description": "A planted wrong model from the formal pilot.",
       "edits": [
         {
-          "op": "replace",
+          "op": "delete-line",
           "path": "Accept/Model.lean",
-          "find": "  else if newKey (severeKeys after) (severeKeys before) then false\n",
-          "replace": ""
+          "symbol": "keepSI",
+          "match": "newKey (severeKeys after) (severeKeys before)"
         }
       ],
       "expect": {
@@ -4318,10 +4319,11 @@
       "description": "A planted wrong function from the formal pilot.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "src/cr/docgen/accept.py",
-          "find": "return clean[-1] if clean else None",
-          "replace": "return clean[0] if clean else None"
+          "symbol": "LastClean.settle",
+          "match": "/clean\\[(-1)\\]/",
+          "with": "0"
         }
       ],
       "expect": {
@@ -4343,10 +4345,10 @@
       "description": "A planted wrong function from the formal pilot.",
       "edits": [
         {
-          "op": "replace",
+          "op": "delete-line",
           "path": "src/cr/docgen/accept.py",
-          "find": "        if severe_confirmed_keys(after) - severe_confirmed_keys(before):\n            return False\n",
-          "replace": ""
+          "symbol": "StrictImprovement.keep",
+          "match": "if severe_confirmed_keys(after) - severe_confirmed_keys(before):"
         }
       ],
       "expect": {
@@ -4368,10 +4370,10 @@
       "description": "A planted wrong model from the formal pilot.",
       "edits": [
         {
-          "op": "replace",
+          "op": "delete-line",
           "path": "projects/clinical-reasoning/formal/tla/DocLoop.tla",
-          "find": "           ELSE IF Unfixable(C) THEN \"unfixable\"\n           ELSE IF edited",
-          "replace": "           ELSE IF edited"
+          "symbol": "StopWhy",
+          "match": "ELSE IF Unfixable(C) THEN \"unfixable\""
         }
       ],
       "expect": {
@@ -4393,10 +4395,11 @@
       "description": "A planted wrong model from the formal pilot.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/formal/tla/DocLoop.tla",
-          "find": "     THEN /\\ lost' = TRUE /\\ phase' = \"floor\"\n          /\\ log' = Append(log, EditEvent(\"review\"",
-          "replace": "     THEN /\\ lost' = TRUE /\\ phase' = \"review\"\n          /\\ log' = Append(log, EditEvent(\"review\""
+          "symbol": "ReviewEdit",
+          "match": "/lost' = TRUE /\\\\ phase\\' = \"(floor)\"/",
+          "with": "review"
         }
       ],
       "expect": {
@@ -4418,10 +4421,11 @@
       "description": "A planted wrong model from the formal pilot.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/formal/tla/DocLoop.tla",
-          "find": "IF ~k /\\ o = \"finished\" /\\ ~ch ",
-          "replace": "IF FALSE "
+          "symbol": "ReviewEdit",
+          "match": "/IF (~k /\\\\ o = \"finished\" /\\\\ ~ch) /",
+          "with": "FALSE"
         }
       ],
       "expect": {
@@ -4443,10 +4447,10 @@
       "description": "A planted wrong function from the formal pilot.",
       "edits": [
         {
-          "op": "replace",
+          "op": "delete-line",
           "path": "src/cr/docgen/loop.py",
-          "find": "        elif _idle(record):\n            break\n",
-          "replace": ""
+          "symbol": "run_document",
+          "match": "elif _idle(record):"
         }
       ],
       "expect": {
@@ -4468,10 +4472,10 @@
       "description": "A planted wrong function from the formal pilot.",
       "edits": [
         {
-          "op": "replace",
+          "op": "delete-line",
           "path": "src/cr/docgen/loop.py",
-          "find": "        if record.lost:\n            lost = record\n            break\n        before = current\n",
-          "replace": "        before = current\n"
+          "symbol": "run_document",
+          "match": "/(if record\\.lost:)\\s+lost = record\\s+break\\s+before = current/"
         }
       ],
       "expect": {
@@ -4493,10 +4497,11 @@
       "description": "A planted wrong function from the formal pilot.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "src/cr/docgen/loop.py",
-          "find": "not editable(current.findings) or _unfixable(current):",
-          "replace": "not editable(current.findings):"
+          "symbol": "run_document",
+          "match": "/findings\\)( or _unfixable\\(current\\)):/",
+          "with": ""
         }
       ],
       "expect": {
@@ -4518,10 +4523,11 @@
       "description": "A planted wrong model from the formal pilot.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "projects/clinical-reasoning/formal/tla/Finish.tla",
-          "find": "IF b /\\ refusals < MaxRefusals",
-          "replace": "IF b"
+          "symbol": "Finish",
+          "match": "/IF b( /\\\\ refusals < MaxRefusals)/",
+          "with": ""
         }
       ],
       "expect": {
@@ -4543,10 +4549,11 @@
       "description": "A planted wrong function from the formal pilot.",
       "edits": [
         {
-          "op": "replace",
+          "op": "replace-with",
           "path": "src/cr/docgen/session.py",
-          "find": "if blocking and self.run.finish_refusals < self.spec.max_finish_refusals:",
-          "replace": "if blocking:"
+          "symbol": "_Session._finish",
+          "match": "/if blocking( and self\\.run\\.finish_refusals < self\\.spec\\.max_finish_refusals):/",
+          "with": ""
         }
       ],
       "expect": {

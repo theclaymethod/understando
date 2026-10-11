@@ -261,8 +261,13 @@
             "matched": true,
             "control": {
               "file": "Accept/Model.lean",
-              "find": "else (cleanIdx states).getLast?",
-              "replace": "else (cleanIdx states).head?"
+              "edit": {
+                "op": "replace-with",
+                "path": "Accept/Model.lean",
+                "symbol": "settleLC",
+                "match": "/cleanIdx states\\)\\.(getLast\\?)/",
+                "with": "head?"
+              }
             },
             "output_tail": "has type\n  (cleanIdx states).head? = some i\nbut is expected to have type\n  (List.filter ?m.84 (List.range ?m.85)).getLast? = some ?m.86\nin the application\n  lastFilter_some ?m.84 ?m.85 ?m.86 h\nerror: Accept/Theorems.lean:161:21: Type mismatch: After simplification, term\n  h2\n has type\n  ?m.84 i = true\nbut is expected to have type\n  blocks (states[i]?.getD []) = false\nerror: Accept/Theorems.lean:162:28: Type mismatch: After simplification, term\n  this\n has type\n  ?m.84 j = false\nbut is expected to have type\n  blocks (states[j]?.getD []) = true\nerror: Accept/Theorems.lean:180:2: unsolved goals\ncase pos\nstates : List (List Finding)\nhne : states ≠ []\nlast : List Finding\nhl : states.getLast? = some last\nhb : blocks last = true\n⊢ (List.find? (fun i => !blocks (states[i]?.getD [])) (List.range states.length)).getD (states.length - 1) =\n    (List.find? (fun i => !blocks (states[i]?.getD [])) (List.range states.length).reverse).getD (states.length - 1)\nerror: Accept/Theorems.lean:198:32: Application type mismatch: The argument\n  h\nhas type\n  (cleanIdx states).head? = none\nbut is expected to have type\n  (List.filter ?m.41 (List.range ?m.42)).getLast? = none\nin the application\n  lastFilter_none ?m.41 ?m.42 h\n✔ [7/9] Built Vectors (541ms)\n✔ [9/9] Built vectors:exe (96ms)\nSome required targets logged failures:\n- Accept.Theorems\nerror: build failed"
           }
@@ -277,8 +282,12 @@
             "matched": true,
             "control": {
               "file": "Accept/Model.lean",
-              "find": "  else if newKey (severeKeys after) (severeKeys before) then false\n",
-              "replace": ""
+              "edit": {
+                "op": "delete-line",
+                "path": "Accept/Model.lean",
+                "symbol": "keepSI",
+                "match": "newKey (severeKeys after) (severeKeys before)"
+              }
             },
             "output_tail": "✔ [2/9] Built Accept.Model (484ms)\n✔ [3/9] Built Accept.Model:c.o (130ms)\n✔ [4/9] Built Vectors (530ms)\n✖ [6/9] Building Accept.Theorems (570ms)\ntrace: .> LEAN_PATH=<tmp>/lean-control-cu85mlfj/lean/.lake/build/lib/lean ~/.elan/toolchains/leanprover--lean4---v4.34.1/bin/lean <tmp>/lean-control-cu85mlfj/lean/Accept/Theorems.lean -o <tmp>/lean-control-cu85mlfj/lean/.lake/build/lib/lean/Accept/Theorems.olean -i <tmp>/lean-control-cu85mlfj/lean/.lake/build/lib/lean/Accept/Theorems.ilean -c <tmp>/lean-control-cu85mlfj/lean/.lake/build/ir/Accept/Theorems.c --setup <tmp>/lean-control-cu85mlfj/lean/.lake/build/ir/Accept/Theorems.setup.json --json\nerror: Accept/Theorems.lean:36:51: unsolved goals\ncase false.true\nbefore after : List Finding\n⊢ lexLt (score after) (score before) = false\n✔ [9/9] Built vectors:exe (92ms)\nSome required targets logged failures:\n- Accept.Theorems\nerror: build failed"
           }
@@ -302,10 +311,11 @@
             ],
             "edits": [
               {
-                "op": "replace",
+                "op": "replace-with",
                 "path": "src/cr/docgen/accept.py",
-                "find": "return clean[-1] if clean else None",
-                "replace": "return clean[0] if clean else None"
+                "symbol": "LastClean.settle",
+                "match": "/clean\\[(-1)\\]/",
+                "with": "0"
               }
             ],
             "output_tail": "F\n=================================== FAILURES ===================================\n_________________ test_the_real_rules_replay_the_lean_vectors __________________\n\n    def test_the_real_rules_replay_the_lean_vectors() -> None:\n        rows = _rows()\n        pairs = [v for v in rows if v[\"op\"] == \"pair\"]\n        settles = [v for v in rows if v[\"op\"] == \"settle\"]\n        assert len(pairs) > 300 and len(settles) > 100\n        for v in pairs:\n            _check_pair(v)\n        for v in settles:\n>           _check_settle(v)\n\ntests/test_formal_accept_conformance.py:80: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nv = {'op': 'settle', 'states': [[], [[1, False, 'code', 'S2']], [[2, True, 'code', 'S3']]], 'settle_lc': 1, 'settle_si': None, ...}\n\n    def _check_settle(v: dict[str, Any]) -> None:\n        states = [_findings(s) for s in v[\"states\"]]\n>       assert LastClean().settle(states) == v[\"settle_lc\"], v\nE       AssertionError: {'op': 'settle', 'states': [[], [[1, False, 'code', 'S2']], [[2, True, 'code', 'S3']]], 'settle_lc': 1, 'settle_si': None, ...}\nE       assert 0 == 1\nE        +  where 0 = settle([[], [Finding(key='k1', blocking=False, source='formal', where=None, quote='', input_fact='', why='synthetic', hint=''...='formal', where=None, quote='', input_fact='', why='synthetic', hint='', severity='S3', decided='code', floor=False)]])\nE        +    where settle = <cr.docgen.accept.LastClean object at 0x107342f60>.settle\nE        +      where <cr.docgen.accept.LastClean object at 0x107342f60> = LastClean()\n\ntests/test_formal_accept_conformance.py:68: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_formal_accept_conformance.py::test_the_real_rules_replay_the_lean_vectors\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.04s"
@@ -330,10 +340,10 @@
             ],
             "edits": [
               {
-                "op": "replace",
+                "op": "delete-line",
                 "path": "src/cr/docgen/accept.py",
-                "find": "        if severe_confirmed_keys(after) - severe_confirmed_keys(before):\n            return False\n",
-                "replace": ""
+                "symbol": "StrictImprovement.keep",
+                "match": "if severe_confirmed_keys(after) - severe_confirmed_keys(before):"
               }
             ],
             "output_tail": "F\n=================================== FAILURES ===================================\n_________________ test_the_real_rules_replay_the_lean_vectors __________________\n\n    def test_the_real_rules_replay_the_lean_vectors() -> None:\n        rows = _rows()\n        pairs = [v for v in rows if v[\"op\"] == \"pair\"]\n        settles = [v for v in rows if v[\"op\"] == \"settle\"]\n        assert len(pairs) > 300 and len(settles) > 100\n        for v in pairs:\n>           _check_pair(v)\n\ntests/test_formal_accept_conformance.py:78: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nv = {'op': 'pair', 'before': [[0, True, 'code', None]], 'after': [[0, True, 'model', 'S4']], 'score_before': [1, 0, 0], ...}\n\n    def _check_pair(v: dict[str, Any]) -> None:\n        before, after = _findings(v[\"before\"]), _findings(v[\"after\"])\n        si, lc = StrictImprovement(), LastClean()\n        assert list(score(before)) == v[\"score_before\"], v\n        assert list(score(after)) == v[\"score_after\"], v\n>       assert si.keep(before, after) is v[\"keep_si\"], v\nE       AssertionError: {'op': 'pair', 'before': [[0, True, 'code', None]], 'after': [[0, True, 'model', 'S4']], 'score_before': [1, 0, 0], ...}\nE       assert True is False\nE        +  where True = keep([Finding(key='k0', blocking=True, source='formal', where=None, quote='', input_fact='', why='synthetic', hint='', severity=None, decided='code', floor=False)], [Finding(key='k0', blocking=True, source='formal', where=None, quote='', input_fact='', why='synthetic', hint='', severity='S4', decided='model', floor=False)])\nE        +    where keep = <cr.docgen.accept.StrictImprovement object at 0x107cbb0b0>.keep\n\ntests/test_formal_accept_conformance.py:60: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_formal_accept_conformance.py::test_the_real_rules_replay_the_lean_vectors\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.04s"
@@ -729,10 +739,14 @@
             "cfg_sha256": "sha256:7cea63313470de6c87512dc56e7eb7fdced9bc19ae3f9b716ee84934b2db7aad",
             "deadlock_checked": true,
             "control": {
-              "find": "           ELSE IF Unfixable(C) THEN \"unfixable\"\n           ELSE IF edited",
-              "replace": "           ELSE IF edited",
               "pattern": "UnfixableStops",
-              "matched": true
+              "matched": true,
+              "edit": {
+                "op": "delete-line",
+                "path": "projects/clinical-reasoning/formal/tla/DocLoop.tla",
+                "symbol": "StopWhy",
+                "match": "ELSE IF Unfixable(C) THEN \"unfixable\""
+              }
             },
             "output_tail": "Computed 4 initial states...\nFinished computing initial states: 8 distinct states generated at 2026-10-10 18:20:53.\nError: Invariant UnfixableStops is violated.\nError: The behavior up to this point is:\nState 1: <Initial predicate>\n/\\ phase = \"review\"\n/\\ B = {\"f\", \"u\"}\n/\\ C = {\"f\", \"u\"}\n/\\ D = {\"f\", \"u\"}\n/\\ log = <<[d |-> {\"f\", \"u\"}, ev |-> \"init\"]>>\n/\\ n = 0\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"f\", \"u\"}, d |-> {\"f\", \"u\"}]>>\n/\\ lost = FALSE\n/\\ edited = FALSE\n\nState 2: <Next line 189, col 12 to line 189, col 96 of module DocLoop>\n/\\ phase = \"floor\"\n/\\ B = {\"f\", \"u\"}\n/\\ C = {\"f\", \"u\"}\n/\\ D = {\"f\", \"u\"}\n/\\ log = << [d |-> {\"f\", \"u\"}, ev |-> \"init\"],\n   [ n |-> 1,\n     kept |-> FALSE,\n     d |-> {},\n     ev |-> \"edit\",\n     o |-> \"lost\",\n     ch |-> TRUE,\n     stage |-> \"review\",\n     todo |-> {\"f\", \"u\"} ] >>\n/\\ n = 1\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"f\", \"u\"}, d |-> {\"f\", \"u\"}]>>\n/\\ lost = TRUE\n/\\ edited = TRUE\n\n356 states generated, 351 distinct states found, 291 states left on queue.\nThe depth of the complete state graph search is 6.\nThe average outdegree of the complete state graph is 6 (minimum is 0, the maximum 30 and the 95th percentile is 27).\nFinished in 00s at (2026-10-10 18:20:53)"
           }
@@ -903,10 +917,15 @@
             "cfg_sha256": "sha256:7cea63313470de6c87512dc56e7eb7fdced9bc19ae3f9b716ee84934b2db7aad",
             "deadlock_checked": true,
             "control": {
-              "find": "     THEN /\\ lost' = TRUE /\\ phase' = \"floor\"\n          /\\ log' = Append(log, EditEvent(\"review\"",
-              "replace": "     THEN /\\ lost' = TRUE /\\ phase' = \"review\"\n          /\\ log' = Append(log, EditEvent(\"review\"",
               "pattern": "LostIsFinal",
-              "matched": true
+              "matched": true,
+              "edit": {
+                "op": "replace-with",
+                "path": "projects/clinical-reasoning/formal/tla/DocLoop.tla",
+                "symbol": "ReviewEdit",
+                "match": "/lost' = TRUE /\\\\ phase\\' = \"(floor)\"/",
+                "with": "review"
+              }
             },
             "output_tail": "/\\ log = << [d |-> {\"n\"}, ev |-> \"init\"],\n   [ n |-> 1,\n     kept |-> FALSE,\n     d |-> {},\n     ev |-> \"edit\",\n     o |-> \"lost\",\n     ch |-> TRUE,\n     stage |-> \"review\",\n     todo |-> {\"n\"} ] >>\n/\\ n = 1\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"n\"}, d |-> {\"n\"}]>>\n/\\ lost = TRUE\n/\\ edited = TRUE\n\nState 3: <ReviewStop line 97, col 15 to line 100, col 65 of module DocLoop>\n/\\ phase = \"settle\"\n/\\ B = {\"n\"}\n/\\ C = {\"n\"}\n/\\ D = {\"n\"}\n/\\ log = << [d |-> {\"n\"}, ev |-> \"init\"],\n   [ n |-> 1,\n     kept |-> FALSE,\n     d |-> {},\n     ev |-> \"edit\",\n     o |-> \"lost\",\n     ch |-> TRUE,\n     stage |-> \"review\",\n     todo |-> {\"n\"} ],\n   [ev |-> \"stop\", why |-> \"stalled\"] >>\n/\\ n = 1\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"n\"}, d |-> {\"n\"}]>>\n/\\ lost = TRUE\n/\\ edited = TRUE\n\n205 states generated, 205 distinct states found, 158 states left on queue.\nThe depth of the complete state graph search is 5.\nThe average outdegree of the complete state graph is 6 (minimum is 1, the maximum 30 and the 95th percentile is 27).\nFinished in 00s at (2026-10-10 18:20:54)"
           }
@@ -1089,10 +1108,15 @@
             "cfg_sha256": "sha256:7cea63313470de6c87512dc56e7eb7fdced9bc19ae3f9b716ee84934b2db7aad",
             "deadlock_checked": true,
             "control": {
-              "find": "IF ~k /\\ o = \"finished\" /\\ ~ch ",
-              "replace": "IF FALSE ",
               "pattern": "IdleFinishedStops",
-              "matched": true
+              "matched": true,
+              "edit": {
+                "op": "replace-with",
+                "path": "projects/clinical-reasoning/formal/tla/DocLoop.tla",
+                "symbol": "ReviewEdit",
+                "match": "/IF (~k /\\\\ o = \"finished\" /\\\\ ~ch) /",
+                "with": "FALSE"
+              }
             },
             "output_tail": "     stage |-> \"review\",\n     todo |-> {\"f\"} ] >>\n/\\ n = 1\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"f\"}, d |-> {\"f\"}]>>\n/\\ lost = FALSE\n/\\ edited = TRUE\n\nState 3: <Next line 190, col 12 to line 190, col 96 of module DocLoop>\n/\\ phase = \"floor\"\n/\\ B = {\"f\"}\n/\\ C = {\"f\"}\n/\\ D = {\"f\"}\n/\\ log = << [d |-> {\"f\"}, ev |-> \"init\"],\n   [ n |-> 1,\n     kept |-> FALSE,\n     d |-> {\"f\"},\n     ev |-> \"edit\",\n     o |-> \"finished\",\n     ch |-> FALSE,\n     stage |-> \"review\",\n     todo |-> {\"f\"} ],\n   [ n |-> 2,\n     kept |-> FALSE,\n     d |-> {},\n     ev |-> \"edit\",\n     o |-> \"lost\",\n     ch |-> TRUE,\n     stage |-> \"review\",\n     todo |-> {\"f\"} ] >>\n/\\ n = 2\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"f\"}, d |-> {\"f\"}]>>\n/\\ lost = TRUE\n/\\ edited = TRUE\n\n491 states generated, 486 distinct states found, 420 states left on queue.\nThe depth of the complete state graph search is 5.\nThe average outdegree of the complete state graph is 8 (minimum is 0, the maximum 30 and the 95th percentile is 27).\nFinished in 00s at (2026-10-10 18:20:55)"
           }
@@ -1116,10 +1140,10 @@
             ],
             "edits": [
               {
-                "op": "replace",
+                "op": "delete-line",
                 "path": "src/cr/docgen/loop.py",
-                "find": "        elif _idle(record):\n            break\n",
-                "replace": ""
+                "symbol": "run_document",
+                "match": "elif _idle(record):"
               }
             ],
             "output_tail": "        findings: Sequence[EditableFinding],\n        *,\n        stage: Stage,\n        client: ResponsesClient,\n        check: Callable[[], Sequence[Finding]],\n        cache_key: str,\n        clock: Clock,\n    ) -> EditRun:\n        _ = client, check, cache_key, clock\n        self.calls.append((stage, number, sorted(f.key for f in findings)))\n>       assert self.steps, f\"the loop ran an edit the model did not: {stage} round {number}\"\nE       AssertionError: the loop ran an edit the model did not: review round 2\nE       assert []\nE        +  where [] = <test_formal_docloop_replay.ScheduleEditor object at 0x10b195fa0>.steps\n\ntests/test_formal_docloop_replay.py:167: AssertionError\n\nThe above exception was the direct cause of the following exception:\n\nrule = 'SI'\n\n    @pytest.mark.parametrize(\"rule\", [\"SI\", \"LC\"])\n    def test_the_real_loop_replays_every_terminal_behaviour_of_the_model(rule: str) -> None:\n        consts, vectors = _vectors(rule)\n        assert consts[\"Rule\"] == rule and len(vectors) > 500\n        for v in vectors:\n            log = cast(list[dict[str, Any]], v[\"log\"])\n            try:\n                _replay(rule, log, consts)\n            except AssertionError as exc:\n>               raise AssertionError(f\"{rule} vector {json.dumps(log)}: {exc}\") from exc\nE               AssertionError: SI vector [{\"d\": [\"f\"], \"ev\": \"init\"}, {\"ch\": false, \"d\": [\"f\"], \"ev\": \"edit\", \"kept\": false, \"n\": 1, \"o\": \"finished\", \"stage\": \"review\", \"todo\": [\"f\"]}, {\"ev\": \"stop\", \"why\": \"idle\"}, {\"ev\": \"floor\", \"final\": [\"f\"], \"outcome\": \"fallback\"}]: the loop ran an edit the model did not: review round 2\nE               assert []\nE                +  where [] = <test_formal_docloop_replay.ScheduleEditor object at 0x10b195fa0>.steps\n\ntests/test_formal_docloop_replay.py:234: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_formal_docloop_replay.py::test_the_real_loop_replays_every_terminal_behaviour_of_the_model[SI]\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.21s"
@@ -1144,10 +1168,10 @@
             ],
             "edits": [
               {
-                "op": "replace",
+                "op": "delete-line",
                 "path": "src/cr/docgen/loop.py",
-                "find": "        if record.lost:\n            lost = record\n            break\n        before = current\n",
-                "replace": "        before = current\n"
+                "symbol": "run_document",
+                "match": "/(if record\\.lost:)\\s+lost = record\\s+break\\s+before = current/"
               }
             ],
             "output_tail": "        findings: Sequence[EditableFinding],\n        *,\n        stage: Stage,\n        client: ResponsesClient,\n        check: Callable[[], Sequence[Finding]],\n        cache_key: str,\n        clock: Clock,\n    ) -> EditRun:\n        _ = client, check, cache_key, clock\n        self.calls.append((stage, number, sorted(f.key for f in findings)))\n>       assert self.steps, f\"the loop ran an edit the model did not: {stage} round {number}\"\nE       AssertionError: the loop ran an edit the model did not: review round 2\nE       assert []\nE        +  where [] = <test_formal_docloop_replay.ScheduleEditor object at 0x10715dd00>.steps\n\ntests/test_formal_docloop_replay.py:167: AssertionError\n\nThe above exception was the direct cause of the following exception:\n\nrule = 'SI'\n\n    @pytest.mark.parametrize(\"rule\", [\"SI\", \"LC\"])\n    def test_the_real_loop_replays_every_terminal_behaviour_of_the_model(rule: str) -> None:\n        consts, vectors = _vectors(rule)\n        assert consts[\"Rule\"] == rule and len(vectors) > 500\n        for v in vectors:\n            log = cast(list[dict[str, Any]], v[\"log\"])\n            try:\n                _replay(rule, log, consts)\n            except AssertionError as exc:\n>               raise AssertionError(f\"{rule} vector {json.dumps(log)}: {exc}\") from exc\nE               AssertionError: SI vector [{\"d\": [\"f\"], \"ev\": \"init\"}, {\"ch\": false, \"d\": [\"f\"], \"ev\": \"edit\", \"kept\": false, \"n\": 1, \"o\": \"lost\", \"stage\": \"review\", \"todo\": [\"f\"]}, {\"ev\": \"floor\", \"final\": [\"f\"], \"outcome\": \"blocked\"}]: the loop ran an edit the model did not: review round 2\nE               assert []\nE                +  where [] = <test_formal_docloop_replay.ScheduleEditor object at 0x10715dd00>.steps\n\ntests/test_formal_docloop_replay.py:234: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_formal_docloop_replay.py::test_the_real_loop_replays_every_terminal_behaviour_of_the_model[SI]\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.21s"
@@ -1172,10 +1196,11 @@
             ],
             "edits": [
               {
-                "op": "replace",
+                "op": "replace-with",
                 "path": "src/cr/docgen/loop.py",
-                "find": "not editable(current.findings) or _unfixable(current):",
-                "replace": "not editable(current.findings):"
+                "symbol": "run_document",
+                "match": "/findings\\)( or _unfixable\\(current\\)):/",
+                "with": ""
               }
             ],
             "output_tail": "        findings: Sequence[EditableFinding],\n        *,\n        stage: Stage,\n        client: ResponsesClient,\n        check: Callable[[], Sequence[Finding]],\n        cache_key: str,\n        clock: Clock,\n    ) -> EditRun:\n        _ = client, check, cache_key, clock\n        self.calls.append((stage, number, sorted(f.key for f in findings)))\n>       assert self.steps, f\"the loop ran an edit the model did not: {stage} round {number}\"\nE       AssertionError: the loop ran an edit the model did not: review round 1\nE       assert []\nE        +  where [] = <test_formal_docloop_replay.ScheduleEditor object at 0x10952b8f0>.steps\n\ntests/test_formal_docloop_replay.py:167: AssertionError\n\nThe above exception was the direct cause of the following exception:\n\nrule = 'SI'\n\n    @pytest.mark.parametrize(\"rule\", [\"SI\", \"LC\"])\n    def test_the_real_loop_replays_every_terminal_behaviour_of_the_model(rule: str) -> None:\n        consts, vectors = _vectors(rule)\n        assert consts[\"Rule\"] == rule and len(vectors) > 500\n        for v in vectors:\n            log = cast(list[dict[str, Any]], v[\"log\"])\n            try:\n                _replay(rule, log, consts)\n            except AssertionError as exc:\n>               raise AssertionError(f\"{rule} vector {json.dumps(log)}: {exc}\") from exc\nE               AssertionError: SI vector [{\"d\": [\"f\", \"u\"], \"ev\": \"init\"}, {\"ev\": \"stop\", \"why\": \"unfixable\"}, {\"ev\": \"floor\", \"final\": [\"f\", \"u\"], \"outcome\": \"fallback\"}]: the loop ran an edit the model did not: review round 1\nE               assert []\nE                +  where [] = <test_formal_docloop_replay.ScheduleEditor object at 0x10952b8f0>.steps\n\ntests/test_formal_docloop_replay.py:234: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_formal_docloop_replay.py::test_the_real_loop_replays_every_terminal_behaviour_of_the_model[SI]\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.21s"
@@ -1630,10 +1655,15 @@
             "cfg_sha256": "sha256:4d00c19bf87ecc7fb135673d5a846caa816d51115bf0e862b34c26b23d2eab5d",
             "deadlock_checked": true,
             "control": {
-              "find": "IF b /\\ refusals < MaxRefusals",
-              "replace": "IF b",
               "pattern": "RefusalsBounded",
-              "matched": true
+              "matched": true,
+              "edit": {
+                "op": "replace-with",
+                "path": "projects/clinical-reasoning/formal/tla/Finish.tla",
+                "symbol": "Finish",
+                "match": "/IF b( /\\\\ refusals < MaxRefusals)/",
+                "with": ""
+              }
             },
             "output_tail": "Error: The behavior up to this point is:\nState 1: <Initial predicate>\n/\\ refusals = 0\n/\\ stop = \"running\"\n/\\ withBlocking = FALSE\n/\\ log = <<>>\n\nState 2: <Finish line 26, col 3 to line 33, col 31 of module Finish>\n/\\ refusals = 1\n/\\ stop = \"running\"\n/\\ withBlocking = FALSE\n/\\ log = <<[b |-> TRUE, answer |-> \"refused\"]>>\n\nState 3: <Finish line 26, col 3 to line 33, col 31 of module Finish>\n/\\ refusals = 2\n/\\ stop = \"running\"\n/\\ withBlocking = FALSE\n/\\ log = <<[b |-> TRUE, answer |-> \"refused\"], [b |-> TRUE, answer |-> \"refused\"]>>\n\nState 4: <Finish line 26, col 3 to line 33, col 31 of module Finish>\n/\\ refusals = 3\n/\\ stop = \"running\"\n/\\ withBlocking = FALSE\n/\\ log = << [b |-> TRUE, answer |-> \"refused\"],\n   [b |-> TRUE, answer |-> \"refused\"],\n   [b |-> TRUE, answer |-> \"refused\"] >>\n\nState 5: <Finish line 26, col 3 to line 33, col 31 of module Finish>\n/\\ refusals = 4\n/\\ stop = \"running\"\n/\\ withBlocking = FALSE\n/\\ log = << [b |-> TRUE, answer |-> \"refused\"],\n   [b |-> TRUE, answer |-> \"refused\"],\n   [b |-> TRUE, answer |-> \"refused\"],\n   [b |-> TRUE, answer |-> \"refused\"] >>\n\n13 states generated, 9 distinct states found, 0 states left on queue.\nThe depth of the complete state graph search is 5.\nThe average outdegree of the complete state graph is 1 (minimum is 0, the maximum 2 and the 95th percentile is 2).\nFinished in 00s at (2026-10-10 18:20:55)"
           }
@@ -1657,10 +1687,11 @@
             ],
             "edits": [
               {
-                "op": "replace",
+                "op": "replace-with",
                 "path": "src/cr/docgen/session.py",
-                "find": "if blocking and self.run.finish_refusals < self.spec.max_finish_refusals:",
-                "replace": "if blocking:"
+                "symbol": "_Session._finish",
+                "match": "/if blocking( and self\\.run\\.finish_refusals < self\\.spec\\.max_finish_refusals):/",
+                "with": ""
               }
             ],
             "output_tail": "\ntests/test_formal_finish_replay.py:97: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \ntests/test_formal_finish_replay.py:63: in _replay\n    run = asyncio.run(\n~/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run\n    return runner.run(main)\n           ^^^^^^^^^^^^^^^^\n~/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run\n    return self._loop.run_until_complete(task)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n~/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete\n    return future.result()\n           ^^^^^^^^^^^^^^^\nsrc/cr/docgen/session.py:133: in edit\n    items.append(session.answer(call))\n                 ^^^^^^^^^^^^^^^^^^^^\nsrc/cr/docgen/session.py:305: in answer\n    \"output\": self._function_output(name, call),\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/cr/docgen/session.py:290: in _function_output\n    return self._finish(args)\n           ^^^^^^^^^^^^^^^^^^\nsrc/cr/docgen/session.py:256: in _finish\n    blocking = [f for f in self.check() if f.blocking]\n                           ^^^^^^^^^^^^\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\n    def check() -> Sequence[Finding]:\n        nonlocal calls\n        calls += 1\n>       return [BLOCKING] if flags[calls - 1] else []\n                             ^^^^^^^^^^^^^^^^\nE       IndexError: list index out of range\n\ntests/test_formal_finish_replay.py:45: IndexError\n=========================== short test summary info ============================\nFAILED tests/test_formal_finish_replay.py::test_the_real_finish_gate_replays_every_session_of_the_model[finish_vectors_t6.json]\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed, 1 passed in 0.20s"
