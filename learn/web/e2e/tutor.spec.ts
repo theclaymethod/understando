@@ -6,7 +6,7 @@ import { test, expect, worktreeList } from "./fixtures";
 async function ask(page: import("@playwright/test").Page, text: string) {
   await page.getByLabel("Message to the tutor").fill(text);
   await page.getByRole("button", { name: "Send" }).click();
-  await expect(page.getByTestId("msg-assistant").last()).toBeVisible();
+  await expect(page.getByTestId("msg-assistant").last()).toBeVisible({ timeout: 30_000 });
 }
 
 for (const provider of ["claude", "codex"] as const) {
