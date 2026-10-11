@@ -887,4 +887,48 @@ has "$O/open-teach.txt" "the story"
 has "$O/open-ask.txt" "nothing is pushed"
 python3 -c 'import json,sys; r=[json.loads(l) for l in open(sys.argv[1])][-1]; assert r["kind"]=="confusion" and r["anchor"]=="claim-c03", r' "$WORK/runs/wallet/1/journal.jsonl" \
   || fail "no confusion row with its anchor"
+step "review offline: gh exits 1 and the remote is unreachable; the last known head, offline mode, the merge question skipped"
+NO="$WORK/offline"; mkdir -p "$NO/bin" "$NO/runs"
+printf '#!/usr/bin/env bash\necho "Error connecting to api.github.com" >&2; exit 1\n' > "$NO/bin/gh"; chmod +x "$NO/bin/gh"
+cp -R "$UNDERSTANDO_RUNS/wallet" "$NO/runs/wallet"
+git clone -q "$RV/wallet.git" "$NO/clone"; CL2="$NO/clone"
+git -C "$CL2" remote set-url origin "$NO/gone/wallet.git"
+NEWC="$(git -C "$CL2" -c user.name=f -c user.email=f@example.invalid commit-tree -p "$PR_HEAD" -m "a newer PR commit" "$PR_HEAD^{tree}")"
+git -C "$CL2" update-ref refs/remotes/origin/feature "$NEWC"
+python3 - "$NO/runs/wallet/1/review.json" <<'PY'
+import json, sys
+p = sys.argv[1]; d = json.load(open(p)); d["head_branch"] = "feature"; d.pop("merge", None); json.dump(d, open(p, "w"))
+PY
+(cd "$CL2" && PATH="$NO/bin:$PATH" UNDERSTANDO_RUNS="$NO/runs" "$U" review 1 --json) > "$O/review-offline.json" || { cat "$O/review-offline.json"; fail "offline review stopped"; }
+python3 - "$O/review-offline.json" "$NO/runs/wallet/1/review.json" "$NEWC" <<'PY'
+import json, sys
+d, st, newc = json.load(open(sys.argv[1])), json.load(open(sys.argv[2])), sys.argv[3]
+assert d["offline"] is True and d["offline_reason"], d.get("offline_reason")
+assert d["prompt"]["situation"][0].startswith("I can't reach GitHub, so I can't see new PR commits. I'm using the last known PR head (from "), d["prompt"]["situation"]
+assert d["head"] == newc, d["head"]
+assert "Bring" not in d["prompt"]["question"], d["prompt"]["question"]
+assert st["merge"]["decision"] == "skipped" and st["merge"]["offline"] is True, st.get("merge")
+assert st["offline"] is True
+PY
+(cd "$CL2" && PATH="$NO/bin:$PATH" UNDERSTANDO_RUNS="$NO/runs" "$U" review 1 --go --no-open) > "$O/review-offline-go.txt" || true
+has "$O/review-offline-go.txt" "map"
+(cd "$CL2" && PATH="$NO/bin:$PATH" UNDERSTANDO_RUNS="$NO/runs" "$U" publish 1 --dry-run) > "$O/publish-offline.txt" && fail "publish ran offline"
+has "$O/publish-offline.txt" "I can't reach GitHub"
+
+step "review: gh fails but git ls-remote works (a local file remote); the head is resolved from refs/pull/N/head"
+git -C "$RV/wallet.git" update-ref refs/pull/9/head "$PR_HEAD"
+LR="$WORK/lsr"; mkdir -p "$LR/runs"; cp "$UNDERSTANDO_RUNS/wallet/understando.toml" "$LR/runs/"; mkdir -p "$LR/runs/wallet"; mv "$LR/runs/understando.toml" "$LR/runs/wallet/"
+git clone -q "$RV/wallet.git" "$LR/clone"
+(cd "$LR/clone" && PATH="$NO/bin:$PATH" UNDERSTANDO_RUNS="$LR/runs" "$U" review 9 --json) > "$O/review-lsr.json" || { cat "$O/review-lsr.json"; fail "review with ls-remote stopped"; }
+python3 - "$O/review-lsr.json" "$PR_HEAD" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["head"] == sys.argv[2] and d["offline"] is False, (d["head"], d["offline"])
+PY
+
+step "review: no run and no network gives the plain error"
+NR="$WORK/norun"; mkdir -p "$NR/runs"; git clone -q "$RV/wallet.git" "$NR/clone"; git -C "$NR/clone" remote set-url origin "$NO/gone/wallet.git"
+if (cd "$NR/clone" && PATH="$NO/bin:$PATH" UNDERSTANDO_RUNS="$NR/runs" "$U" review 4 --json) > "$O/review-norun.txt" 2>&1; then fail "review passed with no head"; fi
+has "$O/review-norun.txt" "I can't reach GitHub and there is no earlier review of PR 4. Run this where the network is available, or pass --head <sha>."
+
 echo "PASS: mode e2e"
