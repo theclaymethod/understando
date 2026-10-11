@@ -397,6 +397,11 @@
         "invariant": {
           "$ref": "#/$defs/id",
           "description": "The invariant that this claim states. Proven and Formal need a stated claim or a link to an invariant that the user confirmed."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A short plain name for chat, 3 to 7 words. map fills it from the plain text; the prompts show it in place of the ID."
         }
       }
     },
@@ -925,6 +930,54 @@
           "type": "string",
           "minLength": 1,
           "description": "A case of the claim that this verifier does not test."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A short plain name for chat, 3 to 7 words. map fills it from the plain text; the prompts show it in place of the ID."
+        },
+        "user_path": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "result"
+          ],
+          "description": "probe: does an e2e verifier drive the real user path (a subprocess, an HTTP call, a browser), or only call internal functions?",
+          "properties": {
+            "result": {
+              "type": "string",
+              "enum": [
+                "user-path",
+                "internal-only",
+                "unknown"
+              ]
+            },
+            "claimed_kind": {
+              "type": "string"
+            },
+            "detail": {
+              "type": "string"
+            }
+          }
+        },
+        "link": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "A test that the ready branch added, linked to its claim after the user's yes in review.",
+          "properties": {
+            "source": {
+              "type": "string"
+            },
+            "by": {
+              "type": "string"
+            },
+            "at": {
+              "type": "string"
+            },
+            "fix_from": {
+              "type": "string"
+            }
+          }
         }
       }
     },
@@ -946,7 +999,8 @@
             "corrupt-byte",
             "replace",
             "delete-file",
-            "append"
+            "append",
+            "restore-file"
           ]
         },
         "path": {
@@ -1012,6 +1066,10 @@
         },
         "text": {
           "type": "string"
+        },
+        "at": {
+          "type": "string",
+          "description": "restore-file: the commit whose copy of the file the control puts back, for example the map head before a fix on the ready branch."
         }
       },
       "description": "An anchor op (delete-line, invert-condition, replace-with, drop-allowlist-row, corrupt-byte with an anchor) names {path, symbol?, match?}; run_control.py resolves it at the head and fails when it matches 0 or more than 1 places. replace and append are the old text form."
@@ -1359,6 +1417,53 @@
               "at_commit": {
                 "type": "string",
                 "description": "The PR head where discover saw the possible bug."
+              },
+              "rating": {
+                "type": "object",
+                "additionalProperties": false,
+                "description": "The find-bugs rating of the finding (scripts/findings.py).",
+                "properties": {
+                  "priority": {
+                    "type": "string",
+                    "enum": [
+                      "P0",
+                      "P1",
+                      "P2",
+                      "P3"
+                    ]
+                  },
+                  "fix": {
+                    "type": "string",
+                    "enum": [
+                      "Small",
+                      "Medium",
+                      "Large"
+                    ]
+                  },
+                  "finding_confidence": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "fix_confidence": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "fix_direction": {
+                    "type": "string"
+                  },
+                  "impact": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "verified",
+                      "lead"
+                    ]
+                  }
+                }
               }
             }
           }
@@ -1366,14 +1471,29 @@
         "possible_bug_fixed": {
           "type": "object",
           "description": "formalize --sidecar moved the possible bug here: a formal record is green at a later commit whose code changed.",
-          "required": ["commit", "record", "why", "bugs"],
+          "required": [
+            "commit",
+            "record",
+            "why",
+            "bugs"
+          ],
           "additionalProperties": false,
           "properties": {
-            "commit": {"type": "string"},
-            "record": {"type": "string"},
-            "at": {"type": "string"},
-            "why": {"type": "string"},
-            "bugs": {"type": "array"}
+            "commit": {
+              "type": "string"
+            },
+            "record": {
+              "type": "string"
+            },
+            "at": {
+              "type": "string"
+            },
+            "why": {
+              "type": "string"
+            },
+            "bugs": {
+              "type": "array"
+            }
           }
         },
         "at": {
@@ -1409,6 +1529,11 @@
         },
         "parent": {
           "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A short plain name for chat, 3 to 7 words. map fills it from the plain text; the prompts show it in place of the ID."
         }
       }
     }

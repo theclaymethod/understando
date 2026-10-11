@@ -14,8 +14,8 @@ The gates:
 
 1. **Run.** `understando ready --report`, or, when the user asks, `understando ready [--answers <close answers>]`.
    - **Done when** the four gate lines print. The checklist goes to `ready.json`, and `explain` puts it at the top of the explainer and of `pr-section.md`.
-2. **Independent review.** The checklist names the review route: an installed interrogate, nemesis-review or code-review skill. Else a model of a different family runs [../references/adapted/code-review.md](../references/adapted/code-review.md) in a fresh context. The user starts it.
-   - **Done when** the user has the route.
+2. **Independent review.** The checklist names the review route: an installed interrogate or nemesis-review skill. Else it names the autoreview fallback, [../references/adapted/autoreview.md](../references/adapted/autoreview.md). That is one reviewer in a fresh context, from another model family. It gets the goal, the promises, the diff and the trust map. It ranks each finding P0 to P3 with its file and line, in the finding format. Check each finding against the real code path: agreement is not proof. Record each finding as guess-tier evidence. When no fresh reviewer is available, report the gap: a self-review is never independent. Code review does not prove behaviour, so keep it apart from probe. The user starts the review.
+   - **Done when** the user has the route, or the report says that no independent review was done.
 3. **Cold read (optional, paid).** With `--cold-read`, the checklist names a cold read of the explainer by a model of a different family. Show the cost and wait for a clear yes.
    - **Done when** the user said yes or no.
 

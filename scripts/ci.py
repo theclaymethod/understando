@@ -455,7 +455,7 @@ def why_line(prof: dict) -> str:
     if any(not p.startswith((".github/", "tests/", "scripts/")) for p in out):
         kinds.append("other root files")
     if out:
-        return f"the PR touches {' and '.join(kinds)} outside every project, so the selector runs every project"
+        return f"the PR touches {' and '.join(kinds)} outside every project, so the checks of every project run"
     if cat.get("touched"):
         return f"the PR touches {', '.join(cat['touched'])}"
     return "the repo has no project catalog, so every workflow counts"

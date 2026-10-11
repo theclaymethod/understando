@@ -1,6 +1,6 @@
 # Third-party notices
 
-understando includes adapted copies of MIT-licensed skill text. Each adapted file under `references/adapted/` carries a header naming its source, source version and original skill. `references/adapted/manifest.json` lists every file. Both licences are reproduced in full below.
+understando includes adapted copies of MIT-licensed skill text. Each adapted file under `references/adapted/` carries a header naming its source, source version and original skill. `references/adapted/manifest.json` lists every file. Each licence is reproduced in full below.
 
 ## pstack (Poteto Mode)
 
@@ -69,6 +69,44 @@ Derived files:
 MIT License
 
 Copyright (c) 2026 Matt Pocock
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## agent-guards
+
+Copyright (c) 2025 Matthew Lam. Commit c86d619. Source: https://github.com/minghinmatthewlam/agent-guards
+
+Derived files:
+
+- `references/adapted/teach.md` (skills/teach)
+- `references/adapted/concisely.md` (skills/concisely)
+- `references/adapted/find-bugs.md` (skills/find-bugs), and the finding format of `scripts/findings.py`
+- `references/adapted/explain-report.md` (skills/explain-report: the content rules only)
+- `references/adapted/autoreview.md` (skills/autoreview, which agent-guards vendors from openclaw/agent-skills at commit 2c90aa80 with local changes)
+- The tier-1 proof standards in `references/controls.md` and `scripts/userpath.py` (skills/create-verification-skill and skills/maintain-verification-skill)
+- The "After a miss" rule in `references/working-rules.md` (skills/learn-from-mistake)
+
+```
+MIT License
+
+Copyright (c) 2025 Matthew Lam
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

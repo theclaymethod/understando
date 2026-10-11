@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """understando: one entry point for every verb. `understando` with no verb asks one question (the menu).
-`understando N` is `understando review N`. `understando help` prints every verb.
+`understando N` is `understando review N`. `understando help` prints the three entry points (review,
+open, build); `understando help --all` prints every verb, also the advanced and internal ones.
 
     understando <verb> [--repo DIR] [--pr N] [--run DIR] [--json] [verb options]
 
@@ -57,6 +58,23 @@ def py(script: str, *args: str) -> int:
     return subprocess.run([sys.executable, str(S / script), *args]).returncode
 
 
+def snapshot_before(c: context.Ctx) -> Path | None:
+    """Keep the map as it is now in history/ before a verb rewrites it, so that map diffs against it.
+    It writes a copy only when history/ has no copy with the same content."""
+    if not (c.run and c.map and c.map.is_file()):
+        return None
+    hist = c.run / "history"
+    hist.mkdir(exist_ok=True)
+    body = c.map.read_bytes()
+    previous = sorted(hist.glob("trust-map.*.json"))
+    if previous and previous[-1].read_bytes() == body:
+        return previous[-1]
+    head = (json.loads(body).get("head") or "")[:10]
+    snap = hist / f"trust-map.{tm.now().replace(':', '').replace('+0000', 'Z')}.{head}.before.json"
+    snap.write_bytes(body)
+    return snap
+
+
 def do_map(c: context.Ctx, argv: list[str]) -> int:
     import argparse
     ap = argparse.ArgumentParser(prog="understando map", description="Update the trust map: scan, mechanical checks, verdicts, "
@@ -66,6 +84,7 @@ def do_map(c: context.Ctx, argv: list[str]) -> int:
     ap.add_argument("--fail-on-drop", action="store_true")
     args = ap.parse_args(argv)
     data = c.need_map()
+    snapshot_before(c)
     if args.scan_src:
         repo = c.need_repo()
         if py("scan.py", "--repo", str(repo), "--base", data["base"], "--head", data["head"], "--src-prefix", args.scan_src,
@@ -75,6 +94,8 @@ def do_map(c: context.Ctx, argv: list[str]) -> int:
         if py("mechanical.py", "--map", str(c.map), "--repo", str(c.repo)):
             return 1
     data = tm.load(c.map)
+    import names
+    named = names.fill(data)
     errors = tm.validate(data)
     if errors:
         print("\n".join(f"{c.map}: {e}" for e in errors))
@@ -82,6 +103,8 @@ def do_map(c: context.Ctx, argv: list[str]) -> int:
         return 1
     verdicts.apply(data)
     tm.save(data, c.map)
+    if named:
+        print(f"map: wrote a plain name for {named} claims, verifiers and invariants (the prompts show these names; edit any name in the map)")
     hist = c.run / "history"
     hist.mkdir(exist_ok=True)
     previous = sorted(hist.glob("trust-map.*.json"))
@@ -89,7 +112,11 @@ def do_map(c: context.Ctx, argv: list[str]) -> int:
     if previous:
         code = py("rerun.py", str(previous[-1]), str(c.map), *(["--fail-on-drop"] if args.fail_on_drop else []))
     else:
-        print("map: no previous map in history/; this run is the first one.")
+        print("map: no earlier map to compare; this map is the first one.")
+    if c.repo:
+        import newtests
+        for line in newtests.report(c, data):
+            print(line)
     snap = hist / f"trust-map.{tm.now().replace(':', '').replace('+0000', 'Z')}.{data['head'][:10]}.json"
     shutil.copyfile(c.map, snap)
     print("summary: " + ", ".join(f"{k} {v}" for k, v in data["summary"].items()))
@@ -125,7 +152,11 @@ def do_probe(c: context.Ctx, argv: list[str]) -> int:
     paid = {x for x in args.paid.split(",") if x}
     keyed = {v["id"] for v in data["verifiers"] if "command" in v and config.needs_key(cfg, v["command"]["argv"])}
     skip = keyed - paid
-    for vid in sorted(skip):
+    import userpath
+    for vid in userpath.mark(data, repo, only):
+        print(f"probe: {vid} is labelled e2e, but it only calls internal functions; its tier label is now integration")
+    # Report a skip only for a verifier in scope (--only); the prompt shows the paid ones once, with their cost.
+    for vid in sorted(skip & only if only else skip):
         print(f"skip {vid}: it needs {(cfg.get('llm') or {}).get('env_var', 'the model key')} from the key file, and it is a paid step. "
               f"It never runs with the key unset. Show the cost; after a clear yes, run probe --paid {vid}.")
     if skip:
@@ -138,12 +169,20 @@ def do_probe(c: context.Ctx, argv: list[str]) -> int:
             if not llm.get("env_file") or not config.key_names_present(Path(llm["env_file"]), llm.get("env_var", "")):
                 print(f"refuse: {', '.join(sorted(keyed & paid))} need {llm.get('env_var')} from {llm.get('env_file')}, and it is not set there.")
                 return 1
-            env_file = str(config.key_wrapper(cfg, Path(kd), env_file))
+            wrapper = str(config.key_wrapper(cfg, Path(kd), env_file))
             for v in data["verifiers"]:
                 if v["id"] in keyed & paid:
-                    v["command"]["env_file"] = True
-        with ops.scratch_clone(repo) as (clone, wt):
-            ops.probe(data, clone, wt, only, ks, env_file)
+                    v["command"]["_env"] = wrapper   # for this run only: popped before the save
+        # A verifier that needs no key gets no key: it runs with the user's --env-file, or with none.
+        for v in data["verifiers"]:
+            if "command" in v and "_env" not in v["command"]:
+                v["command"]["_env"] = env_file if v["command"].get("env_file") else None
+        try:
+            with ops.scratch_clone(repo) as (clone, wt):
+                ops.probe(data, clone, wt, only, ks, env_file)
+        finally:
+            for v in data["verifiers"]:
+                (v.get("command") or {}).pop("_env", None)
     tm.save(data, c.map)
     for cl in data["claims"]:
         print(f"{cl['id']:<5} {cl['verdict']:<9} tier {cl.get('tier') or '-'}  {cl['text']}")
@@ -222,11 +261,22 @@ def do_explain(c: context.Ctx, argv: list[str]) -> int:
     ve = config.ve_runtime()
     if ve and "--runtime" not in argv:
         args += ["--runtime", ve]
+    html = "--html" in argv
+    argv = [a for a in argv if a != "--html"]
     map_sha = publish._sha256(c.map)
     code = py("explain.py", *args, *argv)
     if code == 0:
         write_glossary(data, c.run / "GLOSSARY.md")
         publish.write_stamp(c.run, map_sha)
+    if code == 0 and html:
+        # The page: the explainer source exported by the visual-explainer runtime (commands/explain.md, step 5).
+        runtime = ve or subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import explain; print(explain.runtime_path(None))", str(S)],
+                                       capture_output=True, text=True).stdout.strip()
+        cli = Path(runtime) / "scripts" / "artifacture.mjs"
+        if not cli.is_file():
+            print(f"explain --html: no Artifacture runtime at {runtime}. Set UNDERSTANDO_VE_RUNTIME, or run setup.")
+            return 1
+        code = subprocess.run(["node", str(cli), "export", str(c.run / "explainer.mdx"), "--out", str(c.run / "explainer.html")]).returncode
     return code
 
 
@@ -429,6 +479,9 @@ def dispatch(verb: str, argv: list[str], c: context.Ctx) -> int:
     if verb == "import":
         import importers
         return importers.main(c, argv)
+    if verb == "open":
+        import opener
+        return opener.main(c, argv)
     if verb == "snippet":
         import coderef
         return coderef.main(c, argv)
@@ -457,10 +510,15 @@ def dispatch(verb: str, argv: list[str], c: context.Ctx) -> int:
     return 2
 
 
-def help_text() -> str:
+def help_text(show_all: bool = False) -> str:
     import signals
     cmds = context.commands()
-    return (__doc__.strip() + "\n" + signals.table(cmds)
+    if show_all:
+        body = signals.table(cmds)
+    else:
+        body = "\nEntry points\n" + "\n".join(f"  {v['id']:<10} {v['line']}" for v in cmds["verbs"] if v.get("tier") == "entry") \
+            + "\n\nAdvanced verbs: `understando help --all`."
+    return (__doc__.strip() + "\n" + body
             + "\n\nGlobal options: --repo DIR (local clone of the reviewed repo), --pr N, --run DIR (run folder), --json.")
 
 
@@ -474,7 +532,7 @@ def main(argv: list[str]) -> int:
     if verb.isdigit():
         verb, args = "review", rest
     if verb in ("help", "-h", "--help"):
-        print(help_text())
+        print(help_text("--all" in args or "all" in args))
         return 0
     return run_verb(verb, args, c)
 

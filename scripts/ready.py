@@ -33,12 +33,17 @@ import verdicts  # noqa: E402
 S = Path(__file__).resolve().parent
 CLOSED = ("Formal", "Proven", "Backed")
 def review_route() -> str:
-    """The independent review: an installed original, else the adapted code-review copy."""
+    """The independent review: an installed interrogate or nemesis-review, else the autoreview fallback
+    (one fresh-context reviewer; its findings are guess-tier evidence; a self-review is never independent)."""
     import routes
     rows = {r["skill"]: r for r in routes.resolve_all()}
-    present = [n for n in ("interrogate", "nemesis-review", "code-review") if rows.get(n, {}).get("use") == "original"]
-    where = ("the skill " + " or ".join(present)) if present else "references/adapted/code-review.md, with a model of a different family in a fresh context"
-    return f"Independent review: run {where}. The user starts it."
+    present = [n for n in ("interrogate", "nemesis-review") if rows.get(n, {}).get("use") == "original"]
+    if present:
+        return f"Independent review: run the skill {' or '.join(present)}. The user starts it."
+    fallback = "the skill autoreview" if rows.get("autoreview", {}).get("use") == "original" else "references/adapted/autoreview.md"
+    return (f"Independent review: run {fallback}: one fresh-context reviewer of a different model family, given the goal, the promises, "
+            "the diff and the trust map. Its findings are guess-tier evidence. When no fresh reviewer is available, report the gap; "
+            "a self-review is not independent. The user starts it.")
 COLD = ("Cold read (optional, paid): a model of a different family reads the explainer in a fresh context. "
         "Show the cost and wait for a clear yes. understando makes no model call.")
 

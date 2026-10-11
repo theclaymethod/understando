@@ -1,36 +1,51 @@
 # review
 
-A full PR review from one line: `/understando review <pr>` (Codex: `$understando review <pr>`). `/understando <pr>` is the same. Start it only on an explicit request from the user. The CLI derives the state. Do not ask the user for paths, SHAs, verdict counts or rules: `review` finds them.
+For the author: a full PR review from one line, `/understando review <pr>` (Codex: `$understando review <pr>`). `/understando <pr>` is the same. Start it only on an explicit request from the user. The CLI derives the state. Do not ask the user for paths, SHAs, verdict counts or rules: `review` finds them.
 
-Each stop ends with one question to the user. Ask it as [Asking the user](../references/working-rules.md#asking-the-user) tells you. `understando review <pr> --json` gives the question in `prompt`. Its text output is the same question as text. Do not restate the rest of the output.
+Each stop ends with one question. Ask it as [Asking the user](../references/working-rules.md#asking-the-user) tells you. `understando review <pr> --json` gives the question in `prompt`, and the text output is the same question. Do not restate the rest of the output. Use plain names in chat ([Reporting](../references/working-rules.md#reporting)).
 
-Run every command in the clone of the reviewed repo, or pass `--repo DIR`.
+Run every command in the clone of the reviewed repo, or pass `--repo DIR`. The run folder is under `config.runs_root()` (`~/.understando/runs/<repo>/<pr>/`), never in a git repo.
 
-## Steps
+## The first stop
 
-1. **Resolve and ask.** Run `understando review <pr> --json`. It finds the repo from the cwd, owner/repo from `origin`, the PR head from `gh pr view`, the run folder, and the ready branch with its worktree. It makes the worktree from the PR head when it does not exist, and pulls it with `--no-rebase` when it exists. Then it turns the mode on, writes `ci.json`, reads the signals, runs doctor and writes `prompt`.
-   - **Done when** you gave the user the `prompt` as text, and the user picked an option.
-2. **Do the pick.** Run the `run` command of the picked option. When the CI profile is not approved, the question is the CI approval: "Approve all", "Show the list", or "Approve only <project>" (`understando ci --approve --project <name>`). A pick is the user's yes for that option only.
-   - **Done when** the command ends, and it printed the next question.
-3. **Stop 1: map + probe on the changed code.** `understando review <pr> --go` runs map, then probe. Probe runs the verifiers that the ready branch changed, the verifiers of a possible bug whose code changed, and the verifiers with no control result. Then formal, only when a formal record covers a changed claim ([formalize.md](formalize.md)). A verifier that needs the model key does not run without a pick that names it (`"paid": ["V36"]` in the answer file). Report each `FLAG` line word for word.
-   - **Done when** it printed the close question, or the next stop.
-4. **Stop 2: close, one claim per question.** The question names one claim, why it is weak, and the options ([close.md](close.md)). Run `understando discover` before you write a new verifier for a claim that the PR does not state. Put the pick in the answer file as `"close": {"answers": [...]}`, then run `understando review <pr> --go --answers <file>`. It asks about the next claim.
-   - **Done when** each open claim has a check that closes it, or has the reason why it stays open.
-5. **Stop 3: trim** ([trim.md](trim.md)).
-   - **Done when** it printed the trim report, and the user decided each "excess or untested" item.
-6. **Stop 4: ready + explain.** It prints the four gates, builds the explainer and prints `pr-section.md`. Give the text to the user to paste. Do not edit the PR description.
-   - **Done when** the user has `pr-section.md` and the paths of the explainer.
+`understando review <pr> --json` resolves the repo, the PR head (`gh pr view`), the run folder and the ready worktree. It pulls the worktree with `--no-rebase`. It turns the mode on, writes `ci.json`, reads the signals and runs doctor. When an explainer page exists, it opens it at "Can you merge it?" before the first question, and says so. When the page is out of date, it builds it again first (`--no-rebuild` skips that) and says so in one line.
 
-When the user says "run through", run `understando review <pr> --through`. It does not stop between steps. It still stops for each close choice (claim wording and waivers), the CI approval and each paid step. `discover` (the invariants) stays the user's call.
+The first questions come in a fixed order. Each one is its own question:
+
+1. **Bring the new PR commits into the review branch?** It shows when the PR head has commits that the review branch does not have. The options are these:
+   - Merge, then re-check what they touch (`--merge`). It is a normal merge, never a rebase, a force-push or a push. A conflict undoes the merge and lists the files.
+   - Show what the new commits change first (`--show-new`).
+   - Skip, and re-check only the existing items (`--skip-merge`).
+2. **Approve the CI profile?** Only the user approves it (`understando ci --approve`, or `--project <name>`).
+3. **Link the new test to its claim?** One question for each test that the review branch added. A linked test becomes a check of its claim, with one planted bug: the code as it was before the fix (`restore-file`). The claim moves only after probe shows that the test goes red on that bug. An old test is never evidence for a new fix.
+4. **Run the re-check?** It runs map, then probe on the changed code. When a model or a proof covers changed code, it runs the formal re-check too. That is the model check and its trace replay, with the approved formal commands.
+
+## Run through
+
+The recommended pick runs through: `understando review <pr> --go`. It stops only for the decisions of the user. These are the merge of new PR commits, the CI approval, invariants and claim wording, waivers, paid steps and publish. `--step` stops after each stage (map + probe, close, trim, ready + explain).
+
+While a stop runs, it prints one plain line for each finished item, with ✓ or ✗. An example: "The idle stop: its new test caught the planted bug ✓". The full output of each verb goes to `$R/logs/review-<verb>.log`, and `--verbose` shows it. After the stop, it reports what was checked, what passed and what changed for the reviewer. Then it asks one question. `--json` gives the progress lines as NDJSON events with an `id`, then one JSON object.
+
+A step that fails is recorded with its reason. The next `understando review <pr>` asks to retry it or to skip it (`--skip <step>`). It does not run the same step again without a pick. A manual `understando probe` of the same scope at the same tip counts as the probe step.
+
+## The teach stop
+
+After map, in `--step` mode, and at the end of a run through, review offers "Walk me through the change". `understando review <pr> --teach` gives one turn. It opens the next part of the explainer (the story, the loop, what changed, the weakest promise) and adds only what the page cannot. The rules are in [../references/adapted/teach.md](../references/adapted/teach.md): two to four ideas, the code by `understando snippet` refs, the claim and the check behind each guarantee, and one question. When no page exists, "Build the explainer first" is the recommended option.
+
+## Close, trim, ready and explain
+
+- **Close, one claim per question** ([close.md](close.md)). Put the pick in an answer file as `"close": {"answers": [...]}`, then run `understando review <pr> --go --answers <file>`.
+- **Trim** ([trim.md](trim.md)). The user decides each "excess or untested" item.
+- **Ready + explain.** It prints the four gates, builds the explainer and prints `pr-section.md`. Give the text to the user to paste. Do not edit the PR description.
 
 ## Before each hand edit on the ready branch
 
-Before `formalize` or a hand edit changes a file, run `understando review <pr> --guard <path>[,<path>]`. It refuses a secret path and a protected path (report the finding to its owner). It also refuses when origin has commits that the worktree has not pulled, or when a live lock of another writer covers the file. For a long edit, take the lock: `understando lock take --verb formalize --paths ready:<path>`, and release it after the commit.
+Before `formalize` or a hand edit changes a file, run `understando review <pr> --guard <path>[,<path>]`. It refuses a secret path, a protected path, unpulled commits on origin and a live lock of another writer.
 
 ## The answer file
 
-`{"go": "step" | "run through", "ci": "approve", "ci_project"?: "<name>", "close": {"answers": [...]}, "paid": ["V36"]}`. Write `ci` and `paid` only after the user picked that option in this conversation. The shape of `close` is in `understando close --help`.
+`{"go": "step" | "run through", "merge": "yes" | "skip", "link": "yes" | "no", "ci": "approve", "ci_project"?: "<name>", "close": {"answers": [...]}, "paid": ["V36"]}`. Write `merge`, `ci` and `paid` only after the user picked that option in this conversation.
 
 ## State
 
-`$R/review.json` holds the resolved context, the finished steps and the recorded run time of each step. Run `understando review <pr>` again at any time: it resolves again, pulls the worktree, and asks the next question. `--full` adds the full state.
+`$R/review.json` holds the resolved context, the finished, failed and skipped steps, the merge and link decisions, the teach turn and the run time of each step. `--full` adds the full state, and `--verbose` adds the details (IDs, SHAs and paths).

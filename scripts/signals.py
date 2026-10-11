@@ -165,6 +165,18 @@ def review_hint(c: context.Ctx) -> dict | None:
     return None
 
 
+def review_branch_hint() -> dict | None:
+    """A fetched review branch (understando/<pr>-review) in the repo of the cwd: the reviewer's path."""
+    import repoinfo
+    root = repoinfo.repo_root(Path.cwd())
+    if not root:
+        return None
+    refs = subprocess.run(["git", "-C", str(root), "for-each-ref", "--format=%(refname)", "refs/remotes/origin/understando/", "refs/heads/understando/"],
+                          capture_output=True, text=True).stdout.split()
+    prs = sorted({m.group(1) for r in refs if (m := re.search(r"understando/(\d+)-review$", r))}, key=int, reverse=True)
+    return {"pr": prs[0], "repo": str(root)} if prs else None
+
+
 def pr_head(data: dict | None, explicit: str | None) -> str | None:
     if explicit:
         return explicit
@@ -241,9 +253,12 @@ def ids(xs: list[str], n: int = 6) -> str:
     return ", ".join(xs[:n]) + (f" and {len(xs) - n} more" if len(xs) > n else "")
 
 
-def recommend(sig: dict) -> list[dict]:
-    """Two or three next verbs. Each reason names the concrete cause and the items (claim, verifier,
-    invariant ids). Paused verbs never appear."""
+def recommend(sig: dict, data: dict | None = None) -> list[dict]:
+    """Two or three next verbs. Each reason names the concrete cause in plain words; the IDs, SHAs
+    and paths go in a trailing "(ref: ...)" part. Paused verbs never appear."""
+    import names
+    data = data or {}
+    nm = lambda i: names.of(data, i)  # noqa: E731
     picks: list[dict] = []
 
     def add(verb: str, why: str, label: str | None = None, command: str | None = None) -> None:
@@ -254,8 +269,14 @@ def recommend(sig: dict) -> list[dict]:
     if hint:
         picks.append({"verb": "review", "label": f"review {hint['pr']}", "command": f"understando review {hint['pr']}",
                       "why": f"PR #{hint['pr']} is open and has a run folder. review shows its state and asks one question."})
+    rb = sig.get("review_branch_hint")
+    if rb and not hint:
+        picks.append({"verb": "open", "label": f"open {rb['pr']}", "command": f"understando open {rb['pr']}",
+                      "why": f"The review branch of PR #{rb['pr']} is here. open shows its explainer and walks you through it."})
     tmap = sig["trust_map"]
     if not tmap["present"]:
+        if not hint and not rb:
+            add("build", "No open PR with a run folder, and no review branch here. build starts new work verifier first.")
         add("map", "No trust map exists for this run yet. map writes the claim ledger first.")
         add("discover", "No invariant was found with the user yet. Find them before any verifier is written.")
         add("doctor", "Check the setup before the first run.")
@@ -266,43 +287,43 @@ def recommend(sig: dict) -> list[dict]:
     rv = (sig.get("ready_branch") or {}).get("reverify") or {}
     if fixed:
         b = fixed[0]
-        add("map", f"Runs map + probe on the changed code. The -ready branch changed {', '.join(b['where'])}, the code of "
-                   f"possible bug {b['invariant']}, in {', '.join(b['commits']) or 'a later commit'} after the user's answer"
-                   + (f"; claims {ids(b['claims'])} use it" if b["claims"] else "") + ".",
-            label=f"re-check {', '.join(x['invariant'] for x in fixed)}")
+        add("map", f"Runs map + probe on the changed code. The review branch changed the code of the possible bug '{nm(b['invariant'])}' "
+                   f"after your answer" + (f"; {names.listing([nm(x) for x in b['claims']])} use it" if b["claims"] else "") + "."
+                   + names.ref([b["invariant"], *b["where"], *b["commits"], *b["claims"]], 10),
+            label=f"Re-check the fix for '{nm(b['invariant'])}'")
     elif rv.get("claims"):
-        add("map", f"The -ready branch changed the code or checks of claims {ids(rv['claims'])} "
-                   f"(verifiers {ids(rv['verifiers'])}): map + probe verify them again at the ready tip.",
-            label=f"re-check {ids(rv['claims'], 3)}")
+        add("map", f"The review branch changed the code or checks of {names.listing([nm(x) for x in rv['claims']])}: "
+                   "map + probe verify them again at the review-branch tip." + names.ref(rv["claims"] + rv["verifiers"], 10),
+            label="Re-check the changed code")
     if tmap.get("fresh") is False:
-        add("map", f"The PR head moved from {tmap['head'][:10]} to {tmap['pr_head'][:10]} after the last map.")
+        add("map", "The PR head moved after the last map." + names.ref([tmap["head"][:10], tmap["pr_head"][:10]]))
     if unfixed:
-        add("discover", f"Possible bug {ids([b['invariant'] for b in unfixed])}: the user's answer disagrees with the code at "
-                        f"{', '.join(unfixed[0]['where']) or 'the map head'}, and -ready did not change that code.",
-            label=f"discover {ids([b['invariant'] for b in unfixed], 3)}")
+        add("discover", f"The possible bug '{nm(unfixed[0]['invariant'])}': your answer disagrees with the code, and the review branch "
+                        "did not change that code." + names.ref([b["invariant"] for b in unfixed] + unfixed[0]["where"]),
+            label=f"Discover: '{nm(unfixed[0]['invariant'])}'")
     elif d["possible_bugs"] and not fixed:
-        add("discover", f"Possible bugs {ids(d['possible_bugs'])}: the user's answers disagree with the code.")
+        add("discover", f"{len(d['possible_bugs'])} of your answers disagree with the code." + names.ref([x.split()[0] for x in d["possible_bugs"]]))
     elif d["open"]:
-        add("discover", f"Invariant candidates {ids(d.get('open_ids') or [])} wait for a user decision.")
+        add("discover", f"{len(d['open'])} invariant candidates wait for your decision." + names.ref(d.get("open_ids") or []))
     elif not d["candidates"]:
         add("discover", "No invariant was found with the user yet.")
     if not sig["last_probe"]:
         add("probe", "No control ran yet.")
     elif sig["untested_verifiers"]:
-        add("probe", f"Verifiers {ids(sig['untested_verifiers'])} have no control result.")
-    open_ids = [f"{i} {k}" for k, v in sig["open_claims"].items() for i in v]
+        add("probe", f"{names.listing([nm(x) for x in sig['untested_verifiers']])} have no control result." + names.ref(sig["untested_verifiers"]))
+    open_ids = [i for v in sig["open_claims"].values() for i in v]
     if open_ids:
-        add("close", f"Open claims: {ids(open_ids)}.", label=f"close {open_ids[0].split()[0]}")
+        add("close", f"Open claims: {names.listing([nm(x) for x in open_ids])}." + names.ref(open_ids), label=f"Close '{nm(open_ids[0])}'")
     if not sig["trim"]["ran"]:
         add("trim", "trim did not run at this head: excess code and doubled unit tests are unknown.")
     if not sig["gates"] or sig["gates"]["stale"] or not sig["gates"]["pass"]:
-        failing = [k for k, v in (sig["gates"] or {}).items() if k.startswith("gate") and not v]
+        failing = [k.replace("gate", "gate ") for k, v in (sig["gates"] or {}).items() if k.startswith("gate") and not v]
         add("ready", "The four gates were not computed at this head." if not sig["gates"] or sig["gates"]["stale"]
             else f"{', '.join(failing)} fail at this head. `ready --report` shows why.", command="understando ready --report")
     if not sig["explainer"]["present"] or sig["explainer"]["stale"]:
         add("explain", "The explainer is missing, or older than the trust map.")
     if sig["formal_targets"]:
-        add("formalize", f"Claims {ids(sig['formal_targets'])} target tier 4 or 5.")
+        add("formalize", f"{names.listing([nm(x) for x in sig['formal_targets']])} target a model check or a proof." + names.ref(sig["formal_targets"]))
     return picks[:3]
 
 
@@ -315,7 +336,7 @@ def table(cmds: dict) -> str:
             continue
         lines.append(f"\n{cat}")
         for v in verbs:
-            flag = " (paused)" if v.get("paused") else ""
+            flag = (" (paused)" if v.get("paused") else "") + ("" if v.get("tier", "entry") == "entry" else f" ({v['tier']})")
             by = who[v["invoke"]] + ("; --report: you or the agent" if v.get("report_invoke") == "model" else "") \
                 + ("; --approve: you only" if v.get("approve_invoke") == "user" else "")
             lines.append(f"  {v['id']:<10} {v['line']}{flag}  [{by}]")
@@ -328,12 +349,13 @@ def situation(sig: dict) -> list[str]:
     if not tmap.get("present"):
         return [f"Run folder {sig.get('run') or 'none'}: no trust map yet."]
     lines = []
-    head = tmap["head"][:10]
-    lines.append(f"Map at {head}; PR head " + ("unknown" if tmap.get("pr_head") is None else
-                 ("the same" if tmap.get("fresh") else f"moved to {tmap['pr_head'][:10]}")) + ".")
+    lines.append("The PR head is " + ("unknown" if tmap.get("pr_head") is None else
+                 ("the map head" if tmap.get("fresh") else "newer than the map")) + ".")
     summ = tmap.get("summary") or {}
+    words = [("Formal", "proven formally"), ("Proven", "proven by tests"), ("Backed", "backed but not proven"),
+             ("Asserted", "only stated"), ("Gap", "not checked")]
     if summ:
-        lines.append("Verdicts: " + ", ".join(f"{k} {v}" for k, v in summ.items()) + ".")
+        lines.append("Now: " + ", ".join(f"{summ[k]} {w}" for k, w in words if summ.get(k)) + ".")
     return lines
 
 
@@ -341,7 +363,8 @@ def menu(c: context.Ctx, explicit_head: str | None = None, show_all: bool = Fals
     import prompt
     sig = collect(c, explicit_head)
     sig["review_hint"] = review_hint(c)
-    picks = recommend(sig)
+    sig["review_branch_hint"] = review_branch_hint()
+    picks = recommend(sig, c.data())
     cmds = context.commands()
     q = prompt.make(situation(sig), "What next?",
                     [prompt.option(p["label"], p["why"], p["command"]) for p in picks],

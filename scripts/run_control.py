@@ -75,6 +75,14 @@ def apply_edit(root: Path, edit: dict) -> None:
     if not path.resolve().is_relative_to(root.resolve()):
         raise ValueError(f"edit path leaves the worktree: {edit['path']}")
     op = edit["op"]
+    if op == "restore-file":
+        # Put back the file as it was at `at` (for example the map head, before a fix on the ready
+        # branch): the new test of the fix must go red on the code without the fix.
+        out = subprocess.run(["git", "-C", str(root), "show", f"{edit['at']}:{edit['path']}"], capture_output=True)
+        if out.returncode:
+            raise ValueError(f"{edit['path']}: no copy at {edit['at']}")
+        path.write_bytes(out.stdout)
+        return
     if op == "delete-file":
         path.unlink()
         return
@@ -105,10 +113,11 @@ def apply_edit(root: Path, edit: dict) -> None:
 def run_command(root: Path, command: dict, env_file: str | None) -> tuple[int | None, str, float]:
     cwd = root / command.get("cwd", ".")
     argv = command["argv"]
-    if command.get("env_file"):
-        if not env_file:
-            raise ValueError("the verifier needs --env-file")
-        argv = ["bash", "-c", 'source "$0" && exec "$@"', env_file, *argv]
+    # The env file is per verifier: probe sets `_env` (the key wrapper for a paid verifier that the
+    # user said yes to, else None). A verifier that needs no key runs with no env file.
+    env = command["_env"] if "_env" in command else (env_file if command.get("env_file") else None)
+    if env:
+        argv = ["bash", "-c", 'source "$0" && exec "$@"', env, *argv]
     start = time.monotonic()
     try:
         out = subprocess.run(argv, cwd=cwd, capture_output=True, text=True,

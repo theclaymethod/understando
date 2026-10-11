@@ -140,6 +140,10 @@ def apply(data: dict) -> dict:
     author = data.get("author_family")
     for v in data["verifiers"]:
         v["state"] = verifier_state(v, controls_by_verifier.get(v["id"], []), flags)
+        if (v.get("user_path") or {}).get("result") == "internal-only":
+            flags.append({"flag": "not-user-path", "subject": v["id"], "loud": True,
+                          "detail": f"{v['id']} is labelled e2e, but it only calls internal functions: not a user-path e2e. "
+                                    "Its tier label is integration. Drive the real CLI, service or UI to make it e2e."})
         ind = v["independence"]
         if ind["by"] == "model" and author and author in families(ind.get("family")):
             flags.append({

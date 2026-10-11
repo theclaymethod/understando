@@ -188,12 +188,12 @@ def kind_of(choice: str) -> str:
 
 CHOICE = {
     "mechanical": ("Add a mechanical check", "I write one grep or line-count check, and probe plants a control for it. "
-                   "{id} becomes Backed. $0, no model call, seconds to run."),
-    "evidence": ("Attach recorded evidence", "I attach the recorded run or review that shows it. {id} becomes Backed. $0, no model call."),
+                   "The claim becomes Backed. $0, no model call, seconds to run."),
+    "evidence": ("Attach recorded evidence", "I attach the recorded run or review that shows it. The claim becomes Backed. $0, no model call."),
     "property": ("Add a property test", "I draft one property test and one planted bug. Probe keeps the test only when it goes red on the bug; "
-                 "then {id} becomes Proven. $0, no model call."),
+                 "then the claim becomes Proven. $0, no model call."),
     "e2e": ("Add an e2e test", "I draft one e2e test and one planted bug. Probe keeps the test only when it goes red on the bug; "
-            "then {id} becomes Proven. $0, no model call."),
+            "then the claim becomes Proven. $0, no model call."),
     "reword": ("Reword it", "I propose a wording that the code shows, and you approve the words. Nothing runs."),
     "waive": ("Waive it", "You give the reason. The ready checklist and the PR section show the waiver. Nothing runs."),
     "formalize": ("Formalize it", "A TLA+ model check or a Lean proof (tier {tier}). It takes the longest; you start it."),
@@ -212,6 +212,31 @@ def recommend_choice(claim: dict, data: dict) -> str:
     return "property" if inv and inv.get("shape") == "input-space" else "e2e"
 
 
+def weakness(claim: dict, data: dict) -> str:
+    """Why the claim is weak, in plain words; the verifier and control IDs go in the ref."""
+    import names
+    import prompt
+    reason = claim.get("reason") or ""
+    ids = list(dict.fromkeys(prompt.INTERNAL_ID.findall(reason)))
+    backing = names.checks_of(data, claim)
+    if reason.startswith("code disagrees"):
+        why = "the code disagrees with an invariant that you confirmed; a fix is pending"
+    elif claim["verdict"] == "Gap":
+        why = "no check backs it, and the PR text does not state it"
+    elif claim["verdict"] == "Asserted":
+        why = "only the PR text states it; no check backs it"
+    elif claim["verdict"] == "Backed":
+        why = f"{names.listing([v.get('name') or names.verifier_name(v, {c['id']: c for c in data['claims']}) for v in backing])} backs it, but no planted bug shows that the check can fail"
+    else:
+        why = names.scrub(reason).split(" (ref:")[0].rstrip(".")
+    dead = [v["id"] for v in backing if v.get("state") in ("cannot-fail", "failing", "broken", "stale")]
+    if dead:
+        weak = next(v for v in backing if v["id"] == dead[0])
+        why += (f"; {'one' if len(dead) == 1 else len(dead)} of its {prompt.n_of(len(backing), 'check')} "
+                f"{'misses its' if len(dead) == 1 else 'miss their'} planted bug ({weak.get('name') or 'a check'}): fix that check first")
+    return f"Why it is weak: {why}." + names.ref(ids + [d for d in dead if d not in ids])
+
+
 def question(data: dict, pr: str | None = None) -> dict | None:
     """One open claim as one question: a plain sentence, why it is weak, and the options
     (the recommended one first, then the rest cheapest first). None when no claim is open."""
@@ -227,12 +252,15 @@ def question(data: dict, pr: str | None = None) -> dict | None:
     for name in order[:3]:
         label, does = CHOICE[name]
         opts.append({**prompt.option(label, does.format(id=claim["id"], tier=claim.get("tier_target") or 5)), "choice": name})
+    import names
     what = (claim.get("plain") or {}).get("what") or claim["text"]
-    return prompt.make([f"Claim {claim['id']} ({claim['verdict']}, 1 of {len(q)} open): {what}",
-                        f"Why it is weak: {(claim.get('reason') or 'no verifier backs it').rstrip('.')}."],
-                       f"How do we close {claim['id']}?", opts,
-                       {"step": "close", "does": f"Close {claim['id']} with your choice; a drafted check must go green, then red on its planted bug",
-                        "scope": f"claim {claim['id']} only", "cost": "$0, no model call",
+    name = claim.get("name") or names.short(what)
+    words = {"Gap": "not checked", "Asserted": "only stated", "Backed": "backed but not proven"}.get(claim["verdict"], claim["verdict"])
+    return prompt.make([names.scrub(f"Open claim 1 of {len(q)}, {words}: {what}") + names.ref([claim["id"]]),
+                        weakness(claim, data)],
+                       f"How do we close '{name}'?", opts,
+                       {"step": "close", "does": "Close this claim with your choice; a drafted check must go green, then red on its planted bug",
+                        "scope": "this claim only", "cost": "$0, no model call",
                         "time": "about a minute for each drafted check", "writes": "trust-map.json; a kept check is a commit on the ready branch"},
                        else_does="Another option (" + ", ".join(CHOICE[x][0].lower() for x in COST_ORDER if x not in order[:3] and x in CHOICE)
                        + "), skip it for now, or drop it.") | {"claim": claim["id"]}

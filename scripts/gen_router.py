@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Write the verb table of SKILL.md from commands.json, between the two router markers.
 
+The table shows only the entry points (`tier: entry`); `understando help --all` lists the rest.
+
     python3 scripts/gen_router.py            rewrite SKILL.md
     python3 scripts/gen_router.py --check    exit 1 when SKILL.md and commands.json differ
 """
@@ -18,15 +20,15 @@ WHO = {"model": "you or the user", "user": "the user only", "hook": "a prompt ho
 
 def table() -> str:
     cmds = json.loads((ROOT / "commands.json").read_text(encoding="utf-8"))
-    rows = ["| Verb | Category | Job | Who starts it | Read |", "|---|---|---|---|---|"]
+    rows = ["| Verb | Job | Who starts it | Read |", "|---|---|---|---|"]
     for v in cmds["verbs"]:
-        if v["invoke"] == "hook":
+        if v.get("tier") != "entry":
             continue
         who = WHO[v["invoke"]] + (". With `--report`: you or the user" if v.get("report_invoke") == "model" else "") \
             + (". `--approve`: the user only" if v.get("approve_invoke") == "user" else "")
         doc = f"[{v['doc']}]({v['doc']})" if v.get("doc") else "`--help`"
-        rows.append(f"| `{v['id']}` | {v['category']} | {v['line']} | {who} | {doc} |")
-    return "\n".join([START, *rows, END])
+        rows.append(f"| `{v['id']}` | {v['line']} | {who} | {doc} |")
+    return "\n".join([START, *rows, "", "Advanced verbs: `understando help --all`.", END])
 
 
 def main(argv: list[str]) -> int:

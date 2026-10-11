@@ -30,10 +30,24 @@ Write an anchor op. It names its place with `path`, `symbol` (a dotted name at t
 | `append` | `path`, `text` | Adds `text` at the end of the file. |
 | `corrupt-byte` | `path`, `offset` (default: the middle), or an anchor | XORs one byte with 0x01: the first byte of the target, or the byte at `offset`. |
 | `delete-file` | `path` | Removes the file. |
+| `restore-file` | `path`, `at` | Puts back the file as it was at the commit `at`. A new test of a fix on the ready branch uses it: the test must go red on the code before the fix. |
 
 ## Expected red
 
 Each control sets `expect.status` to `red`. Set `expect.pattern` to a regex that the red output must hold, for example the test name or `file.py:36`. The pattern stops a red for the wrong reason from counting as a catch.
+
+## Tier-1 proof standards
+
+An e2e verifier proves a behaviour only when it drives the app as a user does. These rules come from the proof standards of create-verification-skill and maintain-verification-skill.
+
+- **Drive the real user path.** Start the CLI or the service in its own process. Send the HTTP request, or drive the browser or the terminal. Do not call internal setters, test-only endpoints or the functions under the CLI.
+- **Capture the action and the resulting state.** Record what the test did and the state after it. The last screen or the exit code alone is not enough.
+- **Check the side effects.** Look at the files written, the rows inserted and the messages sent, together with what the user sees.
+- **Mock only at a real boundary.** Use a fake only where a production boundary already isolates the external system.
+- **Observe what a dry-run skips.** A dry-run or a test mode can still touch the network or a git ref. Observe the files, the network and the refs. Do not trust the name of the mode.
+- **Cleanup keeps the evidence.** Remove the instances and the scratch state that the run made, never the proof. Check that the evidence is still at its named place after the cleanup.
+
+probe enforces the first rule. It reads the test files of each `e2e` verifier at its commit (`scripts/userpath.py`). A test that starts no process, calls no endpoint and drives no UI only calls internal functions. probe then prints `FLAG NOT-USER-PATH`, records `user_path: {result: internal-only, claimed_kind: e2e}` and lowers the kind to `integration`. The rung stays 1, so the verdict does not change, but the label is honest. A command with no test file to read (a shell script, an npm script) gets `unknown` and no flag.
 
 ## Expensive evidence
 

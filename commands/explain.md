@@ -6,6 +6,10 @@ Each stop of this playbook ends with one question to the user. Ask it as [Asking
 
 The explainer is a **level ladder**. Each level is one screen deep, and detail waits in collapsed blocks. A newcomer meets the big picture first and an ID or a code name only when they open a block.
 
+## Content rules
+
+The content rules of explain-report hold for each level ([../references/adapted/explain-report.md](../references/adapted/explain-report.md)). Lead with the decision: can the reviewer merge? Give evidence for each claim. Keep verified, inferred and unknown apart. Put depth behind a collapsed block. The pipeline stays the same: MDX from the trust map, exported by the visual-explainer runtime. `understando explain --html` runs the build and the export.
+
 ## Never paste code
 
 Do not type code, line numbers or a GitHub URL into `explain.json` or into the trust map. Write a code ref: `{"path", "symbol"}`, with `"match"` and `"context"` for a part of a symbol. Preview it with `understando snippet <path>::<symbol>`. The build copies the lines at the head, and it makes each permalink from the git remote and the head SHA. Typed code costs tokens to read and to write again, and it does not change when the code changes. A ref resolves again at each head.
