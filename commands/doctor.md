@@ -17,5 +17,8 @@ It looks for these problems:
 - A deleted `@cc` contract comment in the PR or on the ready branch.
 - Stale imported evidence.
 - The skill links and the CLI link.
+- The per-repo `understando.toml`: the key source, the key file, the budget, the protected paths and the owners of deferred invariants.
+- An unapproved CI profile, a ready worktree behind origin, and stale lock entries.
+- A committed vectors file under `formal/` with no committed generator. With `--formal`, doctor generates each `formal_tlc.py` vectors file again and compares it byte for byte.
 
 An empty list is the good result. Say so in one line.

@@ -60,7 +60,57 @@ def last_change(repo: Path, head: str, paths: list[str]) -> int:
     return int(out.stdout.strip() or 0)
 
 
-def findings(c: context.Ctx, explicit_head: str | None) -> tuple[list[dict], dict | None]:
+VECTOR_FILE = ("vectors",)
+GENERATOR_SUFFIXES = (".py", ".lean", ".tla", ".sh", ".mjs", ".js", ".ts")
+
+
+def vector_findings(repo: Path, ref: str, run_tlc: bool) -> list[dict]:
+    """Each committed vectors file under a formal/ folder needs a committed generator: the
+    understando formal_tlc.py header (spec, cfg, stop rule), or a generator file next to it. With
+    run_tlc, each formal_tlc.py file is generated again and compared byte for byte."""
+    import ci
+    out = []
+    files = [p for p in ci.ls(repo, ref, ".") if "/formal/" in f"/{p}" and any(w in p.rsplit("/", 1)[-1].lower() for w in VECTOR_FILE)
+             and p.endswith((".json", ".jsonl"))]
+    for f in files:
+        d, name = f.rsplit("/", 1)
+        text = ci.show(repo, ref, f) or ""
+        head = ci.vectors_header(text)
+        if head:
+            missing = [x for x in (head["spec"], head["cfg"]) if ci.show(repo, ref, f"{d}/{x}") is None]
+            if missing:
+                out.append({"id": f"vectors-inputs-{name}", "severity": "route",
+                            "summary": f"{f} names {', '.join(missing)}, which is not committed: nobody can generate the vectors again.",
+                            "fix": "Commit the spec and the cfg next to the vectors.", "verb": "formalize"})
+            continue
+        siblings = [p for p in ci.ls(repo, ref, d) if p != f and p.endswith(GENERATOR_SUFFIXES)
+                    and ("vector" in p.rsplit("/", 1)[-1].lower() or name in (ci.show(repo, ref, p) or ""))]
+        if not siblings:
+            out.append({"id": f"vectors-no-generator-{name}", "severity": "route",
+                        "summary": f"{f} is committed, but no committed generator writes it. A reviewer cannot generate it again.",
+                        "fix": "Generate it with `formal_tlc.py vectors` (TLA+), or commit the generator next to it.", "verb": "formalize"})
+    if run_tlc and files:
+        prof = ci.formal_commands(repo, ref, sorted({f.split("/formal/")[0] if "/formal/" in f else "." for f in files}))
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix="understando-vectors-") as tmp:
+            root = Path(tmp)
+            for d in sorted({x["cwd"] for x in prof if x["tool"] == "tlc-vectors"}):
+                ci.extract(repo, ref, d, root)
+            for x in (x for x in prof if x["tool"] == "tlc-vectors"):
+                res = subprocess.run(x["argv"], cwd=root / x["cwd"], capture_output=True, text=True, timeout=1800)
+                if res.returncode == 1:
+                    out.append({"id": f"vectors-drift-{Path(x['generates']).name}", "severity": "route",
+                                "summary": f"{x['generates']} differs from what formal_tlc.py vectors writes at {ref[:10]}.",
+                                "fix": "Generate it again with the command in ci.json, commit it on the ready branch, then check it again.",
+                                "verb": "formalize"})
+                elif res.returncode:
+                    out.append({"id": f"vectors-error-{Path(x['generates']).name}", "severity": "mention",
+                                "summary": f"formal_tlc.py vectors did not finish for {x['generates']} (exit {res.returncode}).",
+                                "fix": "Check the TLC toolchain."})
+    return out
+
+
+def findings(c: context.Ctx, explicit_head: str | None, formal: bool = False) -> tuple[list[dict], dict | None]:
     out: list[dict] = []
 
     def add(id_: str, severity: str, summary: str, fix: str, verb: str | None = None) -> None:
@@ -156,6 +206,38 @@ def findings(c: context.Ctx, explicit_head: str | None) -> tuple[list[dict], dic
                 why = imp.get("detail") if imp.get("status") == "stale" else (check["detail"] if not check["ok"] else "the file changed after the import")
                 add(f"import-stale-{v['id']}", "mention", f"{v['id']}: the imported {imp['kind']} evidence is stale: {why}.",
                     "Import it again with `understando import`; it backs nothing until then.")
+    if c.repo:
+        import ci
+        import config
+        import lock
+        import repoinfo
+        cfg = config.for_repo(c.repo)
+        out += config.findings(cfg, c.repo)
+        if c.run and c.run.is_dir():
+            prof = ci.load(c.run)
+            if prof and not ci.approved(prof):
+                add("ci-unapproved", "mention", "The CI profile (ci.json) is not approved, so probe, close and trim refuse to run.",
+                    "Show `understando ci` to the user; after a yes, the user runs `understando ci --approve`.")
+            stale = [h for h in lock.read(c.run) if not lock.alive(int(h["pid"]))]
+            if stale:
+                add("lock-stale", "auto", f"{len(stale)} lock entries name a process that ended.", "The next writing verb removes them.")
+        if data:
+            branch = cfg["ready_branch"].format(pr=data.get("pr"))
+            ref = repoinfo.rev(c.repo, f"refs/remotes/origin/{branch}") or repoinfo.rev(c.repo, f"refs/heads/{branch}") or data["head"]
+            wt = repoinfo.worktree_of(c.repo, branch)
+            remote = repoinfo.rev(c.repo, f"refs/remotes/origin/{branch}")
+            if wt and remote:
+                behind = subprocess.run(["git", "-C", str(wt), "rev-list", "--count", f"HEAD..{remote}"], capture_output=True, text=True).stdout.strip()
+                if behind and behind != "0":
+                    add("ready-behind", "route", f"The worktree {wt} is {behind} commits behind origin/{branch}.",
+                        "Pull it with --no-rebase before any edit.", "review")
+            for f in vector_findings(c.repo, ref, formal):
+                out.append(f)
+            owners = cfg.get("deferred_owners") or {}
+            for i in data.get("invariants", []):
+                if i.get("status") == "proposed" and i.get("deferred") and not (i.get("owner") or owners.get(i["id"])):
+                    add(f"deferred-no-owner-{i['id']}", "mention", f"The deferred invariant {i['id']} has no owner.",
+                        "Name the owner in the discover answer, or in deferred_owners of understando.toml.")
     home = Path(os.environ.get("HOME", str(Path.home())))
     for d in LINK_HOMES:
         link = home / d / "understando"
@@ -171,8 +253,9 @@ def main(c: context.Ctx, argv: list[str]) -> int:
     ap = argparse.ArgumentParser(prog="understando doctor", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--fix", action="store_true")
     ap.add_argument("--pr-head")
+    ap.add_argument("--formal", action="store_true", help="also generate each formal_tlc.py vectors file again (runs TLC)")
     args = ap.parse_args(argv)
-    found, fixed = findings(c, args.pr_head)
+    found, fixed = findings(c, args.pr_head, args.formal)
     moved = []
     if args.fix and fixed is not None:
         tm.save(fixed, c.map)

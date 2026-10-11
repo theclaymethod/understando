@@ -70,6 +70,18 @@ def add_check(c: context.Ctx, data: dict, claim: dict, a: dict, kind: str) -> st
     if a.get("invariant"):
         claim["invariant"] = a["invariant"]
     repo = c.need_repo()
+    import config
+    import repoinfo
+    import review
+    bad = review.guard(c.run, sorted(a.get("files", {})), config.load(repoinfo.repo_name(repo)))
+    if bad:
+        return f"{claim['id']}: " + " ".join(bad) + " Nothing went to the ready branch."
+    import ci
+    prof = ci.load(c.run)
+    cmd = a["verifier"]["command"]
+    if prof and not ci.allowed_by(prof, cmd["argv"], cmd.get("cwd", ".")):
+        return (f"{claim['id']}: refuse: the drafted command `{' '.join(cmd['argv'])}` is not in the approved CI profile. "
+                "Use a command of the repo's reviewed CI. Nothing went to the ready branch.")
     vid, kid = ops.next_id(data, "V"), ops.next_id(data, "K")
     spec = a["verifier"]
     v = {"id": vid, "kind": spec.get("kind", kind), "claims": [claim["id"]], "tier": "fact",
@@ -205,6 +217,12 @@ def main(c: context.Ctx, argv: list[str]) -> int:
     args = ap.parse_args(argv)
     data = c.need_map()
     verdicts.apply(data)
+    if args.answers and c.repo:
+        import ci
+        refusal, _ = ci.gate(c, data)
+        if refusal:
+            print(refusal)
+            return 1
     if args.list or (not args.answers and not sys.stdin.isatty()):
         q = queue(data)
         rows = [{"claim": x["id"], "verdict": x["verdict"], "text": x["text"], "options": [n for n, _ in OPTIONS]} for x in q]

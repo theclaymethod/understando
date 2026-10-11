@@ -4,8 +4,8 @@ Run each verifier at its commit. Then plant each control (a model-free bug) in i
 
 ## Steps
 
-1. **Check the commands.** Read each `command` and `setup` step in the trust map. Each one must come from the repo's reviewed CI profile and call no model or paid service.
-   - **Done when** you can name the CI job for each command.
+1. **Check the commands.** Each `command` and `setup` step in the trust map must match a command of the approved CI profile (`understando ci`). It must call no model or paid service. probe refuses a command outside the profile. It skips a command that needs the model key, unless the user said yes to its cost (`--paid V36`).
+   - **Done when** `understando ci` prints `approved by the user`, and you can name the CI job for each command.
 2. **Probe.** Run `understando probe [--env-file <env.sh>]`. Use `--control K01,K02` or `--only V01` to run a part. The user's checkout and its worktree list do not change.
    - **Done when** it prints the summary. Report each `FLAG` line word for word: a `cannot-fail` verifier is the most important finding of the run.
 3. **Fix each error.** An `error` result means that the edit did not apply, or the check failed for another reason. Fix the control's `find` text or its `expect.pattern`, then run that control again.

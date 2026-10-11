@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -61,6 +62,12 @@ def sync(c: context.Ctx, path: str) -> dict:
         items = (rec.get("invariant") or {}).get("items", [])
         ids = [it["id"] for it in items]
         confirmed = [i for i in ids if invs.get(i, {}).get("author") == "user" and invs[i].get("status") == "accepted"]
+        for i in confirmed:
+            if invs[i].get("possible_bug"):
+                fixed = fix_landed(c, data, rec, invs[i])
+                if fixed:
+                    invs[i]["possible_bug_fixed"] = {**fixed, "bugs": invs[i].pop("possible_bug")}
+                    report.append(f"{i}: the possible bug is fixed at {fixed['commit'][:10]} ({fixed['why']})")
         bugs = [i for i in confirmed if invs[i].get("possible_bug")]
         if ids and len(confirmed) == len(ids) and not bugs:
             refs = [f"journal {r['ts']}" for r in rows if r.get("kind") == "invariant" and r.get("author") == "user" and r.get("invariant") in ids]
@@ -90,6 +97,28 @@ def sync(c: context.Ctx, path: str) -> dict:
         tm.fail("formalize --sidecar: the map is invalid:\n" + "\n".join(errors), 1)
     tm.save(data, c.map)
     return {"report": report, "claims": idmap}
+
+
+def fix_landed(c: context.Ctx, data: dict, rec: dict, inv: dict) -> dict | None:
+    """A possible bug of a confirmed invariant is fixed when the record was checked again at a
+    commit whose code differs from the commit that showed the bug, the model check and the
+    conformance run are green there, and no blocker is open. Else None."""
+    drift = rec.get("drift") or {}
+    commit = drift.get("commit")
+    seen_at = next((b.get("at_commit") for b in inv.get("possible_bug", []) if b.get("at_commit")), None) or data["head"]
+    if not (c.repo and commit) or commit == seen_at or rec.get("blocker_open"):
+        return None
+    if (rec.get("check") or {}).get("status") != "green" or ((rec.get("conformance") or {}).get("result") or {}).get("status") != "green":
+        return None
+    changed = []
+    for f in drift.get("code_files", []):
+        before = subprocess.run(["git", "-C", str(c.repo), "rev-parse", f"{seen_at}:{f['path']}"], capture_output=True, text=True).stdout.strip()
+        if before and before != f.get("blob"):
+            changed.append(f["path"])
+    if not changed:
+        return None
+    return {"commit": commit, "record": rec["id"], "at": tm.now(),
+            "why": f"record {rec['id']} is green at {commit[:10]}, and {', '.join(changed)} changed after {seen_at[:10]}"}
 
 
 def add_verifier(data: dict, rec: dict, idmap: dict[str, str], side_path: Path) -> None:

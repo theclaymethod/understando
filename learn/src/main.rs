@@ -55,6 +55,10 @@ fn deny_layer(repo: &Path, fi_env: &str, ws: &git::Workspace) -> (Vec<String>, V
         cd.clone(),
     ];
     deny.extend(home_paths(&[".codex", ".claude", ".ssh", ".aws", ".config/gh", ".netrc", "Library/Keychains", ".docker/config.json", ".gnupg", ".npmrc", ".pypirc", ".kube"]));
+    // The secret_paths of understando.toml: learn.sh passes them as absolute globs, one per line.
+    if let Ok(extra) = std::env::var("UNDERSTANDO_DENY_EXTRA") {
+        deny.extend(extra.lines().map(str::trim).filter(|l| !l.is_empty()).map(String::from));
+    }
     deny.dedup();
     let cat = |p: String, ok: bool| agent::Probe { argv: vec!["cat".into(), p], expect_ok: ok };
     let mut probes = vec![

@@ -49,8 +49,9 @@ def changed(repo: str, base: str, head: str) -> list[tuple[str, str]]:
 
 
 def contracts(repo: str, head: str, paths: list[str]) -> list[dict]:
+    import config
     found = []
-    for path in paths:
+    for path in config.readable(config.for_repo(repo), paths):
         if Path(path).suffix not in SOURCE_SUFFIXES and Path(path).name != "CONTRACTS":
             continue
         lines = git(repo, "show", f"{head}:{path}").splitlines()
@@ -68,7 +69,8 @@ def contracts(repo: str, head: str, paths: list[str]) -> list[dict]:
 
 
 def untested(repo: str, head: str, rows: list[tuple[str, str]], src: str, tests: str) -> list[str]:
-    test_files = [p for p in git(repo, "ls-tree", "-r", "--name-only", head, tests).splitlines()
+    import config
+    test_files = [p for p in config.readable(config.for_repo(repo), git(repo, "ls-tree", "-r", "--name-only", head, tests).splitlines())
                   if Path(p).suffix in SOURCE_SUFFIXES]
     corpus = "\n".join(git(repo, "show", f"{head}:{p}") for p in test_files)
     out = []
