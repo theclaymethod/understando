@@ -242,6 +242,47 @@ def changed_symbols(repo: str, head: str, diff: dict) -> tuple[dict, list[dict]]
     return out, mains
 
 
+def changed_imports(repo: str, head: str, diff: dict) -> list[list[str]]:
+    """The imports between the changed Python files at the head, as [importer, imported] path pairs:
+    the data of the guided review's map of how the changed files connect. A module name maps to a
+    changed file when exactly one changed file ends with its dotted path."""
+    import ast
+    code = [p for p in diff["files"] if p.endswith(".py") and p not in diff["deleted"]]
+    by_name: dict[str, set[str]] = {}
+    for p in code:
+        parts = p[:-3].split("/")
+        if parts[-1] == "__init__":
+            parts = parts[:-1]
+        for k in range(1, len(parts) + 1):
+            by_name.setdefault(".".join(parts[-k:]), set()).add(p)
+    find = lambda name: next(iter(by_name[name])) if len(by_name.get(name, ())) == 1 else None  # noqa: E731
+    edges: set[tuple[str, str]] = set()
+    for p in code:
+        text = coderef.show(repo, head, p)
+        if text is None:
+            continue
+        try:
+            tree = ast.parse(text)
+        except SyntaxError:
+            continue
+        pkg = p[:-3].split("/")[:-1] if not p.endswith("__init__.py") else p[:-3].split("/")[:-1]
+        for node in ast.walk(tree):
+            names: list[str] = []
+            if isinstance(node, ast.Import):
+                names = [a.name for a in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                base = node.module or ""
+                if node.level:
+                    up = pkg[: len(pkg) - (node.level - 1)] if node.level > 1 else pkg
+                    base = ".".join(up[-2:] + ([base] if base else []))
+                names = [base] + [f"{base}.{a.name}" for a in node.names]
+            for name in names:
+                hit = find(name) if name else None
+                if hit and hit != p:
+                    edges.add((p, hit))
+    return sorted([list(e) for e in edges])
+
+
 def stage(src: Path, dest: Path) -> None:
     if src.resolve() != dest.resolve():
         shutil.copyfile(src, dest)
@@ -292,8 +333,11 @@ def main() -> int:
     if mdx.is_file():
         stage(mdx, out / "explainer.mdx")
         refs += mdx_refs(mdx.read_text(encoding="utf-8"))
+    # A verdict check of explain.json can point to the lines to read.
+    refs += [c["ref"] for c in (extra.get("verdict") or {}).get("checks") or [] if c.get("ref")]
     diff = diff_data(args.repo, data["base"], data["head"])
     diff["symbols"], mains = changed_symbols(args.repo, data["head"], diff)
+    diff["imports"] = changed_imports(args.repo, data["head"], diff)
     resolved = resolve_refs(args.repo, data, refs)
     # The main changed symbol of a file is a link to read, not an excerpt.
     have = {coderef.ref_key(r["ref"]) for r in resolved}
@@ -310,6 +354,23 @@ def main() -> int:
     except Exception:  # noqa: BLE001  a repo with no config gets the default bars
         cfg = {}
     body["derived"] = derive.derive(data, body, extra, ready, cov, cfg)
+    # The guided review shows the main change of each file that a reviewer must read (the diff
+    # spine of the derived block) as code, so those main symbols get their lines; the rest stay links.
+    # Each "look closely" flag shows the lines around it, so its ref is resolved here too.
+    spine_files = [f for g in body["derived"]["spine"]["groups"] for f in g["files"]]
+    read = {f["path"] for f in spine_files if f["status"]["kind"] in derive.SPINE_READ and f["main"]}
+    full = {coderef.ref_key(r["ref"]): r for r in resolve_refs(args.repo, data, [m for m in mains if m["path"] in read])}
+    body["refs"] = [full.get(coderef.ref_key(r["ref"]), r) if r.get("link_only") else r for r in body["refs"]]
+    have = {coderef.ref_key(r["ref"]) for r in body["refs"]}
+    body["refs"] += [r for r in resolve_refs(args.repo, data, [x["ref"] for f in spine_files for x in f["flags"]]) if coderef.ref_key(r["ref"]) not in have]
+    # The test that each check runs shows behind its check row: its lines at the head, when they resolve.
+    have = {coderef.ref_key(r["ref"]) for r in body["refs"]}
+    tests = [c["ref"] for c in body["derived"]["checks"].values() if c["ref"] and coderef.ref_key(c["ref"]) not in have]
+    for ref in tests:
+        try:
+            body["refs"] += resolve_refs(args.repo, data, [ref])
+        except SystemExit:
+            pass  # a test that the command names but the file does not hold as a symbol: the row shows its path
     (out / coderef.CACHE_NAME).write_text(json.dumps(body, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     runtime = runtime_path(args.runtime)
     if not args.no_html:
