@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 
 SKILL = "asd-ste100"
 MISSING = ("the STE lint (asd-ste100) is not installed. It is required for the text that a reviewer reads. "

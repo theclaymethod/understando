@@ -47,6 +47,7 @@ from functools import lru_cache
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 import tm  # noqa: E402
 
 SCHEMA = "understando.repo/1"
@@ -402,6 +403,7 @@ def main(argv: list[str]) -> int:
     sub.add_parser("runs-root")
     sub.add_parser("ve-runtime")
     args = ap.parse_args(argv)
+    testguard.read_only()  # each sub-command only reads
     if args.cmd == "runs-root":
         print(runs_root())
         return 0

@@ -42,6 +42,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 import coderef  # noqa: E402
 import derive  # noqa: E402
 import mechanical  # noqa: E402
@@ -78,16 +79,6 @@ def runtime_path(explicit: str | None) -> str:
     if out.returncode != 0:
         tm.fail("cannot resolve the Artifacture runtime; pass --runtime")
     return out.stdout.strip().splitlines()[-1]
-
-
-def export_command(runtime: str) -> tuple[list[str], str | None]:
-    """The export command of the runtime and its folder. A checkout has the exporter script
-    (scripts/ve-mdx/export.mjs), which runs from the checkout so that it finds its packages; an
-    older runtime has `artifacture.mjs export`."""
-    script = Path(runtime) / "scripts" / "ve-mdx" / "export.mjs"
-    if script.is_file():
-        return ["node", str(script)], str(runtime)
-    return ["node", str(Path(runtime) / "scripts" / "artifacture.mjs"), "export"], None
 
 
 def mdx_refs(text: str) -> list[dict]:
@@ -128,6 +119,14 @@ def resolve_refs(repo: str, data: dict, refs: list[dict]) -> list[dict]:
                     "language": LANG.get(Path(ref["path"]).suffix, "text"), "excerpt": r.excerpt,
                     "permalink": coderef.permalink(repo, data["head"], ref["path"], r.start, r.end, data.get("repo"))})
     return out
+
+
+def export(runtime: str, mdx: Path, html: Path, *extra: str) -> int:
+    """Export the explainer MDX to HTML with the source script of the Artifacture checkout
+    (scripts/ve-mdx/export.mjs); the `artifacture export` command is gone from the CLI. The script
+    resolves its package from the working directory, so it runs in the checkout, with absolute paths."""
+    script = Path(runtime) / "scripts" / "ve-mdx" / "export.mjs"
+    return subprocess.run(["node", str(script), str(mdx.resolve()), "--out", str(html.resolve()), *extra], cwd=runtime).returncode
 
 
 def formal_roots(v: dict) -> list[str]:
@@ -204,6 +203,43 @@ def diff_data(repo: str, base: str, head: str) -> dict:
     return {"files": files, "deleted": names("D"), "created": names("A"), "added": added}
 
 
+def diff_hunks(repo: str, base: str, head: str) -> dict[str, list[tuple[int, list[str], int, int]]]:
+    """Per file, each hunk of `git diff -U0` base to head: (its first base line, the removed lines,
+    its first head line, the number of added lines). A hunk with no added line starts after its head line."""
+    hunks: dict[str, list[tuple[int, list[str], int, int]]] = {}
+    current, removed = None, None
+    for line in git(repo, "diff", "-U0", "--no-renames", base, head).splitlines():
+        if line.startswith("diff --git "):
+            current, removed = None, None
+        elif line.startswith("+++ "):
+            current = None if line == "+++ /dev/null" else line[6:]
+        elif line.startswith("@@") and current:
+            m = re.match(r"@@ -(\d+)(?:,\d+)? \+(\d+)(?:,(\d+))? @@", line)
+            removed = []
+            hunks.setdefault(current, []).append((int(m.group(1)), removed, int(m.group(2)), int(m.group(3) if m.group(3) is not None else 1)))
+        elif removed is not None and line.startswith("-"):
+            removed.append(line[1:])
+    return hunks
+
+
+def line_changes(hunks: list[tuple[int, list[str], int, int]], start: int, end: int) -> dict:
+    """The diff status of the head lines start..end: the added lines, the modified lines (the first
+    added lines of a hunk, one per removed line) and the removed base lines that show inline, each
+    before the head line `at`."""
+    out: dict = {"added": [], "modified": [], "removed": []}
+    for base, removed, first, count in hunks:
+        new = range(first, first + count)
+        at = first if count else first + 1
+        inside = any(start <= n <= end for n in new) if count else start < at <= end
+        if not inside:
+            continue
+        # The first added lines of a hunk replace its removed lines (modified); the rest are new.
+        out["modified"] += [n for n in new[:len(removed)] if start <= n <= end]
+        out["added"] += [n for n in new[len(removed):] if start <= n <= end]
+        out["removed"] += [{"at": at, "base": base + i, "text": text} for i, text in enumerate(removed)]
+    return out
+
+
 JS_DEF = re.compile(r"^\s*(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function\*?|class)\s+([A-Za-z_$][\w$]*)"
                     r"|^\s*(?:export\s+)?const\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:\(|function)")
 
@@ -251,47 +287,6 @@ def changed_symbols(repo: str, head: str, diff: dict) -> tuple[dict, list[dict]]
         if main:
             mains.append(main)
     return out, mains
-
-
-def changed_imports(repo: str, head: str, diff: dict) -> list[list[str]]:
-    """The imports between the changed Python files at the head, as [importer, imported] path pairs:
-    the data of the guided review's map of how the changed files connect. A module name maps to a
-    changed file when exactly one changed file ends with its dotted path."""
-    import ast
-    code = [p for p in diff["files"] if p.endswith(".py") and p not in diff["deleted"]]
-    by_name: dict[str, set[str]] = {}
-    for p in code:
-        parts = p[:-3].split("/")
-        if parts[-1] == "__init__":
-            parts = parts[:-1]
-        for k in range(1, len(parts) + 1):
-            by_name.setdefault(".".join(parts[-k:]), set()).add(p)
-    find = lambda name: next(iter(by_name[name])) if len(by_name.get(name, ())) == 1 else None  # noqa: E731
-    edges: set[tuple[str, str]] = set()
-    for p in code:
-        text = coderef.show(repo, head, p)
-        if text is None:
-            continue
-        try:
-            tree = ast.parse(text)
-        except SyntaxError:
-            continue
-        pkg = p[:-3].split("/")[:-1] if not p.endswith("__init__.py") else p[:-3].split("/")[:-1]
-        for node in ast.walk(tree):
-            names: list[str] = []
-            if isinstance(node, ast.Import):
-                names = [a.name for a in node.names]
-            elif isinstance(node, ast.ImportFrom):
-                base = node.module or ""
-                if node.level:
-                    up = pkg[: len(pkg) - (node.level - 1)] if node.level > 1 else pkg
-                    base = ".".join(up[-2:] + ([base] if base else []))
-                names = [base] + [f"{base}.{a.name}" for a in node.names]
-            for name in names:
-                hit = find(name) if name else None
-                if hit and hit != p:
-                    edges.add((p, hit))
-    return sorted([list(e) for e in edges])
 
 
 def load_examples(path: Path, head: str) -> list[dict]:
@@ -369,7 +364,6 @@ def main() -> int:
     refs += [st["code"] for ex in examples for st in ex["steps"] if st.get("code")]
     diff = diff_data(args.repo, data["base"], data["head"])
     diff["symbols"], mains = changed_symbols(args.repo, data["head"], diff)
-    diff["imports"] = changed_imports(args.repo, data["head"], diff)
     resolved = resolve_refs(args.repo, data, refs)
     # The main changed symbol of a file is a link to read, not an excerpt.
     have = {coderef.ref_key(r["ref"]) for r in resolved}
@@ -403,13 +397,15 @@ def main() -> int:
             body["refs"] += resolve_refs(args.repo, data, [ref])
         except SystemExit:
             pass  # a test that the command names but the file does not hold as a symbol: the row shows its path
+    # Each excerpt gets the diff status of its lines, so the page can mark the added, modified and removed lines.
+    hunks = diff_hunks(args.repo, data["base"], data["head"])
+    for r in body["refs"]:
+        if r.get("excerpt") and not r.get("link_only"):
+            r["changes"] = line_changes(hunks.get(r["path"], []), r["start"], r["end"])
     (out / coderef.CACHE_NAME).write_text(json.dumps(body, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     runtime = runtime_path(args.runtime)
     if not args.no_html:
-        argv, cwd = export_command(runtime)
-        argv += [str((out / "explainer.mdx").resolve()), "--out", str((out / "explainer.html").resolve()),
-                 "--guard-repo", str(Path(args.repo).resolve()), "--guard-head", data["head"]]
-        if subprocess.run(argv, cwd=cwd).returncode != 0:
+        if export(runtime, out / "explainer.mdx", out / "explainer.html", "--guard-repo", str(Path(args.repo).resolve()), "--guard-head", data["head"]) != 0:
             fail("the export failed. Fix the MDX or the data, not the HTML.")
     section = ["node", str(Path(runtime) / "scripts" / "ve-mdx" / "trust-map.mjs"), "pr-section", "--map", str(out / "trust-map.json"),
                "--refs", str(out / coderef.CACHE_NAME), "--explain", str(out / "explain.json"), "--out", str(out / "pr-section.md")]

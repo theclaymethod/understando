@@ -84,6 +84,8 @@ async function launch(opts: LaunchOptions = {}): Promise<Learn> {
     CLAUDECODE: "1",
     // Explicit and hermetic: no real ~/.understando state, and never the real function-intelligence
     // .env. A test that wants a key passes fiEnv; every other launch points at a file that is absent.
+    UNDERSTANDO_TEST: "1",
+    UNDERSTANDO_TEST_ROOT: process.env.UNDERSTANDO_TEST_ROOT!,
     UNDERSTANDO_HOME: join(dir, "uhome"),
     UNDERSTANDO_RUNS: join(dir, "runs"),
     UNDERSTANDO_FI_ENV: opts.fiEnv ?? join(dir, "no-such.env"),

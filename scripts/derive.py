@@ -21,11 +21,9 @@ not compute them again.
                core files that claims cover in part, and the summary lines (risky files first)
   bugs         the possible bugs of the invariants, in the find-bugs heading format (findings.py)
   spine        each changed file in its chapter of the change (explain.json change.chapters), with
-               its protection, its claims and its "look closely" flags (from verified sources only),
-               the imports between the chapters, and the files in GitHub's order
+               its protection, its claims and its "look closely" flags (from verified sources only)
   checks       each check with its result, the claims and parts that it backs and the test it runs;
-  tests        the changed test files as the checks they provide, and the changed tests that back
-               no claim
+  tests        the count of the changed tests that back no claim, with one action
 
 A file is covered when a claim's code refs cite it, when a claim names it, when one of the
 claim's checks exercises it (the coverage record of the run: `understando coverage`), or when a
@@ -40,6 +38,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 import findings  # noqa: E402
 import names  # noqa: E402
 import onto  # noqa: E402
@@ -134,10 +133,10 @@ def bar_sentence(b: dict) -> str:
     if why.startswith("only tests"):
         return "Only tests back it. Its bar is an eval with a degraded control."
     if b["level"] in ("video", "e2e"):
-        return f"It has {why}. Its bar is a browser e2e with a recorded video." if why.startswith("an e2e") else f"{capital(why)}. Its bar is a browser e2e with a recorded video."
+        return f"Below its bar: {why}. Its bar is a browser e2e with a recorded video."
     need = {"formal": "a proof", "property": "a property test or a static rule", "static": "types or a static rule", "test": "a test that caught a planted bug",
             "check": "a check"}.get(b["level"], b["need"])
-    return f"{capital(why)}. Its bar is {need}."
+    return f"Below its bar: {why}. Its bar is {need}."
 
 
 SURFACE_BAR = {"backend": "a proof, or a property test, type or static rule that caught a planted bug",
@@ -215,7 +214,7 @@ def check_action(data: dict, v: dict, claim: dict, result: str, fix: str | None)
     if v.get("formal_record") and (v["formal_record"].get("formal") or {}).get("verdict") != "Formal":
         return "Its formal record is not Formal yet. Finish its conformance run (understando formalize)."
     if result == "caught":
-        return "No action: it caught its planted bug."
+        return "No action is necessary, because the check caught its planted bug."
     if result == "none":
         base = ("Only the PR text states it. Add a check (understando close), or accept the risk." if claim.get("stated")
                 else "No check exists, and the PR text does not state it. Decide whether it matters, or add a check to close it (understando close).")
@@ -279,17 +278,17 @@ def claim_rows(data: dict, explain: dict | None = None, cfg: dict | None = None)
                     "no-bug": f"{lead}{capital(whose)} is {name}. No planted bug ran, so no run proved that it can fail.",
                     "recorded": f"{lead}{capital(whose)} is {name}. It is a record of a past run, and we did not run it again.",
                     "checked": f"{lead}{capital(whose)} is {name}. It is a mechanical check with no planted bug.",
-                    "none": lead + ("No tool checks it. Only the PR text states it." if part["stated"] else
-                                    "No tool checks it, and the PR text does not state it.")}[result]
+                    "none": lead + ("No tool checks this part. Only the PR text states it." if part["stated"] else
+                                    "No tool checks this part, and the PR text does not state it.")}[result]
             pc = {"stated": part["stated"], "invariants": part["invariants"]}
             if strength == "Backed" and not onto.intent(data, pc) and onto.check_strength(data, weak, {"stated": True}) != "Backed":
-                said += " It stays Backed: the PR does not state it, and no invariant that the user confirmed backs it."
+                said += " It stays Backed: the PR does not state it, and no invariant that the user accepted backs it."
             if result == "caught" and strength == "Backed" and (tm.ladder(weak) or 0) >= 4 and not weak.get("formal_record"):
                 said += " Its conformance link does not pass, so it counts only as Backed."
             action = check_action(data, weak, c, result, fx.get(c["id"]))
             bug = next((b for b in (verdicts.disagreeing(data, i) for i in part["invariants"]) if b), None)
             if bug:
-                said = f"The code disagrees with a rule that the user confirmed: {names.of(data, bug['id'])}. " + said
+                said = f"The code disagrees with a rule that the user accepted: {names.of(data, bug['id'])}. " + said
                 action = "Do not trust this claim until the code change lands: see the bugs found." + (
                     " Then " + action[0].lower() + action[1:] if not action.startswith("No action") else "")
             w = {"id": weak["id"], "name": name, "result": result, "strength": strength, "text": said, "action": action,
@@ -373,7 +372,7 @@ def verify(data: dict, refs_promises: list[dict], explain: dict | None = None) -
         other_v = same_bug_catcher(data, v)
         why = f"So this check does not protect {names.listing(protects)}." + (f" Only {check_name(data, other_v)} caught the same bug." if other_v else "")
         action = check_action(data, v, own[0] if own else {}, result[v["id"]], next((fx.get(c["id"]) for c in own if fx.get(c["id"])), None))
-        happened = "The check passed on each planted bug, so it can fail on nothing." if result[v["id"]] == "cannot-fail" else "The check still passed."
+        happened = "The check passed on each planted bug, so it can fail on nothing." if result[v["id"]] == "cannot-fail" else "The check still passed on its planted bug."
         pair = same_bug(data, v)
         caught_by = {"check": pair[0]["id"], "name": check_name(data, pair[0]), "control": pair[1]["id"], "missed": pair[2]["id"]} if pair else None
         weak.append({"check": v["id"], "control": k["id"], "name": check_name(data, v), "broke": broke(k), "happened": happened, "why": why,
@@ -585,7 +584,8 @@ def unclaimed(data: dict, refs: dict, spec: dict | None = None, coverage: dict |
         risks = (["new file of 100 lines or more"] if new and plus >= LARGE else []) + touch
         action = ({"kind": "check", "text": "Add a check: an e2e test that runs this code."} if touch
                   else {"kind": "ask", "text": "Ask the author for a claim."} if new and plus >= LARGE
-                  else {"kind": "read", "text": "Read it."} if plus >= LARGE else {"kind": "skim", "text": "Low risk: skim."})
+                  else {"kind": "read", "text": "Read all of the changed lines with care."} if plus >= LARGE
+                  else {"kind": "skim", "text": "The risk is low, so read it quickly."})
         rows.append(({**base, "risks": risks, "action": action}, total - share))
     rows.sort(key=lambda r: (not r[0]["risks"], -r[1], r[0]["path"]))
     core_rows.sort(key=lambda f: (not f["risks"], f["cited"] / max(f["total"], 1), f["path"]))
@@ -594,7 +594,7 @@ def unclaimed(data: dict, refs: dict, spec: dict | None = None, coverage: dict |
 
 
 def unclaimed_summary(files: list[dict], partial: list[dict] | None = None) -> dict:
-    """The risky files first: "12 risky files have no claim. Read these first." A risky file that a
+    """The risky files first: "12 risky files have no claim. Read them before the other files." A risky file that a
     check only runs, with no claim about it, joins the lead. Then a quieter line with the count of
     the other files."""
     risky = sum(1 for f in files if f["risks"])
@@ -604,14 +604,14 @@ def unclaimed_summary(files: list[dict], partial: list[dict] | None = None) -> d
         return {"risky": 0, "partial_risky": 0, "rest": 0, "lead": "Each changed source file has a claim.", "quiet": ""}
     if risky and half:
         lead = (f"{risky} risky {'file has' if risky == 1 else 'files have'} no claim, and a check only runs {half} more risky "
-                f"{'file' if half == 1 else 'files'}. Read these first.")
+                f"{'file' if half == 1 else 'files'}. Read these files before the others.")
     elif risky or half:
         n = risky or half
-        lead = (f"{n} risky {'file has' if n == 1 else 'files have'} no claim. Read {'it' if n == 1 else 'these'} first." if risky else
-                f"A check only runs {n} risky {'file' if n == 1 else 'files'}, and no claim says what {'it' if n == 1 else 'they'} must do. Read {'it' if n == 1 else 'these'} first.")
+        lead = (f"{n} risky {'file has' if n == 1 else 'files have'} no claim. Read {'it' if n == 1 else 'them'} before the other files." if risky else
+                f"A check only runs {n} risky {'file' if n == 1 else 'files'}, and no claim says what {'it' if n == 1 else 'they'} must do. Read {'it' if n == 1 else 'them'} before the other files.")
     else:
         lead = "No risky file is without a claim."
-    quiet = (f"{rest} other changed {'file has' if rest == 1 else 'files have'} no claim. {'It is' if rest == 1 else 'They are'} low risk: skim {'it' if rest == 1 else 'them'}."
+    quiet = (f"{rest} other changed {'file has' if rest == 1 else 'files have'} no claim. {'It is' if rest == 1 else 'They are'} low risk, so read {'it' if rest == 1 else 'them'} quickly."
              if rest else "")
     return {"risky": risky, "partial_risky": half, "rest": rest, "lead": lead, "quiet": quiet}
 
@@ -672,7 +672,7 @@ def checks_view(data: dict, refs: dict, rows: dict[str, dict]) -> tuple[dict, di
         out[v["id"]] = {"id": v["id"], "name": check_name(data, v), "kind": v["kind"], "result": onto.check_result(data, v), "claims": backs,
                         "tests": [{"path": p, "file": short(p), "symbol": s} for p, s in targets], "controls": controls.get(v["id"], []),
                         "ref": {"path": main[0], "symbol": main[1]} if main else None}
-    test_files, orphans = [], []
+    orphans = []
     for path in sorted(files):
         if not is_test(path) or path in deleted or not path.endswith(".py"):
             continue
@@ -681,12 +681,10 @@ def checks_view(data: dict, refs: dict, rows: dict[str, dict]) -> tuple[dict, di
         whole = any(sym is None for _, sym in mine)
         named = {sym for _, sym in mine if sym}
         loose = [] if whole else [n for n in changed if not any(n == x or n.startswith(x + ".") or x.startswith(n + ".") for x in named)]
-        if mine:
-            test_files.append({"path": path, "file": short(path), "checks": sorted({vid for vid, _ in mine})})
         if loose:
             orphans.append({"path": path, "file": short(path), "tests": loose})
     n = sum(len(o["tests"]) for o in orphans)
-    tests = {"files": test_files, "orphans": orphans, "orphan_tests": n,
+    tests = {"orphan_tests": n,
              "summary": (f"{n} changed {'test backs' if n == 1 else 'tests back'} no claim." if n else "Each changed test backs a claim."),
              "action": "Link them to a claim, or delete them." if n else ""}
     return out, tests
@@ -697,7 +695,7 @@ def checks_view(data: dict, refs: dict, rows: dict[str, dict]) -> tuple[dict, di
 # The protection of a changed file, riskiest first. The guided review shows each file with its kind.
 SPINE_KINDS = {
     "check": "No claim, risky: add a check", "ask": "No claim: ask for one", "read": "No claim: read it",
-    "partial": "Covered in part", "protected": "Protected by {n}", "skim": "Low risk: skim",
+    "partial": "Covered in part", "protected": "Protected by {n}", "skim": "Low risk: read it quickly",
     "test": "A test or a check", "other": "Docs, data or config", "deleted": "Deleted",
 }
 SPINE_RANK = {"check": 0, "ask": 1, "read": 2, "partial": 3, "protected": 4, "skim": 6, "test": 7, "other": 8, "deleted": 9}
@@ -862,7 +860,7 @@ def spine(data: dict, refs: dict, extra: dict | None, coverage: dict | None, u: 
         elif claims:
             kind, text = "protected", None
         else:
-            kind, text = "skim", "Low risk: skim." if plus else "It only removes lines."
+            kind, text = "skim", "The risk is low, so read it quickly." if plus else "This file has deleted lines and no added lines."
         label = SPINE_KINDS[kind].format(n=f"{len(claims)} {'claim' if len(claims) == 1 else 'claims'}")
         test = is_test(path)
         if chapters:
@@ -912,20 +910,12 @@ def spine(data: dict, refs: dict, extra: dict | None, coverage: dict | None, u: 
         g["reviewable"] = g["tier"] not in ("tests", "generated")
         out.append(g)
     allf = [f for g in out for f in g["files"]]
-    # How the changed files connect: the imports between them (explain.py), as links between chapters.
-    owner = {f["path"]: g["id"] for g in out for f in g["files"]}
-    weight: dict[tuple[str, str], int] = {}
-    for a_, b_ in diff.get("imports") or []:
-        x, y = owner.get(a_), owner.get(b_)
-        if x and y and x != y:
-            weight[(x, y)] = weight.get((x, y), 0) + 1
-    links = [{"from": x, "to": y, "n": n} for (x, y), n in sorted(weight.items())]
     claimed = sum(1 for f in allf if f["status"]["kind"] == "protected")
     half = sum(1 for f in allf if f["status"]["kind"] == "partial")
     line = f"{claimed} of {len(allf)} changed files have a claim that protects them, and claims cover {half} more in part."
     nflags = sum(len(f["flags"]) for f in allf)
     return {"groups": out, "files": len(allf), "protected": claimed, "partial": half, "summary": line, "unassigned": unassigned,
-            "flags": nflags, "github": [f["path"] for f in sorted(allf, key=lambda f: f["path"])], "links": links}
+            "flags": nflags}
 
 
 # ---- Bugs found ----------------------------------------------------------------------------

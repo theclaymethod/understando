@@ -16,6 +16,7 @@ from __future__ import annotations
 import re
 import subprocess
 from pathlib import Path
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 
 TEST_FILE = re.compile(r"(^|/)(tests?|__tests__|spec)/|(^|/)test_[^/]*\.py$|_test\.(py|go)$|\.(test|spec)\.[jt]sx?$")
 STOP = {"a", "an", "the", "of", "to", "that", "and", "or", "is", "it", "its", "in", "on", "no", "not", "by", "for", "with", "be", "test"}

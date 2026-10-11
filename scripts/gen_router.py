@@ -12,6 +12,8 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # also under python3 -I, which drops the script folder
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 
 ROOT = Path(__file__).resolve().parent.parent
 START, END = "<!-- verbs:start (scripts/gen_router.py writes this table) -->", "<!-- verbs:end -->"

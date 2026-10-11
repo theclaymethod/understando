@@ -37,6 +37,7 @@ import tomllib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 import config  # noqa: E402
 import ctx as context  # noqa: E402
 import miniyaml  # noqa: E402

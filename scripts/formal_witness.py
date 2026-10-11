@@ -24,6 +24,8 @@ import json
 import keyword
 import sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # also under python3 -I, which drops the script folder
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 
 
 def cmd_test(args: argparse.Namespace) -> int:

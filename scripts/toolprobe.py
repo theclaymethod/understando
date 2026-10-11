@@ -17,6 +17,7 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 
 TIMEOUT = 5
 TTL = 24 * 3600

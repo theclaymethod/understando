@@ -22,6 +22,7 @@ import functools
 import json
 import re
 from pathlib import Path
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 
 MAX_SITUATION = 5
 MAX_OPTIONS = 4

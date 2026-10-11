@@ -5,6 +5,7 @@
 # built-in rule. No model call, no network.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$ROOT/tests/isolate.sh" mode
 U="$ROOT/bin/understando"
 REAL_HOME="$HOME"
 ORIG_PATH="$PATH"  # before this test puts a fake gh on PATH
@@ -19,7 +20,8 @@ FH="$WORK/home"
 mkdir -p "$FH/.agents/skills" "$FH/.claude/skills"
 for s in asd-ste100 visual-explainer; do p="$(real_skill "$s")"; ln -s "$p" "$FH/.agents/skills/$s"; ln -s "$p" "$FH/.claude/skills/$s"; done
 export npm_config_cache="${npm_config_cache:-$REAL_HOME/.npm}"
-export HOME="$FH" UNDERSTANDO_HOME="$WORK/uhome" UNDERSTANDO_OFFLINE=1 UNDERSTANDO_ENV_FILES="$WORK/fake.env"
+# The runs root stays in the test home, as with no override: the steps below write the per-repo config there.
+export HOME="$FH" UNDERSTANDO_HOME="$WORK/uhome" UNDERSTANDO_RUNS="$WORK/uhome/runs" UNDERSTANDO_OFFLINE=1 UNDERSTANDO_ENV_FILES="$WORK/fake.env"
 mkdir -p "$RUN"
 cp "$MAP" "$RUN/trust-map.json"
 cp "$FIX/explain.json" "$RUN/explain.json"
@@ -43,9 +45,9 @@ step "portability: the router text names no Claude-only tool, and the CLI runs w
 TOOLS='\b(AskUserQuestion|AskQuestion|TodoWrite|WebFetch|WebSearch|NotebookEdit|ExitPlanMode|SlashCommand|subagent_type|run_in_background)\b|\b(Task|Bash|Read|Edit|Write|Grep|Glob|Agent|Skill) tool\b'
 if grep -nE "$TOOLS" "$ROOT/SKILL.md" "$ROOT"/commands/*.md "$ROOT/references/working-rules.md"; then fail "the router names a Claude-only tool"; fi
 NOCLAUDE="$(dirname "$(command -v git)"):$(dirname "$(command -v python3)"):/usr/bin:/bin"
-env -i HOME="$FH" PATH="$NOCLAUDE" UNDERSTANDO_HOME="$WORK/uhome" UNDERSTANDO_OFFLINE=1 bash -c '! command -v claude >/dev/null' \
+env -i HOME="$FH" PATH="$NOCLAUDE" UNDERSTANDO_TEST=1 UNDERSTANDO_TEST_ROOT="$UNDERSTANDO_TEST_ROOT" TMPDIR="$TMPDIR" PYTHONDONTWRITEBYTECODE=1 UNDERSTANDO_HOME="$WORK/uhome" UNDERSTANDO_OFFLINE=1 bash -c '! command -v claude >/dev/null' \
   || fail "claude is on the stripped PATH"
-env -i HOME="$FH" PATH="$NOCLAUDE" UNDERSTANDO_HOME="$WORK/uhome" UNDERSTANDO_OFFLINE=1 "$U" --run "$RUN" signals > "$O/signals-noclaude.json"
+env -i HOME="$FH" PATH="$NOCLAUDE" UNDERSTANDO_TEST=1 UNDERSTANDO_TEST_ROOT="$UNDERSTANDO_TEST_ROOT" TMPDIR="$TMPDIR" PYTHONDONTWRITEBYTECODE=1 UNDERSTANDO_HOME="$WORK/uhome" UNDERSTANDO_OFFLINE=1 "$U" --run "$RUN" signals > "$O/signals-noclaude.json"
 python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["trust_map"]["present"], d' "$O/signals-noclaude.json"
 echo "the CLI runs with no claude binary and no Claude variable"
 

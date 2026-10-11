@@ -18,6 +18,7 @@ from __future__ import annotations
 import re
 import subprocess
 from pathlib import Path
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 
 USER_PATH = re.compile(
     r"\b(subprocess|Popen|os\.system|os\.exec|pexpect|pty\.|ptyprocess|tmux|sys\.executable|shutil\.which|"

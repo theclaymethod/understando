@@ -20,6 +20,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 import ctx as context  # noqa: E402
 import journal  # noqa: E402
 import ops  # noqa: E402
@@ -28,6 +29,9 @@ import verdicts  # noqa: E402
 
 S = Path(__file__).resolve().parent
 GLOBAL = {"--repo": "repo", "--pr": "pr", "--run": "run"}
+# The verbs that only read. In a test run, only these may read the real ~/.understando (testguard.py).
+READ_ONLY = {"help", "-h", "--help", "signals", "menu", "routes", "snippet"}
+READ_ONLY_SUB = {"mode": "status", "lock": "status"}
 
 
 def split_globals(argv: list[str]) -> tuple[dict, list[str]]:
@@ -308,14 +312,11 @@ def do_explain(c: context.Ctx, argv: list[str]) -> int:
         # The page: the explainer source exported by the visual-explainer runtime (commands/explain.md, step 5).
         runtime = ve or subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import explain; print(explain.runtime_path(None))", str(S)],
                                        capture_output=True, text=True).stdout.strip()
-        cli = Path(runtime) / "scripts" / "artifacture.mjs"
-        if not cli.is_file():
+        if not (Path(runtime) / "scripts" / "ve-mdx" / "export.mjs").is_file():
             print(f"explain --html: no Artifacture runtime at {runtime}. Set UNDERSTANDO_VE_RUNTIME, or run setup.")
             return 1
-        sys.path.insert(0, str(S))
         import explain
-        exporter, cwd = explain.export_command(runtime)
-        code = subprocess.run([*exporter, str((c.run / "explainer.mdx").resolve()), "--out", str((c.run / "explainer.html").resolve())], cwd=cwd).returncode
+        code = explain.export(runtime, c.run / "explainer.mdx", c.run / "explainer.html")
     return code
 
 
@@ -568,6 +569,8 @@ def help_text(show_all: bool = False) -> str:
 
 def main(argv: list[str]) -> int:
     opts, rest = split_globals(argv)
+    if rest and (rest[0] in READ_ONLY or rest[1:2] == [READ_ONLY_SUB.get(rest[0])]):
+        testguard.read_only()
     REPO_FLAG[0] = bool(opts["repo"] or opts.get("repo_flag")) and rest[:1] == ["setup"]
     c = context.resolve(opts["run"], opts["repo"], opts["pr"], opts["json"])
     if not rest:
