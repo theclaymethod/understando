@@ -196,6 +196,9 @@ out = pathlib.Path(sys.argv[2])
 refs = json.loads((out / "refs.resolved.json").read_text())
 assert refs["schema"] == 2 and refs["head"] == data["head"], refs.get("head")
 assert all(k["id"] in refs["controls"] for k in data["controls"]), "a control has no patch"
+# Each excerpt has the diff status of its lines, from git diff base..head.
+withdraw = next(r for r in refs["refs"] if r["ref"] == {"path": "wallet/core.py", "symbol": "withdraw"})
+assert withdraw["changes"] == {"added": [9, 10, 11, 12, 13, 14], "modified": [], "removed": []}, withdraw.get("changes")
 html = (out / "explainer.html").read_text()
 assert f'<meta name="ve-trust-map-head" content="{data["head"]}">' in html, "no head stamp"
 assert f'<meta name="ve-trust-map-sha256" content="{hashlib.sha256((out / "trust-map.json").read_bytes()).hexdigest()}">' in html, "no map hash stamp"
