@@ -17,6 +17,8 @@ Each stop of this playbook ends with one question to the user. Ask it as [Asking
 
 A claim is one statement that a reviewer accepts or rejects. Its strength is the strength of its weakest check. A check can miss its planted bug, or it can fail to fail. Then the question names that check and offers to fix it first (`fix-check`). A drafted test then replaces the check. A check that backs nothing can also go (`drop-check`). Such a check cannot fail, fails or is stale. A check that backs the claim never goes.
 
+The question offers the way to the evidence bar of the claim first ([../references/evidence-bars.md](../references/evidence-bars.md)).
+
 ## Add a claim for a file
 
 The unclaimed level of the explainer tells the author to run `understando close --add-claim <file>` for each risky file.

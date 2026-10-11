@@ -2,6 +2,8 @@
 
 understando works on its own. When you install an original skill, understando routes to it. Otherwise it uses the adapted copy under `references/adapted/`, which is usable alone. Sources and licences are in `../THIRD_PARTY_NOTICES.md`, and `adapted/manifest.json` lists every copy.
 
+Each claim has an evidence bar for its surface (frontend, backend, llm or other). The bars, their controls and their effect on the merge verdict are in [evidence-bars.md](evidence-bars.md). Do not restate a bar here.
+
 When Poteto Mode is active, it owns reply style, subagent rules and autonomy. understando keeps only its exceptions. `discover`, claim wording and waivers stop for the user, even under full autonomy.
 
 ## Asking the user

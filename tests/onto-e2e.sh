@@ -153,5 +153,143 @@ assert d["claims"]["C01"]["summary"] == "2 checks: 2 caught their bug.", d["clai
 assert {c["id"]: c["verdict"] for c in old["claims"]} == {c["id"]: c["verdict"] for c in new["claims"]}, "the shapes give different verdicts"
 print(f"the old shape builds and renders each of its {len(old['claims'])} claims, with the same verdicts as the new shape")
 PY
+step "strength: a part is as strong as its strongest check, and a claim is as strong as its weakest part"
+python3 - "$MAP" "$O/strength" <<'PY'
+import json, pathlib, sys
+data, out = json.load(open(sys.argv[1])), pathlib.Path(sys.argv[2])
+out.mkdir(exist_ok=True)
+# 1. A backup test next to the proof: the claim of the proof stays Formal.
+backup = json.loads(json.dumps(data))
+next(c for c in backup["claims"] if c["id"] == "C08")["checks"].append("V07")
+next(v for v in backup["verifiers"] if v["id"] == "V07")["claims"].append("C08")
+json.dump(backup, open(out / "backup.json", "w"), indent=2)
+# 2. A missed bug: a second control that the contract check misses. The overdraft claim keeps its strength, with a flag.
+missed = json.loads(json.dumps(data))
+k03 = next(k for k in missed["controls"] if k["id"] == "K03")
+missed["controls"].append({**json.loads(json.dumps(k03)), "id": "K30", "description": "Change a comment only.", "result": {**k03["result"], "status": "green", "exit": 0}})
+json.dump(missed, open(out / "missed.json", "w"), indent=2)
+# 3. A merged claim with an unproven part: the overdraft refusal (Proven) and the thread safety (Asserted).
+proposal = {"claims": [], "promises": []}
+owner = {cid: p["id"] for p in data["promises"] for cid in p["claims"]}
+for c in data["claims"]:
+    if c["id"] == "C04":
+        continue
+    row = {"id": c["id"], "promise": owner[c["id"]], "merges": [c["id"]], "name": c["name"], "text": c["text"], "plain": c["plain"]}
+    if c["id"] == "C01":
+        row.update({"merges": ["C01", "C04"], "name": "the safe overdraft refusal", "text": "The withdraw function refuses an overdraft, also with many threads."})
+    proposal["claims"].append(row)
+json.dump(proposal, open(out / "proposal.json", "w"), indent=2)
+PY
+python3 "$S/verdicts.py" "$O/strength/backup.json" > /dev/null
+python3 "$S/verdicts.py" "$O/strength/missed.json" > /dev/null
+python3 "$S/regroup.py" --map "$MAP" --proposal "$O/strength/proposal.json" --out "$O/strength/merged.json" > "$O/strength/proof.txt" || { cat "$O/strength/proof.txt"; exit 1; }
+python3 - "$O/strength" "$ROOT/scripts" <<'PY'
+import json, pathlib, sys
+out = pathlib.Path(sys.argv[1]); sys.path.insert(0, sys.argv[2])
+import derive
+verdict = lambda f, cid: next(c for c in json.load(open(out / f))["claims"] if c["id"] == cid)["verdict"]  # noqa: E731
+assert verdict("backup.json", "C08") == "Formal", "a backup test lowered the proof"
+assert verdict("missed.json", "C01") == "Proven", "a missed bug lowered a part that another check proves"
+rows = derive.claim_rows(json.load(open(out / "missed.json")))
+assert rows["C01"]["flagged"]["text"] == "1 of 2 checks missed its bug: the contract format check. Fix it or drop it.", rows["C01"]["flagged"]
+merged = json.load(open(out / "merged.json"))
+c = next(c for c in merged["claims"] if c["id"] == "C01")
+assert c["verdict"] == "Asserted" and [p["id"] for p in c["parts"]] == ["C01", "C04"], c
+w = derive.claim_rows(merged)["C01"]["weakest"]
+assert w["part"] == "C04" and "The weakest part is: Many threads can call the wallet module at the same time" in w["text"], w
+print("a backup test keeps the proof Formal; a missed bug is a flag, not a lower part; a merged claim is as weak as its unproven part")
+PY
+
+step "bars: the surface of each claim, the frontend bar, the llm bar and the merge rule"
+python3 "$S/onto.py" bars "$MAP" | tee "$O/bars.txt"
+grep -q "^C01	backend	normal	Bar: property test or static rule · met" "$O/bars.txt"
+grep -q "^C05	llm (mixed)	normal	Bar: eval with a degraded control · below the bar: only a model judgment, no eval" "$O/bars.txt"
+grep -q "^C04	other	" "$O/bars.txt"
+B="$O/bars"; mkdir -p "$B/media"
+python3 - "$MAP" "$B" <<'PY'
+import json, pathlib, sys
+data, out = json.load(open(sys.argv[1])), pathlib.Path(sys.argv[2])
+tsx = json.loads(json.dumps(data))
+next(c for c in tsx["claims"] if c["id"] == "C07")["code"] = [{"path": "web/Denial.tsx", "symbol": "Denial"}]
+json.dump(tsx, open(out / "tsx.json", "w"), indent=2)
+def variant(name, change):
+    d = json.loads(json.dumps(data))
+    change(d)
+    (out / name).mkdir(exist_ok=True)
+    json.dump(d, open(out / name / "trust-map.json", "w"), indent=2)
+def frontend(video):
+    def change(d):
+        next(c for c in d["claims"] if c["id"] == "C07")["surface"] = "frontend"
+        if video:
+            v = next(v for v in d["verifiers"] if v["id"] == "V07")
+            v["kind"] = "e2e"
+            v["artifact"] = {"video": "media/denial-run.webm", "screenshots": ["media/denial-run.png"], "summary": "The page shows the amount in the denial."}
+    return change
+def llm(degraded, risky):
+    def change(d):
+        c = next(c for c in d["claims"] if c["id"] == "C05")
+        c["risk"] = risky
+        c["checks"].append("V40")
+        ev = {"preregistered": True, "frozen": True, "blind": True, "k": 3}
+        if degraded:
+            ev["degraded"] = {"variant": "the prompt without the redaction rule", "score": 0.41, "baseline": 0.97}
+        d["verifiers"].append({"id": "V40", "name": "the message eval", "kind": "eval", "claims": ["C05"], "tier": "fact", "eval": ev,
+                               "description": "A frozen judge grades 40 denial messages for an account number.", "recorded": {"source": "eval run 7", "result": "0.97 clean"},
+                               "independence": {"by": "tool", "tool": "eval harness"}, "cost": {"usd": 0}, "provenance": "A recorded eval run."})
+    return change
+variant("fe-unit", frontend(False)); variant("fe-video", frontend(True))
+variant("llm-flagged", llm(False, True)); variant("llm-degraded", llm(True, False))
+(out / "fe-video" / "media").mkdir(exist_ok=True)
+(out / "fe-video" / "media" / "denial-run.webm").write_bytes(b"\x1aE\xdf\xa3 stub video")
+(out / "fe-video" / "media" / "denial-run.png").write_bytes(bytes.fromhex("89504e470d0a1a0a0000000d4948445200000001000000010806000000"
+    "1f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082"))
+PY
+python3 "$S/onto.py" bars "$B/tsx.json" | grep -q "^C07	frontend	normal	Bar: browser video · below the bar: only unit or component tests"
+for v in fe-unit fe-video llm-flagged llm-degraded; do
+  python3 "$S/verdicts.py" "$B/$v/trust-map.json" > /dev/null
+  cp "$FIX/explainer.mdx" "$B/$v/explainer.mdx"
+  python3 "$S/explain.py" --map "$B/$v/trust-map.json" --repo "$REPO" --out "$B/$v" --extra "$FIX/explain.json" > "$B/$v/out.txt" 2>&1 || { cat "$B/$v/out.txt"; exit 1; }
+done
+python3 - "$B" <<'PY'
+import html as h, json, pathlib, re, sys
+b = pathlib.Path(sys.argv[1])
+der = lambda v: json.loads((b / v / "refs.resolved.json").read_text())["derived"]  # noqa: E731
+page = lambda v: (b / v / "explainer.html").read_text()  # noqa: E731
+assert der("fe-unit")["claims"]["C07"]["bar"]["text"] == "Bar: browser video · below the bar: only unit or component tests", der("fe-unit")["claims"]["C07"]["bar"]
+assert der("fe-video")["claims"]["C07"]["bar"]["met"], der("fe-video")["claims"]["C07"]["bar"]
+root = page("fe-video").split('<div id="root">', 1)[1]
+video = re.search(r"<video[^>]*>", root)
+assert video and 'poster="media/denial-run.png"' in video.group(0) and "autoplay" not in video.group(0) and "controls" in video.group(0), video and video.group(0)
+assert 'href="media/denial-run.webm"' in root, "no link to the video in the pre-render"
+flag, deg = der("llm-flagged"), der("llm-degraded")
+assert flag["claims"]["C05"]["bar"]["why"] == "the eval cannot show it can fail: no degraded variant ran", flag["claims"]["C05"]["bar"]
+assert deg["claims"]["C05"]["bar"]["met"], deg["claims"]["C05"]["bar"]
+assert flag["verify"]["evals"][0]["flagged"] and deg["verify"]["evals"][0]["text"] == "The real run scored 0.97. The degraded run (the prompt without the redaction rule) scored 0.41."
+blocked = [i for i in flag["merge"]["items"] if i["href"] == "#claim-c05"]
+assert blocked and blocked[0]["text"] == "Its eval has no degraded variant, so it cannot show that it can fail.", flag["merge"]["items"]
+assert not [i for i in deg["merge"]["items"] if i["href"] == "#claim-c05"], "a claim at its bar is not a blocker"
+text = h.unescape(re.sub(r"<[^>]+>", " ", page("llm-flagged").split('<div id="root">', 1)[1]))
+assert "Bar: eval with a degraded control · below" in text and "Bar: property test or static rule · met" in text, "no bar chips"
+assert re.search(r"\d+ of \d+ claims meet their bar", text), "no met counts"
+assert "Degraded variants for evals" in text and "Flagged: no degraded run" in text and "Broken-UI runs" in text and "Planted bugs and mutants" in text, "the verify level lacks a kind of control"
+assert 'data-ve-eval="degraded"' in page("llm-degraded"), "the degraded comparison is missing"
+section = (b / "llm-flagged" / "pr-section.md").read_text()
+assert "| Claim | Surface | Bar | Strength | Checks | Weakest check |" in section and "**Evidence bars:** " in section, section[:600]
+print("the frontend bar needs a browser video (a video element with a poster in the pre-render); the llm bar needs a degraded variant; "
+      "a risky claim below its bar blocks; the page has bar chips, met counts and the three kinds of control; the PR section has a Bar column")
+PY
+
+step "doctor: a doc that restates a bar"
+D="$O/docs"; mkdir -p "$D/commands" "$D/references"
+printf '# x\n\nThe frontend bar is a browser video of the real app.\n' > "$D/commands/x.md"
+printf '# y\n\nThe bars are in [evidence-bars.md](../references/evidence-bars.md): a browser video for frontend.\n' > "$D/commands/y.md"
+UNDERSTANDO_DOCS_ROOT="$D" "$U" --repo "$REPO" --run "$O/run" doctor --json > "$O/doctor-bars.json" || true
+python3 - "$O/doctor-bars.json" <<'PY'
+import json, sys
+f = next((x for x in json.load(open(sys.argv[1]))["findings"] if x["id"] == "bar-restated"), None)
+assert f and "commands/x.md:3" in f["summary"] and "commands/y.md" not in f["summary"], f
+print("doctor flags the doc that restates a bar, and not the doc that links evidence-bars.md")
+PY
+
 echo
 echo "PASS: the ontology e2e"

@@ -69,10 +69,11 @@ def first_sentence(text: str) -> str:
     return re.split(r"(?<=[.!?])\s+", text.strip(), maxsplit=1)[0]
 
 
-def merge_verdict(data: dict, ready: dict | None = None, risky_unclaimed: int = 0) -> tuple[str, list[dict]]:
+def merge_verdict(data: dict, ready: dict | None = None, risky_unclaimed: int = 0, cfg: dict | None = None) -> tuple[str, list[dict]]:
     """Can the reviewer merge? A promise at Gap or Asserted with a reviewer action blocks, unless
-    each of its weak claims is waived; a failed ready gate blocks; a Backed promise with a reviewer
-    action, a waived claim and changed code with risk and no claim are risks to accept.
+    each of its weak claims is waived; a failed ready gate blocks; a risky claim below its evidence
+    bar blocks (onto.bar). A Backed promise with a reviewer action, a waived claim, a claim below its
+    bar that is not risky, and changed code with risk and no claim are risks to accept.
     Returns ("not-ready" | "accept" | "ready", items); each item has label, text and href."""
     claims = {c["id"]: c for c in data["claims"]}
     blocking, accept = [], []
@@ -90,6 +91,12 @@ def merge_verdict(data: dict, ready: dict | None = None, risky_unclaimed: int = 
         for c in weak:
             if c.get("waiver"):
                 accept.append({"label": p["label"], "text": "Waived: " + c["waiver"]["reason"], "href": f"#claim-{slug(c['id'])}"})
+    for c in data["claims"]:
+        b = onto.bar(data, c, cfg)
+        if b["met"] or c.get("waiver"):
+            continue
+        item = {"label": names.of(data, c["id"]), "text": bar_sentence(b), "href": f"#claim-{slug(c['id'])}"}
+        (blocking if b["risky"] else accept).append(item)
     if risky_unclaimed:
         n = risky_unclaimed
         accept.append({"label": "Unclaimed changes", "text": f"{n} changed {'file has' if n == 1 else 'files have'} risk and no claim. Read {'it' if n == 1 else 'them'} before you approve.",
@@ -97,6 +104,49 @@ def merge_verdict(data: dict, ready: dict | None = None, risky_unclaimed: int = 
     if blocking:
         return "not-ready", blocking
     return ("accept", accept) if accept else ("ready", [])
+
+
+# ---- Evidence bars (references/evidence-bars.md) ------------------------------------------
+
+def bar_sentence(b: dict) -> str:
+    """A below-bar claim, in the words of its bar."""
+    why = b["why"]
+    if b["level"] in ("degraded-eval", "eval") and "degraded" in why:
+        return "Its eval has no degraded variant, so it cannot show that it can fail."
+    if why.startswith("only a model judgment"):
+        return "Only a model judgment backs it. Its bar is an eval with a degraded control."
+    if why.startswith("only tests"):
+        return "Only tests back it. Its bar is an eval with a degraded control."
+    if b["level"] in ("video", "e2e"):
+        return f"It has {why}. Its bar is a browser e2e with a recorded video." if why.startswith("an e2e") else f"{capital(why)}. Its bar is a browser e2e with a recorded video."
+    need = {"formal": "a proof", "property": "a property test or a static rule", "static": "types or a static rule", "test": "a test that caught a planted bug",
+            "check": "a check"}.get(b["level"], b["need"])
+    return f"{capital(why)}. Its bar is {need}."
+
+
+SURFACE_BAR = {"backend": "a proof, or a property test, type or static rule that caught a planted bug",
+               "llm": "a recorded eval with a degraded variant", "frontend": "a browser e2e with a recorded video", "other": "a check that backs it"}
+
+
+def bars_summary(data: dict, rows: dict[str, dict]) -> dict:
+    """The bar counts and the story line: which bars the PR met, and what is below its bar."""
+    claims = data["claims"]
+    met = [c for c in claims if rows[c["id"]]["bar"]["met"]]
+    risky_below = [c for c in claims if not rows[c["id"]]["bar"]["met"] and rows[c["id"]]["bar"]["risky"] and not c.get("waiver")]
+    summary = (f"{len(met)} of {len(claims)} claims meet their bar. "
+               + (f"{len(risky_below)} risky {'claim is' if len(risky_below) == 1 else 'claims are'} below it." if risky_below else "No risky claim is below it."))
+    story = []
+    for surf in ("backend", "llm", "frontend", "other"):
+        own = [c for c in claims if rows[c["id"]]["bar"]["surface"] == surf]
+        if not own:
+            continue
+        m = sum(1 for c in own if rows[c["id"]]["bar"]["met"])
+        story.append(f"{m} of {len(own)} {surf if surf != 'llm' else 'LLM'} claims meet their bar: {SURFACE_BAR[surf]}.")
+    below = [c for c in claims if not rows[c["id"]]["bar"]["met"]]
+    if below:
+        story.append("Below the bar: " + names.listing([names.of(data, c["id"]) for c in below], top=4) + ".")
+    return {"met": len(met), "total": len(claims), "risky_below": [c["id"] for c in risky_below],
+            "risky_below_names": [names.of(data, c["id"]) for c in risky_below], "summary": summary, "story": story}
 
 
 # ---- Claims and their checks ---------------------------------------------------------------------
@@ -152,6 +202,8 @@ def check_action(data: dict, v: dict, claim: dict, result: str, fix: str | None)
         other = same_bug_catcher(data, v)
         if other:
             return f"Trust {check_name(data, other)}, not this check."
+    if result == "recorded" and (tm.ladder(v) or 0) >= 4:
+        return "No planted bug broke this proof or model. Plant one for this property (understando formalize), so a run shows that it can fail."
     if result == "recorded" and v.get("tier") == "guess":
         return "Treat it as one opinion. Ask a model of another family to check it, or read the evidence yourself."
     if result == "recorded" and (v.get("formal_record") or {}).get("formal", {}).get("verdict") not in (None, "Formal"):
@@ -167,9 +219,12 @@ def check_action(data: dict, v: dict, claim: dict, result: str, fix: str | None)
     return base + (f" The cheapest way: {fix}" if fix and result != "recorded" else "")
 
 
-def claim_rows(data: dict, explain: dict | None = None) -> dict[str, dict]:
-    """Each claim: its strength (its weakest check), its checks with their strength and result, the
-    summary line ("5 checks: 4 caught their bug, 1 missed.") and the weakest check with its action."""
+def claim_rows(data: dict, explain: dict | None = None, cfg: dict | None = None) -> dict[str, dict]:
+    """Each claim: its strength (its weakest part; a part is as strong as its strongest check), its
+    checks with their result, the summary line ("5 checks: 4 caught their bug, 1 missed."), the
+    evidence of the weakest part with its action, the flagged checks (a warning with an action, not
+    a score), its parts, and its evidence bar (onto.bar)."""
+    import verdicts
     fx = fixes(data, explain)
     out = {}
     for c in data["claims"]:
@@ -179,41 +234,63 @@ def claim_rows(data: dict, explain: dict | None = None) -> dict[str, dict]:
         tools = [r for r in rows if r["kind"] != "none"]
         counts = {r: sum(1 for x in tools if x["result"] == r) for r in onto.RESULTS if any(x["result"] == r for x in tools)}
         order = ["caught", "missed", "cannot-fail", "broken", "no-bug", "recorded", "checked"]
-        parts = [f"{counts[r]} {(RESULT_ONE if counts[r] == 1 and r not in ('caught',) else RESULT_WORDS)[r]}" for r in order if r in counts]
+        bits = [f"{counts[r]} {(RESULT_ONE if counts[r] == 1 and r not in ('caught',) else RESULT_WORDS)[r]}" for r in order if r in counts]
         if len(tools) == 1:
             summary = f"1 check: it {RESULT_ONE[tools[0]['result']]}."
         elif tools:
-            summary = f"{len(tools)} checks: {', '.join(parts)}."
+            summary = f"{len(tools)} checks: {', '.join(bits)}."
         else:
             summary = "No check: only the PR text states it." if c.get("stated") else "No check, and the PR text does not state it."
-        weak, strength = onto.weakest_check(data, c)
+        parts = onto.parts_of(data, c)
+        strength, part, weak = onto.claim_strength(data, c)
+        many = len(parts) > 1
+        lead = f"The weakest part is: {part['text'].rstrip('.')}. " if many and part else ""
         w = None
         if weak:
             result = onto.check_result(data, weak)
             name = check_name(data, weak)
-            said = {"caught": f"The weakest check is {name}. It caught its planted bug.",
-                    "missed": f"The weakest check is {name}. It missed its planted bug.",
-                    "cannot-fail": f"The weakest check is {name}. It cannot fail: it passed on each planted bug.",
-                    "broken": f"The weakest check is {name}. It fails or does not complete at the PR head.",
-                    "no-bug": f"The weakest check is {name}. No planted bug ran, so no run proved that it can fail.",
-                    "recorded": f"The weakest check is {name}. It is a record of a past run, and we did not run it again.",
-                    "checked": f"The weakest check is {name}. It is a mechanical check with no planted bug.",
-                    "none": "No tool checks this claim. Only the PR text states it." if c.get("stated") else
-                            "No tool checks this claim, and the PR text does not state it."}[result]
-            if strength == "Backed" and not onto.intent(data, c) and onto.check_strength(data, weak, {**c, "stated": True, "parts": None}) != "Backed":
-                said += " The claim stays Backed: the PR does not state each part, and no invariant that the user confirmed backs it."
-            if result == "caught" and strength == "Backed" and (tm.ladder(weak) or 0) >= 4:
+            whose = "its best check" if many else "the strongest check"
+            said = {"caught": f"{lead}{capital(whose)} is {name}. It caught its planted bug.",
+                    "missed": f"{lead}{capital(whose)} is {name}. It missed its planted bug.",
+                    "cannot-fail": f"{lead}{capital(whose)} is {name}. It cannot fail: it passed on each planted bug.",
+                    "broken": f"{lead}{capital(whose)} is {name}. It fails or does not complete at the PR head.",
+                    "no-bug": f"{lead}{capital(whose)} is {name}. No planted bug ran, so no run proved that it can fail.",
+                    "recorded": f"{lead}{capital(whose)} is {name}. It is a record of a past run, and we did not run it again.",
+                    "checked": f"{lead}{capital(whose)} is {name}. It is a mechanical check with no planted bug.",
+                    "none": lead + ("No tool checks it. Only the PR text states it." if part["stated"] else
+                                    "No tool checks it, and the PR text does not state it.")}[result]
+            pc = {"stated": part["stated"], "invariants": part["invariants"]}
+            if strength == "Backed" and not onto.intent(data, pc) and onto.check_strength(data, weak, {"stated": True}) != "Backed":
+                said += " It stays Backed: the PR does not state it, and no invariant that the user confirmed backs it."
+            if result == "caught" and strength == "Backed" and (tm.ladder(weak) or 0) >= 4 and not weak.get("formal_record"):
                 said += " Its conformance link does not pass, so it counts only as Backed."
             action = check_action(data, weak, c, result, fx.get(c["id"]))
-            import verdicts
-            bug = next((b for b in (verdicts.disagreeing(data, i) for i in onto.invariants_of(c)) if b), None)
+            bug = next((b for b in (verdicts.disagreeing(data, i) for i in part["invariants"]) if b), None)
             if bug:
-                said = (f"The code disagrees with a rule that the user confirmed: {names.of(data, bug['id'])}. " + said)
-                action = "Do not trust this claim until the code change lands: see the bugs found." + (" Then " + action[0].lower() + action[1:] if not action.startswith("No action") else "")
-            w = {"id": weak["id"], "name": name, "result": result, "strength": strength, "text": said, "action": action}
+                said = f"The code disagrees with a rule that the user confirmed: {names.of(data, bug['id'])}. " + said
+                action = "Do not trust this claim until the code change lands: see the bugs found." + (
+                    " Then " + action[0].lower() + action[1:] if not action.startswith("No action") else "")
+            w = {"id": weak["id"], "name": name, "result": result, "strength": strength, "text": said, "action": action,
+                 "part": part["id"] if many else None}
+        flags = onto.flagged(data, c)
+        warn = None
+        if flags:
+            f = flags[0]
+            r = onto.check_result(data, f)
+            word = {"missed": "missed its bug", "cannot-fail": "cannot fail", "broken": "fails at the head"}[r]
+            warn = {"text": f"{len(flags)} of {len(tools)} {'check' if len(tools) == 1 else 'checks'} {word if len(flags) == 1 else 'missed their bug, cannot fail or fail'}: "
+                            f"{names.listing([check_name(data, x) for x in flags])}. Fix it or drop it.",
+                    "checks": [x["id"] for x in flags], "action": check_action(data, f, c, r, fx.get(c["id"]))}
+        part_rows = [{"id": p["id"], "text": p["text"], "strength": st, "check": check_name(data, best) if best else None}
+                     for p in parts for st, best in [onto.part_strength(data, p)]] if many else []
         out[c["id"]] = {"strength": c.get("verdict") or strength, "tier": c.get("tier"), "checks": rows, "n": len(tools),
-                        "counts": counts, "summary": summary, "weakest": w}
+                        "counts": counts, "summary": summary, "weakest": w, "flagged": warn, "parts": part_rows,
+                        "bar": onto.bar(data, c, cfg)}
     return out
+
+
+def capital(text: str) -> str:
+    return text[:1].upper() + text[1:]
 
 
 # ---- Can these checks catch a bug? ---------------------------------------------------------------
@@ -291,7 +368,31 @@ def verify(data: dict, refs_promises: list[dict], explain: dict | None = None) -
         word = RUNG_WORDS[rung] if rung else "Recorded runs and model judgments"
         counts[word] = counts.get(word, 0) + 1
     tiers = [{"label": w, "n": counts[w]} for w in [*[RUNG_WORDS[n] for n in (5, 4, 3, 2, 1)], "Recorded runs and model judgments"] if w in counts]
-    return {"result": line, "other": other, "tone": tone, "checks": len(tools), "ran": len(ran), "caught": len(caught),
+    evals = []
+    for v in tools:
+        if v["kind"] != "eval":
+            continue
+        d = (v.get("eval") or {}).get("degraded")
+        real = (v.get("recorded") or {}).get("result", "")
+        text = (f"The real run scored {d['baseline']}. The degraded run ({d['variant']}) scored {d['score']}."
+                + ("" if onto.eval_degraded(v) else " It did not score worse, so the eval cannot show that it can fail.")) if d else \
+            "Flagged: no degraded run, so the eval cannot show that it can fail."
+        evals.append({"check": v["id"], "name": check_name(data, v), "claim": names.of(data, (onto.claims_of(data, v) or [{"id": ""}])[0]["id"]),
+                      "real": real, "degraded": d, "flagged": not onto.eval_degraded(v), "text": text,
+                      "action": "" if onto.eval_degraded(v) else "Run one planted-degraded variant (an ablated prompt, a removed rule, a weaker model or a shuffled input), and record its score."})
+    ui = []
+    for v in tools:
+        art = v.get("artifact") or {}
+        own = onto.claims_of(data, v)
+        if not art.get("video") and not any(onto.surface(data, c) == "frontend" for c in own):
+            continue
+        shots = art.get("screenshots") or []
+        ui.append({"check": v["id"], "name": check_name(data, v), "claim": names.of(data, own[0]["id"]) if own else "",
+                   "video": art.get("video"), "poster": shots[0] if shots else None, "screenshots": shots, "captions": art.get("captions"),
+                   "summary": art.get("summary") or "", "caught": result[v["id"]] == "caught",
+                   "text": ("The UI run caught the planted break." if result[v["id"]] == "caught" else "No planted break of the UI made this run fail.")
+                           + ("" if art.get("video") else " It has no recorded video.")})
+    return {"result": line, "other": other, "tone": tone, "checks": len(tools), "ran": len(ran), "caught": len(caught), "evals": evals, "ui": ui,
             "missed": len(missed), "cannot": len(cannot), "weak": weak, "by_promise": by_promise, "tiers": tiers,
             "broke": {k["id"]: broke(k) for k in data["controls"]}}
 
@@ -506,19 +607,22 @@ def bugs(data: dict) -> list[dict]:
 
 # ---- All of it -----------------------------------------------------------------------------
 
-def derive(data: dict, refs: dict, extra: dict | None = None, ready: dict | None = None, coverage: dict | None = None) -> dict:
+def derive(data: dict, refs: dict, extra: dict | None = None, ready: dict | None = None, coverage: dict | None = None,
+           cfg: dict | None = None) -> dict:
     """The derived block of refs.resolved.json. `coverage` is the coverage record of the run
     ({check id: [paths]}); without it, only the code refs, the claim texts and the control edits count."""
     if ready and ready.get("head") != data["head"]:
         ready = None
     u = unclaimed(data, refs, (extra or {}).get("unclaimed"), coverage)
     risky = sum(1 for f in u["files"] if f["risks"])
-    form, items = merge_verdict(data, ready, risky)
+    form, items = merge_verdict(data, ready, risky, cfg)
     verdict_of = {c["id"]: c["verdict"] for c in data["claims"]}
+    rows = claim_rows(data, extra, cfg)
     promises = [{"id": p["id"], "strength": s, "claims": cids, "count": len(cids), "tally": tally([verdict_of[c] for c in cids]),
+                 "bars_met": sum(1 for c in cids if rows[c]["bar"]["met"]),
                  "tier": max([t for c in data["claims"] if c["id"] in cids for t in [c.get("tier")] if t] or [0]) or None}
                 for p, s, cids in promises_in_order(data)]
-    return {"schema": SCHEMA, "head": data["head"], "promises": promises, "claims": claim_rows(data, extra),
+    return {"schema": SCHEMA, "head": data["head"], "promises": promises, "claims": rows, "bars": bars_summary(data, rows),
             "verify": verify(data, promises, extra),
             "merge": {"form": form, "items": items, "blockers": len(items) if form == "not-ready" else 0},
             "ready": ready, "unclaimed": u, "risky_unclaimed": risky, "bugs": bugs(data)}

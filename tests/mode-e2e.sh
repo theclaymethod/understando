@@ -173,9 +173,17 @@ assert v["C08"] == ("Formal", 5), v
 print("after trim:", v)
 PY
 
-step "ready --report: the four gates"
+step "ready --report: the four gates; gate 1 uses the evidence bars"
+# With the default bars, the unit-tested claims are below the backend bar, and gate 1 fails.
+"$U" ready --report > "$O/ready-bars.txt" || true
+has "$O/ready-bars.txt" "gate 1 at its bar: fail"
+has "$O/ready-bars.txt" "below the bar with no waiver"
+# The per-repo config lowers the bars of this small fixture: a test that caught its bug is enough.
+CFGNAME="$(python3 -c 'import sys, pathlib; sys.path.insert(0, sys.argv[1]); import repoinfo; print(repoinfo.repo_name(pathlib.Path(sys.argv[2])))' "$ROOT/scripts" "$REPO")"
+mkdir -p "$UNDERSTANDO_HOME/runs/$CFGNAME"
+printf '\n[bars.backend]\nnormal = "test"\n[bars.llm]\nnormal = "check"\n[bars.other]\nnormal = "check"\n' >> "$UNDERSTANDO_HOME/runs/$CFGNAME/understando.toml"
 "$U" ready --report > "$O/ready.txt"
-for g in "gate 1 verified: pass" "gate 2 no excess code: fail" "gate 3 no unit test that an e2e test covers: pass" "gate 4 explainable: pass" "Independent review" "references/adapted/autoreview.md" "a self-review is not independent"; do
+for g in "gate 1 at its bar: pass" "gate 2 no excess code: fail" "gate 3 no unit test that an e2e test covers: pass" "gate 4 explainable: pass" "Independent review" "references/adapted/autoreview.md" "a self-review is not independent"; do
   has "$O/ready.txt" "$g"
 done
 
@@ -299,8 +307,8 @@ python3 - "$RUN2/trust-map.json" "$SIDE" <<'PY'
 import json, sys
 d, side = json.load(open(sys.argv[1])), json.load(open(sys.argv[2]))
 c = {x["id"]: x for x in d["claims"]}
-# A claim is as strong as its weakest check: the Formal record lifts the tier to 5, and the test checks keep the verdict at Proven.
-assert c["C01"]["verdict"] == "Proven" and c["C01"]["tier"] == 5 and "FW1" in c["C01"]["checks"], c["C01"]
+# A part is as strong as its strongest check: the Formal record makes the claim Formal, and the tests next to it do not lower it.
+assert c["C01"]["verdict"] == "Formal" and c["C01"]["tier"] == 5 and "FW1" in c["C01"]["checks"], c["C01"]
 dup = [x for x in d["claims"] if x["source"].endswith("(formal FCW1)")]
 assert not dup, "the duplicate proposed claim was added"
 assert any(x["source"].endswith("(formal FCW2)") for x in d["claims"]), "the new proposed claim is missing"
@@ -367,6 +375,12 @@ path = "bin/"
 owner = "Ops team"
 reason = "The ops team owns the report script."
 [deferred_owners]
+[bars.backend]
+normal = "test"
+[bars.llm]
+normal = "check"
+[bars.other]
+normal = "check"
 TOML
 (cd "$CL" && "$U" review 1 --json) > "$O/review1.json"
 python3 - "$O/review1.json" "$R" "$CL" <<'PY'

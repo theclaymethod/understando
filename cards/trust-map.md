@@ -6,6 +6,8 @@ The page follows the review ontology: promise, then claim, then check (`commands
 
 A role is a plain phrase for the job of a file, for example "the UAP adapter" or "the CLI and its exit codes".
 
+Each claim shows its evidence bar. The bars are in [../references/evidence-bars.md](../references/evidence-bars.md).
+
 understando's part is small:
 
 - **The data.** `trust-map.json` (the map step, the controls and the verdicts) and `explain.json` (the explain step: the diagrams, the change areas, the unclaimed notes and roles, the risks, the control walkthroughs and the PR-body bullets). Both in strict STE.

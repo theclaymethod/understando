@@ -108,6 +108,8 @@ def add_check(c: context.Ctx, data: dict, claim: dict, a: dict, kind: str, repla
         v["test"] = spec["test"]
     if spec.get("name"):
         v["name"] = spec["name"]
+    if spec.get("artifact"):
+        v["artifact"] = spec["artifact"]
     k = {"id": kid, "verifier": vid, "recipe": a["control"].get("recipe", "plant-violation"),
          "description": a["control"]["description"], "edits": a["control"]["edits"], "expect": a["control"]["expect"]}
     with ops.scratch_clone(repo) as (clone, wt):
@@ -194,15 +196,21 @@ def apply_answer(c: context.Ctx, data: dict, a: dict) -> str:
         return f"{claim['id']}: route to `understando formalize --claim {claim['id']}` (user-invoked). It stays open."
     if choice in ("property", "3"):
         return add_check(c, data, claim, a, "property")
-    if choice in ("e2e", "4"):
+    if choice in ("e2e", "4", "browser-e2e"):
         return add_check(c, data, claim, a, "e2e")
+    if choice == "eval":
+        if not ((a.get("eval") or {}).get("degraded")):
+            return (f"{claim['id']}: refuse: an eval for the bar needs a degraded variant and its score (eval.degraded: variant, score, baseline). "
+                    "Without it, nobody can show that the eval can fail.")
+        a = {**a, "kind": "eval"}
+        choice = "evidence"
     if choice in ("evidence", "5"):
         vid = ops.next_id(data, "V")
         data["verifiers"].append({"id": vid, "kind": a.get("kind", "measurement"), "claims": [claim["id"]], "tier": "fact",
                                   "description": a["description"], "recorded": a["recorded"],
                                   "independence": {"by": "tool", "tool": a.get("tool", "recorded run")}, "cost": {"usd": 0},
                                   "provenance": a.get("provenance", "Recorded by understando close from the user's evidence."),
-                                  **({"name": a["name"]} if a.get("name") else {})})
+                                  **({"name": a["name"]} if a.get("name") else {}), **({"eval": a["eval"]} if a.get("eval") else {})})
         attach(data, claim, vid)
         verdicts.apply(data)
         return f"{claim['id']}: recorded evidence {vid}; the claim is {claim['verdict']}."
@@ -266,6 +274,10 @@ CHOICE = {
     "reword": ("Reword it", "I propose a wording that the code shows, and you approve the words. Nothing runs."),
     "waive": ("Waive it", "You give the reason. The ready checklist and the PR section show the waiver. Nothing runs."),
     "formalize": ("Formalize it", "A TLA+ model check or a Lean proof (tier {tier}). It takes the longest; you start it."),
+    "browser-e2e": ("Record a browser e2e with a video", "I draft one e2e run in a real browser against the real app, with video and "
+                    "screenshots on, and one planted break of the UI. Probe keeps it only when it catches the break. Its bar is a browser video."),
+    "eval": ("Run an eval with a degraded control", "You run the eval, and one planted-degraded variant: an ablated prompt, a removed rule, "
+             "a weaker model or a shuffled input. I record both scores. The eval meets its bar only when the variant scores worse."),
     "fix-check": ("Fix '{check}'", "I draft one test that replaces '{check}', and one planted bug. Probe keeps the test only when it "
                   "catches the bug; then the claim loses its weakest check. $0, no model call."),
     "drop-check": ("Drop '{check}'", "It backs nothing: it cannot fail, or it fails. The claim keeps its other checks, or it shows that no "
@@ -274,8 +286,23 @@ CHOICE = {
 COST_ORDER = ["mechanical", "evidence", "reword", "waive", "property", "e2e", "formalize"]
 
 
+def bar_choice(claim: dict, data: dict) -> str | None:
+    """The way to reach the claim's evidence bar (onto.bar), when it is below it: frontend, a browser
+    e2e with a video; backend, formalize (risky) or a property test; llm, an eval with a degraded control."""
+    import onto
+    b = onto.bar(data, claim)
+    if b["met"]:
+        return None
+    return {"video": "browser-e2e", "e2e": "browser-e2e", "formal": "formalize", "static": "property", "property": "property",
+            "degraded-eval": "eval", "eval": "eval"}.get(b["level"])
+
+
 def recommend_choice(claim: dict, data: dict) -> str:
-    """The cheapest option that can close the claim. The words of the claim and its proof note decide."""
+    """The way to the claim's evidence bar first; else the cheapest option that can close the claim.
+    The words of the claim and its proof note decide."""
+    first = bar_choice(claim, data)
+    if first:
+        return first
     text = (claim.get("text", "") + " " + ((claim.get("plain") or {}).get("proof") or "")).lower()
     if any(w in text for w in ("no caller", "no code calls", "a search of the repo", "grep", "deletes")):
         return "mechanical"
@@ -324,6 +351,8 @@ def question(data: dict, pr: str | None = None) -> dict | None:
     rec = recommend_choice(claim, data)
     test = "property" if rec == "property" else "e2e"
     order = [rec] + [x for x in COST_ORDER if x != rec and x in ("mechanical", "reword", "waive", test)]
+    if rec in ("browser-e2e", "eval", "formalize"):
+        order = [rec] + [x for x in ("mechanical", "reword", "waive") if x != rec]
     weak = weak_tool_check(data, claim)
     if weak:
         order = ["fix-check", *(["drop-check"] if weak.get("state") in ("cannot-fail", "broken", "failing", "stale") else []), *order]

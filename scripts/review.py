@@ -571,7 +571,15 @@ def merge_state(c: context.Ctx, data: dict) -> tuple[str, list[dict]]:
     ready = tm.load(rp) if rp.is_file() else None
     if ready and ready.get("head") != data.get("head"):
         ready = None
-    return derive.merge_verdict(data, ready, derive.risky_unclaimed(c.run, data))
+    cfg = {}
+    if c.repo:
+        import config
+        import repoinfo
+        try:
+            cfg = config.load(repoinfo.repo_name(c.repo))
+        except Exception:  # noqa: BLE001  the default bars
+            cfg = {}
+    return derive.merge_verdict(data, ready, derive.risky_unclaimed(c.run, data), cfg)
 
 
 def standing(c: context.Ctx, data: dict) -> str:
@@ -649,6 +657,13 @@ def situation(c: context.Ctx, s: dict, st: dict, sig: dict, doc: list[dict]) -> 
         lines.append(f"The review branch {also}changed the code or checks of {names.listing([names.of(data, x) for x in rv['claims']])}, which are not checked again yet.")
     if st.get("tip") and st["tip"] != st["head"]:
         details.append(f"{st['branch']} at {st['tip'][:10]}; the map is at {(tmap.get('head') or '')[:10]}")
+    if data.get("claims"):
+        import onto
+        below = [x for x in data["claims"] if not x.get("waiver") and onto.risky(x) and not onto.bar(data, x)["met"]]
+        if below:
+            lines.append(f"{prompt.n_of(len(below), 'risky claim')} {'is' if len(below) == 1 else 'are'} below {'its' if len(below) == 1 else 'their'} bar: "
+                         f"{names.listing([names.of(data, x['id']) for x in below])}.")
+            details.append("below the bar: " + "; ".join(f"{x['id']} {onto.bar(data, x)['text']}" for x in below[:6]))
     if s.get("trust_map", 1) is None:
         lines.append("No trust map yet: the first step writes it.")
     else:
@@ -1027,17 +1042,20 @@ def step_progress(c: context.Ctx, st: dict, step: str, code: int, stop: str | No
                 continue
             who = names.of(data, cl["id"])
             who = who[:1].upper() + who[1:]
+            import onto
+            b = onto.bar(data, cl)
+            bar = f" · met the {b['need']} bar" if b["met"] else f" · below the {b['need']} bar"
             caught = [v for v in checks if v.get("state") == "proven"]
             dead = [v for v in checks if v.get("state") in ("cannot-fail", "failing", "broken")]
             n = len(checks)
             if len(caught) == n:
-                progress(cl["id"], True, f"{who}: {'its check' if n == 1 else f'{n} of {n} checks'} caught the planted bug" + ("" if n == 1 else "s"))
+                progress(cl["id"], b["met"], f"{who}: {'its check' if n == 1 else f'{n} of {n} checks'} caught the planted bug" + ("" if n == 1 else "s") + bar)
             elif dead:
                 v = dead[0]
                 why = "stayed green on its planted bug, so it cannot fail" if v.get("state") == "cannot-fail" else "fails without a planted bug"
-                progress(cl["id"], False, f"{who}: ✗ {len(caught)} of {n} checks caught their planted bug; {v.get('name') or 'one check'} {why}")
+                progress(cl["id"], False, f"{who}: ✗ {len(caught)} of {n} checks caught their planted bug; {v.get('name') or 'one check'} {why}{bar}")
             else:
-                progress(cl["id"], False, f"{who}: ✗ {len(caught)} of {n} checks caught their planted bug; the rest ran no planted bug")
+                progress(cl["id"], False, f"{who}: ✗ {len(caught)} of {n} checks caught their planted bug; the rest ran no planted bug{bar}")
     elif step == "formal":
         rec = c.run / "formal-recheck.json"
         if rec.is_file():

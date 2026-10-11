@@ -41,27 +41,31 @@ A red result counts as caught only when the exit code is in `red_exits` (default
 
 ## Check strength
 
-A claim lists its checks (`claims[].checks`). The strength of a check is the verdict that the check alone gives its claim:
+A claim has parts: one part for each statement, each with its own checks (`claims[].parts[].checks`). A claim with no `parts` is one part with all its checks. The strength of a check is the verdict that the check alone gives its part:
 
 | Strength | Rule |
 |---|---|
 | **Formal** | The check is on ladder rung 4 or 5, and it is `proven`: a control broke the proof or the model. Its `formal.conformance` link passes. |
 | **Proven** | The check is `proven`, and it is fact tier. A model check also qualifies when its family is not the author's family, its context is fresh, and it went red on a control. |
-| **Backed** | The check is `proven`, `untested`, `recorded` or `checked`. A same-family model check stays here, also after a control. A rung 4 or 5 check without a passing conformance link stays here. |
-| **Asserted** | The check is `cannot-fail`, `failing`, `broken` or `stale`, or it is of kind `none`, and the PR narrative states the claim. |
-| **Gap** | The same, but the PR does not state the claim. The reviewer decides. |
+| **Backed** | The check is `proven`, `untested`, `recorded` or `checked`. A same-family model check stays here, also after a control. A rung 4 or 5 check without a passing conformance link or a Formal record stays here. |
+| **Asserted** | The check is `cannot-fail`, `failing`, `broken` or `stale`, or it is of kind `none`, and the PR narrative states the part. |
+| **Gap** | The same, but the PR does not state the part. The reviewer decides. |
 
-Intent gate: a Formal or Proven check gives only Backed when the claim has no intent. A claim has intent when the PR states it, or when each of its invariants has `author: user` and `status: accepted`. A merged claim needs this intent for each of its `parts`.
+Intent gate: a Formal or Proven check gives only Backed when the part has no intent. A part has intent when the PR states it, or when the user accepted its invariant.
 
-## Claim verdicts
+## Part and claim verdicts
 
-The verdict of a claim is the strength of its weakest check. Two checks can have the same strength. Then the weakest is the check that is weak by itself, not only by the intent gate. After that, it is the check with the worst result. The results, worst first, are none, broken, cannot fail, missed, no planted bug, mechanical, recorded and caught. The claim card names this check, in plain words, with its action. Thus, a weak check cannot hide behind a strong check of the same claim.
+- **A part** is as strong as its strongest check. Extra checks never lower a part. Thus, a backup test next to a proof keeps the part Formal.
+- **A claim** is as strong as its weakest part. Thus, a merged claim cannot hide a part that no check proves.
+- **A weak check is a flag, not a score.** A check can miss its planted bug, fail to fail, or fail at the head. Then the card shows a warning with an action, for example "1 of 5 checks missed its bug. Fix it or drop it." The check lowers its part only when it is the only evidence of that part.
+- **One check for each formal property.** Each TLA+ invariant or property, and each Lean theorem group, is its own check with its own controls. It is under the part that it proves.
+- **A possible bug** makes its part Gap: the code does not obey an invariant of the part that the user accepted.
 
-The claim is Gap when the code does not obey an invariant of the claim that the user accepted (a possible bug).
+The `tier` of a claim is the highest rung of a check that went red on a control and can prove the claim. The promise shows it as "Strongest check". The strength of a promise is the verdict of its weakest claim. `scripts/derive.py` derives each value, and the PR body, the review CLI and the page show the same value.
 
-The `tier` of a claim is the highest rung of a check that went red on a control and can prove the claim. It is the strongest check, and the verdict is the weakest check. The promise shows the tier as "Strongest check".
+## Evidence bars
 
-The strength of a promise is the verdict of its weakest claim. `scripts/derive.py` derives it, and the PR body, the review CLI and the page show the same value.
+Each claim also has an evidence bar for its surface (frontend, backend, llm or other). [evidence-bars.md](evidence-bars.md) is the only source of the surfaces, the bars, their controls and how they change the merge verdict.
 
 ## Flags
 

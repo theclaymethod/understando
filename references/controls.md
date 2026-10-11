@@ -2,6 +2,8 @@
 
 A control plants one defect that a verifier must see. Write at least one control per verifier that has a command. Pick the **obvious** control: the defect that the verifier's name says it catches. A verifier that stays green on its obvious control gets the loud `cannot-fail` flag.
 
+An eval control is a degraded variant, and a frontend control is a broken-UI run. [evidence-bars.md](evidence-bars.md) tells which control each surface needs.
+
 ## Recipes
 
 | Recipe | Plant | Typical verifier |

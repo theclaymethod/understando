@@ -89,9 +89,29 @@ def gates(c: context.Ctx, data: dict) -> list[dict]:
     claims = data["claims"]
     open_ = [x for x in claims if x.get("verdict") not in CLOSED and not x.get("waiver")]
     waived = [x for x in claims if x.get("waiver") and x.get("verdict") not in CLOSED]
-    g1 = {"n": 1, "name": "verified", "pass": not open_,
-          "detail": f"{len(claims) - len(open_) - len(waived)} of {len(claims)} claims are verified" + (f", and the user waived {len(waived)}" if waived else "") + (f". {len(open_)} are open." if open_ else "."),
-          "items": [f"{x['id']} is {x['verdict']}: {x['text']}" for x in open_] + [f"{x['id']} waived: {x['waiver']['reason']}" for x in waived]}
+    # Gate 1 uses the evidence bars (references/evidence-bars.md): each risky claim meets its bar,
+    # and each other claim meets it or has a waiver.
+    import onto
+    cfg = {}
+    if c.repo:
+        import config
+        import repoinfo
+        try:
+            cfg = config.load(repoinfo.repo_name(c.repo))
+        except Exception:  # noqa: BLE001  the default bars
+            cfg = {}
+    bars = {x["id"]: onto.bar(data, x, cfg) for x in claims}
+    risky_below = [x for x in claims if not bars[x["id"]]["met"] and bars[x["id"]]["risky"]]
+    other_below = [x for x in claims if not bars[x["id"]]["met"] and not bars[x["id"]]["risky"] and not x.get("waiver")]
+    met = sum(1 for b in bars.values() if b["met"])
+    g1 = {"n": 1, "name": "at its bar", "pass": not open_ and not risky_below and not other_below,
+          "detail": (f"{met} of {len(claims)} claims meet their bar" + (f", and the user waived {len(waived)}" if waived else "")
+                     + (f". {len(risky_below)} risky {'claim is' if len(risky_below) == 1 else 'claims are'} below the bar" if risky_below else "")
+                     + (f". {len(other_below)} other {'claim is' if len(other_below) == 1 else 'claims are'} below the bar with no waiver" if other_below else "")
+                     + (f". {len(open_)} are open" if open_ else "") + "."),
+          "items": [f"{x['id']} is {x['verdict']}: {x['text']}" for x in open_]
+          + [f"{x['id']} {'risky, ' if bars[x['id']]['risky'] else ''}{bars[x['id']]['text']}" for x in risky_below + other_below]
+          + [f"{x['id']} waived: {x['waiver']['reason']}" for x in waived]}
     trim_path = c.run / "trim.json"
     trim = json.loads(trim_path.read_text()) if trim_path.is_file() else None
     if not trim or trim.get("head") != data["head"]:

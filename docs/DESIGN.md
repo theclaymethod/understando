@@ -2,6 +2,8 @@
 
 ## Purpose
 
+Each claim has an evidence bar for its surface (frontend, backend, llm or other). The bars, their controls and their effect on the merge verdict are in [evidence-bars.md](../references/evidence-bars.md). Do not restate a bar here.
+
 understando helps a reviewer decide what to trust in a large PR without reading every line.
 - **Source:** Cindy Sridharan, "How to effectively debug when you no longer understand the code" (Oct 2026).
 - **Thesis:** "Designing verification > understanding code."

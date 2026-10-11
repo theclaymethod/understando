@@ -163,8 +163,9 @@ def apply(data: dict) -> dict:
         rungs = [tm.ladder(v) for v in proven if tm.ladder(v)]
         # The tier is the strongest rung that a planted bug proved; the verdict is the weakest check.
         c["tier"] = max(rungs) if rungs else None
-        weak, strength = onto.weakest_check(data, c)
-        c["verdict"], c["reason"] = strength or ("Asserted" if c["stated"] else "Gap"), ""
+        # A part is as strong as its strongest check; a claim is as strong as its weakest part.
+        strength, part, weak = onto.claim_strength(data, c)
+        c["verdict"], c["reason"] = strength, ""
         if c["verdict"] in ("Formal", "Proven"):
             ks = [k["id"] for k in controls_by_verifier.get(weak["id"], []) if control_outcome(k) == "caught"]
             if c["verdict"] == "Formal":
@@ -173,29 +174,27 @@ def apply(data: dict) -> dict:
                                f"({link['source']}) passes, and control {', '.join(ks)} broke it.")
             else:
                 c["reason"] = f"{weak['id']} went red on control {', '.join(ks)}."
-            if len(backing) > 1:
-                c["reason"] += f" It is the weakest of the {len(backing)} checks."
-        elif c["verdict"] == "Backed" and not [v for v in counted if v not in proven and onto.check_strength(data, v, c) == "Backed"]:
-            ks = [k["id"] for k in controls_by_verifier.get(weak["id"], []) if control_outcome(k) == "caught"]
-            c["reason"] = (f"{weak['id']} went red on control {', '.join(ks)}. It stays Backed: the PR does not state it, and it links to no "
-                           "invariant that the user confirmed (understando discover).")
-        elif c["verdict"] == "Backed":
-            weak_ones = [v for v in counted if v not in proven and onto.check_strength(data, v, c) == "Backed"]
-            ids = ", ".join(v["id"] for v in weak_ones)
-            kinds = sorted({v["state"] for v in weak_ones})
+            if len(onto.parts_of(data, c)) > 1:
+                c["reason"] += f" It backs the weakest part, {part['id']}."
+        elif c["verdict"] == "Backed" and weak:
             why = {
                 "untested": "no control went red",
                 "recorded": "the evidence is recorded, not run again",
                 "checked": "it is a mechanical check (a grep or a line count) with no control",
                 "proven": "a model verifier from the author family went red, or a proof has no passing conformance link",
             }
-            c["reason"] = f"{ids} backs this claim, but " + " and ".join(why[s] for s in kinds) + "."
-            pending = [v for v in weak_ones if v.get("formal_record") and (v["formal_record"].get("formal") or {}).get("verdict") != "Formal"]
-            if pending and not [v for v in weak_ones if v not in pending]:
-                c["reason"] = " ".join(f"{v['id']} backs this claim, but its formal record is {v['formal_record']['formal']['verdict']}."
-                                       for v in pending)
-            if proven and not onto.intent(data, c):
-                c["reason"] += " A proven check cannot lift it: the PR does not state it, and it links to no invariant that the user confirmed."
+            pc = {"stated": part["stated"], "invariants": part["invariants"]}
+            record = (weak.get("formal_record") or {}).get("formal") or {}
+            if weak["state"] == "proven" and can_prove(weak, author) and not onto.intent(data, pc):
+                ks = [k["id"] for k in controls_by_verifier.get(weak["id"], []) if control_outcome(k) == "caught"]
+                c["reason"] = (f"{weak['id']} went red on control {', '.join(ks)}. It stays Backed: the PR does not state it, and it links to no "
+                               "invariant that the user confirmed (understando discover).")
+            elif weak.get("formal_record") and record.get("verdict") != "Formal":
+                c["reason"] = f"{weak['id']} backs this claim, but its formal record is {record.get('verdict')}."
+            else:
+                c["reason"] = f"{weak['id']} backs this claim, but {why.get(weak['state'], 'no control went red')}."
+            if len(onto.parts_of(data, c)) > 1:
+                c["reason"] += f" It backs the weakest part, {part['id']}."
         elif c["stated"]:
             c["reason"] = "Only the PR text states this claim."
         else:

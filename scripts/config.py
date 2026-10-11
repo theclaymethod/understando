@@ -25,6 +25,9 @@ Keys (all optional; the defaults are below):
     require_key_for = ["judiciary"]     # a command that names one of these words never runs with the key unset
     [deferred_owners]
     "A5-q2" = "loop design"
+    [bars.backend]                      # the evidence bar of each surface and risk (onto.BARS)
+    risky = "formal"                    # formal | static | property | test
+    normal = "property"                 # frontend: video | e2e; llm: degraded-eval | eval; other: check
 
 A secret path wins over every other rule, except `llm.env_file`: the key loader passes that one
 file to a command by path. It never reads the value into understando. Standard library only.

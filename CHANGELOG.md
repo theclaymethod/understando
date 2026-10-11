@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- A claim holds parts, one for each statement, each with its own checks. A part is as strong as its strongest check; a claim is as strong as its weakest part. A check that missed its bug is a flag with an action, not a score. Each TLA+ property is its own check (`regroup.py split_checks`, the `split:` lint).
+- Evidence bars for each surface (frontend, backend, llm, other): `references/evidence-bars.md` is their only source. The page, the PR section, the review lines, the ready gate 1, close and publish use them. doctor flags a doc that restates a bar.
+
 - The review ontology: promise -> claim -> check (`scripts/onto.py`). A claim lists its checks (`claims[].checks`, `schema_version` 2), and a merged claim keeps `legacy_ids` and `parts`. A claim is as strong as its weakest check, and its card names that check with its action. `map` writes the new shape, prints the grouping lint (`merge:` and `budget:` lines) and refuses a missing plain name. understando reads the old shape for one release.
 - The schema check refuses a claim with no checks, a check that no claim lists, and a claim in more than one promise.
 - Plain names: the agent writes the name of each promise, claim and check. doctor flags a cut of the plain text, a path or a tool name.

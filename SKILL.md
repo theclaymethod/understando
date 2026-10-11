@@ -32,6 +32,8 @@ Advanced verbs: `understando help --all`.
 
 `review` is for the author, `open` is for the reviewer, and `build` is for new work. The other verbs (map, discover, probe, coverage, formalize, close, trim, explain, ready, import, ci, snippet, doctor, setup) stay runnable. Read the file of a verb before you start it. Start a verb that says "the user only" only on an explicit request from the user. The old names `controls` and `rerun` still run `probe` and `map`.
 
+Each claim has an evidence bar for its surface: [references/evidence-bars.md](references/evidence-bars.md).
+
 While the mode is on, record each user prompt (`understando note prompt "<the prompt>"`) and each decision (`understando note decision "<what>" --why ... --evidence ... --result ...`).
 
 ## Rules for every verb

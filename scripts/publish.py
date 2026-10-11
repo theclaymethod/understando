@@ -135,6 +135,7 @@ def readme(data: dict, pr: str, branch: str) -> str:
     return "\n".join([
         f"# Review of PR #{pr}: {data.get('title') or data.get('repo')}", "",
         f"understando wrote this branch for the PR head `{data['head'][:10]}` ({', '.join(f'{k} {v}' for k, v in s.items())}).",
+        f"Evidence bars: {bar_summary(data)}",
         "It is an orphan branch: it shares no history with the code, and it has no `.github/` folder, so no CI runs on it.", "",
         "## Open it", "",
         "```bash",
@@ -146,6 +147,14 @@ def readme(data: dict, pr: str, branch: str) -> str:
         "- `trust-map.json`: the claims, the verifiers, the controls and the verdicts.",
         "- `pr-section.md`: the PR-body section.",
         "- `feedback/<reviewer>.jsonl`: the points that confused a reviewer (`understando publish --feedback`).", ""])
+
+
+def bar_summary(data: dict) -> str:
+    """The bar line of derive.py: "18 of 24 claims meet their bar. 2 risky claims are below it." """
+    import derive
+    import onto
+    rows = {c["id"]: {"bar": onto.bar(data, c)} for c in data.get("claims", [])}
+    return derive.bars_summary(data, rows)["summary"]
 
 
 def message(data: dict) -> str:

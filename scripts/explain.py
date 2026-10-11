@@ -303,7 +303,13 @@ def main() -> int:
     ready = tm.load(args.ready) if args.ready and Path(args.ready).is_file() else None
     # The values that the review CLI, the PR section and the page share (scripts/derive.py).
     cov = derive.load_coverage(Path(args.coverage) if args.coverage else Path(args.map).parent / "coverage.json", data["head"])
-    body["derived"] = derive.derive(data, body, extra, ready, cov)
+    import config
+    import repoinfo
+    try:
+        cfg = config.load(repoinfo.repo_name(Path(args.repo)))
+    except Exception:  # noqa: BLE001  a repo with no config gets the default bars
+        cfg = {}
+    body["derived"] = derive.derive(data, body, extra, ready, cov, cfg)
     (out / coderef.CACHE_NAME).write_text(json.dumps(body, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     runtime = runtime_path(args.runtime)
     if not args.no_html:

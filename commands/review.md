@@ -2,6 +2,8 @@
 
 For the author: a full PR review from one line, `/understando review <pr>` (Codex: `$understando review <pr>`). `/understando <pr>` is the same. Start it only on an explicit request from the user. The CLI derives the state. Do not ask the user for paths, SHAs, verdict counts or rules: `review` finds them.
 
+The situation lines and the progress lines use the words of the evidence bars ([evidence-bars.md](../references/evidence-bars.md)).
+
 Each stop ends with one question. Ask it as [Asking the user](../references/working-rules.md#asking-the-user) tells you. `understando review <pr> --json` gives the question in `prompt`, and the text output is the same question. Do not restate the rest of the output. Use plain names in chat ([Reporting](../references/working-rules.md#reporting)).
 
 Run every command in the clone of the reviewed repo, or pass `--repo DIR`. The run folder is under `config.runs_root()` (`~/.understando/runs/<repo>/<pr>/`), never in a git repo.

@@ -443,6 +443,13 @@
               "invariant": {
                 "$ref": "#/$defs/id",
                 "description": "The invariant of this part, when one exists."
+              },
+              "checks": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/id"
+                },
+                "description": "The checks of this part. A part is as strong as its strongest check."
               }
             }
           }
@@ -453,6 +460,20 @@
             "$ref": "#/$defs/id"
           },
           "description": "Shape 2: the invariants that this claim states. Proven and Formal need a stated claim, or each of these confirmed by the user."
+        },
+        "surface": {
+          "type": "string",
+          "enum": [
+            "frontend",
+            "backend",
+            "llm",
+            "other"
+          ],
+          "description": "The surface of the claim, set by the user. Without it, map detects the surface from the code that the claim cites (onto.surface)."
+        },
+        "risk": {
+          "type": "boolean",
+          "description": "The user's choice: true when the claim is on a risky surface (safety, cost, anti-gaming, clinical output, production). Without it, onto.risk_tags decides."
         }
       }
     },
@@ -1032,6 +1053,99 @@
               "type": "string"
             }
           }
+        },
+        "eval": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "An llm eval: how it ran, and the degraded variant that shows it can fail.",
+          "properties": {
+            "preregistered": {
+              "type": "boolean"
+            },
+            "frozen": {
+              "type": "boolean",
+              "description": "A frozen judge or frozen labels."
+            },
+            "blind": {
+              "type": "boolean"
+            },
+            "k": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sample": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "degraded": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "variant",
+                "score",
+                "baseline"
+              ],
+              "properties": {
+                "variant": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "An ablated prompt, a removed rule, a weaker model or a shuffled input."
+                },
+                "score": {
+                  "type": "number"
+                },
+                "baseline": {
+                  "type": "number"
+                },
+                "better": {
+                  "type": "string",
+                  "enum": [
+                    "higher",
+                    "lower"
+                  ]
+                },
+                "at": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "artifact": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The recorded evidence of a browser e2e run.",
+          "properties": {
+            "video": {
+              "type": "string",
+              "minLength": 1
+            },
+            "screenshots": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "source": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string",
+              "description": "A text summary of the run, for a reader who cannot play the video."
+            },
+            "captions": {
+              "type": "string",
+              "description": "A captions file (WebVTT) for the video."
+            }
+          }
+        },
+        "property": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The TLA+ invariant or property, or the Lean theorem group, that this check proves. One check for each property."
         }
       }
     },

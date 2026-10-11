@@ -20,6 +20,7 @@ An empty list is the good result.
 from __future__ import annotations
 
 import json
+import re
 import os
 import platform
 import shutil
@@ -233,6 +234,10 @@ def findings(c: context.Ctx, explicit_head: str | None, formal: bool = False) ->
                 if path and not Path(path).is_dir():
                     add("runtime-path", "route", f"The chapters import a runtime that is not on this machine: {path}.",
                         "Build the explainer again with the current runtime.", "explain")
+    restated = bar_restated(Path(os.environ["UNDERSTANDO_DOCS_ROOT"]) if os.environ.get("UNDERSTANDO_DOCS_ROOT") else None)
+    if restated:
+        add("bar-restated", "route", f"{len(restated)} doc lines restate an evidence bar: {', '.join(restated[:3])}" + (" and more" if len(restated) > 3 else "") + ".",
+            "Link references/evidence-bars.md, the only source of the bars, and delete the restated words.")
     import config
     ve = config.ve_runtime()
     if ve and config.ve_missing(ve):
@@ -345,6 +350,24 @@ def findings(c: context.Ctx, explicit_head: str | None, formal: bool = False) ->
         add("doc-links", "mention", f"{len(broken)} links in the skill docs point at no file: " + "; ".join(broken[:3]),
             "Fix each link, or restore its target.")
     return out, fixed
+
+
+BAR_TERMS = re.compile(r"(?i)browser video|recorded video|degraded variant|planted-degraded|k ≥ 3|k >= 3|pre-registered|a property test, types|"
+                       r"example test is below the bar|\| (frontend|backend|llm) \|")
+
+
+def bar_restated(root: Path | None = None) -> list[str]:
+    """Docs that restate an evidence bar. references/evidence-bars.md is its only source; a doc
+    links to it. A line that names a bar term and does not link evidence-bars.md is a restatement."""
+    root = root or tm.ROOT
+    out = []
+    for f in sorted([*root.glob("commands/*.md"), *root.glob("references/*.md"), *root.glob("docs/*.md"), *root.glob("cards/*.md"), root / "SKILL.md"]):
+        if f.name == "evidence-bars.md" or not f.is_file():
+            continue
+        for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+            if BAR_TERMS.search(line) and "evidence-bars.md" not in line:
+                out.append(f"{f.relative_to(root)}:{n}")
+    return out
 
 
 def doc_links() -> list[str]:

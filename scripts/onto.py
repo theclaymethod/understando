@@ -120,6 +120,11 @@ def upgrade(data: dict) -> int:
     drop = set()
     for c in data["claims"]:
         tools = [i for i in c["checks"] if i in vs and is_tool(vs[i])]
+        # A none check stays while it is the only evidence of a part.
+        keep = {i for p in c.get("parts") or [] for i in (p.get("checks") or [])
+                if p.get("checks") and not any(j in vs and is_tool(vs[j]) for j in p["checks"])}
+        if keep:
+            tools = [i for i in c["checks"] if i in tools or i in keep]
         if tools and len(tools) != len(c["checks"]):
             drop |= {i for i in c["checks"] if i in vs and not is_tool(vs[i])}
             c["checks"] = tools
@@ -214,18 +219,178 @@ def check_result(data: dict, v: dict) -> str:
     return state if state in ("recorded", "checked") else "no-bug"
 
 
+def parts_of(data: dict, claim: dict) -> list[dict]:
+    """The statements of a claim, each with its own checks: [{id, text, stated, invariants, checks}].
+    A claim with no `parts` is one part. A part with no `checks` list has all the claim's checks."""
+    checks = checks_of(data, claim)
+    rows = claim.get("parts") or []
+    if not rows:
+        return [{"id": claim["id"], "text": claim.get("text", ""), "stated": bool(claim.get("stated")),
+                 "invariants": invariants_of(claim), "checks": checks}]
+    by = {v["id"]: v for v in checks}
+    out = []
+    for p in rows:
+        ids = p.get("checks")
+        own = [by[i] for i in ids if i in by] if ids is not None else checks
+        if ids is not None and not own:
+            own = [v for v in checks if not is_tool(v)]
+        invs = [p["invariant"]] if p.get("invariant") else ([] if "stated" in p else invariants_of(claim))
+        out.append({"id": p.get("id") or claim["id"], "text": p.get("text", ""), "stated": bool(p.get("stated", claim.get("stated"))),
+                    "invariants": invs, "checks": own})
+    return out
+
+
+def part_strength(data: dict, part: dict) -> tuple[str, dict | None]:
+    """The strength of a part: its strongest check (a check whose control caught its bug, or a
+    record with its result). Extra checks never lower a part. A possible bug of its invariant makes it Gap."""
+    import verdicts
+    pc = {"stated": part["stated"], "invariants": part["invariants"]}
+    if any(verdicts.disagreeing(data, i) for i in part["invariants"]):
+        best = min(part["checks"], key=lambda v: VERDICTS.index(check_strength(data, v, pc)), default=None)
+        return "Gap", best
+    if not part["checks"]:
+        return ("Asserted" if part["stated"] else "Gap"), None
+    best = min(part["checks"], key=lambda v: (VERDICTS.index(check_strength(data, v, pc)), -RESULTS.index(check_result(data, v))))
+    return check_strength(data, best, pc), best
+
+
+def claim_strength(data: dict, claim: dict) -> tuple[str, dict | None, dict | None]:
+    """(strength, weakest part, its strongest check): a claim is as strong as its weakest part."""
+    rows = [(part_strength(data, p), p) for p in parts_of(data, claim)]
+    (strength, check), part = max(rows, key=lambda r: VERDICTS.index(r[0][0]))
+    return strength, part, check
+
+
 def weakest_check(data: dict, claim: dict) -> tuple[dict | None, str | None]:
-    """The weakest check of a claim: the weakest strength, then the worst result. Ties keep the order."""
-    best = None
-    alone = {**claim, "stated": True, "parts": None}
-    for v in checks_of(data, claim):
-        # The weakest strength first; then the check that is weak by itself, not only by the intent
-        # rule; then the worst result.
-        key = (-VERDICTS.index(check_strength(data, v, claim)), -VERDICTS.index(check_strength(data, v, alone)),
-               RESULTS.index(check_result(data, v)))
-        if best is None or key < best[0]:
-            best = (key, v)
-    return (best[1], check_strength(data, best[1], claim)) if best else (None, None)
+    """The evidence of the weakest part: its strongest check, with the claim's strength."""
+    strength, _, check = claim_strength(data, claim)
+    return check, strength
+
+
+def flagged(data: dict, claim: dict) -> list[dict]:
+    """The checks that missed their planted bug, cannot fail or fail at the head. They are a warning:
+    they lower a part only when they are its only evidence."""
+    return [v for v in checks_of(data, claim) if is_tool(v) and check_result(data, v) in ("missed", "cannot-fail", "broken")]
+
+
+# ---- Surfaces and their evidence bars ---------------------------------------------------------
+
+SURFACES = ("frontend", "backend", "llm", "other")
+FRONTEND = re.compile(r"(?i)\.(tsx|jsx|css|scss|html|vue|svelte)$|(^|/)(routes|pages)/")
+LLM = re.compile(r"(?i)prompt|judge|judiciary|cartridge|rubric|model_client|openai|llm|generator|reflect|scoring")
+# The bar for each surface and risk. understando.toml [bars] can change it.
+BARS = {"frontend": {"risky": "video", "normal": "video"}, "backend": {"risky": "formal", "normal": "property"},
+        "llm": {"risky": "degraded-eval", "normal": "degraded-eval"}, "other": {"risky": "check", "normal": "check"}}
+BAR_WORDS = {"video": "browser video", "e2e": "browser e2e", "formal": "proof", "static": "types or static rules",
+             "property": "property test or static rule", "test": "a test", "degraded-eval": "eval with a degraded control",
+             "eval": "eval", "check": "a check"}
+LEVEL_RUNG = {"formal": 4, "static": 3, "property": 2, "test": 1}
+
+
+def surfaces(data: dict, claim: dict) -> list[str]:
+    """The surfaces that the code of a claim touches: a TSX, JSX, CSS or HTML file or a UI route is
+    frontend; a prompt, a model call, a judge, a cartridge, a generator or a scoring rubric is llm;
+    an eval or a model judgment as a check is llm; other code is backend. No code and no hint: other."""
+    out = []
+    for r in claim.get("code") or []:
+        where = r["path"] + " " + str(r.get("symbol") or "")
+        out.append("frontend" if FRONTEND.search(r["path"]) else "llm" if LLM.search(where) else "backend")
+    if any(v["kind"] in ("eval", "model") for v in checks_of(data, claim)):
+        out.append("llm")
+    return list(dict.fromkeys(out)) or ["other"]
+
+
+def surface(data: dict, claim: dict) -> str:
+    """The surface of a claim: the user's `surface`, else the first of frontend, llm, backend that it touches."""
+    if claim.get("surface") in SURFACES:
+        return claim["surface"]
+    found = surfaces(data, claim)
+    return next(x for x in ("frontend", "llm", "backend", "other") if x in found)
+
+
+def risky(claim: dict) -> bool:
+    return bool(claim["risk"]) if "risk" in claim else bool(risk_tags(claim))
+
+
+def eval_degraded(v: dict) -> bool:
+    """A degraded variant of the eval scored measurably worse: the eval can fail."""
+    d = (v.get("eval") or {}).get("degraded") or {}
+    if "score" not in d or "baseline" not in d:
+        return False
+    return d["score"] > d["baseline"] if d.get("better") == "lower" else d["score"] < d["baseline"]
+
+
+def meets(data: dict, part: dict, level: str) -> bool:
+    pc = {"stated": part["stated"], "invariants": part["invariants"]}
+    for v in part["checks"]:
+        if not is_tool(v):
+            continue
+        caught = check_result(data, v) == "caught" or v.get("state") == "proven"
+        if level == "video" and v["kind"] == "e2e" and caught and (v.get("artifact") or {}).get("video"):
+            return True
+        if level == "e2e" and v["kind"] == "e2e" and caught:
+            return True
+        if level in LEVEL_RUNG and check_strength(data, v, pc) in ("Formal", "Proven") and (tm.ladder(v) or 0) >= LEVEL_RUNG[level]:
+            if level != "formal" or check_strength(data, v, pc) == "Formal":
+                return True
+        if level == "degraded-eval" and v["kind"] == "eval" and "recorded" in v and eval_degraded(v):
+            return True
+        if level == "eval" and v["kind"] == "eval" and "recorded" in v:
+            return True
+        if level == "check" and check_strength(data, v, pc) in ("Formal", "Proven", "Backed"):
+            return True
+    return False
+
+
+def below_reason(data: dict, part: dict, level: str) -> str:
+    tools = [v for v in part["checks"] if is_tool(v)]
+    pc = {"stated": part["stated"], "invariants": part["invariants"]}
+    proven = [v for v in tools if check_strength(data, v, pc) in ("Formal", "Proven")]
+    if not tools:
+        return "no check"
+    if level in ("video", "e2e"):
+        if any(v["kind"] == "e2e" for v in proven):
+            return "an e2e run with no recorded video"
+        return "only unit or component tests" if proven else "no browser e2e"
+    if level in LEVEL_RUNG:
+        rung = max([tm.ladder(v) or 0 for v in proven] or [0])
+        formal = [v for v in tools if (tm.ladder(v) or 0) >= 4]
+        if formal and level == "formal":
+            if any(v.get("formal_record") and (v["formal_record"].get("formal") or {}).get("verdict") != "Formal" for v in formal):
+                return "the proof or model has no passing formal record yet"
+            if all(check_result(data, v) != "caught" for v in formal):
+                return "no planted bug broke the proof or model"
+            return "the proof or model has no passing conformance link"
+        return ("only example tests" if rung == 1 else f"only {LADDER_WORDS.get(rung, 'checks')}" if rung else
+                "no check caught a planted bug")
+    if level in ("degraded-eval", "eval"):
+        evals = [v for v in tools if v["kind"] == "eval"]
+        if evals:
+            return "the eval cannot show it can fail: no degraded variant ran"
+        if any(v["kind"] == "model" for v in tools):
+            return "only a model judgment, no eval"
+        return "only tests, no eval"
+    return "no check backs it"
+
+
+LADDER_WORDS = {1: "example tests", 2: "property tests", 3: "types or static rules", 4: "a model check", 5: "a proof"}
+
+
+def bar(data: dict, claim: dict, cfg: dict | None = None) -> dict:
+    """The evidence bar of a claim and whether each part meets it:
+    {surface, surfaces, mixed, risky, level, need, met, why, part, text}."""
+    surf = surface(data, claim)
+    found = surfaces(data, claim)
+    kind = "risky" if risky(claim) else "normal"
+    level = (((cfg or {}).get("bars") or {}).get(surf) or {}).get(kind) or BARS[surf][kind]
+    rows = parts_of(data, claim)
+    miss = next((p for p in rows if not meets(data, p, level)), None)
+    need = BAR_WORDS.get(level, level)
+    why = below_reason(data, miss, level) if miss else ""
+    text = f"Bar: {need} · met" if not miss else f"Bar: {need} · below the bar: {why}"
+    return {"surface": surf, "surfaces": found, "mixed": len([x for x in found if x != "other"]) > 1 and "surface" not in claim,
+            "risky": kind == "risky", "level": level, "need": need, "met": not miss, "why": why,
+            "part": miss["id"] if miss and len(rows) > 1 else None, "text": text}
 
 
 # ---- Plain names -------------------------------------------------------------------------------
@@ -341,6 +506,16 @@ def group_lint(data: dict) -> list[str]:
         out.append(f"merge: {names.listing([names.of(data, i) for i in ids], top=6)} have the same promise ('{label}'), the same kind of check "
                    f"({', '.join(kinds)}) and the same reviewer action. Make them one claim with {sum(len(checks_of(data, c)) for c in cs)} checks, "
                    f"unless a reviewer could accept one and reject another." + names.ref(ids, n=12))
+    for v in data["verifiers"]:
+        own = claims_of(data, v)
+        if v["kind"] in ("tla", "lean") and len(own) > 1 and not v.get("property"):
+            out.append(f"split: {names.of(data, v['id'])} backs {len(own)} claims. Make one check for each property (a TLA+ invariant or "
+                       f"property, or a Lean theorem group), each with its own controls, under the claim that states it." + names.ref([v["id"]]))
+    for c in data["claims"]:
+        found = [x for x in surfaces(data, c) if x != "other"]
+        if len(found) > 1 and "surface" not in c:
+            out.append(f"surface: '{names.of(data, c['id'])}' touches {' and '.join(found)} code. Ask the user once, and set its surface "
+                       f"(frontend, backend, llm or other); it decides the evidence bar." + names.ref([c["id"]]))
     lo, hi = BUDGET["promises"]
     if not lo <= len(data.get("promises", [])) <= hi:
         out.append(f"budget: {len(data.get('promises', []))} promises; write {lo} to {hi}.")
@@ -364,7 +539,15 @@ def group_lint(data: dict) -> list[str]:
 
 def main(argv: list[str]) -> int:
     """python3 scripts/onto.py upgrade MAP   write MAP in shape 2
-       python3 scripts/onto.py lint MAP      the merge suggestions, the budget and the plain names"""
+       python3 scripts/onto.py lint MAP      the merge suggestions, the budget, the surfaces and the plain names
+       python3 scripts/onto.py bars MAP      the surface, the risk and the evidence bar of each claim"""
+    if len(argv) == 2 and argv[0] == "bars":
+        data = tm.load(argv[1])
+        import names
+        for c in data["claims"]:
+            b = bar(data, c)
+            print(f"{c['id']}\t{b['surface']}{' (mixed)' if b['mixed'] else ''}\t{'risky' if b['risky'] else 'normal'}\t{b['text']}\t{names.of(data, c['id'])}")
+        return 0
     if len(argv) != 2 or argv[0] not in ("upgrade", "lint"):
         tm.fail(main.__doc__)
     data = tm.load(argv[1])
