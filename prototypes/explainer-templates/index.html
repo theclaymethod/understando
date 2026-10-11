@@ -1,0 +1,579 @@
+<!doctype html>
+<!--
+  PROTOTYPE, throw me away. Not production code: no tests, no error handling beyond "it runs".
+  Question: "What should the understando PR explainer look like?"
+  Plan: five structurally different explainer templates on one route, switchable by ?variant=A..E
+  and the floating bottom bar (arrow keys cycle). Each variant reads the real run data
+  (trust-map.json, refs.resolved.json, explain.json) from /data/ at run time; serve.py maps /data/
+  to a run folder. No run data and no code excerpt is stored with this file.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PROTOTYPE · explainer templates</title>
+<style>
+:root{--fg:#17191c;--muted:#5d6670;--line:#e2e5e9;--soft:#f5f6f8;--bg:#fff;
+  --Formal:#155c3c;--Proven:#2b8a57;--Backed:#2f65a7;--Asserted:#b26b00;--Gap:#c4302b;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--fg);background:var(--bg);padding-bottom:130px}
+a{color:#1d5fb4}
+h1,h2,h3,h4{line-height:1.25;margin:0 0 .4em}
+p{margin:.3em 0 .7em}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.ribbon{background:repeating-linear-gradient(45deg,#ffe066 0 12px,#ffd43b 12px 24px);color:#000;font:700 11px/1 var(--mono);letter-spacing:.08em;padding:7px 14px;text-transform:uppercase}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 24px}
+.prhead{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;margin-bottom:14px}
+.prhead h1{font-size:22px;margin:0}
+.prhead .muted{font-size:13px}
+.pill{display:inline-block;font-size:12px;font-weight:650;padding:0 8px;border-radius:999px;color:#fff;background:var(--c);line-height:20px;white-space:nowrap}
+.bar{display:inline-block;font-size:12px;border:1px solid;border-radius:5px;padding:0 6px;line-height:19px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+.bar.met{color:#155c3c;border-color:#9fd3b5;background:#eefaf3}
+.bar.below{color:#9b2c2c;border-color:#f1b0ad;background:#fdf1f0}
+.res{font-size:13px}
+.res-caught{color:#155c3c}.res-missed,.res-cannot-fail,.res-none{color:#c4302b;font-weight:650}
+.res-recorded,.res-checked{color:#2f65a7}
+.kind{font:11px var(--mono);background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--muted)}
+figure.code{margin:10px 0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fbfbfc}
+figure.code figcaption{display:flex;justify-content:space-between;gap:8px;font:12px var(--mono);padding:6px 10px;border-bottom:1px solid var(--line);background:var(--soft);flex-wrap:wrap}
+figure.code pre{margin:0;padding:8px 10px;font:12px/1.55 var(--mono);overflow:auto;max-height:340px}
+.ln{display:inline-block;width:3.2em;color:#a0a7b0;user-select:none}
+pre.patch{font:12px/1.5 var(--mono);background:#fbfbfc;border:1px solid var(--line);border-radius:8px;padding:8px 10px;overflow:auto;margin:8px 0}
+pre.patch .add{color:#155c3c;background:#eefaf3;display:inline-block;width:100%}
+pre.patch .del{color:#9b2c2c;background:#fdf1f0;display:inline-block;width:100%}
+.weak{border:1px solid #f1b0ad;background:#fff7f6;border-radius:10px;padding:10px 12px;margin:10px 0}
+.weak h4{color:#9b2c2c;font-size:14px;margin-bottom:4px}
+.weak dl{margin:0;display:grid;grid-template-columns:max-content 1fr;gap:2px 12px;font-size:14px}
+.weak dt{color:var(--muted)}.weak dd{margin:0}
+.fix{background:#fff8e6;border:1px solid #f3dca1;border-radius:8px;padding:8px 10px;font-size:14px;margin:8px 0}
+.action{font-weight:600}
+ul.checks{list-style:none;padding:0;margin:6px 0}
+ul.checks li{padding:3px 0;border-top:1px dashed var(--line);font-size:14px}
+.cbody .meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0 6px;font-size:13px}
+details.mini>summary{cursor:pointer;color:var(--muted);font-size:13px}
+.btn{font:inherit;font-size:14px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer}
+.btn.primary{background:#17191c;color:#fff;border-color:#17191c}
+.btn:disabled{opacity:.4;cursor:default}
+.chip{font:inherit;font-size:13px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:2px 10px;cursor:pointer;margin:2px}
+.chip.on{background:#17191c;color:#fff;border-color:#17191c}
+
+/* ---------- switcher (not part of any design) ---------- */
+#switcher{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:1000;background:#0d0d0f;color:#fff;border-radius:16px;box-shadow:0 10px 34px rgba(0,0,0,.4);display:flex;align-items:center;gap:6px;padding:8px;width:min(620px,calc(100vw - 16px));font:13px/1.35 system-ui,sans-serif;outline:2px solid #ffd43b}
+#switcher button{background:#2a2b30;color:#fff;border:0;border-radius:10px;width:38px;height:38px;font-size:18px;cursor:pointer;flex:none}
+#switcher .lbl{flex:1;min-width:0;text-align:center}
+#switcher .tag{font:700 10px var(--mono);letter-spacing:.1em;color:#0d0d0f;background:#ffd43b;border-radius:4px;padding:1px 5px;margin-right:6px}
+#switcher .name{font-weight:700}
+#switcher .note{color:#c9ccd2;font-size:12px}
+
+/* ---------- A: merge checklist ---------- */
+.A-verdict{display:grid;grid-template-columns:auto 1fr;gap:4px 22px;align-items:center;border:2px solid var(--Gap);border-radius:14px;padding:16px 20px;background:#fff7f6;margin-bottom:18px}
+.A-verdict .word{font-size:34px;font-weight:800;color:var(--Gap);grid-row:span 2}
+.A-prog{height:8px;background:#f1d5d3;border-radius:9px;overflow:hidden}.A-prog i{display:block;height:100%;background:var(--Proven);transition:width .2s}
+.A-grid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:22px}
+.A-group h2{font-size:15px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:16px 0 6px}
+.task{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:6px 0;background:#fff}
+.task input{margin-top:6px;width:18px;height:18px;flex:none}
+.task details{flex:1;min-width:0}
+.task summary{cursor:pointer;list-style:none}
+.task summary::-webkit-details-marker{display:none}
+.task summary .t{font-weight:650}
+.task.done summary .t{text-decoration:line-through;color:var(--muted)}
+.task .ev{border-top:1px solid var(--line);margin-top:8px;padding-top:8px}
+.A-side section{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px;background:var(--soft)}
+.A-side h3{font-size:15px}
+.crow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:4px 0;font-size:14px}
+
+/* ---------- B: guided lesson ---------- */
+.B-top{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.B-dot{border:1px solid var(--line);background:#fff;border-radius:999px;padding:2px 10px;font-size:13px;cursor:pointer}
+.B-dot.on{background:#17191c;color:#fff}.B-dot.seen{border-color:#9fd3b5}
+.B-screen{max-width:760px;margin:0 auto;min-height:62vh}
+.B-screen h2{font-size:28px;margin:10px 0 6px}
+.B-kicker{font:600 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.B-nav{display:flex;justify-content:space-between;max-width:760px;margin:20px auto 0;gap:10px}
+.quiz{border:2px solid #17191c;border-radius:12px;padding:12px 14px;margin:18px 0;background:#fff}
+.quiz h4{font-size:13px;text-transform:uppercase;letter-spacing:.06em}
+.quiz .opt{display:block;width:100%;text-align:left;margin:6px 0;font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer}
+.quiz .opt.right{border-color:var(--Proven);background:#eefaf3}.quiz .opt.wrong{border-color:var(--Gap);background:#fdf1f0}
+.quiz .why{font-size:14px;margin-top:6px}
+.flow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0}
+.flow .col{display:flex;flex-direction:column;gap:6px}
+.box{border:1.5px solid #17191c;border-radius:8px;padding:6px 10px;background:#fff;font-size:14px}
+.box.big{border-width:2px;padding:10px 14px;font-weight:650}
+.box.oval{border-radius:999px}
+.arrow{font-size:22px;color:var(--muted)}
+.B-steps{display:flex;flex-direction:column;gap:6px;margin:12px 0}
+.B-step{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:10px;border:1px solid var(--line);opacity:.45}
+.B-step.on{opacity:1;border-color:#17191c;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+.B-step.past{opacity:.8}
+.B-step .n{font:700 12px var(--mono);background:#17191c;color:#fff;border-radius:999px;width:22px;height:22px;display:grid;place-items:center;flex:none}
+.B-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+.card{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff}
+.model{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px;margin:8px 0 14px}
+.model span.m{border:1px dashed #8a929c;border-radius:6px;padding:2px 8px;background:var(--soft)}
+dl.terms{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;font-size:14px;margin:8px 0}
+dl.terms dt{font-weight:700}dl.terms dd{margin:0}
+
+/* ---------- C: atlas ---------- */
+.C-banner{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;border-left:5px solid var(--Gap);background:#fff7f6;padding:8px 12px;border-radius:6px;margin-bottom:10px;font-size:14px}
+.C-banner b.word{color:var(--Gap);font-size:16px}
+.C-grid{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:18px;align-items:start}
+.C-map svg{width:100%;height:auto;display:block}
+.C-map g[data-node]{cursor:pointer}
+.C-map g[data-node]:hover rect.n{stroke-width:3}
+.C-legend{display:flex;flex-wrap:wrap;gap:8px;font-size:12px;margin-top:6px;align-items:center}
+.C-panel{border:1px solid var(--line);border-radius:12px;padding:14px;position:sticky;top:10px;max-height:calc(100vh - 120px);overflow:auto;background:#fff}
+.C-panel h2{font-size:18px}
+.C-panel .pgroup{border-top:1px solid var(--line);padding-top:8px;margin-top:8px}
+.C-list{display:none}
+.C-list button{display:flex;width:100%;gap:10px;align-items:center;text-align:left;font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;margin:4px 0;cursor:pointer}
+.C-list button.on{border-color:#17191c;box-shadow:0 0 0 1px #17191c}
+.C-list .dot{width:12px;height:12px;border-radius:50%;flex:none}
+.C-files li{font:12px var(--mono)}
+
+/* ---------- D: ledger ---------- */
+.D-strip{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;font-size:13px;border-bottom:2px solid #17191c;padding-bottom:8px;margin-bottom:8px}
+.D-strip .word{font-weight:800;color:var(--Gap);font-size:16px}
+.D-filters{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;margin:6px 0 10px}
+.D-filters .grp{display:flex;align-items:center;flex-wrap:wrap}
+.D-filters .grp>span{color:var(--muted);margin-right:4px;text-transform:uppercase;letter-spacing:.05em;font-size:11px}
+.D-filters .chip{font-size:12px;padding:0 8px}
+table.ledger{width:100%;border-collapse:collapse;font-size:13px}
+.ledger th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:1px solid var(--line);padding:4px 6px;cursor:pointer;white-space:nowrap;position:sticky;top:0;background:#fff}
+.ledger td{border-bottom:1px solid var(--line);padding:4px 6px;vertical-align:top}
+.ledger tr.row{cursor:pointer}.ledger tr.row:hover{background:var(--soft)}
+.ledger tr.open{background:#f1f4f8}
+.ledger td.detail{background:#fafbfc;padding:10px 14px}
+.ledger .id{font:11px var(--mono);color:var(--muted)}
+.mini-counts span{font:12px var(--mono);margin-right:6px}
+.blk{color:var(--Gap);font-weight:800}
+.D-tabs{display:flex;gap:6px;margin-bottom:6px}
+
+/* ---------- E: diff spine ---------- */
+.E-top{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;font-size:14px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:12px;background:var(--soft)}
+.E-top .word{color:var(--Gap);font-weight:800}
+.E-grid{display:grid;grid-template-columns:420px minmax(0,1fr);gap:18px;align-items:start}
+.E-files{border:1px solid var(--line);border-radius:10px;max-height:calc(100vh - 190px);overflow:auto;position:sticky;top:10px}
+.E-grp>.gh{display:flex;justify-content:space-between;width:100%;font:600 12px system-ui;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:var(--soft);border:0;border-bottom:1px solid var(--line);padding:6px 10px;cursor:pointer;position:sticky;top:0}
+.E-f{display:grid;grid-template-columns:12px minmax(0,1fr) auto;gap:8px;align-items:center;width:100%;text-align:left;font:12px var(--mono);border:0;border-bottom:1px solid var(--line);background:#fff;padding:5px 10px;cursor:pointer}
+.E-f:hover{background:#f7f8fa}.E-f.on{background:#eaf1fb}
+.E-f .p{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl;text-align:left;unicode-bidi:plaintext}
+.E-f .st{font:11px system-ui;white-space:nowrap}
+.E-f .dot{width:10px;height:10px;border-radius:50%}
+.E-f.del .p{text-decoration:line-through;color:var(--muted)}
+.churn{display:inline-flex;gap:4px;font:11px var(--mono)}.churn .a{color:#155c3c}.churn .r{color:#9b2c2c}
+.E-detail h2{font:600 17px var(--mono);word-break:break-all}
+.E-status{display:inline-block;font-size:13px;font-weight:650;border-radius:6px;padding:2px 8px;margin:4px 0 8px}
+.E-claim{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0}
+
+@media (max-width:900px){
+  .wrap{padding:14px}
+  .A-grid,.C-grid,.E-grid,.B-two{grid-template-columns:minmax(0,1fr)}
+  .A-verdict{grid-template-columns:1fr}.A-verdict .word{grid-row:auto;font-size:28px}
+  .C-panel,.E-files{position:static;max-height:none}
+  .E-files{max-height:46vh}
+}
+@media (max-width:700px){
+  .C-map{display:none}.C-list{display:block}
+  .prhead h1{font-size:18px}
+  .B-screen h2{font-size:22px}
+  table.ledger thead{display:none}
+  table.ledger,table.ledger tbody{display:block}
+  table.ledger tr.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;border-bottom:1px solid var(--line);padding:6px 2px}
+  table.ledger tr.row td{border:0;padding:0}
+  table.ledger td.c-name{grid-column:1/-1}
+  table.ledger td.hide-sm{display:none}
+  table.ledger tr.drow{display:block}table.ledger tr.drow td{display:block}
+  #switcher .note{font-size:11px}
+}
+</style>
+</head>
+<body>
+<div id="app"><div class="ribbon">PROTOTYPE · loading run data…</div></div>
+<div id="switcher" role="navigation" aria-label="PROTOTYPE variant switcher"></div>
+<script>
+// PROTOTYPE. One shared data model, five layouts that do not share structure.
+const VARIANTS = [
+  { key: 'A', name: 'Merge checklist', note: 'Optimises for: a reviewer reaching the merge decision. Verdict first, each blocker a task with its evidence inline.' },
+  { key: 'B', name: 'Guided lesson', note: 'Optimises for: a newcomer building a mental model. One concept per screen, with check-your-understanding moments.' },
+  { key: 'C', name: 'Atlas', note: 'Optimises for: seeing where in the system trust is thin. The architecture map is the navigation.' },
+  { key: 'D', name: 'Evidence ledger', note: 'Optimises for: an experienced reviewer scanning all claims fast, with filters by surface, bar and strength.' },
+  { key: 'E', name: 'Diff spine', note: 'Optimises for: reading the PR as a diff. Each changed file says what protects it, or that nothing does.' },
+];
+const ORDER = ['Gap', 'Asserted', 'Backed', 'Proven', 'Formal'];
+const RES = { caught: 'caught its planted bug', missed: 'missed its planted bug', 'cannot-fail': 'cannot fail: passed on every planted bug', recorded: 'record of a past run, not run again', checked: 'mechanical check, no planted bug', none: 'no check exists' };
+const app = document.getElementById('app');
+const S = { v: 'A', A: { done: {}, open: null }, B: { screen: 0, step: 0, ans: {}, seen: { 0: 1 } }, C: { node: null }, D: { f: {}, sort: 'strength', dir: 1, open: undefined, tab: 'claims' }, E: { file: null, show: {} } };
+let M;
+
+// ---------- data ----------
+async function load() {
+  const names = ['trust-map', 'refs.resolved', 'explain'];
+  const [t, r, e] = await Promise.all(names.map(n => fetch('data/' + n + '.json').then(x => { if (!x.ok) throw new Error(n + '.json: HTTP ' + x.status); return x.json(); })));
+  const d = r.derived;
+  setPrefix(Object.keys(r.diff.files));
+  const C = {}; t.claims.forEach(c => { C[c.id] = Object.assign({}, c, { checkIds: c.checks }, d.claims[c.id]); });
+  const P = d.promises.map(p => Object.assign({}, t.promises.find(x => x.id === p.id), p));
+  const claimP = {}; P.forEach(p => p.claims.forEach(c => claimP[c] = p.id));
+  const V = {}; t.verifiers.forEach(v => V[v.id] = v);
+  const key = o => [o.path, o.symbol || '', o.match || ''].join('|');
+  const refIdx = {}, refsByPath = {}; r.refs.forEach(x => { refIdx[key(x.ref)] = x; (refsByPath[x.path] ||= []).push(x); });
+  const risk = {}; (e.risks || []).forEach(k => k.claims.forEach(c => risk[c] = k));
+  const claimsByPath = {}; t.claims.forEach(c => (c.code || []).forEach(x => { const a = claimsByPath[x.path] ||= []; if (!a.includes(c.id)) a.push(c.id); }));
+  const unc = {}; [...d.unclaimed.files, ...(d.unclaimed.core || [])].forEach(f => unc[f.path] = f);
+  const blockers = d.merge.items.map((it, i) => { const m = it.href.match(/#(promise|claim)-(\w+)/); return Object.assign({}, it, { i, kind: m[1], id: m[2].toUpperCase() }); });
+  M = { t, r, e, d, C, P, claimP, V, refIdx, key, refsByPath, risk, claimsByPath, unc, blockers };
+}
+// Strip the project folder that most changed files share, e.g. 'projects/<name>/'.
+let PREFIX = '';
+const short = p => PREFIX && String(p).startsWith(PREFIX) ? String(p).slice(PREFIX.length) : String(p);
+function setPrefix(paths) { const n = {}; paths.forEach(p => { const k = p.split('/').slice(0, 2).join('/') + '/'; if (p.split('/').length > 2) n[k] = (n[k] || 0) + 1; }); const [k, c] = Object.entries(n).sort((a, b) => b[1] - a[1])[0] || []; PREFIX = c >= paths.length * 0.8 ? k : ''; }
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const tick = s => esc(String(s ?? '').replace(/`/g, ''));
+const rank = s => ORDER.indexOf(s);
+const P_ = id => M.P.find(p => p.id === id);
+const refsFor = c => (c.code || []).map(x => M.refIdx[M.key(x)]).filter(Boolean);
+const weakFor = cid => M.d.verify.weak.filter(w => (M.V[w.check]?.claims || []).includes(cid));
+const evalsFor = c => M.d.verify.evals.filter(x => x.flagged && x.claim === c.name);
+const hasWeak = cid => weakFor(cid).length > 0 || evalsFor(M.C[cid]).length > 0;
+const blockerFor = cid => M.blockers.find(b => (b.kind === 'claim' && b.id === cid) || (b.kind === 'promise' && P_(b.id).claims.includes(cid) && P_(b.id).claims[0] === cid));
+
+// ---------- tiny shared pieces (no shared layout) ----------
+const pill = s => `<span class="pill" style="--c:var(--${s})">${esc(s)}</span>`;
+const barChip = b => !b ? '' : `<span class="bar ${b.met ? 'met' : 'below'}" title="${esc(b.text)}">${b.met ? '✓' : '✗'} bar: ${esc(b.need)} · ${b.met ? 'met' : 'below: ' + esc(b.why)}</span>`;
+const resTxt = r => `<span class="res res-${r}">${esc(RES[r] || r)}</span>`;
+const ribbon = () => `<div class="ribbon">PROTOTYPE · explainer template ${S.v}: ${esc(VARIANTS.find(x => x.key === S.v).name)} · throwaway, real #${M.t.pr} data read at run time</div>`;
+const prHead = () => `<div class="prhead"><h1>PR #${M.t.pr}: ${esc(M.t.title)}</h1><span class="muted">${esc(M.t.repo)} · head ${M.t.head.slice(0, 8)}</span></div>`;
+function code(ref, max = 14) {
+  if (!ref) return '';
+  const lines = ref.excerpt.split('\n'), show = lines.slice(0, max);
+  return `<figure class="code"><figcaption><span>${esc(short(ref.path))}:${ref.start}${ref.end !== ref.start ? '-' + ref.end : ''}</span><a href="${esc(ref.permalink)}" target="_blank" rel="noopener">at head ↗</a></figcaption><pre>${show.map((l, i) => `<span class="ln">${ref.start + i}</span>${esc(l)}`).join('\n')}${lines.length > max ? `\n<span class="ln">…</span><span class="muted">${lines.length - max} more lines</span>` : ''}</pre></figure>`;
+}
+function patch(kid) {
+  const files = M.r.controls[kid] || [];
+  return files.slice(0, 1).map(f => f.patch ? `<pre class="patch">${f.patch.split('\n').filter(l => !l.startsWith('---') && !l.startsWith('+++')).map(l => l.startsWith('+') ? `<span class="add">${esc(l)}</span>` : l.startsWith('-') ? `<span class="del">${esc(l)}</span>` : esc(l)).join('\n')}</pre><p class="muted small">${esc(short(f.path))}${files.length > 1 ? ` and ${files.length - 1} more files` : ''}</p>` : `<p class="muted">${esc(f.note || '')}</p>`).join('');
+}
+const checkLi = ch => `<li><b>${esc(ch.name)}</b> <span class="kind">${esc(ch.kind)}</span> ${resTxt(ch.result)}</li>`;
+const weakCard = w => `<div class="weak"><h4>Weak check: ${esc(w.name)}</h4><dl><dt>What we broke</dt><dd>${esc(w.broke)}</dd><dt>What happened</dt><dd>${esc(w.happened)}</dd><dt>Why it matters</dt><dd>${esc(w.why)}</dd><dt>Reviewer action</dt><dd><b>${esc(w.action)}</b></dd></dl></div>`;
+const evalCard = x => `<div class="weak"><h4>Weak eval: ${esc(x.name)}</h4><dl><dt>Real result</dt><dd>${esc(x.real)}</dd><dt>Degraded run</dt><dd>${esc(x.text)}</dd><dt>Reviewer action</dt><dd><b>${esc(x.action)}</b></dd></dl></div>`;
+function claimBody(c, o = {}) {
+  const p = c.plain || {}, rk = M.risk[c.id], ref = refsFor(c)[0];
+  return `<div class="cbody">
+    <p>${esc(p.what || c.text)}</p>
+    <div class="meta">${pill(c.strength)} ${barChip(c.bar)} <span class="muted">${esc(c.summary)}</span></div>
+    ${p.proof ? `<p class="small"><b>How it is checked:</b> ${esc(p.proof)}</p>` : ''}
+    ${p.warning ? `<p class="small" style="color:#9b2c2c"><b>Warning:</b> ${esc(p.warning)}</p>` : ''}
+    ${(c.parts || []).length > 1 ? `<details class="mini"><summary>${c.parts.length} statements this claim joins</summary><ul class="small">${c.parts.map(x => `<li>${pill(x.strength)} ${esc(x.text)} <span class="muted">· ${esc(x.check || 'no check')}</span></li>`).join('')}</ul></details>` : ''}
+    <ul class="checks">${c.checks.map(checkLi).join('')}</ul>
+    ${weakFor(c.id).map(weakCard).join('')}${evalsFor(c).map(evalCard).join('')}
+    ${rk ? `<div class="fix"><b>Why it is weak:</b> ${tick(rk.why)}<br><b>Cheapest fix:</b> ${tick(rk.fix)}</div>` : ''}
+    ${c.weakest && !/^No action/.test(c.weakest.action) ? `<p class="action small">→ ${esc(c.weakest.action)}</p>` : ''}
+    ${o.code === false ? '' : code(ref, o.max || 14)}
+  </div>`;
+}
+
+// =====================================================================
+// A. MERGE CHECKLIST: the decision first, each blocker a task.
+// =====================================================================
+function VA() {
+  const m = M.d.merge, B = M.blockers;
+  if (S.A.open == null) { const w = B.find(b => b.kind === 'promise' && P_(b.id).claims.some(hasWeak)); S.A.open = w ? w.i : 0; }
+  const done = B.filter(b => S.A.done[b.i]).length;
+  const task = b => {
+    let ev;
+    if (b.kind === 'promise') {
+      const p = P_(b.id), weakest = M.C[p.claims[0]];
+      const weakOnes = p.claims.filter(hasWeak).filter(id => id !== weakest.id);
+      ev = `<p>${esc(p.sentence)}</p><p class="action">→ ${esc(p.reviewer_action)}</p>
+        <div class="small muted">Its ${p.count} claims: ${esc(p.tally)}. ${p.bars_met} of ${p.count} meet their bar.</div>
+        ${p.claims.map(id => { const c = M.C[id]; return `<div class="crow">${pill(c.strength)} <b>${esc(c.name)}</b> ${barChip(c.bar)}</div>`; }).join('')}
+        <h4 style="margin-top:10px">Weakest claim: ${esc(weakest.name)}</h4>${claimBody(weakest)}
+        ${weakOnes.map(id => `<h4>${esc(M.C[id].name)}</h4>${claimBody(M.C[id], { max: 10 })}`).join('')}`;
+    } else ev = claimBody(M.C[b.id]);
+    const strength = b.kind === 'promise' ? P_(b.id).strength : M.C[b.id].strength;
+    return `<div class="task ${S.A.done[b.i] ? 'done' : ''}" data-task="${b.i}"><input type="checkbox" data-done="${b.i}" ${S.A.done[b.i] ? 'checked' : ''} aria-label="Mark handled">
+      <details ${S.A.open === b.i ? 'open' : ''}><summary><span class="t">${esc(b.label)}</span> ${pill(strength)}<br><span class="small">${esc(b.text)}</span></summary><div class="ev">${ev}</div></details></div>`;
+  };
+  const met = Object.values(M.C).filter(c => c.bar && c.bar.met);
+  return `<div class="wrap">${prHead()}
+    <section class="A-verdict" id="merge"><div class="word">${m.form === 'not-ready' ? 'Not ready' : esc(m.form)}</div>
+      <div><b>${m.blockers} blockers.</b> Clear each one, or accept it and tick it off. <span class="muted small" id="A-count">${done} of ${B.length} handled (in memory only)</span></div>
+      <div class="A-prog"><i id="A-bar" style="width:${done / B.length * 100}%"></i></div></section>
+    <div class="A-grid"><div>
+      <div class="A-group"><h2>Promises you must act on</h2>${B.filter(b => b.kind === 'promise').map(task).join('')}</div>
+      <div class="A-group"><h2>Claims below their evidence bar</h2>${B.filter(b => b.kind === 'claim').map(task).join('')}</div>
+    </div><aside class="A-side">
+      <section><h3>Can these checks catch a bug?</h3><p class="small">${esc(M.d.verify.result)} <span class="muted">${esc(M.d.verify.other)}</span></p>
+        ${M.d.verify.weak.map(w => `<p class="small"><b style="color:#9b2c2c">${esc(w.name)}</b>: ${esc(w.happened)} → ${esc(w.action)}</p>`).join('')}</section>
+      <section><h3>Evidence bars</h3><p class="small">${esc(M.d.bars.summary)}</p><ul class="small">${M.d.bars.story.slice(0, 3).map(s => `<li>${esc(s)}</li>`).join('')}</ul>
+        <details class="mini"><summary>Why you can trust the rest: ${met.length} claims meet their bar</summary>${met.map(c => `<div class="crow">${pill(c.strength)} ${esc(c.name)}</div>`).join('')}</details></section>
+      <section><h3>Bugs found</h3>${M.d.bugs.map(b => `<details class="mini"><summary>${esc(b.heading.replace(/\s*\[[^\]]*\]/, ''))}</summary><ul class="small">${b.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul></details>`).join('')}</section>
+      <section><h3>Changed code with no claim</h3><p class="small">${esc(M.d.unclaimed.summary.lead)} <span class="muted">${esc(M.d.unclaimed.summary.quiet)}</span></p></section>
+    </aside></div></div>`;
+}
+
+// =====================================================================
+// B. GUIDED LESSON: one concept per screen, with checks.
+// =====================================================================
+function quiz(key, q, choices, answer, why) {
+  const a = S.B.ans[key];
+  return `<div class="quiz"><h4>Check your understanding</h4><p>${esc(q)}</p>${choices.map((c, i) => `<button class="opt ${a == null ? '' : i === answer ? 'right' : i === a ? 'wrong' : ''}" data-act="ans" data-k="${key}" data-i="${i}">${esc(c)}</button>`).join('')}
+    ${a == null ? '' : `<div class="why"><b>${a === answer ? 'Right.' : 'Not quite.'}</b> ${esc(why)}</div>`}</div>`;
+}
+function lessonScreens() {
+  const e = M.e, t = M.t;
+  const story = e.diagrams.story.eli5, wt = e.walkthroughs.loop;
+  const gp = M.P.find(p => p.claims.some(id => weakFor(id).length)) || M.P[0];
+  const weakC = M.C[gp.claims.find(id => weakFor(id).length)], w = weakFor(weakC.id)[0];
+  const all = Object.values(M.C);
+  const metC = all.find(c => c.bar.met && c.bar.need === 'proof' && refsFor(c).length) || all.find(c => c.bar.met);
+  const belowC = all.find(c => !c.bar.met && c.bar.need === metC.bar.need && c.id !== metC.id) || all.find(c => !c.bar.met);
+  const llmC = all.find(c => c.bar.surface !== 'backend' && c.bar.surface !== 'other') || all.find(c => !c.bar.met && c !== belowC);
+  const ex = t.exercises.find(x => x.kind === 'trace');
+  const said = [e.diagrams.story.description, ...M.P.map(p => p.sentence), ...wt.steps.map(x => x.caption)].join(' ');
+  const terms = (t.glossary.filter(g => new RegExp('\\b' + g.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(said)).slice(0, 8));
+  const into = id => story.edges.filter(x => x.to === id).length;
+  const pipes = story.nodes.filter(n => !into(n.id));
+  const hub = story.nodes.slice().sort((a, b) => into(b.id) - into(a.id))[0];
+  const out = story.nodes.find(n => story.edges.some(x => x.from === hub.id && x.to === n.id)) || story.nodes[story.nodes.length - 1];
+  const nodeLbl = id => (wt.nodes.find(n => n.id === id) || {}).label;
+  return [
+    { title: 'The problem', h: e.diagrams.story.title, body: () => `<p>${esc(e.diagrams.story.description)}</p>
+      <div class="flow"><div class="col">${pipes.map(n => `<div class="box">${esc(n.label)}</div>`).join('')}</div><span class="arrow">→</span>
+      <div class="box big">${esc(hub.label)}<div class="small muted" style="font-weight:400">${esc(hub.detail)}</div></div><span class="arrow">→</span><div class="box oval">${esc(out.label)}</div></div>
+      <h3>Words you need on this page</h3><dl class="terms">${terms.map(g => `<dt>${esc(g.term)}</dt><dd>${esc(g.meaning)}</dd>`).join('')}</dl>
+      ${quiz('q0', `After the PR, what do the ${pipes.length} parts on the left become?`, [out.label, hub.label, pipes[0].label], 1, e.diagrams.story.description)}` },
+    { title: 'One finding', h: wt.title, body: () => { const s = S.B.step; return `<p>${esc(wt.description)}</p>
+      <div class="B-steps">${wt.steps.map((st, i) => { const ed = wt.edges.find(x => x.id === st.edgeId); return `<div class="B-step ${i === s ? 'on' : i < s ? 'past' : ''}"><span class="n">${i + 1}</span><div><div class="small muted">${esc(nodeLbl(ed.from))} → <b>${esc(nodeLbl(ed.to))}</b></div>${esc(st.caption)}</div></div>`; }).join('')}</div>
+      <div style="display:flex;gap:8px"><button class="btn" data-act="step" data-d="-1" ${s === 0 ? 'disabled' : ''}>Previous step</button><button class="btn primary" data-act="step" data-d="1" ${s === wt.steps.length - 1 ? 'disabled' : ''}>Next step</button></div>`; } },
+    { title: 'A promise', h: `A promise: "${gp.label}"`, body: () => `<div class="model"><span class="m">promise</span>→ is held up by <span class="m">claims</span>→ each backed by <span class="m">checks</span>→ each tested by <span class="m">a planted bug</span></div>
+      <p style="font-size:18px">${esc(gp.sentence)}</p><p class="muted small">${gp.count} claims: ${esc(gp.tally)}. A promise is only as strong as its weakest claim.</p>
+      ${gp.claims.map(id => { const c = M.C[id]; return `<div class="card" style="margin:8px 0"><div class="crow">${pill(c.strength)} <b>${esc(c.name)}</b></div><div class="small">${esc((c.plain || {}).what || c.text)}</div></div>`; }).join('')}
+      ${quiz('q2', `How strong is the promise "${gp.label}"?`, ORDER.slice().reverse(), ORDER.slice().reverse().indexOf(gp.strength), `Its weakest claim, ${M.C[gp.claims[0]].name}, is ${M.C[gp.claims[0]].strength}, so the promise is ${gp.strength}.`)}` },
+    { title: 'A weak check', h: 'Can its checks catch a bug?', body: () => `<p>To test a check, we plant a bug in a scratch copy of the code and run the check. A good check fails. ${esc(M.d.verify.result)}</p>
+      <p>Here is one claim of "${esc(gp.label)}": <b>${esc(weakC.name)}</b>. One of its checks did not see the bug.</p>
+      <h4>The planted bug</h4>${patch(w.control)}${weakCard(w)}
+      ${quiz('q3', `After the planted bug, ${w.name} still passed. Does that check protect ${weakC.name}?`, ['Yes, it passed', 'No, it cannot see that bug'], 1, w.why)}` },
+    { title: 'Evidence bars', h: 'Each claim has an evidence bar', body: () => `<p>A bar is the kind of evidence a claim needs for its surface. Backend code needs a proof or a property test. LLM work needs an eval with a degraded control. ${esc(M.d.bars.summary)}</p>
+      <div class="B-two"><div class="card"><div class="B-kicker" style="color:var(--Proven)">Meets its bar</div><h3>${esc(metC.name)}</h3>${claimBody(metC, { max: 12 })}</div>
+      <div class="card"><div class="B-kicker" style="color:var(--Gap)">Below its bar</div><h3>${esc(belowC.name)}</h3>${claimBody(belowC, { code: false })}</div></div>
+      ${quiz('q4', `"${llmC.name}" needs: ${llmC.bar.need}. Does it meet its bar?`, ['Yes', 'No'], llmC.bar.met ? 0 : 1, llmC.bar.text)}` },
+    { title: 'Trace it', h: ex.title, body: () => `<p>${esc(ex.scenario)}</p>${ex.steps.map((st, i) => quiz('x' + i, st.prompt, st.choices, st.answer, st.why)).join('')}` },
+    { title: 'Can it merge?', h: 'So, can you merge it?', body: () => `<div class="A-verdict" style="grid-template-columns:1fr"><div class="word" style="grid-row:auto">Not ready</div><div>${M.d.merge.blockers} blockers. Now you know what each word means.</div></div>
+      <ol>${M.blockers.map(b => `<li><b>${esc(b.label)}</b>: ${esc(b.text)}</li>`).join('')}</ol>
+      <ul class="muted small">${M.d.bars.story.map(s => `<li>${esc(s)}</li>`).join('')}</ul>` },
+  ];
+}
+function VB() {
+  const sc = lessonScreens(), i = S.B.screen, s = sc[i];
+  const answered = Object.keys(S.B.ans).length;
+  return `<div class="wrap">${prHead()}
+    <div class="B-top">${sc.map((x, j) => `<button class="B-dot ${j === i ? 'on' : S.B.seen[j] ? 'seen' : ''}" data-act="screen" data-i="${j}">${j + 1}. ${esc(x.title)}</button>`).join('')}
+      <span class="small muted" style="margin-left:auto">Verdict: <a href="#" data-act="screen" data-i="${sc.length - 1}" style="color:var(--Gap);font-weight:700">Not ready</a> · ${answered} checks answered</span></div>
+    <div class="B-screen"><div class="B-kicker">Chapter ${i + 1} of ${sc.length}</div><h2>${esc(s.h)}</h2>${s.body()}</div>
+    <div class="B-nav"><button class="btn" data-act="screen" data-i="${i - 1}" ${i === 0 ? 'disabled' : ''}>← ${i ? esc(sc[i - 1].title) : 'Back'}</button>
+      <button class="btn primary" data-act="screen" data-i="${i + 1}" ${i === sc.length - 1 ? 'disabled' : ''}>${i < sc.length - 1 ? esc(sc[i + 1].title) : 'Done'} →</button></div></div>`;
+}
+
+// =====================================================================
+// C. ATLAS: the architecture is the navigation.
+// =====================================================================
+// PROTOTYPE: the hand-drawn map of one PR is per-PR data (like explain.json), so it is not in
+// this file. serve.py serves /data/atlas.layout.json from the run folder or next to serve.py.
+// Without it, autoAtlas() draws one box for each file that a claim cites.
+let ATLAS = null;
+function autoAtlas() {
+  const files = new Set(); Object.values(M.C).forEach(c => (c.code || []).forEach(x => files.add(short(x.path))));
+  Object.values(M.unc).filter(f => f.action.kind !== 'skim').forEach(f => files.add(short(f.path)));
+  const list = [...files].sort();
+  const nodes = list.map((f, i) => ({ id: 'f' + i, label: f.split('/').pop(), x: (i % 4) * 225, y: 20 + Math.floor(i / 4) * 100, w: 205, paths: [f] }));
+  nodes.push({ id: 'outside', label: 'Outside the code', x: 0, y: 20 + Math.ceil(list.length / 4) * 100, w: 430, paths: [] });
+  return { viewBox: `0 0 900 ${130 + Math.ceil(list.length / 4) * 100}`, nodes, edges: [], auto: true };
+}
+function atlasModel() {
+  const L = ATLAS || autoAtlas();
+  const nodes = L.nodes.map(n => Object.assign({ w: 160, h: 76, claims: [], files: [], unc: [] }, n));
+  const nodeOf = p => nodes.find(n => n.paths.some(x => short(p).startsWith(x)));
+  Object.values(M.C).forEach(c => {
+    const hit = new Set((c.code || []).map(x => nodeOf(x.path)).filter(Boolean));
+    if (!hit.size) hit.add(nodes.find(n => n.paths.length === 0));
+    hit.forEach(n => n.claims.push(c.id));
+  });
+  Object.keys(M.r.diff.files).forEach(p => { const n = nodeOf(p); if (!n) return; n.files.push(p); if (!M.claimsByPath[p] && M.unc[p]) n.unc.push(p); });
+  nodes.forEach(n => { n.claims.sort((a, b) => rank(M.C[a].strength) - rank(M.C[b].strength)); n.strength = n.claims.length ? M.C[n.claims[0]].strength : null; n.weak = n.claims.some(hasWeak); });
+  nodes.L = L;
+  return nodes;
+}
+function VC() {
+  const nodes = atlasModel(), L = nodes.L;
+  if (!S.C.node) S.C.node = (nodes.find(n => n.weak && n.claims.some(id => M.C[id].bar.met) && n.claims.some(id => !M.C[id].bar.met)) || nodes[1]).id;
+  const sel = nodes.find(n => n.id === S.C.node);
+  const col = n => n.strength ? `var(--${n.strength})` : '#c4302b';
+  const box = n => {
+    const sub = `${n.claims.length} claim${n.claims.length === 1 ? '' : 's'}${n.unc.length ? ` · ${n.unc.length} unclaimed` : ''}`;
+    const on = n.id === S.C.node;
+    return `<g data-node="${n.id}" data-act="node" data-id="${n.id}"><rect class="n" x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="10" fill="#fff" stroke="${col(n)}" stroke-width="${on ? 4 : 2}" ${n.claims.length ? '' : 'stroke-dasharray="6 4"'}/>
+      <rect x="${n.x}" y="${n.y}" width="8" height="${n.h}" rx="3" fill="${col(n)}"/>
+      <text x="${n.x + 16}" y="${n.y + (n.band ? 22 : 24)}" font-size="14" font-weight="650" fill="#17191c">${esc(n.label)}</text>
+      ${n.band ? `<text x="${n.x + n.w - 12}" y="${n.y + 20}" font-size="12" fill="#5d6670" text-anchor="end">${sub}</text>` : `<text x="${n.x + 16}" y="${n.y + 44}" font-size="12" fill="#5d6670">${sub}</text>`}
+      ${!n.band ? `<text x="${n.x + 16}" y="${n.y + 64}" font-size="12" font-weight="700" fill="${col(n)}">${n.strength ? 'weakest: ' + n.strength : 'no claim'}</text>` : ''}
+      ${n.weak ? `<circle cx="${n.x + n.w - 4}" cy="${n.y + 4}" r="9" fill="#c4302b"/><text x="${n.x + n.w - 4}" y="${n.y + 8}" font-size="12" font-weight="800" fill="#fff" text-anchor="middle">!</text>` : ''}
+      ${on ? `<title>selected</title>` : `<title>${esc(n.label)}</title>`}</g>`;
+  };
+  const N = id => nodes.find(n => n.id === id);
+  const arrow = (a, b, lbl, mode) => {
+    const A = N(a), B = N(b); let x1, y1, x2, y2;
+    if (mode === 'down') { x1 = A.x + A.w / 2; y1 = A.y + A.h; x2 = B.x + B.w / 2; y2 = B.y; }
+    else if (A.x < B.x) { x1 = A.x + A.w; y1 = A.y + A.h / 2; x2 = B.x; y2 = B.y + B.h / 2; }
+    else { x1 = A.x; y1 = A.y + A.h / 2; x2 = B.x + B.w; y2 = B.y + B.h / 2; }
+    return `<line x1="${x1}" y1="${y1}" x2="${x2 - (mode === 'down' ? 0 : Math.sign(x2 - x1) * 4)}" y2="${y2 - (mode === 'down' ? 4 : 0)}" stroke="#8a929c" stroke-width="1.6" marker-end="url(#ah)"/>${lbl ? `<text x="${mode === 'down' ? x1 + 8 : (x1 + x2) / 2}" y="${(y1 + y2) / 2 + (mode === 'down' ? 4 : -6)}" font-size="11" fill="#5d6670" text-anchor="${mode === 'down' ? 'start' : 'middle'}">${lbl}</text>` : ''}`;
+  };
+  const loop = (L.loopback || []).map(([a, b, lbl]) => { const A = N(a), B = N(b); return `<path d="M${A.x + A.w / 2} ${A.y} C ${A.x + A.w / 2} ${A.y - 30}, ${B.x + B.w / 2 + 30} ${B.y + B.h + 30}, ${B.x + B.w / 2 + 10} ${B.y + B.h + 4}" fill="none" stroke="#8a929c" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#ah)"/><text x="${B.x + B.w / 2 + 40}" y="${B.y + B.h + 28}" font-size="11" fill="#5d6670">${esc(lbl || '')}</text>`; }).join('');
+  const fr = L.frame;
+  const svg = `<svg viewBox="${L.viewBox}" role="img" aria-label="Architecture map of the PR"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#8a929c"/></marker></defs>
+    ${fr ? `<rect x="${fr.x}" y="${fr.y}" width="${fr.w}" height="${fr.h}" rx="16" fill="#f6f8fa" stroke="#c7cdd4" stroke-dasharray="4 4"/><text x="${fr.x + 12}" y="${fr.y + fr.h + 18}" font-size="11" fill="#8a929c">${esc(fr.label)}</text>` : ''}
+    ${(L.edges || []).map(([a, b, lbl, mode]) => arrow(a, b, lbl && esc(lbl), mode)).join('')}${loop}
+    ${nodes.map(box).join('')}</svg>`;
+  const byP = {}; sel.claims.forEach(id => (byP[M.claimP[id]] ||= []).push(id));
+  const uncOff = Object.keys(M.unc).filter(p => !nodes.some(n => n.files.includes(p))).length;
+  const panel = `<div class="C-panel" id="C-panel"><div class="B-kicker">Component</div><h2>${esc(sel.label)}</h2>
+    <p class="small muted">${sel.claims.length} claims · ${sel.files.length} changed files${sel.unc.length ? ` · <b style="color:#9b2c2c">${sel.unc.length} with no claim</b>` : ''}</p>
+    ${Object.entries(byP).map(([pid, ids]) => { const p = P_(pid); return `<div class="pgroup"><div class="small muted">Promise ${pill(p.strength)}</div><b>${esc(p.label)}</b><p class="small">${esc(p.sentence)}</p>
+      ${ids.map(id => { const c = M.C[id]; return `<details ${hasWeak(id) || id === ids[0] ? 'open' : ''}><summary class="crow">${pill(c.strength)} <b>${esc(c.name)}</b> ${barChip(c.bar)}</summary>${claimBody(c, { max: 10 })}</details>`; }).join('')}</div>`; }).join('')}
+    ${sel.unc.length ? `<div class="pgroup"><b>Changed here, no claim</b><ul class="C-files">${sel.unc.map(p => `<li>${esc(short(p))} <span class="muted">${esc(M.unc[p].action.text)}</span></li>`).join('')}</ul></div>` : ''}
+    ${sel.files.length ? `<details class="mini"><summary>All ${sel.files.length} changed files here</summary><ul class="C-files">${sel.files.map(p => `<li>${esc(short(p))}</li>`).join('')}</ul></details>` : ''}</div>`;
+  const list = `<div class="C-list">${nodes.map(n => `<button class="${n.id === S.C.node ? 'on' : ''}" data-act="node" data-id="${n.id}"><span class="dot" style="background:${col(n)}"></span><span style="flex:1">${esc(n.label)}<br><span class="small muted">${n.claims.length} claims${n.unc.length ? ` · ${n.unc.length} unclaimed` : ''}</span></span>${n.weak ? '<b style="color:#c4302b">!</b>' : ''}${n.strength ? pill(n.strength) : '<span class="small" style="color:#c4302b">no claim</span>'}</button>`).join('')}</div>`;
+  return `<div class="wrap">${prHead()}
+    <div class="C-banner"><b class="word">Not ready</b><span>${M.d.merge.blockers} blockers in ${new Set(M.blockers.flatMap(b => b.kind === 'claim' ? [b.id] : P_(b.id).claims).map(id => nodes.find(n => n.claims.includes(id))?.id)).size} parts of the map.</span><span class="muted">${esc(M.d.bars.summary)}</span></div>
+    <div class="C-grid"><div class="C-map">${svg}<div class="C-legend">Border = weakest claim here: ${ORDER.map(pill).join(' ')} <span><b style="color:#c4302b">!</b> a check here cannot catch its bug</span><span>dashed = changed code, no claim</span><span class="muted">${uncOff} more unclaimed files sit off the map.</span>${L.auto ? '<span style="color:#9b2c2c">No atlas.layout.json for this run: one box per cited file.</span>' : ''}</div></div>
+    ${list}${panel}</div></div>`;
+}
+
+// =====================================================================
+// D. EVIDENCE LEDGER: every claim on one table.
+// =====================================================================
+function VD() {
+  const all = Object.values(M.C);
+  const f = S.D.f;
+  const groups = [
+    ['surface', 'Surface', [...new Set(all.map(c => c.bar.surface))], c => c.bar.surface],
+    ['bar', 'Bar', ['met', 'below'], c => c.bar.met ? 'met' : 'below'],
+    ['strength', 'Strength', ORDER, c => c.strength],
+    ['promise', 'Promise', M.P.map(p => p.id), c => M.claimP[c.id]],
+    ['flag', 'Only', ['blocker', 'weak check', 'risky'], c => [blockerFor(c.id) || M.blockers.some(b => b.kind === 'claim' && b.id === c.id) ? 'blocker' : '', hasWeak(c.id) ? 'weak check' : '', c.bar.risky ? 'risky' : ''].filter(Boolean)],
+  ];
+  const isBlk = c => M.blockers.some(b => (b.kind === 'claim' && b.id === c.id)) || M.blockers.some(b => b.kind === 'promise' && P_(b.id).claims.includes(c.id) && !c.bar.met);
+  groups[4][3] = c => [isBlk(c) ? 'blocker' : '', hasWeak(c.id) ? 'weak check' : '', c.bar.risky ? 'risky' : ''].filter(Boolean);
+  const pass = c => groups.every(([k, , , get]) => { const on = f[k]; if (!on || !on.size) return true; const v = [].concat(get(c)); return v.some(x => on.has(x)); });
+  const sorters = { strength: c => rank(c.strength), name: c => c.name, promise: c => M.claimP[c.id], bar: c => (c.bar.met ? 1 : 0), checks: c => c.n, surface: c => c.bar.surface };
+  const rows = all.filter(pass).sort((a, b) => { const x = sorters[S.D.sort](a), y = sorters[S.D.sort](b); return (x < y ? -1 : x > y ? 1 : rank(a.strength) - rank(b.strength)) * S.D.dir; });
+  if (S.D.open === undefined) S.D.open = (all.find(c => weakFor(c.id).length && refsFor(c).length) || all[0]).id;
+  const counts = c => Object.entries(c.counts).map(([k, n]) => `<span class="res-${k}" title="${esc(RES[k] || k)}">${n}${{ caught: '✓', missed: '✗', 'cannot-fail': '∅', recorded: '◷', checked: '≡', none: '–' }[k] || k}</span>`).join('');
+  const th = (k, l, cls = '') => `<th class="${cls}" data-act="sort" data-k="${k}">${l}${S.D.sort === k ? (S.D.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+  const checksTable = () => {
+    const res = {}; all.forEach(c => c.checks.forEach(ch => res[ch.id] = ch));
+    const vs = M.t.verifiers.filter(v => res[v.id]);
+    return `<table class="ledger"><thead><tr><th>Check</th><th>Kind</th><th>Claim</th><th>Result</th><th class="hide-sm">Tier</th><th class="hide-sm">Seconds</th></tr></thead><tbody>${vs.map(v => `<tr class="row"><td class="c-name"><b>${esc(v.name)}</b> <span class="id">${v.id}</span></td><td><span class="kind">${esc(v.kind)}</span></td><td class="hide-sm">${v.claims.map(id => esc(M.C[id]?.name || id)).join(', ')}</td><td>${resTxt(res[v.id].result)}</td><td class="hide-sm">${esc(v.tier)}</td><td class="hide-sm">${v.baseline?.seconds ?? ''}</td></tr>`).join('')}</tbody></table>`;
+  };
+  return `<div class="wrap">${prHead()}
+    <div class="D-strip"><span class="word">Not ready</span><span>${M.d.merge.blockers} blockers</span><span>${Object.entries(M.t.summary).map(([k, n]) => `${pill(k)} ${n}`).join(' ')}</span><span>${esc(M.d.bars.summary)}</span><span>${esc(M.d.verify.result)}</span></div>
+    <div class="D-tabs"><button class="chip ${S.D.tab === 'claims' ? 'on' : ''}" data-act="tab" data-t="claims">Claims (${all.length})</button><button class="chip ${S.D.tab === 'checks' ? 'on' : ''}" data-act="tab" data-t="checks">Checks (${M.t.verifiers.length})</button></div>
+    ${S.D.tab === 'checks' ? checksTable() : `
+    <div class="D-filters">${groups.map(([k, l, vals]) => `<div class="grp"><span>${l}</span>${vals.map(v => `<button class="chip ${f[k]?.has(v) ? 'on' : ''}" data-act="filt" data-k="${k}" data-v="${esc(v)}">${esc(k === 'promise' ? P_(v).label : v)}</button>`).join('')}</div>`).join('')}
+      <span class="muted">Showing ${rows.length} of ${all.length}. ${Object.values(f).some(s => s.size) ? '<a href="#" data-act="clear">Clear filters</a>' : ''}</span></div>
+    <table class="ledger"><thead><tr>${th('name', 'Claim')}${th('promise', 'Promise', 'hide-sm')}${th('surface', 'Surface', 'hide-sm')}${th('bar', 'Evidence bar')}${th('strength', 'Strength')}${th('checks', 'Checks', 'hide-sm')}<th class="hide-sm">Weakest check</th><th title="Blocks the merge">Blk</th></tr></thead><tbody>
+    ${rows.map(c => `<tr class="row ${S.D.open === c.id ? 'open' : ''}" data-act="row" data-id="${c.id}"><td class="c-name"><b>${esc(c.name)}</b> <span class="id">${c.id}</span></td><td class="hide-sm">${esc(P_(M.claimP[c.id]).label)}</td><td class="hide-sm">${esc(c.bar.surface)}</td><td>${barChip(c.bar)}</td><td>${pill(c.strength)}</td><td class="hide-sm mini-counts">${counts(c)}</td><td class="hide-sm">${c.weakest ? `${esc(c.weakest.name)}: ${resTxt(c.weakest.result)}` : ''}${hasWeak(c.id) ? ' <b class="blk">!</b>' : ''}</td><td>${isBlk(c) ? '<span class="blk">●</span>' : ''}</td></tr>
+      ${S.D.open === c.id ? `<tr class="drow"><td class="detail" colspan="8"><div class="small muted">Promise: <b>${esc(P_(M.claimP[c.id]).label)}</b>. ${esc(P_(M.claimP[c.id]).reviewer_action || '')}</div>${claimBody(c)}</td></tr>` : ''}`).join('')}
+    </tbody></table>`}</div>`;
+}
+
+// =====================================================================
+// E. DIFF SPINE: the changed files are the spine.
+// =====================================================================
+function fileInfo(p) {
+  const [a, r] = M.r.diff.files[p];
+  const del = M.r.diff.deleted.includes(p), created = M.r.diff.created.includes(p);
+  const cl = (M.claimsByPath[p] || []).slice().sort((x, y) => rank(M.C[x].strength) - rank(M.C[y].strength));
+  const u = M.unc[p];
+  const area = M.e.change.areas.find(ar => ar.paths.some(x => p.startsWith(x)));
+  let st, color;
+  if (del) { const to = area && M.e.change.areas.find(x => x.id === area.replaced_by); st = to ? `deleted → ${to.name}` : 'deleted'; color = '#8a929c'; }
+  else if (cl.length) { st = `${cl.length} claim${cl.length > 1 ? 's' : ''} · ${M.C[cl[0]].strength}`; color = `var(--${M.C[cl[0]].strength})`; }
+  else if (u && (u.action.kind === 'ask' || u.risks.length)) { st = u.by.exercised.length ? 'a check runs it, no claim' : 'no claim · risky'; color = u.by.exercised.length ? '#b26b00' : '#c4302b'; }
+  else if (u) { st = u.action.kind === 'read' ? 'no claim · read it' : 'no claim · skim'; color = u.action.kind === 'read' ? '#b26b00' : '#c7cdd4'; }
+  else { st = 'not reviewed'; color = '#e2e5e9'; }
+  const group = del ? 'del' : created && /\/src\//.test(p) && !/\/tests?\//.test(p) ? 'new' : /\/src\//.test(p) ? 'src' : /\/tests?\/|\/scripts\//.test(p) ? 'tests' : 'other';
+  return { p, a, r, del, created, cl, u, area, st, color, group, weak: cl.some(hasWeak), ring: !cl.length && !del };
+}
+function VE() {
+  const files = Object.keys(M.r.diff.files).map(fileInfo);
+  const G = [['new', 'New code in this PR'], ['src', 'Other changed source'], ['tests', 'Tests and checks'], ['del', 'Deleted'], ['other', 'Docs, evals and config']];
+  if (S.E.show.new === undefined) Object.assign(S.E.show, { new: true, src: true, tests: false, del: true, other: false });
+  if (!S.E.file) S.E.file = (files.filter(f => f.weak && f.group === 'new').sort((x, y) => y.cl.length - x.cl.length)[0] || files.find(f => f.cl.length)).p;
+  const sel = files.find(f => f.p === S.E.file);
+  const riskSort = f => f.cl.length ? 2 + rank(M.C[f.cl[0]].strength) / 10 : f.u && (f.u.action.kind !== 'skim') ? 0 : f.u ? 1.5 : 3;
+  const row = f => `<button class="E-f ${f.del ? 'del' : ''} ${f.p === S.E.file ? 'on' : ''}" data-act="file" data-p="${esc(f.p)}"><span class="dot" style="${f.ring ? `border:2.5px solid ${f.color};width:11px;height:11px` : `background:${f.color}`}"></span><span class="p" title="${esc(short(f.p))}">&lrm;${esc(short(f.p))}&lrm;</span><span class="st">${f.weak ? '<b style="color:#c4302b">! </b>' : ''}<span class="churn"><span class="a">+${f.a}</span><span class="r">−${f.r}</span></span></span></button>`;
+  const list = G.map(([k, l]) => { const fs = files.filter(f => f.group === k).sort((x, y) => riskSort(x) - riskSort(y) || (y.a + y.r) - (x.a + x.r)); const unc = fs.filter(f => !f.cl.length && !f.del && f.u).length; return `<div class="E-grp"><button class="gh" data-act="grp" data-k="${k}"><span>${S.E.show[k] ? '▾' : '▸'} ${l} (${fs.length})</span><span>${unc ? unc + ' no claim' : ''}</span></button>${S.E.show[k] ? fs.map(row).join('') : ''}</div>`; }).join('');
+  const role = M.e.unclaimed.roles[sel.p], note = M.e.unclaimed.notes[sel.p] || sel.u?.note;
+  const refs = (M.refsByPath[sel.p] || []);
+  const detail = `<div class="E-detail" id="E-detail"><div class="B-kicker">${sel.del ? 'Deleted file' : sel.created ? 'New file' : 'Changed file'} · +${sel.a} −${sel.r}</div><h2>${esc(short(sel.p))}</h2>
+    <span class="E-status" style="background:${sel.color};color:${/c7cdd4|e2e5e9|8a929c/.test(sel.color) ? '#17191c' : '#fff'}">${esc(sel.st)}</span>
+    ${role ? `<p><b>Role:</b> ${esc(role)}</p>` : ''}${sel.u?.change ? `<p class="small muted">${esc(sel.u.change)}</p>` : ''}${note ? `<p>${esc(note)}</p>` : ''}
+    ${sel.u ? `<p class="action">→ ${esc(sel.u.action.text)}</p>${sel.u.by.exercised.length ? `<p class="small">Checks of these claims run this file, but none says what it must do: ${sel.u.by.exercised.map(id => esc(M.C[id].name)).join(', ')}.</p>` : ''}` : ''}
+    ${sel.del && sel.area ? `<div class="card"><b>${esc(sel.area.name)}</b><p class="small">${esc(sel.area.note || '')} ${sel.area.replaced_by ? `Replaced by: <b>${esc(M.e.change.areas.find(x => x.id === sel.area.replaced_by)?.name)}</b>` : ''}</p></div>` : ''}
+    ${sel.cl.map(id => { const c = M.C[id], p = P_(M.claimP[id]); return `<div class="E-claim"><div class="small muted">Promise: <b>${esc(p.label)}</b> ${pill(p.strength)}</div><h3 class="crow">${pill(c.strength)} ${esc(c.name)}</h3>${claimBody(c, { code: false })}</div>`; }).join('')}
+    ${refs.length ? `<h3>The code this PR is judged on, in this file</h3>${refs.slice(0, 2).map(x => code(x, 16)).join('')}${refs.length > 2 ? `<p class="small muted">${refs.length - 2} more excerpts in this file.</p>` : ''}` : (sel.del ? '' : `<p class="muted small">No claim cites code in this file.</p>`)}</div>`;
+  return `<div class="wrap">${prHead()}
+    <div class="E-top"><span class="word">Not ready</span><span>${M.d.merge.blockers} blockers</span><span>${files.filter(f => f.cl.length).length} of ${files.length} changed files carry a claim.</span><span class="muted">${esc(M.d.unclaimed.summary.lead)}</span>
+      <details class="mini" style="flex-basis:100%"><summary>Show the blockers</summary><ol class="small">${M.blockers.map(b => `<li><b>${esc(b.label)}</b>: ${esc(b.text)}</li>`).join('')}</ol></details></div>
+    <div class="E-grid"><div class="E-files"><div class="small" style="padding:6px 10px;display:flex;flex-wrap:wrap;gap:4px 10px;border-bottom:1px solid var(--line)"><span><span class="dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--Proven)"></span> claim (colour = weakest)</span><span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;border:2.5px solid #c4302b"></span> no claim, risky</span><span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;border:2.5px solid #b26b00"></span> no claim, read it</span><span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;border:2.5px solid #c7cdd4"></span> skim</span><span><b style="color:#c4302b">!</b> weak check</span></div>${list}</div>${detail}</div></div>`;
+}
+
+// ---------- wiring ----------
+const RENDER = { A: VA, B: VB, C: VC, D: VD, E: VE };
+function render() {
+  app.innerHTML = ribbon() + RENDER[S.v]();
+  const v = VARIANTS.find(x => x.key === S.v), i = VARIANTS.indexOf(v);
+  document.getElementById('switcher').innerHTML = `<button data-go="-1" aria-label="Previous variant">‹</button><div class="lbl"><span class="tag">PROTOTYPE</span><span class="name">${v.key} (${esc(v.name)})</span> <span class="muted" style="color:#8a8f98">${i + 1}/${VARIANTS.length}</span><div class="note">${esc(v.note)}</div></div><button data-go="1" aria-label="Next variant">›</button>`;
+  document.title = `PROTOTYPE · ${v.key} ${v.name}`;
+}
+function go(d) {
+  const i = VARIANTS.findIndex(x => x.key === S.v);
+  S.v = VARIANTS[(i + d + VARIANTS.length) % VARIANTS.length].key;
+  const u = new URL(location.href); u.searchParams.set('variant', S.v); history.replaceState(null, '', u);
+  render(); window.scrollTo(0, 0);
+}
+document.getElementById('switcher').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) go(+b.dataset.go); });
+addEventListener('keydown', e => { if (e.target.closest('input,textarea,select,[contenteditable]')) return; if (e.key === 'ArrowLeft') go(-1); if (e.key === 'ArrowRight') go(1); });
+app.addEventListener('change', e => {
+  const x = e.target.closest('[data-done]'); if (!x) return;
+  S.A.done[x.dataset.done] = x.checked; x.closest('.task').classList.toggle('done', x.checked);
+  const n = Object.values(S.A.done).filter(Boolean).length, T = M.blockers.length;
+  document.getElementById('A-count').textContent = `${n} of ${T} handled (in memory only)`; document.getElementById('A-bar').style.width = (n / T * 100) + '%';
+});
+app.addEventListener('click', e => {
+  const a = e.target.closest('[data-act]'); if (!a) return;
+  const k = a.dataset.act;
+  if (a.tagName === 'A') e.preventDefault();
+  if (k === 'screen') { const sc = lessonScreens().length; S.B.screen = Math.max(0, Math.min(sc - 1, +a.dataset.i)); S.B.seen[S.B.screen] = 1; render(); window.scrollTo(0, 0); return; }
+  if (k === 'step') S.B.step += +a.dataset.d;
+  if (k === 'ans') S.B.ans[a.dataset.k] = +a.dataset.i;
+  if (k === 'node') { S.C.node = a.dataset.id; render(); if (innerWidth <= 900) document.getElementById('C-panel').scrollIntoView({ behavior: 'smooth' }); return; }
+  if (k === 'sort') { S.D.dir = S.D.sort === a.dataset.k ? -S.D.dir : 1; S.D.sort = a.dataset.k; }
+  if (k === 'filt') { const s = S.D.f[a.dataset.k] ||= new Set(); s.has(a.dataset.v) ? s.delete(a.dataset.v) : s.add(a.dataset.v); }
+  if (k === 'clear') S.D.f = {};
+  if (k === 'row') S.D.open = S.D.open === a.dataset.id ? null : a.dataset.id;
+  if (k === 'tab') S.D.tab = a.dataset.t;
+  if (k === 'file') { S.E.file = a.dataset.p; const y = scrollY, l = document.querySelector('.E-files')?.scrollTop; render(); scrollTo(0, y); const fl = document.querySelector('.E-files'); if (fl) fl.scrollTop = l; if (innerWidth <= 900) document.getElementById('E-detail').scrollIntoView({ behavior: 'smooth' }); return; }
+  if (k === 'grp') S.E.show[a.dataset.k] = !S.E.show[a.dataset.k];
+  const y = scrollY; render(); scrollTo(0, y);
+});
+const qv = new URLSearchParams(location.search).get('variant');
+S.v = VARIANTS.some(x => x.key === qv) ? qv : 'A';
+const qs = new URLSearchParams(location.search).get('screen'); if (qs) S.B.screen = +qs;
+load().then(() => fetch('data/atlas.layout.json').then(x => x.ok ? x.json() : null).catch(() => null)).then(l => { ATLAS = l; render(); }).catch(err => { app.innerHTML = `<div class="ribbon">PROTOTYPE</div><div class="wrap"><h2>Could not load the run data</h2><p>${esc(err.message)}</p><p>Start it with <code>python3 serve.py [RUN_DIR]</code>.</p></div>`; });
+</script>
+</body>
+</html>
