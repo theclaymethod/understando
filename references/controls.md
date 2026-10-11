@@ -18,11 +18,17 @@ A control plants one defect that a verifier must see. Write at least one control
 
 Each control holds a list of `edits`. `scripts/run_control.py` applies them in a fresh scratch worktree and refuses an edit that does not apply exactly.
 
+Write an anchor op. It names its place with `path`, `symbol` (a dotted name at the head) and `match` (a text that occurs once in the symbol). A `match` of the form `/RE/` is a regex, and a regex group is the target. The probe resolves the anchor at the commit. An anchor that matches 0 places or more than 1 is an `ANCHOR ERROR`. Do not copy code into a `find` text.
+
 | `op` | Fields | Effect |
 |---|---|---|
-| `replace` | `path`, `find`, `replace`, `count` (default 1) | The `find` text must occur exactly `count` times. |
+| `delete-line` | `path`, `symbol`, `match` | Removes the target lines. In Python, removes the statement that starts on the target line, with its block. An empty block gets `pass`. |
+| `invert-condition` | `path`, `symbol`, `match` | Python: negates the smallest condition, operand or comparison that holds the target. `a > b` becomes `a <= b`, `x` becomes `not x`. |
+| `replace-with` | `path`, `symbol`, `match`, `with`, `span` (`match` or `statement`) | Replaces the target, or the whole Python statement on its line, with `with`: one line, 80 characters or fewer. |
+| `drop-allowlist-row` | `path`, `symbol`, `match` | Python: removes the list, tuple, set or dict item that holds the target, with its comma. |
+| `replace` | `path`, `find`, `replace`, `count` (default 1) | The old text form. The `find` text must occur exactly `count` times. |
 | `append` | `path`, `text` | Adds `text` at the end of the file. |
-| `corrupt-byte` | `path`, `offset` (default: the middle) | XORs one byte with 0x01. |
+| `corrupt-byte` | `path`, `offset` (default: the middle), or an anchor | XORs one byte with 0x01: the first byte of the target, or the byte at `offset`. |
 | `delete-file` | `path` | Removes the file. |
 
 ## Expected red

@@ -4,13 +4,23 @@ Build the **claim ledger** and the **verifier inventory** for one PR. This verb 
 
 Set `R` to the run folder `$U/runs/<repo name>/<pr number>/` and `M` to `$R/trust-map.json`. With the mode on, each `understando` verb finds `R` by itself.
 
+## Never paste code
+
+Do not type code, line numbers or a GitHub URL. Write a code ref, and let the build copy the code.
+
+- **Write a ref.** Use an anchor: `{"path", "symbol"}`, for example `"symbol": "run_document"` or `"Editor.edit"`. To show a part of a symbol, add `"part"` (`signature` or `body`), or `"match"` (a text that occurs once in the symbol) and `"context"` (the lines around it). A line range `{"path", "start", "end"}` is the last choice: it moves to other code when the file changes.
+- **Preview it.** Run `understando snippet <path>::<symbol> [--match TEXT]`. It prints the lines, their numbers and the permalink. Do not read a whole file to find the numbers. For a range that you have, `understando snippet <path> --lines A-B --suggest` prints the anchor that shows the same lines.
+- **Why.** Code that you type costs tokens twice: once to read it and once to write it. A typed copy also stays the same when the code changes, so the page shows old code. A ref resolves again at each head, and `doctor` tells you when it no longer resolves.
+
+`explain.py` and `doctor` find a block of two or more lines in `explain.json` or in the `plain` and `text` fields that is the same as code at the head. The build stops on it.
+
 ## Steps
 
 1. **Get the PR.** Run `gh pr view <n> -R <owner>/<repo> --json title,body,baseRefOid,headRefOid,files`. Save the body as `$R/pr-body.md`.
    - **Done when** `$R/pr-body.md` exists and you know the base and head SHAs.
 2. **Get a read-only view of the head.** Use `git show <head>:<path>` for single files. For a full tree, add a detached scratch worktree: `git -C <repo> worktree add --detach <scratch dir> <head>`. Record the scratch path, because `controls` and the cleanup need it.
-   - **Done when** you can read each changed file at the head, and the user's checkout is as it was.
-3. **Write the claim ledger.** Read the PR narrative. Write one claim per thing that the PR asserts, in strict STE, into `M` (shape: `$U/schema/trust-map.schema.json`). Set `stated: true`, `source` (the section of the narrative), `layer` (a short group name), and `code` (path and lines at the head). Use the `@cc` ID as `cc_id` when a Code Contracts contract holds the claim. A claim that the PR does not state can reach Proven only with an invariant from the user (`discover`).
+   - **Done when** you can read each changed file at the head, and the user's checkout is as it was. To read one function, run `understando snippet <path>::<symbol>`.
+3. **Write the claim ledger.** Read the PR narrative. Write one claim per thing that the PR asserts, in strict STE, into `M` (shape: `$U/schema/trust-map.schema.json`). Set `stated: true`, `source` (the section of the narrative), `layer` (a short group name), and `code` (a code ref, as "Never paste code" tells). Use the `@cc` ID as `cc_id` when a Code Contracts contract holds the claim. A claim that the PR does not state can reach Proven only with an invariant from the user (`discover`).
    - **Done when** each bullet, table row and number that asserts a behavior or a result maps to a claim. For each item that is not a claim, you can name the reason, for example a merge instruction.
 4. **Write the plain text.** For each claim, write `plain` in strict STE, for a reader who does not know the code: `what` (what the rule is), `proof` (the check, and what the control did), and `warning` (a limit on the proof, only when one exists). Write `glossary` with each word that a reader must know: each acronym (CR, UAP), each capitalised term (Judge) and each domain word (cartridge, floor), with `aliases` for its other forms. `explain.py` fails on a term that the page uses and the glossary does not define. Write and `verdict_intros` with one line for each verdict group. After `controls` and `verdicts.py`, write `proof` again, so that it agrees with the verdict. Copy the text into a scratch file and run `python3 -I ~/.claude/skills/asd-ste100/scripts/ste-lint.py <file>`. Rewrite each flagged sentence.
    - **Done when** each claim has `plain.what` and `plain.proof`, including each claim that the scan adds in step 7, and the lint reports 0 hard violations.

@@ -10,7 +10,7 @@ Keep it short. It holds three things and nothing more:
 2. The claims-and-verdicts table: claim, verdict and the reason in one strict-STE sentence.
 3. Short bullets: the verdict counts, the strength of each promise, each `cannot-fail` verifier, each other loud flag, the control count and cost, and the explainer path.
 
-Put long samples, command output and code in the explainer, not in the PR body.
+Put long samples, command output and code in the explainer, not in the PR body. Every code excerpt, diff and permalink comes from a code ref that the build resolves at the head (`scripts/coderef.py`). Nobody types code or a URL: the build stops on pasted code.
 
 ## The levels
 
@@ -19,9 +19,9 @@ The explainer is a level ladder for a reader who does not know the code, also a 
 | # | Level | Holds | Visuals |
 |---|---|---|---|
 | 1 | The story | Three ideas: the problem, the change, and why you can trust it. One chip for each promise, with its weakest verdict. The glossary, collapsed. No code name, no ID and no count beyond the chips. | One before-and-after diagram in two modes. |
-| 2 | The loop | The run steps, one plain sentence each, each with a link to its promise. Code excerpts collapsed under each step. | The loop diagram in two modes, then the animated walkthrough of one finding. |
+| 2 | The loop | The run steps, one plain sentence each, each with a link to its promise. Code excerpts collapsed under each step, copied by the build from the step's code refs, each with its permalink. | The loop diagram in two modes, then the animated walkthrough of one finding. |
 | 3 | What changed | A plain intro. A "replaced by" table of deleted code with line counts from `git diff --numstat`. Paths go in the table only. | A before-and-after diagram from the diff, in two modes. Other architecture diagrams, such as the import rules, in two modes. |
-| 4 | The promises | One block per promise, weakest first: its sentence, its strength (its weakest claim), a reviewer action when it is weak, and the cheapest fix for each weak claim. Collapsed: its claims, as `plain.what` with a verdict pill. Collapsed under each claim: the proof, the warning, the code, each verifier and each control with its output. | Code and diffs with syntax colours, inside the claim blocks. |
+| 4 | The promises | One block per promise, weakest first: its sentence, its strength (its weakest claim), a reviewer action when it is weak, and the cheapest fix for each weak claim. Collapsed: its claims, as `plain.what` with a verdict pill. Collapsed under each claim: the proof, the warning, the code, each verifier and each control with its output. | Code and diffs with syntax colours, inside the claim blocks. A control's diff is the real git diff of its scratch worktree, with line numbers. |
 | 5 | Verify the verifiers | What red, green and cannot-fail mean. The control count. | The controls animation, labelled from each mutation's own text. The map from each check kind to each claim layer, with every layer, also "Narrative only" and "Unstated changes"; a layer with no check is red. The verifier table, collapsed. |
 | 6 | Changed code that no claim covers | Each changed source file that no claim cites, or that is large and mostly uncited, with its line counts and a note on why it matters. | A table; the long tail collapsed. |
 | 7 | Trade-offs and concerns | The trade-offs, the concerns, and the verifications of the explainer itself. | None. |
