@@ -56,7 +56,7 @@ Intent gate: a Formal or Proven check gives only Backed when the claim has no in
 
 The verdict of a claim is the strength of its weakest check. Two checks can have the same strength. Then the weakest is the check that is weak by itself, not only by the intent gate. After that, it is the check with the worst result. The results, worst first, are none, broken, cannot fail, missed, no planted bug, mechanical, recorded and caught. The claim card names this check, in plain words, with its action. Thus, a weak check cannot hide behind a strong check of the same claim.
 
-A user-confirmed invariant of the claim that the code does not obey (a possible bug) makes the claim Gap.
+The claim is Gap when the code does not obey an invariant of the claim that the user accepted (a possible bug).
 
 The `tier` of a claim is the highest rung of a check that went red on a control and can prove the claim. It is the strongest check, and the verdict is the weakest check. The promise shows the tier as "Strongest check".
 

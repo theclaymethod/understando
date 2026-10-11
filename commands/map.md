@@ -16,10 +16,10 @@ Each review follows one ontology. `scripts/onto.py` holds its rules.
 | Claim | One statement that a reviewer accepts or rejects. | About 2 to 5 for each promise, and 10 to 25 in total. |
 | Check | One verifier with its controls. Examples: a test, a type pin, an import rule, a Lean theorem, a TLA+ model, an eval record, a model judgment. | As many as necessary. The page collapses them. |
 
-- **The merge rule.** Join two claims into one claim when these three are the same: the promise, the kind of check and the reviewer action. They must also pass or fail together for a reviewer. Keep two claims apart only when a reviewer can accept one and reject the other.
+- **The merge rule.** Join two claims when three things are the same: the promise, the kind of check and the reviewer action. They must also pass or fail together for a reviewer. Keep two claims apart only when a reviewer can accept one and reject the other.
 - **The budget follows the risk, not the line count.** Give each risky surface its own claim. The risky surfaces are safety, cost, the anti-gaming rules of the editor, clinical output and production. Join the mechanical guarantees, for example the type pins and the import rules.
 - **Strength.** The strength of a check is the verdict that the check alone gives its claim. The strength of a claim is the strength of its weakest check. The claim card names that check in plain words, with its action. The strength of a promise is the strength of its weakest claim.
-- **Intent.** A claim gets to Proven or Formal only when the PR states it, or when the user confirmed its invariant. A merged claim needs this intent for each of its parts.
+- **Intent.** A claim gets to Proven or Formal only when the PR states it, or when the user accepted its invariant. A merged claim needs this intent for each of its parts.
 - **The shape.** Each claim lists its checks in `checks`. A merged claim keeps the old IDs in `legacy_ids` and the old statements in `parts`. A claim that no tool checks lists one check of kind `none`. `map` adds that check, and it removes the check when a tool check exists. `map` writes this shape (`schema_version` 2). It reads the old shape for one release.
 - **Plain names.** Each promise, claim and check has a `name` of 2 to 6 words, as a reviewer says it. Examples: "the idle stop", "the project-wide type check", "the import boundary", "the accept rule". Write each name yourself. Do not cut the plain text, and do not write a path or a tool name. `map` refuses a missing name, and `doctor` flags a bad name.
 

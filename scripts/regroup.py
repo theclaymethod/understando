@@ -146,16 +146,19 @@ def verdict_of(data: dict, refs: dict, extra: dict) -> tuple:
     return der["merge"]["form"], der["merge"]["blockers"], [i["label"] for i in der["merge"]["items"]]
 
 
-def table(new: dict) -> str:
+def table(new: dict, extra: dict | None = None) -> str:
     """The plain table: promise -> claim name -> old ids, with the strength and the weakest check."""
-    cards = derive.claim_rows(new)
+    cards = derive.claim_rows(new, extra)
+    word = {"caught": "caught its bug", "missed": "missed its bug", "cannot-fail": "cannot fail", "no-bug": "no planted bug",
+            "recorded": "a record, not run again", "checked": "a mechanical check, no planted bug", "broken": "fails at the head",
+            "none": "no tool check"}
     out = ["| Promise | Claim | Old claims | Strength | Weakest check |", "|---|---|---|---|---|"]
     for p in new["promises"]:
         for cid in p["claims"]:
             c = next(x for x in new["claims"] if x["id"] == cid)
             w = cards[cid]["weakest"]
             out.append(f"| {p.get('name') or p['label']} | {c['name']} | {', '.join(c.get('legacy_ids') or [c['id']])} | {c['verdict']} | "
-                       f"{w['name']}: {w['text'].split('. ', 1)[-1] if w['result'] != 'none' else w['text']} |")
+                       f"{w['name']} ({word[w['result']]}) |")
     return "\n".join(out)
 
 
@@ -196,7 +199,7 @@ def main() -> int:
     for kind, item, why in onto.name_problems(new):
         print(f"name: the {kind} {item}: {why}")
     if args.table:
-        print(table(new))
+        print(table(new, new_extra))
     return 0 if ok else 1
 
 
