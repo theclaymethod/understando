@@ -48,7 +48,8 @@
         "what": "The editor accepts only an `EditableFinding`. An `EditableFinding` is a finding that passed the editability gate. A raw finding is a type error.",
         "proof": "Two type pins (V01, V02) and the full type check (V35). We loosened the types, and the checks went red.",
         "warning": "One control (K01b) made the editor accept any input. Pin V01 stayed green. Only the full type check (V35) found it. Thus, pin V01 is weaker than it looks."
-      }
+      },
+      "tier": 3
     },
     {
       "id": "C02",
@@ -69,7 +70,8 @@
       "plain": {
         "what": "The wiring joins an adapter to its settings. A UAP adapter with FMM settings is a type error.",
         "proof": "Two type pins (V03, V04). We loosened the types, and both went red."
-      }
+      },
+      "tier": 3
     },
     {
       "id": "C03",
@@ -90,7 +92,8 @@
       "plain": {
         "what": "`run_adapter` and `_run_kind` refuse an adapter, a subset or a setup of a different kind.",
         "proof": "Two type pins (V05, V06). We loosened the types, and both went red."
-      }
+      },
+      "tier": 3
     },
     {
       "id": "C04",
@@ -111,7 +114,8 @@
       "plain": {
         "what": "`write_outputs` does not write notes. Thus, the type of its input does not permit the note kind.",
         "proof": "One type pin (V07). We loosened the type, and it went red."
-      }
+      },
+      "tier": 3
     },
     {
       "id": "C05",
@@ -132,7 +136,8 @@
       "plain": {
         "what": "A table lists, for each docgen file, the docgen files that it can import. Other imports are not permitted.",
         "proof": "The boundary check (V08). We deleted one row from the table, and the check went red."
-      }
+      },
+      "tier": 3
     },
     {
       "id": "C06",
@@ -153,7 +158,8 @@
       "plain": {
         "what": "The code for one kind does not use the code for a different kind.",
         "proof": "The boundary check (V09). We added a bad import, and the check went red."
-      }
+      },
+      "tier": 3
     },
     {
       "id": "C07",
@@ -174,7 +180,8 @@
       "plain": {
         "what": "The shared loop does not import the CLI or the FMM, 4H, refine or UAP code.",
         "proof": "The boundary check (V10). We added a bad import, and the check went red."
-      }
+      },
+      "tier": 3
     },
     {
       "id": "C08",
@@ -195,7 +202,8 @@
       "plain": {
         "what": "Only `clinician_note` (and files on the approved list) can import `cr.note.author` and `cr.note.loop`.",
         "proof": "The boundary check (V11). We deleted one row from the approved list, and the check went red."
-      }
+      },
+      "tier": 3
     },
     {
       "id": "C09",
@@ -221,7 +229,8 @@
       "plain": {
         "what": "Only `finished_cr.py` and the test fixture can make a `FinishedCR`. Thus, no code can skip the CR acceptance checks.",
         "proof": "The boundary check (V12). We deleted one row from the approved list, and the check went red."
-      }
+      },
+      "tier": 3
     },
     {
       "id": "C10",
@@ -242,7 +251,8 @@
       "plain": {
         "what": "Only `findings.py` can make an `EditableFinding`. Thus, no code can skip the editability gate.",
         "proof": "The boundary check (V13). We added a bad call in a different file, and the check went red."
-      }
+      },
+      "tier": 3
     },
     {
       "id": "C11",
@@ -263,7 +273,8 @@
       "plain": {
         "what": "Some findings must not be repaired by editing text, for example a finding about a lab result. The judge grades them, but the editor does not see them.",
         "proof": "An integration test (V14) runs the UAP adapter with a test judge. We deleted the guard line, and the test went red."
-      }
+      },
+      "tier": 1
     },
     {
       "id": "C12",
@@ -284,7 +295,8 @@
       "plain": {
         "what": "An `evidence_bound` finding is about one input fact. The editor can change only a card whose evidence holds that fact.",
         "proof": "An integration test (V15). We deleted the guard line, and the test went red."
-      }
+      },
+      "tier": 1
     },
     {
       "id": "C13",
@@ -305,7 +317,8 @@
       "plain": {
         "what": "The judge checks the draft one time. If a model reports a major finding that no earlier round marked as blocking, the judge checks the draft again for that finding only. The editor gets the finding only when the second check reports it again.",
         "proof": "An integration test (V16) gives the judge a major finding that the second check does not report again. We deleted the guard line, and the test went red."
-      }
+      },
+      "tier": 1
     },
     {
       "id": "C14",
@@ -326,7 +339,8 @@
       "plain": {
         "what": "The second report counts only when it has the same cartridge, the same key and the same place. A report about a different file does not count.",
         "proof": "Two integration tests (V17, V18). We deleted the code that compares the claims, and both tests went red."
-      }
+      },
+      "tier": 1
     },
     {
       "id": "C15",
@@ -342,12 +356,15 @@
           "end": 107
         }
       ],
-      "verdict": "Proven",
-      "reason": "V19 went red on control K19.",
+      "verdict": "Gap",
+      "reason": "code disagrees with the confirmed invariant L3; fix pending on understando/489-ready",
       "plain": {
         "what": "If the accept rule refuses a round, and that round changed no file, the edit rounds stop.",
         "proof": "An integration test (V19) runs the loop with a test adapter and a scripted editor. We deleted the guard line, and the test went red."
-      }
+      },
+      "tier": null,
+      "invariant": "L3",
+      "tier_target": 4
     },
     {
       "id": "C16",
@@ -368,7 +385,10 @@
       "plain": {
         "what": "A safety-floor finding can be in a file that the editor cannot write. Then the edit rounds stop.",
         "proof": "An integration test (V20). We deleted the guard line, and the test went red."
-      }
+      },
+      "tier": 1,
+      "invariant": "L4",
+      "tier_target": 4
     },
     {
       "id": "C17",
@@ -389,7 +409,10 @@
       "plain": {
         "what": "If an editor call stops before it is complete, its partial edit is not checked again and is not released.",
         "proof": "An integration test (V21). We deleted the guard line, and the test went red."
-      }
+      },
+      "tier": 1,
+      "invariant": "L2",
+      "tier_target": 4
     },
     {
       "id": "C18",
@@ -405,12 +428,15 @@
           "end": 266
         }
       ],
-      "verdict": "Proven",
-      "reason": "V22 went red on control K22.",
+      "verdict": "Formal",
+      "reason": "F489-3 is a rung 4 tla check. Its conformance link (uv run --no-sync pytest -q tests/test_formal_finish_replay.py) passes, and control K489-3a, K489-3b broke it.",
       "plain": {
         "what": "The finish tool refuses while a code check reports a blocking finding. It refuses a maximum of three times.",
         "proof": "An integration test (V22). We reversed the condition, and the test went red."
-      }
+      },
+      "tier": 4,
+      "invariant": "L5",
+      "tier_target": 4
     },
     {
       "id": "C19",
@@ -431,7 +457,8 @@
       "plain": {
         "what": "The editor can change a file that it can write, but it cannot delete that file.",
         "proof": "An integration test (V23) sends a delete command. We deleted the guard line, and the test went red."
-      }
+      },
+      "tier": 1
     },
     {
       "id": "C20",
@@ -447,12 +474,15 @@
           "end": 71
         }
       ],
-      "verdict": "Proven",
-      "reason": "V24 went red on control K24.",
+      "verdict": "Formal",
+      "reason": "F489-1 is a rung 5 lean check. Its conformance link (uv run --no-sync pytest -q -rs tests/test_formal_accept_conformance.py) passes, and control K489-1a, K489-1b, K489-1c, K489-1d broke it.",
       "plain": {
         "what": "If the loop must go back, `LastClean` restores the latest kept draft that has no blocking finding.",
         "proof": "An integration test (V24). We reversed the condition, and the test went red."
-      }
+      },
+      "tier": 5,
+      "invariant": "A5",
+      "tier_target": 4
     },
     {
       "id": "C21",
@@ -473,7 +503,8 @@
       "plain": {
         "what": "The judiciary reflector refuses a worker that does not tell it \"synthetic data only\".",
         "proof": "An integration test (V25) starts a test worker with 30 bad start messages. We deleted the guard line, and the test went red."
-      }
+      },
+      "tier": 1
     },
     {
       "id": "C22",
@@ -494,7 +525,8 @@
       "plain": {
         "what": "`cr docgen` sends requests to the model that are the same, byte for byte, as a saved file (the golden file).",
         "proof": "A golden test (V26) compares a hash of each request with the golden file. We changed one byte in the golden file, and the test went red."
-      }
+      },
+      "tier": 1
     },
     {
       "id": "C23",
@@ -520,7 +552,8 @@
       "plain": {
         "what": "In 14 scripted sessions, `cr docgen --kind note` sends the same requests as `write_clinician_note`.",
         "proof": "A parity test (V27) runs each session through both paths. We deleted the code that the test covers, and the test went red."
-      }
+      },
+      "tier": 1
     },
     {
       "id": "C24",
@@ -541,7 +574,8 @@
       "plain": {
         "what": "`cr uap` and `cr fmm` call `cr docgen` with no reflection.",
         "proof": "A parity test (V28) compares the requests of the old and new commands. We reversed the condition, and the test went red."
-      }
+      },
+      "tier": 1
     },
     {
       "id": "C25",
@@ -562,7 +596,8 @@
       "plain": {
         "what": "CR-33 is the acceptance check for a CR. If a CR fails it, no kind makes a document from it.",
         "proof": "An integration test (V29) runs each kind on a bad CR. We deleted the guard line, and the test went red."
-      }
+      },
+      "tier": 1
     },
     {
       "id": "C38",
@@ -583,7 +618,8 @@
       "plain": {
         "what": "`cr docgen --reflection judiciary` operates with the real judiciary worker, not only a test worker.",
         "proof": "It is not proven. A test (V36) exists, but it skips when judiciary is not built. We planted a bug, and the test skipped and stayed green. Thus, the test cannot fail now."
-      }
+      },
+      "tier": null
     },
     {
       "id": "C26",
@@ -598,7 +634,8 @@
       "plain": {
         "what": "Two blind labellers agree on failures. The rate goes down from 2.65 to 0.02 for each note.",
         "proof": "A pre-registered eval (V30) on 23 test members. gpt-6.1-sol and Opus labelled each note, and they did not know which path made it. This is a record. We did not run it again."
-      }
+      },
+      "tier": null
     },
     {
       "id": "C27",
@@ -614,7 +651,8 @@
         "what": "After the anti-gaming changes, each kind is at least as good as main.",
         "proof": "Frozen judges graded both paths three times on 5 members (V31). Two blind labellers also labelled each document. This is a record.",
         "warning": "The UAP result uses the same 5 members that we used to tune the anti-gaming changes."
-      }
+      },
+      "tier": null
     },
     {
       "id": "C28",
@@ -630,7 +668,8 @@
         "what": "No kept edit hides a problem without a repair.",
         "proof": "Opus read each kept edit (V32). This is a model opinion, not a tool check.",
         "warning": "Opus is in the same model family as the author. Thus, it is not a fully independent check."
-      }
+      },
+      "tier": null
     },
     {
       "id": "C29",
@@ -645,7 +684,8 @@
       "plain": {
         "what": "UAP goes up from $0.75 to $1.30. FMM goes up from $0.34 to $0.38. 4H goes up from $0.24 to $0.32.",
         "proof": "The cost meter of each run (V33). This is a record."
-      }
+      },
+      "tier": null
     },
     {
       "id": "C30",
@@ -660,7 +700,8 @@
       "plain": {
         "what": "4,249 CR tests, 1,272 harness tests and 74 root tests pass. Ruff, basedpyright and the boundary checks are clean.",
         "proof": "The CI jobs ran at the PR head (V34). This is a record. We did not run them again."
-      }
+      },
+      "tier": null
     },
     {
       "id": "C31",
@@ -676,7 +717,8 @@
         "what": "The production service does not import the new harness code. Thus, the new code cannot change production.",
         "proof": "A grep (V37) finds no import of `cr.docgen` in the 362 files under `cr_service` at the PR head. A second grep (V38) finds that no `cr_service` file imports `cr.cli`, the only other module that imports the harness. No control ran, so the claim is Backed, not Proven.",
         "warning": "A grep reads only the import lines at the head. No CI rule stops a new import after the merge."
-      }
+      },
+      "tier": null
     },
     {
       "id": "C32",
@@ -691,7 +733,8 @@
       "plain": {
         "what": "The PR deletes more source lines than it adds.",
         "proof": "A line count (V39) of the diff in `src/` and `harness/src/` gives +7,017 and -7,064 lines: net -47, as the PR says."
-      }
+      },
+      "tier": null
     },
     {
       "id": "C33",
@@ -706,7 +749,8 @@
       "plain": {
         "what": "The harness released one UAP plan with a label that needs clinician review. The PR says that the label is wrong, and that the safety floor did not fail.",
         "proof": "It is not proven. A clinician must examine it."
-      }
+      },
+      "tier": null
     },
     {
       "id": "C34",
@@ -721,7 +765,8 @@
       "plain": {
         "what": "The PR includes two default settings from PRs 438 and 424. Nobody measured them in production.",
         "proof": "It is not proven. This is a statement that something is missing."
-      }
+      },
+      "tier": null
     },
     {
       "id": "C35",
@@ -742,7 +787,8 @@
       "plain": {
         "what": "`require_same_scope` refuses a packet and a ledger that are for different members or different snapshots.",
         "proof": "It is not proven. No test gives it a mismatched pair."
-      }
+      },
+      "tier": null
     },
     {
       "id": "C36",
@@ -763,7 +809,8 @@
       "plain": {
         "what": "The PR deletes `sheet_names` from `guidance/_xlsx.py`. The PR assumes that no code calls it.",
         "proof": "It is not proven. A search of the repo, or the type check, would prove it."
-      }
+      },
+      "tier": null
     },
     {
       "id": "C37",
@@ -784,7 +831,92 @@
       "plain": {
         "what": "When the model makes tool calls that we do not expect, `submission_text` names those calls. It does not show an empty body.",
         "proof": "It is not proven. No test sends unexpected tool calls in diagnose mode."
-      }
+      },
+      "tier": null
+    },
+    {
+      "id": "C39",
+      "cc_id": null,
+      "text": "StrictImprovement keeps an edit only for a strictly lower score, with no new deterministic key and no new confirmed S5 or S4 key.",
+      "stated": false,
+      "source": "accept.py docstring, lines 5-7 (formal FC1)",
+      "layer": "Loop and editor",
+      "plain": {
+        "what": "The accept rule keeps an edit only when the score goes down and the edit adds no new serious finding.",
+        "proof": "A Lean proof (F489-1) checks it on a model of the rule, and a conformance run sends the same cases through the real code."
+      },
+      "tier": 5,
+      "verdict": "Formal",
+      "reason": "F489-1 is a rung 5 lean check. Its conformance link (uv run --no-sync pytest -q -rs tests/test_formal_accept_conformance.py) passes, and control K489-1a, K489-1b, K489-1c, K489-1d broke it.",
+      "invariant": "A2",
+      "tier_target": 4
+    },
+    {
+      "id": "C40",
+      "cc_id": null,
+      "text": "The accept score is compared lexicographically: a strict total order on the counts.",
+      "stated": false,
+      "source": "accept.py docstring, line 6 (formal FC2)",
+      "layer": "Loop and editor",
+      "plain": {
+        "what": "The accept rule compares two scores in one fixed order, so any two different scores rank one way.",
+        "proof": "A Lean proof (F489-1) shows that the order is total and strict."
+      },
+      "tier": 5,
+      "verdict": "Formal",
+      "reason": "F489-1 is a rung 5 lean check. Its conformance link (uv run --no-sync pytest -q -rs tests/test_formal_accept_conformance.py) passes, and control K489-1a, K489-1b, K489-1c, K489-1d broke it.",
+      "invariant": "A1",
+      "tier_target": 4
+    },
+    {
+      "id": "C41",
+      "cc_id": null,
+      "text": "When rejects_early is true, keep reverts the edit whatever the reflectors add.",
+      "stated": false,
+      "source": "accept.py:38-39, 86 (formal FC3)",
+      "layer": "Loop and editor",
+      "plain": {
+        "what": "When a code check rejects an edit early, the loop undoes the edit, whatever the reflectors add.",
+        "proof": "A Lean proof (F489-1) shows it, because reflection only adds findings."
+      },
+      "tier": 5,
+      "verdict": "Formal",
+      "reason": "F489-1 is a rung 5 lean check. Its conformance link (uv run --no-sync pytest -q -rs tests/test_formal_accept_conformance.py) passes, and control K489-1a, K489-1b, K489-1c, K489-1d broke it.",
+      "invariant": "A4",
+      "tier_target": 4
+    },
+    {
+      "id": "C42",
+      "cc_id": null,
+      "text": "The edit rounds stop at max_edit_rounds and the release rounds at release_edits.",
+      "stated": false,
+      "source": "loop.py docstring, lines 5-8 (formal FC4)",
+      "layer": "Loop and editor",
+      "plain": {
+        "what": "The edit rounds and the release rounds have a fixed limit, and each run ends.",
+        "proof": "A model check (F489-2) shows it for each path of the loop."
+      },
+      "tier": null,
+      "verdict": "Backed",
+      "reason": "F489-2 backs this claim, but its formal record is Formal (pending).",
+      "invariant": "L1",
+      "tier_target": 4
+    },
+    {
+      "id": "C43",
+      "cc_id": null,
+      "text": "The floor releases only a draft with no floor finding, or a fallback that the code checks pass.",
+      "stated": false,
+      "source": "loop.py docstring, lines 17-19 (formal FC5)",
+      "layer": "Loop and editor",
+      "plain": {
+        "what": "The floor releases only a draft with no floor finding, or a fallback that the code checks pass.",
+        "proof": "A model check (F489-2) shows it. The user deferred the rule, because the release audit question is open.",
+        "warning": "A fallback that the code checks pass but the release audit fails still goes out. This is the open safety question."
+      },
+      "tier": null,
+      "verdict": "Backed",
+      "reason": "F489-2 backs this claim, but its formal record is Formal (pending)."
     }
   ],
   "verifiers": [
@@ -1602,7 +1734,8 @@
         "ran_at": "2026-10-10T18:48:15+00:00",
         "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
       },
-      "state": "proven"
+      "state": "proven",
+      "incomplete": "It does not test a round whose editor did not finish its session, for example at the turn limit. The user's invariant L3 covers that case."
     },
     {
       "id": "V20",
@@ -2282,7 +2415,7 @@
           "detail": "No match in 362 files under projects/clinical-reasoning/cr_service/ at 3758b0901c.",
           "command": "git grep -n -E '^[[:space:]]*(from|import)[[:space:]]+(cr\\.docgen|\\.+docgen)|^[[:space:]]*from[[:space:]]+cr[[:space:]]+import[[:space:]].*docgen' 3758b0901c4f85ad955e1a6f0cb02804c838147b -- projects/clinical-reasoning/cr_service/",
           "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b",
-          "ran_at": "2026-10-10T22:31:29+00:00"
+          "ran_at": "2026-10-11T01:43:15+00:00"
         }
       },
       "independence": {
@@ -2315,7 +2448,7 @@
           "detail": "No match in 362 files under projects/clinical-reasoning/cr_service/ at 3758b0901c.",
           "command": "git grep -n -E '^[[:space:]]*(from|import)[[:space:]]+cr\\.cli([[:space:]]|$)|^[[:space:]]*from[[:space:]]+cr[[:space:]]+import[[:space:]](.*[ ,])?cli([[:space:],]|$)' 3758b0901c4f85ad955e1a6f0cb02804c838147b -- projects/clinical-reasoning/cr_service/",
           "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b",
-          "ran_at": "2026-10-10T22:31:29+00:00"
+          "ran_at": "2026-10-11T01:43:15+00:00"
         }
       },
       "independence": {
@@ -2349,7 +2482,7 @@
           "detail": "+7,017 and -7,064 lines in 130 files under projects/clinical-reasoning/src/, projects/clinical-reasoning/harness/src/: net -47. The claim says -47.",
           "command": "git diff --numstat --no-renames 7c5a9044225ca3de8b4728f5040ebc02c1387d06 3758b0901c4f85ad955e1a6f0cb02804c838147b -- projects/clinical-reasoning/src/ projects/clinical-reasoning/harness/src/",
           "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b",
-          "ran_at": "2026-10-10T22:31:29+00:00"
+          "ran_at": "2026-10-11T01:43:15+00:00"
         }
       },
       "independence": {
@@ -2363,6 +2496,838 @@
       },
       "provenance": "understando runs it at the PR head (scripts/mechanical.py). It reads Git objects only.",
       "state": "checked"
+    },
+    {
+      "id": "F489-1",
+      "kind": "lean",
+      "ladder": 5,
+      "claims": [
+        "C20",
+        "C39",
+        "C40",
+        "C41"
+      ],
+      "tier": "fact",
+      "description": "Lean model of cr.docgen.accept: score order, StrictImprovement keep and rejects_early, LastClean keep and settle.",
+      "recorded": {
+        "source": "formal sidecar verifiers.json, record F489-1",
+        "result": "check green; conformance green; record verdict Formal"
+      },
+      "independence": {
+        "by": "tool",
+        "tool": "lean"
+      },
+      "cost": {
+        "usd": 0
+      },
+      "provenance": "understando formalize; the record is in /Users/clayton/dev/understando-mode/runs/function-intelligence/489/formal/verifiers.json.",
+      "formal_record": {
+        "ladder_tier": 5,
+        "conformance": {
+          "result": {
+            "status": "green",
+            "exit": 0,
+            "seconds": 0.76,
+            "matched": null,
+            "argv": [
+              "uv",
+              "run",
+              "--no-sync",
+              "pytest",
+              "-q",
+              "-rs",
+              "tests/test_formal_accept_conformance.py"
+            ],
+            "edits": [],
+            "output_tail": "...                                                                      [100%]\n3 passed in 0.20s"
+          },
+          "checks": {
+            "statement_parity": {
+              "status": "pass",
+              "note": "each theorem restates a rule of accept.py; settle theorems assume states != [] (Python raises IndexError on [], accept.py:68; the loop always passes the projection, loop.py:223)"
+            },
+            "state_parity": {
+              "status": "pass",
+              "note": "only key, blocking, decided, severity reach the rule; keys are Nat in Lean and 'k<n>' in Python; Python sets are List membership"
+            },
+            "transition_parity": {
+              "status": "pass",
+              "note": "every branch: LC keep/rejects_early/settle (both returns), SI keep (three returns), rejects_early (both disjuncts), SI settle"
+            },
+            "concurrency_parity": {
+              "status": "n/a",
+              "note": "pure functions"
+            },
+            "cancel_drain_parity": {
+              "status": "n/a",
+              "note": "no cancellation in the rule"
+            },
+            "runtime_evidence": {
+              "status": "pass",
+              "note": "501 committed vectors + 6000 random oracle requests green; 4 controls red"
+            },
+            "drift_gate": {
+              "status": "pass",
+              "note": "stamped: commit and blobs of accept.py and findings.py, sha256 of each Lean file and the vectors"
+            }
+          }
+        },
+        "route": "none",
+        "invariant": {
+          "author": "user",
+          "ref": "journal 2026-10-11T01:42:23+00:00; journal 2026-10-11T01:42:23+00:00; journal 2026-10-11T01:42:23+00:00; journal 2026-10-11T01:42:23+00:00; journal 2026-10-11T01:42:23+00:00; journal 2026-10-11T01:42:36+00:00; journal 2026-10-11T01:42:36+00:00; journal 2026-10-11T01:42:36+00:00; journal 2026-10-11T01:42:36+00:00; journal 2026-10-11T01:42:36+00:00",
+          "status": "confirmed",
+          "items": [
+            {
+              "id": "A1",
+              "sentence": "The accept score ranks a draft by its deterministic findings first, then its confirmed major findings, then its minor findings, and any two different scores compare one way.",
+              "checked_by": [
+                "lexLt_irrefl",
+                "lexLt_trans",
+                "lexLt_asymm",
+                "lexLt_total"
+              ],
+              "questions": [
+                {
+                  "ask": "What should happen if an edit removes one deterministic finding and adds ten minor findings?",
+                  "code_today": "The edit scores better, (0,0,10) < (1,0,0), so StrictImprovement keeps it.",
+                  "where": "src/cr/docgen/accept.py:22-26, 83",
+                  "looks": "intended (the docstring says lexicographic)"
+                },
+                {
+                  "ask": "What should happen if an edit turns one confirmed major finding into two minor findings with new keys?",
+                  "code_today": "Kept: confirmed count drops; new minor keys are not checked.",
+                  "where": "src/cr/docgen/accept.py:78-83",
+                  "looks": "intended"
+                }
+              ]
+            },
+            {
+              "id": "A2",
+              "sentence": "StrictImprovement keeps an edit only when its score is strictly lower and it adds no new deterministic key and no new confirmed S5 or S4 key.",
+              "checked_by": [
+                "keepSI_iff",
+                "keepSI_no_new_severe",
+                "keepSI_no_new_det",
+                "keepSI_strict"
+              ],
+              "questions": [
+                {
+                  "ask": "What should happen if an edit raises a confirmed S3 finding to S4 under the same key?",
+                  "code_today": "Rejected: the key is new to the severe set.",
+                  "where": "src/cr/docgen/accept.py:81; src/cr/docgen/findings.py:100-101",
+                  "looks": "intended"
+                },
+                {
+                  "ask": "What should happen if an edit adds an S5 finding that a model judge has not confirmed yet (not blocking)?",
+                  "code_today": "It counts only as one more minor finding; the edit can still be kept.",
+                  "where": "src/cr/docgen/findings.py:100-101; src/cr/docgen/accept.py:25",
+                  "looks": "unclear: ask"
+                },
+                {
+                  "ask": "What should happen if an edit fixes one deterministic finding but adds a different deterministic key (same count)?",
+                  "code_today": "Rejected: a new deterministic key.",
+                  "where": "src/cr/docgen/accept.py:79-80",
+                  "looks": "intended"
+                }
+              ]
+            },
+            {
+              "id": "A3",
+              "sentence": "StrictImprovement never keeps an edit whose findings are the same as before.",
+              "checked_by": [
+                "keepSI_unchanged"
+              ],
+              "questions": [
+                {
+                  "ask": "What should happen if the editor changes files but reflection reports exactly the same findings?",
+                  "code_today": "Not kept (a tie), the files are reverted, and the rounds go on (only an unchanged, finished round stops them).",
+                  "where": "src/cr/docgen/accept.py:83; src/cr/docgen/loop.py:216-218, 107",
+                  "looks": "intended"
+                }
+              ]
+            },
+            {
+              "id": "A4",
+              "sentence": "When rejects_early is true, keep reverts the edit whatever the reflectors add.",
+              "checked_by": [
+                "rejectsEarlySI_sound"
+              ],
+              "questions": [
+                {
+                  "ask": "What should happen if a reflector should be able to clear a code-check finding?",
+                  "code_today": "It cannot: reflection always starts from the code checks and only appends, which the soundness proof needs.",
+                  "where": "src/cr/docgen/loop.py:164-175",
+                  "looks": "intended"
+                }
+              ]
+            },
+            {
+              "id": "A5",
+              "sentence": "When the edit rounds end and the last kept draft has a blocking finding, LastClean restores the last kept draft that has none; when no kept draft is clean, the last kept draft stands.",
+              "checked_by": [
+                "settleLC_stands",
+                "settleLC_some",
+                "settleLC_none",
+                "keepLC_always",
+                "settleSI_none"
+              ],
+              "questions": [
+                {
+                  "ask": "What should happen if only the unedited projection is clean and every later round blocks: go back to the projection?",
+                  "code_today": "Yes: restored_to = 0.",
+                  "where": "src/cr/docgen/accept.py:67-71; src/cr/docgen/loop.py:244-247",
+                  "looks": "intended"
+                },
+                {
+                  "ask": "What should happen if a draft has no blocking finding but has a non-blocking floor finding?",
+                  "code_today": "settle counts it as clean (it reads only blocking); the floor then judges it by floor and can block or fall back.",
+                  "where": "src/cr/docgen/accept.py:68-70; src/cr/docgen/loop.py:88-98",
+                  "looks": "unclear: ask (can a code check emit floor=True, blocking=False?)"
+                },
+                {
+                  "ask": "What should happen if settle gets no kept state?",
+                  "code_today": "IndexError on states[-1]; the loop never passes an empty list.",
+                  "where": "src/cr/docgen/accept.py:68; src/cr/docgen/loop.py:223",
+                  "looks": "precondition, not a bug"
+                }
+              ]
+            }
+          ]
+        },
+        "witness": null,
+        "drift": {
+          "commit": "ef0cca4247c2760f99f137ec084a232c68b5a87e",
+          "code_files": [
+            {
+              "path": "projects/clinical-reasoning/src/cr/docgen/accept.py",
+              "blob": "b3c32637c9cac31d7099cbd9f4bfadeb728e5d5b"
+            },
+            {
+              "path": "projects/clinical-reasoning/src/cr/docgen/findings.py",
+              "blob": "ed0511e45932cb9d43e1a5d94d3ee5c636411b19"
+            }
+          ],
+          "model_files": [
+            {
+              "path": "projects/clinical-reasoning/formal/lean/Accept/Model.lean",
+              "sha256": "sha256:d23407fb3662ddfc7557b34bf66c0aec8de6ae28f384c340249850321be180b6"
+            },
+            {
+              "path": "projects/clinical-reasoning/formal/lean/Accept/Theorems.lean",
+              "sha256": "sha256:5d512910669e607d7ccb61544ce31551bd7cacfb01da43de25d812cf21aed905"
+            },
+            {
+              "path": "projects/clinical-reasoning/formal/lean/Vectors.lean",
+              "sha256": "sha256:3798c5656add1419575cf1d6a842b33051db8abad8d3af17eb75258a4dbd2d7e"
+            },
+            {
+              "path": "projects/clinical-reasoning/formal/lean/accept_vectors.jsonl",
+              "sha256": "sha256:9b3d03f0b3f7bb6199d412fdb3739281c24220b77cb1e2ed39ac67c9631792de"
+            },
+            {
+              "path": "projects/clinical-reasoning/tests/test_formal_accept_conformance.py",
+              "sha256": "sha256:737167708fcfc869bd7bd51dc5a4a474ad118e570f4ff586a448e6c5a83f76be"
+            }
+          ]
+        },
+        "formal": {
+          "verdict": "Formal",
+          "missing": []
+        },
+        "blocker_open": false,
+        "card": {
+          "frog": "docgen.accept",
+          "ev": {
+            "impact": 5,
+            "bug_prior": 3,
+            "reach": 5,
+            "proof_cost": 2,
+            "model_cost": 1,
+            "ev": 37.5
+          },
+          "history": "git log -S 'def settle' and -S 'rejects_early' on projects/clinical-reasoning/src/cr/docgen/accept.py: the rule is new in this PR stack; no earlier fix commits on the surface, so BugPrior stays 3 (new code, review-only evidence).",
+          "surface": "projects/clinical-reasoning/src/cr/docgen/accept.py (score, LastClean, StrictImprovement) and findings.py:96-101",
+          "failure_class": "decision rule: a wrong order, a missed new key, an early reject that drops a keepable edit, settle restoring the wrong draft",
+          "math": "Lean 4 core: Bool rules over List findings; lexicographic order on Nat^3 by omega; settle by the recurrence of the last index of a filtered range",
+          "artifact": "formal/lean/Accept/{Model,Theorems}.lean; accept_vectors.jsonl; vectors --oracle; tests/test_formal_accept_conformance.py"
+        },
+        "witness_test": null,
+        "controls": [
+          {
+            "id": "K489-1a",
+            "target": "model",
+            "status": "red"
+          },
+          {
+            "id": "K489-1b",
+            "target": "model",
+            "status": "red"
+          },
+          {
+            "id": "K489-1c",
+            "target": "code",
+            "status": "red"
+          },
+          {
+            "id": "K489-1d",
+            "target": "code",
+            "status": "red"
+          }
+        ],
+        "sidecar": "/Users/clayton/dev/understando-mode/runs/function-intelligence/489/formal/verifiers.json"
+      },
+      "formal": {
+        "tool": "lean",
+        "artifact": "projects/clinical-reasoning/formal/lean/Accept/Model.lean",
+        "conformance": {
+          "status": "pass",
+          "source": "uv run --no-sync pytest -q -rs tests/test_formal_accept_conformance.py"
+        }
+      },
+      "state": "proven"
+    },
+    {
+      "id": "F489-2",
+      "kind": "tla",
+      "ladder": 4,
+      "claims": [
+        "C15",
+        "C16",
+        "C17",
+        "C42",
+        "C43"
+      ],
+      "tier": "fact",
+      "description": "TLA+ model of run_document: stop rules, lost call, settle, release audit and floor, for both accept rules.",
+      "recorded": {
+        "source": "formal sidecar verifiers.json, record F489-2",
+        "result": "check green; conformance green; record verdict Formal (pending)"
+      },
+      "independence": {
+        "by": "tool",
+        "tool": "tlc"
+      },
+      "cost": {
+        "usd": 0
+      },
+      "provenance": "understando formalize; the record is in /Users/clayton/dev/understando-mode/runs/function-intelligence/489/formal/verifiers.json.",
+      "formal_record": {
+        "ladder_tier": 4,
+        "conformance": {
+          "result": {
+            "status": "green",
+            "exit": 0,
+            "seconds": 1.39,
+            "matched": null,
+            "argv": [
+              "uv",
+              "run",
+              "--no-sync",
+              "pytest",
+              "-q",
+              "tests/test_formal_docloop_replay.py"
+            ],
+            "edits": [],
+            "output_tail": "..                                                                       [100%]\n2 passed in 0.72s"
+          },
+          "checks": {
+            "statement_parity": {
+              "status": "pass",
+              "note": "each property names the decision the code makes; C15 as worded is stricter than the code (see witness); the checked property is the code's own (_idle needs finished)"
+            },
+            "state_parity": {
+              "status": "pass",
+              "note": "draft = set of abstract findings f,n,u,m,r; kept list, before, edited, lost map to loop.py variables; changed is a separate choice so an edit can change files and keep the same findings"
+            },
+            "transition_parity": {
+              "status": "pass",
+              "note": "ReviewStop order = loop.py:228-231 then 241; ReviewEdit = edit() 194-219; Settle 244-247; StartRelease 250-251; ReleaseEdit 252-261; Floor 262-265 and _floor 79-98"
+            },
+            "concurrency_parity": {
+              "status": "pass",
+              "note": "run_document is one task; each await is sequential, so no interleaving to model"
+            },
+            "cancel_drain_parity": {
+              "status": "pass",
+              "note": "lost call (model_error) modelled in both stages, with restore and floor block; incomplete_response is a non-lost outcome (not in the model's outcome set: turn_limit stands for every non-finished, non-lost stop)"
+            },
+            "runtime_evidence": {
+              "status": "pass",
+              "note": "2692 terminal behaviours (SI + LC) and 9 finish sessions replay green through the real code; 4 code controls red"
+            },
+            "drift_gate": {
+              "status": "pass",
+              "note": "stamped: commit and blobs of loop.py, session.py, accept.py; sha256 of specs, cfgs and vectors"
+            }
+          }
+        },
+        "route": "code-first",
+        "invariant": {
+          "author": "agent",
+          "ref": null,
+          "status": "proposed",
+          "items": [
+            {
+              "id": "L1",
+              "sentence": "The review step runs at most max_edit_rounds edit rounds, the release step at most release_edits, and the run always ends.",
+              "checked_by": [
+                "Bounded",
+                "Termination"
+              ],
+              "questions": [
+                {
+                  "ask": "What should happen with max_edit_rounds = 0: no edit, but does the release step still run?",
+                  "code_today": "No review round runs; settle and the release audit still run.",
+                  "where": "src/cr/docgen/loop.py:227, 244-251",
+                  "looks": "intended"
+                }
+              ]
+            },
+            {
+              "id": "L2",
+              "sentence": "After a lost editor call, nothing reflects, keeps, settles, audits or edits again, and the floor blocks with no fallback.",
+              "checked_by": [
+                "LostIsFinal"
+              ],
+              "questions": [
+                {
+                  "ask": "What should happen if the call is lost in the release step after an earlier release edit was kept?",
+                  "code_today": "The run blocks; the kept release draft does not stand.",
+                  "where": "src/cr/docgen/loop.py:257-263",
+                  "looks": "intended (fail-closed), but ask"
+                },
+                {
+                  "ask": "What should happen if the provider returns status failed instead of raising?",
+                  "code_today": "Treated as lost (model_error).",
+                  "where": "src/cr/docgen/session.py:119-124; src/cr/docgen/adapter.py:324-326",
+                  "looks": "intended"
+                },
+                {
+                  "ask": "What should happen if the response is incomplete (cut off) after a partial patch?",
+                  "code_today": "Not lost: the partial edit is reflected and can be kept.",
+                  "where": "src/cr/docgen/session.py:119-124; src/cr/docgen/loop.py:207-219",
+                  "looks": "unclear: ask"
+                }
+              ]
+            },
+            {
+              "id": "L3",
+              "sentence": "The review rounds stop after a round that the accept rule did not keep, that changed no file, and whose editor finished its session.",
+              "checked_by": [
+                "IdleFinishedStops"
+              ],
+              "questions": [
+                {
+                  "ask": "What should happen if the editor hit its turn limit (or made no tool calls), changed no file, and the round was not kept: another round, or stop?",
+                  "code_today": "Another round runs from the same draft and findings (TLC witness; replayed on the real loop).",
+                  "where": "src/cr/docgen/loop.py:101-107, 241-242",
+                  "looks": "matches the code's docstring; the PR-body claim C15 omits 'finished', so the claim overstates"
+                }
+              ]
+            },
+            {
+              "id": "L4",
+              "sentence": "No edit round, review or release, starts while a floor finding that no writable file holds remains.",
+              "checked_by": [
+                "UnfixableStops"
+              ],
+              "questions": [
+                {
+                  "ask": "What should happen if an edit creates an unfixable floor finding?",
+                  "code_today": "Under LastClean the edit is kept, the next round does not start, and settle can restore an earlier clean draft; under StrictImprovement the edit is reverted (a new deterministic key).",
+                  "where": "src/cr/docgen/loop.py:228, 253; src/cr/docgen/accept.py:79-80",
+                  "looks": "intended"
+                }
+              ]
+            },
+            {
+              "id": "L6",
+              "sentence": "The floor releases only a draft with no floor finding, and a fallback only when the code checks find no floor finding on it.",
+              "checked_by": [
+                "FloorSafe"
+              ],
+              "questions": [
+                {
+                  "ask": "What should happen if the fallback passes the code checks but would fail the release audit?",
+                  "code_today": "The fallback stands: only the code checks judge it.",
+                  "where": "src/cr/docgen/loop.py:91-96",
+                  "looks": "unclear: ask"
+                }
+              ]
+            }
+          ]
+        },
+        "witness": {
+          "kind": "tlc-trace",
+          "property": "IdleStops (C15 as the PR body words it)",
+          "cfg": "formal/tla/DocLoopC15.cfg",
+          "input": {
+            "rule": "StrictImprovement",
+            "projection_findings": [
+              "m: confirmed S4, blocking, editable"
+            ],
+            "round_1": "editor stops at turn_limit, changes no file; not kept",
+            "round_2": "runs (in the trace the model then loses the call)"
+          },
+          "trace": [
+            {
+              "d": [
+                "m"
+              ],
+              "ev": "init"
+            },
+            {
+              "n": 1,
+              "kept": false,
+              "d": [
+                "m"
+              ],
+              "ev": "edit",
+              "o": "turn_limit",
+              "ch": false,
+              "stage": "review",
+              "todo": [
+                "m"
+              ]
+            },
+            {
+              "n": 2,
+              "kept": false,
+              "d": [],
+              "ev": "edit",
+              "o": "lost",
+              "ch": true,
+              "stage": "review",
+              "todo": [
+                "m"
+              ]
+            }
+          ],
+          "replay_on_real_code": {
+            "status": "green",
+            "witness": "C15 as worded",
+            "note": "the real run_document makes the same decisions as the TLC counterexample: round 1 (turn_limit, no file changed, not kept) is followed by round 2",
+            "rounds": [
+              [
+                1,
+                "turn_limit",
+                false,
+                false
+              ],
+              [
+                2,
+                "lost",
+                true,
+                false
+              ]
+            ],
+            "init": [
+              "m"
+            ],
+            "rule": "StrictImprovement"
+          }
+        },
+        "drift": {
+          "commit": "ef0cca4247c2760f99f137ec084a232c68b5a87e",
+          "code_files": [
+            {
+              "path": "projects/clinical-reasoning/src/cr/docgen/loop.py",
+              "blob": "99afc4cdfb99c4195c710e731a33ba38e17cf107"
+            },
+            {
+              "path": "projects/clinical-reasoning/src/cr/docgen/accept.py",
+              "blob": "b3c32637c9cac31d7099cbd9f4bfadeb728e5d5b"
+            },
+            {
+              "path": "projects/clinical-reasoning/src/cr/docgen/adapter.py",
+              "blob": "cd06312f30e24b92bef1482370da540f7da29941"
+            }
+          ],
+          "model_files": [
+            {
+              "path": "projects/clinical-reasoning/formal/tla/DocLoop.tla",
+              "sha256": "sha256:902f92a6e563198ba3931a613d06217634bb74c133eb7c3857d14bcff7746c36"
+            },
+            {
+              "path": "projects/clinical-reasoning/formal/tla/DocLoop.cfg",
+              "sha256": "sha256:7cea63313470de6c87512dc56e7eb7fdced9bc19ae3f9b716ee84934b2db7aad"
+            },
+            {
+              "path": "projects/clinical-reasoning/formal/tla/DocLoopLC.cfg",
+              "sha256": "sha256:bcdad89c11b35ef47f0cee3dcca50483a5e4fd1429611f5c536f477b9de7174e"
+            },
+            {
+              "path": "projects/clinical-reasoning/formal/tla/DocLoopVectorsSI.cfg",
+              "sha256": "sha256:c65fe092f9f120e63950e65a7fdb78dd33cccbc558fb8b6230222090ca0f5eae"
+            },
+            {
+              "path": "projects/clinical-reasoning/formal/tla/DocLoopVectorsLC.cfg",
+              "sha256": "sha256:31d1fe5ffc46db85dc933fd1a509cd5c4c632e48cf0082a969a1451dd83f0fa5"
+            },
+            {
+              "path": "projects/clinical-reasoning/formal/tla/docloop_vectors_SI.json",
+              "sha256": "sha256:151330e1459ca11224040d3f1778746e644b3ce9b02ec32dfd68df05f56a112a"
+            },
+            {
+              "path": "projects/clinical-reasoning/formal/tla/docloop_vectors_LC.json",
+              "sha256": "sha256:47f12968bb8c0153efeecd4c6d4fc30d1403cbbb65252e12391731a2dc357716"
+            },
+            {
+              "path": "projects/clinical-reasoning/tests/test_formal_docloop_replay.py",
+              "sha256": "sha256:2710dd8c8268cf7505919da2e4875068649a30d9fb6ec3ea5c529c4ac80fe5d6"
+            }
+          ]
+        },
+        "formal": {
+          "verdict": "Formal (pending)",
+          "missing": [
+            "L3: the code disagrees with the confirmed invariant; fix pending on understando/489-ready, then run the check again against the user's L3",
+            "L6: not confirmed by the user"
+          ]
+        },
+        "blocker_open": false,
+        "card": {
+          "frog": "docgen.loop.stops",
+          "ev": {
+            "impact": 5,
+            "bug_prior": 3,
+            "reach": 5,
+            "proof_cost": 3,
+            "model_cost": 3,
+            "ev": 8.3
+          },
+          "history": "git log -S '_idle' / -S '_unfixable' on loop.py: introduced in this PR stack; the trust map's C15-C18 rest on one integration test each (V19-V22).",
+          "surface": "projects/clinical-reasoning/src/cr/docgen/loop.py:65-116, 185-265; session.py:102-138, 255-265",
+          "failure_class": "loop stop rules: an extra round, a missed stop, a lost call that is reflected or released, a release of a floor finding",
+          "math": "TLA+ state machine with an event log; TLC safety invariants, Termination under WF; the finish gate as a second spec",
+          "artifact": "formal/tla/{DocLoop,Finish}.tla + cfgs; TLC terminal-state vectors replayed by tests/test_formal_{docloop,finish}_replay.py"
+        },
+        "witness_test": null,
+        "controls": [
+          {
+            "id": "K489-2a",
+            "target": "model",
+            "status": "red"
+          },
+          {
+            "id": "K489-2b",
+            "target": "model",
+            "status": "red"
+          },
+          {
+            "id": "K489-2c",
+            "target": "model",
+            "status": "red"
+          },
+          {
+            "id": "K489-2d",
+            "target": "code",
+            "status": "red"
+          },
+          {
+            "id": "K489-2e",
+            "target": "code",
+            "status": "red"
+          },
+          {
+            "id": "K489-2f",
+            "target": "code",
+            "status": "red"
+          }
+        ],
+        "sidecar": "/Users/clayton/dev/understando-mode/runs/function-intelligence/489/formal/verifiers.json"
+      },
+      "formal": {
+        "tool": "tla",
+        "artifact": "projects/clinical-reasoning/formal/tla/DocLoop.tla",
+        "conformance": {
+          "status": "pass",
+          "source": "uv run --no-sync pytest -q tests/test_formal_docloop_replay.py"
+        }
+      },
+      "state": "proven"
+    },
+    {
+      "id": "F489-3",
+      "kind": "tla",
+      "ladder": 4,
+      "claims": [
+        "C18"
+      ],
+      "tier": "fact",
+      "description": "TLA+ model of the editor session's finish gate: refusals while a code check blocks, at most max_finish_refusals.",
+      "recorded": {
+        "source": "formal sidecar verifiers.json, record F489-3",
+        "result": "check green; conformance green; record verdict Formal"
+      },
+      "independence": {
+        "by": "tool",
+        "tool": "tlc"
+      },
+      "cost": {
+        "usd": 0
+      },
+      "provenance": "understando formalize; the record is in /Users/clayton/dev/understando-mode/runs/function-intelligence/489/formal/verifiers.json.",
+      "formal_record": {
+        "ladder_tier": 4,
+        "conformance": {
+          "result": {
+            "status": "green",
+            "exit": 0,
+            "seconds": 0.74,
+            "matched": null,
+            "argv": [
+              "uv",
+              "run",
+              "--no-sync",
+              "pytest",
+              "-q",
+              "tests/test_formal_finish_replay.py"
+            ],
+            "edits": [],
+            "output_tail": "..                                                                       [100%]\n2 passed in 0.16s"
+          },
+          "checks": {
+            "statement_parity": {
+              "status": "pass",
+              "note": "each property names the decision the code makes; C15 as worded is stricter than the code (see witness); the checked property is the code's own (_idle needs finished)"
+            },
+            "state_parity": {
+              "status": "pass",
+              "note": "draft = set of abstract findings f,n,u,m,r; kept list, before, edited, lost map to loop.py variables; changed is a separate choice so an edit can change files and keep the same findings"
+            },
+            "transition_parity": {
+              "status": "pass",
+              "note": "ReviewStop order = loop.py:228-231 then 241; ReviewEdit = edit() 194-219; Settle 244-247; StartRelease 250-251; ReleaseEdit 252-261; Floor 262-265 and _floor 79-98"
+            },
+            "concurrency_parity": {
+              "status": "pass",
+              "note": "run_document is one task; each await is sequential, so no interleaving to model"
+            },
+            "cancel_drain_parity": {
+              "status": "pass",
+              "note": "lost call (model_error) modelled in both stages, with restore and floor block; incomplete_response is a non-lost outcome (not in the model's outcome set: turn_limit stands for every non-finished, non-lost stop)"
+            },
+            "runtime_evidence": {
+              "status": "pass",
+              "note": "2692 terminal behaviours (SI + LC) and 9 finish sessions replay green through the real code; 4 code controls red"
+            },
+            "drift_gate": {
+              "status": "pass",
+              "note": "stamped: commit and blobs of loop.py, session.py, accept.py; sha256 of specs, cfgs and vectors"
+            }
+          }
+        },
+        "route": "none",
+        "invariant": {
+          "author": "user",
+          "ref": "journal 2026-10-11T01:42:23+00:00; journal 2026-10-11T01:42:36+00:00",
+          "status": "confirmed",
+          "items": [
+            {
+              "id": "L5",
+              "sentence": "finish is refused while a code check reports a blocking finding, at most max_finish_refusals (3) times; after that it is accepted and finished_with_blocking records it.",
+              "checked_by": [
+                "RefusalsBounded",
+                "RefusedOnlyWhileBlocking",
+                "BlockingAcceptedOnlyAtBudget",
+                "WithBlockingHonest"
+              ],
+              "questions": [
+                {
+                  "ask": "What should happen if the only blocking findings are ones no writable file holds?",
+                  "code_today": "finish is still refused up to 3 times, spending turns on a finding the editor cannot fix.",
+                  "where": "src/cr/docgen/session.py:255-260",
+                  "looks": "unclear: ask"
+                },
+                {
+                  "ask": "Should a confirmed model finding also block finish?",
+                  "code_today": "No: finish reads only the code checks.",
+                  "where": "src/cr/docgen/session.py:256",
+                  "looks": "intended (reflection decides after)"
+                }
+              ]
+            }
+          ]
+        },
+        "witness": null,
+        "drift": {
+          "commit": "ef0cca4247c2760f99f137ec084a232c68b5a87e",
+          "code_files": [
+            {
+              "path": "projects/clinical-reasoning/src/cr/docgen/session.py",
+              "blob": "17ee825cc91911dd0eb2302e55eed9633d243613"
+            }
+          ],
+          "model_files": [
+            {
+              "path": "projects/clinical-reasoning/formal/tla/Finish.tla",
+              "sha256": "sha256:e029bc4757a38ce156b44b8faa6f28a936718604f8e616cef1bc0e585c88ae37"
+            },
+            {
+              "path": "projects/clinical-reasoning/formal/tla/Finish.cfg",
+              "sha256": "sha256:4d00c19bf87ecc7fb135673d5a846caa816d51115bf0e862b34c26b23d2eab5d"
+            },
+            {
+              "path": "projects/clinical-reasoning/formal/tla/finish_vectors_t3.json",
+              "sha256": "sha256:fad25018df1e14c272d4c2a78fd3182865eb1672604859b9d1e9818547dbcd40"
+            },
+            {
+              "path": "projects/clinical-reasoning/formal/tla/finish_vectors_t6.json",
+              "sha256": "sha256:a9e3d68f34c9674983e1bb59dacd6b6a7e79432015d58671c0da5015f8390eea"
+            },
+            {
+              "path": "projects/clinical-reasoning/tests/test_formal_finish_replay.py",
+              "sha256": "sha256:44b65906807b01a854034e9ca696b102a446a88ddc0cbf2187905b96fc6e8fb2"
+            }
+          ]
+        },
+        "formal": {
+          "verdict": "Formal",
+          "missing": []
+        },
+        "blocker_open": false,
+        "card": {
+          "frog": "docgen.session.finish_gate",
+          "ev": {
+            "impact": 5,
+            "bug_prior": 3,
+            "reach": 5,
+            "proof_cost": 3,
+            "model_cost": 3,
+            "ev": 8.3
+          },
+          "history": "git log -S '_idle' / -S '_unfixable' on loop.py: introduced in this PR stack; the trust map's C15-C18 rest on one integration test each (V19-V22).",
+          "surface": "projects/clinical-reasoning/src/cr/docgen/session.py:102-138, 255-265",
+          "failure_class": "loop stop rules: an extra round, a missed stop, a lost call that is reflected or released, a release of a floor finding",
+          "math": "TLA+ state machine with an event log; TLC safety invariants, Termination under WF; the finish gate as a second spec",
+          "artifact": "formal/tla/Finish.tla + cfgs; finish_vectors_t{3,6}.json; tests/test_formal_finish_replay.py"
+        },
+        "witness_test": null,
+        "controls": [
+          {
+            "id": "K489-3a",
+            "target": "model",
+            "status": "red"
+          },
+          {
+            "id": "K489-3b",
+            "target": "code",
+            "status": "red"
+          }
+        ],
+        "sidecar": "/Users/clayton/dev/understando-mode/runs/function-intelligence/489/formal/verifiers.json"
+      },
+      "formal": {
+        "tool": "tla",
+        "artifact": "projects/clinical-reasoning/formal/tla/Finish.tla",
+        "conformance": {
+          "status": "pass",
+          "source": "uv run --no-sync pytest -q tests/test_formal_finish_replay.py"
+        }
+      },
+      "state": "proven"
     }
   ],
   "controls": [
@@ -3281,6 +4246,306 @@
         "ran_at": "2026-10-10T18:54:29+00:00",
         "head": "3758b0901c4f85ad955e1a6f0cb02804c838147b"
       }
+    },
+    {
+      "id": "K489-1a",
+      "verifier": "F489-1",
+      "recipe": "plant-violation",
+      "description": "A planted wrong model from the formal pilot.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "Accept/Model.lean",
+          "find": "else (cleanIdx states).getLast?",
+          "replace": "else (cleanIdx states).head?"
+        }
+      ],
+      "expect": {
+        "status": "red"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "matched": true,
+        "recorded": true,
+        "output_tail": "  h\nhas type\n  (cleanIdx states).head? = none\nbut is expected to have type\n  (List.filter ?m.41 (List.range ?m.42)).getLast? = none\nin the application\n  lastFilter_none ?m.41 ?m.42 h\n✔ [7/9] Built Vectors (541ms)\n✔ [9/9] Built vectors:exe (96ms)\nSome required targets logged failures:\n- Accept.Theorems\nerror: build failed",
+        "ran_at": "2026-10-11T01:42:55+00:00"
+      }
+    },
+    {
+      "id": "K489-1b",
+      "verifier": "F489-1",
+      "recipe": "plant-violation",
+      "description": "A planted wrong model from the formal pilot.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "Accept/Model.lean",
+          "find": "  else if newKey (severeKeys after) (severeKeys before) then false\n",
+          "replace": ""
+        }
+      ],
+      "expect": {
+        "status": "red"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "matched": true,
+        "recorded": true,
+        "output_tail": "✔ [3/9] Built Accept.Model:c.o (130ms)\n✔ [4/9] Built Vectors (530ms)\n✖ [6/9] Building Accept.Theorems (570ms)\ntrace: .> LEAN_PATH=<tmp>/lean-control-cu85mlfj/lean/.lake/build/lib/lean ~/.elan/toolchains/leanprover--lean4---v4.34.1/bin/lean <tmp>/lean-control-cu85mlfj/lean/Accept/Theorems.lean -o <tmp>/lean-control-cu85mlfj/lean/.lake/build/lib/lean/Accept/Theorems.olean -i <tmp>/lean-control-cu85mlfj/lean/.lake/build/lib/lean/Accept/Theorems.ilean -c <tmp>/lean-control-cu85mlfj/lean/.lake/build/ir/Accept/Theorems.c --setup <tmp>/lean-control-cu85mlfj/lean/.lake/build/ir/Accept/Theorems.setup.json --json\nerror: Accept/Theorems.lean:36:51: unsolved goals\ncase false.true\nbefore after : List Finding\n⊢ lexLt (score after) (score before) = false\n✔ [9/9] Built vectors:exe (92ms)\nSome required targets logged failures:\n- Accept.Theorems\nerror: build failed",
+        "ran_at": "2026-10-11T01:42:55+00:00"
+      }
+    },
+    {
+      "id": "K489-1c",
+      "verifier": "F489-1",
+      "recipe": "plant-violation",
+      "description": "A planted wrong function from the formal pilot.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "src/cr/docgen/accept.py",
+          "find": "return clean[-1] if clean else None",
+          "replace": "return clean[0] if clean else None"
+        }
+      ],
+      "expect": {
+        "status": "red"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "matched": true,
+        "recorded": true,
+        "output_tail": ">       assert LastClean().settle(states) == v[\"settle_lc\"], v\nE       AssertionError: {'op': 'settle', 'states': [[], [[1, False, 'code', 'S2']], [[2, True, 'code', 'S3']]], 'settle_lc': 1, 'settle_si': None, ...}\nE       assert 0 == 1\nE        +  where 0 = settle([[], [Finding(key='k1', blocking=False, source='formal', where=None, quote='', input_fact='', why='synthetic', hint=''...='formal', where=None, quote='', input_fact='', why='synthetic', hint='', severity='S3', decided='code', floor=False)]])\nE        +    where settle = <cr.docgen.accept.LastClean object at 0x107342f60>.settle\nE        +      where <cr.docgen.accept.LastClean object at 0x107342f60> = LastClean()\n\ntests/test_formal_accept_conformance.py:68: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_formal_accept_conformance.py::test_the_real_rules_replay_the_lean_vectors\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.04s",
+        "ran_at": "2026-10-11T01:42:55+00:00"
+      }
+    },
+    {
+      "id": "K489-1d",
+      "verifier": "F489-1",
+      "recipe": "plant-violation",
+      "description": "A planted wrong function from the formal pilot.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "src/cr/docgen/accept.py",
+          "find": "        if severe_confirmed_keys(after) - severe_confirmed_keys(before):\n            return False\n",
+          "replace": ""
+        }
+      ],
+      "expect": {
+        "status": "red"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "matched": true,
+        "recorded": true,
+        "output_tail": "        assert list(score(after)) == v[\"score_after\"], v\n>       assert si.keep(before, after) is v[\"keep_si\"], v\nE       AssertionError: {'op': 'pair', 'before': [[0, True, 'code', None]], 'after': [[0, True, 'model', 'S4']], 'score_before': [1, 0, 0], ...}\nE       assert True is False\nE        +  where True = keep([Finding(key='k0', blocking=True, source='formal', where=None, quote='', input_fact='', why='synthetic', hint='', severity=None, decided='code', floor=False)], [Finding(key='k0', blocking=True, source='formal', where=None, quote='', input_fact='', why='synthetic', hint='', severity='S4', decided='model', floor=False)])\nE        +    where keep = <cr.docgen.accept.StrictImprovement object at 0x107cbb0b0>.keep\n\ntests/test_formal_accept_conformance.py:60: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_formal_accept_conformance.py::test_the_real_rules_replay_the_lean_vectors\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.04s",
+        "ran_at": "2026-10-11T01:42:55+00:00"
+      }
+    },
+    {
+      "id": "K489-2a",
+      "verifier": "F489-2",
+      "recipe": "plant-violation",
+      "description": "A planted wrong model from the formal pilot.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/formal/tla/DocLoop.tla",
+          "find": "           ELSE IF Unfixable(C) THEN \"unfixable\"\n           ELSE IF edited",
+          "replace": "           ELSE IF edited"
+        }
+      ],
+      "expect": {
+        "status": "red"
+      },
+      "result": {
+        "status": "red",
+        "exit": 12,
+        "matched": true,
+        "recorded": true,
+        "output_tail": "     stage |-> \"review\",\n     todo |-> {\"f\", \"u\"} ] >>\n/\\ n = 1\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"f\", \"u\"}, d |-> {\"f\", \"u\"}]>>\n/\\ lost = TRUE\n/\\ edited = TRUE\n\n356 states generated, 351 distinct states found, 291 states left on queue.\nThe depth of the complete state graph search is 6.\nThe average outdegree of the complete state graph is 6 (minimum is 0, the maximum 30 and the 95th percentile is 27).\nFinished in 00s at (2026-10-10 18:20:53)",
+        "ran_at": "2026-10-11T01:42:55+00:00"
+      }
+    },
+    {
+      "id": "K489-2b",
+      "verifier": "F489-2",
+      "recipe": "plant-violation",
+      "description": "A planted wrong model from the formal pilot.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/formal/tla/DocLoop.tla",
+          "find": "     THEN /\\ lost' = TRUE /\\ phase' = \"floor\"\n          /\\ log' = Append(log, EditEvent(\"review\"",
+          "replace": "     THEN /\\ lost' = TRUE /\\ phase' = \"review\"\n          /\\ log' = Append(log, EditEvent(\"review\""
+        }
+      ],
+      "expect": {
+        "status": "red"
+      },
+      "result": {
+        "status": "red",
+        "exit": 12,
+        "matched": true,
+        "recorded": true,
+        "output_tail": "     todo |-> {\"n\"} ],\n   [ev |-> \"stop\", why |-> \"stalled\"] >>\n/\\ n = 1\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"n\"}, d |-> {\"n\"}]>>\n/\\ lost = TRUE\n/\\ edited = TRUE\n\n205 states generated, 205 distinct states found, 158 states left on queue.\nThe depth of the complete state graph search is 5.\nThe average outdegree of the complete state graph is 6 (minimum is 1, the maximum 30 and the 95th percentile is 27).\nFinished in 00s at (2026-10-10 18:20:54)",
+        "ran_at": "2026-10-11T01:42:55+00:00"
+      }
+    },
+    {
+      "id": "K489-2c",
+      "verifier": "F489-2",
+      "recipe": "plant-violation",
+      "description": "A planted wrong model from the formal pilot.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/formal/tla/DocLoop.tla",
+          "find": "IF ~k /\\ o = \"finished\" /\\ ~ch ",
+          "replace": "IF FALSE "
+        }
+      ],
+      "expect": {
+        "status": "red"
+      },
+      "result": {
+        "status": "red",
+        "exit": 12,
+        "matched": true,
+        "recorded": true,
+        "output_tail": "     stage |-> \"review\",\n     todo |-> {\"f\"} ] >>\n/\\ n = 2\n/\\ rn = 0\n/\\ kept = <<[n |-> 0, c |-> {\"f\"}, d |-> {\"f\"}]>>\n/\\ lost = TRUE\n/\\ edited = TRUE\n\n491 states generated, 486 distinct states found, 420 states left on queue.\nThe depth of the complete state graph search is 5.\nThe average outdegree of the complete state graph is 8 (minimum is 0, the maximum 30 and the 95th percentile is 27).\nFinished in 00s at (2026-10-10 18:20:55)",
+        "ran_at": "2026-10-11T01:42:55+00:00"
+      }
+    },
+    {
+      "id": "K489-2d",
+      "verifier": "F489-2",
+      "recipe": "plant-violation",
+      "description": "A planted wrong function from the formal pilot.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "src/cr/docgen/loop.py",
+          "find": "        elif _idle(record):\n            break\n",
+          "replace": ""
+        }
+      ],
+      "expect": {
+        "status": "red"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "matched": true,
+        "recorded": true,
+        "output_tail": "                _replay(rule, log, consts)\n            except AssertionError as exc:\n>               raise AssertionError(f\"{rule} vector {json.dumps(log)}: {exc}\") from exc\nE               AssertionError: SI vector [{\"d\": [\"f\"], \"ev\": \"init\"}, {\"ch\": false, \"d\": [\"f\"], \"ev\": \"edit\", \"kept\": false, \"n\": 1, \"o\": \"finished\", \"stage\": \"review\", \"todo\": [\"f\"]}, {\"ev\": \"stop\", \"why\": \"idle\"}, {\"ev\": \"floor\", \"final\": [\"f\"], \"outcome\": \"fallback\"}]: the loop ran an edit the model did not: review round 2\nE               assert []\nE                +  where [] = <test_formal_docloop_replay.ScheduleEditor object at 0x10b195fa0>.steps\n\ntests/test_formal_docloop_replay.py:234: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_formal_docloop_replay.py::test_the_real_loop_replays_every_terminal_behaviour_of_the_model[SI]\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.21s",
+        "ran_at": "2026-10-11T01:42:55+00:00"
+      }
+    },
+    {
+      "id": "K489-2e",
+      "verifier": "F489-2",
+      "recipe": "plant-violation",
+      "description": "A planted wrong function from the formal pilot.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "src/cr/docgen/loop.py",
+          "find": "        if record.lost:\n            lost = record\n            break\n        before = current\n",
+          "replace": "        before = current\n"
+        }
+      ],
+      "expect": {
+        "status": "red"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "matched": true,
+        "recorded": true,
+        "output_tail": "                _replay(rule, log, consts)\n            except AssertionError as exc:\n>               raise AssertionError(f\"{rule} vector {json.dumps(log)}: {exc}\") from exc\nE               AssertionError: SI vector [{\"d\": [\"f\"], \"ev\": \"init\"}, {\"ch\": false, \"d\": [\"f\"], \"ev\": \"edit\", \"kept\": false, \"n\": 1, \"o\": \"lost\", \"stage\": \"review\", \"todo\": [\"f\"]}, {\"ev\": \"floor\", \"final\": [\"f\"], \"outcome\": \"blocked\"}]: the loop ran an edit the model did not: review round 2\nE               assert []\nE                +  where [] = <test_formal_docloop_replay.ScheduleEditor object at 0x10715dd00>.steps\n\ntests/test_formal_docloop_replay.py:234: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_formal_docloop_replay.py::test_the_real_loop_replays_every_terminal_behaviour_of_the_model[SI]\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.21s",
+        "ran_at": "2026-10-11T01:42:55+00:00"
+      }
+    },
+    {
+      "id": "K489-2f",
+      "verifier": "F489-2",
+      "recipe": "plant-violation",
+      "description": "A planted wrong function from the formal pilot.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "src/cr/docgen/loop.py",
+          "find": "not editable(current.findings) or _unfixable(current):",
+          "replace": "not editable(current.findings):"
+        }
+      ],
+      "expect": {
+        "status": "red"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "matched": true,
+        "recorded": true,
+        "output_tail": "                _replay(rule, log, consts)\n            except AssertionError as exc:\n>               raise AssertionError(f\"{rule} vector {json.dumps(log)}: {exc}\") from exc\nE               AssertionError: SI vector [{\"d\": [\"f\", \"u\"], \"ev\": \"init\"}, {\"ev\": \"stop\", \"why\": \"unfixable\"}, {\"ev\": \"floor\", \"final\": [\"f\", \"u\"], \"outcome\": \"fallback\"}]: the loop ran an edit the model did not: review round 1\nE               assert []\nE                +  where [] = <test_formal_docloop_replay.ScheduleEditor object at 0x10952b8f0>.steps\n\ntests/test_formal_docloop_replay.py:234: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_formal_docloop_replay.py::test_the_real_loop_replays_every_terminal_behaviour_of_the_model[SI]\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed in 0.21s",
+        "ran_at": "2026-10-11T01:42:55+00:00"
+      }
+    },
+    {
+      "id": "K489-3a",
+      "verifier": "F489-3",
+      "recipe": "plant-violation",
+      "description": "A planted wrong model from the formal pilot.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "projects/clinical-reasoning/formal/tla/Finish.tla",
+          "find": "IF b /\\ refusals < MaxRefusals",
+          "replace": "IF b"
+        }
+      ],
+      "expect": {
+        "status": "red"
+      },
+      "result": {
+        "status": "red",
+        "exit": 12,
+        "matched": true,
+        "recorded": true,
+        "output_tail": "/\\ refusals = 4\n/\\ stop = \"running\"\n/\\ withBlocking = FALSE\n/\\ log = << [b |-> TRUE, answer |-> \"refused\"],\n   [b |-> TRUE, answer |-> \"refused\"],\n   [b |-> TRUE, answer |-> \"refused\"],\n   [b |-> TRUE, answer |-> \"refused\"] >>\n\n13 states generated, 9 distinct states found, 0 states left on queue.\nThe depth of the complete state graph search is 5.\nThe average outdegree of the complete state graph is 1 (minimum is 0, the maximum 2 and the 95th percentile is 2).\nFinished in 00s at (2026-10-10 18:20:55)",
+        "ran_at": "2026-10-11T01:42:55+00:00"
+      }
+    },
+    {
+      "id": "K489-3b",
+      "verifier": "F489-3",
+      "recipe": "plant-violation",
+      "description": "A planted wrong function from the formal pilot.",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "src/cr/docgen/session.py",
+          "find": "if blocking and self.run.finish_refusals < self.spec.max_finish_refusals:",
+          "replace": "if blocking:"
+        }
+      ],
+      "expect": {
+        "status": "red"
+      },
+      "result": {
+        "status": "red",
+        "exit": 1,
+        "matched": true,
+        "recorded": true,
+        "output_tail": "    def check() -> Sequence[Finding]:\n        nonlocal calls\n        calls += 1\n>       return [BLOCKING] if flags[calls - 1] else []\n                             ^^^^^^^^^^^^^^^^\nE       IndexError: list index out of range\n\ntests/test_formal_finish_replay.py:45: IndexError\n=========================== short test summary info ============================\nFAILED tests/test_formal_finish_replay.py::test_the_real_finish_gate_replays_every_session_of_the_model[finish_vectors_t6.json]\n!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!\n1 failed, 1 passed in 0.20s",
+        "ran_at": "2026-10-11T01:42:55+00:00"
+      }
     }
   ],
   "notes": [
@@ -3288,7 +4553,8 @@
     "Lean candidates: LastClean.settle and _stalled are small, pure and high-stakes. No proof written.",
     "Model-free run: no model verifier ran. Recorded evals stay Backed.",
     "V36 skips because judiciary is not built in the scratch worktree, and the PR says it skips in CI too. Building judiciary needs pnpm install, which this run did not do.",
-    "C31 and C32: mechanical checks (V37 to V39) back them. A boundary rule in CI with a planted import as its control would make C31 Proven."
+    "C31 and C32: mechanical checks (V37 to V39) back them. A boundary rule in CI with a planted import as its control would make C31 Proven.",
+    "C15 keeps its text as user intent (invariant L3). The code at 3758b090 needs a finished editor session (loop.py:101-107), so the claim is a Gap until the fix on understando/489-ready lands. V19 does not test the unfinished-session case."
   ],
   "flags": [
     {
@@ -3323,10 +4589,11 @@
     }
   ],
   "summary": {
-    "Proven": 25,
-    "Backed": 7,
+    "Formal": 5,
+    "Proven": 22,
+    "Backed": 9,
     "Asserted": 3,
-    "Gap": 3
+    "Gap": 4
   },
   "glossary": [
     {
@@ -3559,7 +4826,12 @@
         "C20",
         "C21",
         "C33",
-        "C37"
+        "C37",
+        "C39",
+        "C40",
+        "C41",
+        "C42",
+        "C43"
       ],
       "reviewer_action": "Ask a clinician to read the UAP plan that the trace marks released, because only the PR text says that the label is wrong."
     },
@@ -3673,6 +4945,311 @@
       "expect": {
         "pattern": "DID NOT RAISE|failed"
       }
+    }
+  ],
+  "invariants": [
+    {
+      "id": "A1",
+      "text": "The accept score ranks a draft by its deterministic findings first, then its confirmed major findings, then its minor findings, and any two different scores compare one way.",
+      "author": "user",
+      "status": "accepted",
+      "candidate": "A1",
+      "evidence": [
+        "record F489-1 (lean, tier 5)",
+        "checked by lexLt_irrefl, lexLt_trans, lexLt_asymm, lexLt_total",
+        "src/cr/docgen/accept.py:22-26, 83: code today: The edit scores better, (0,0,10) < (1,0,0), so StrictImprovement keeps it.",
+        "src/cr/docgen/accept.py:78-83: code today: Kept: confirmed count drops; new minor keys are not checked."
+      ],
+      "tier": 5,
+      "shape": "rule",
+      "frog_ev": 2.0,
+      "at": "2026-10-11T01:42:36+00:00",
+      "source_prompt": "Clayton confirmed A1, the score order, in the discover session.",
+      "record": "F489-1"
+    },
+    {
+      "id": "A2",
+      "text": "StrictImprovement keeps an edit only when its score is strictly lower and it adds no new deterministic key and no new confirmed S5 or S4 key.",
+      "author": "user",
+      "status": "accepted",
+      "candidate": "A2",
+      "evidence": [
+        "record F489-1 (lean, tier 5)",
+        "checked by keepSI_iff, keepSI_no_new_severe, keepSI_no_new_det, keepSI_strict",
+        "src/cr/docgen/accept.py:81; src/cr/docgen/findings.py:100-101: code today: Rejected: the key is new to the severe set.",
+        "src/cr/docgen/findings.py:100-101; src/cr/docgen/accept.py:25: code today: It counts only as one more minor finding; the edit can still be kept.",
+        "src/cr/docgen/accept.py:79-80: code today: Rejected: a new deterministic key."
+      ],
+      "tier": 5,
+      "shape": "rule",
+      "frog_ev": 2.0,
+      "at": "2026-10-11T01:42:36+00:00",
+      "source_prompt": "Clayton confirmed A2: StrictImprovement keeps only a strictly lower score with no new deterministic or S5/S4 key. A finding that rises to S4 under the same key counts as new.",
+      "record": "F489-1"
+    },
+    {
+      "id": "A2-q2",
+      "text": "An edit that adds an S5 finding that a model judge has not confirmed yet may be kept.",
+      "author": "user",
+      "status": "accepted",
+      "candidate": "A2-q2",
+      "evidence": [
+        "src/cr/docgen/findings.py:100-101; src/cr/docgen/accept.py:25: code today: It counts only as one more minor finding; the edit can still be kept.",
+        "the pilot: unclear: ask"
+      ],
+      "tier": 5,
+      "shape": "rule",
+      "frog_ev": 2.0,
+      "at": "2026-10-11T01:42:36+00:00",
+      "source_prompt": "It should be allowed to keep it, too",
+      "record": "F489-1",
+      "parent": "A2"
+    },
+    {
+      "id": "A3",
+      "text": "StrictImprovement never keeps an edit whose findings are the same as before.",
+      "author": "user",
+      "status": "accepted",
+      "candidate": "A3",
+      "evidence": [
+        "record F489-1 (lean, tier 5)",
+        "checked by keepSI_unchanged",
+        "src/cr/docgen/accept.py:83; src/cr/docgen/loop.py:216-218, 107: code today: Not kept (a tie), the files are reverted, and the rounds go on (only an unchanged, finished round stops them)."
+      ],
+      "tier": 5,
+      "shape": "rule",
+      "frog_ev": 2.0,
+      "at": "2026-10-11T01:42:36+00:00",
+      "source_prompt": "Clayton confirmed A3: an unchanged set of findings is never kept.",
+      "record": "F489-1"
+    },
+    {
+      "id": "A4",
+      "text": "When rejects_early is true, keep reverts the edit whatever the reflectors add.",
+      "author": "user",
+      "status": "accepted",
+      "candidate": "A4",
+      "evidence": [
+        "record F489-1 (lean, tier 5)",
+        "checked by rejectsEarlySI_sound",
+        "src/cr/docgen/loop.py:164-175: code today: It cannot: reflection always starts from the code checks and only appends, which the soundness proof needs."
+      ],
+      "tier": 5,
+      "shape": "rule",
+      "frog_ev": 2.0,
+      "at": "2026-10-11T01:42:36+00:00",
+      "source_prompt": "Clayton confirmed A4: reflection only appends.",
+      "record": "F489-1"
+    },
+    {
+      "id": "A5",
+      "text": "When the edit rounds end and the last kept draft has a blocking finding, LastClean restores the last kept draft that has none; when no kept draft is clean, the last kept draft stands.",
+      "author": "user",
+      "status": "accepted",
+      "candidate": "A5",
+      "evidence": [
+        "record F489-1 (lean, tier 5)",
+        "checked by settleLC_stands, settleLC_some, settleLC_none, keepLC_always, settleSI_none",
+        "src/cr/docgen/accept.py:67-71; src/cr/docgen/loop.py:244-247: code today: Yes: restored_to = 0.",
+        "src/cr/docgen/accept.py:68-70; src/cr/docgen/loop.py:88-98: code today: settle counts it as clean (it reads only blocking); the floor then judges it by floor and can block or fall back.",
+        "src/cr/docgen/accept.py:68; src/cr/docgen/loop.py:223: code today: IndexError on states[-1]; the loop never passes an empty list."
+      ],
+      "tier": 5,
+      "shape": "rule",
+      "frog_ev": 2.0,
+      "at": "2026-10-11T01:42:36+00:00",
+      "source_prompt": "Clayton confirmed A5: settle restores the last clean kept draft, or round 0 if only the projection is clean.",
+      "record": "F489-1"
+    },
+    {
+      "id": "L1",
+      "text": "The review step runs at most max_edit_rounds edit rounds, the release step at most release_edits, and the run always ends.",
+      "author": "user",
+      "status": "accepted",
+      "candidate": "L1",
+      "evidence": [
+        "record F489-2 (tla, tier 4)",
+        "checked by Bounded, Termination",
+        "src/cr/docgen/loop.py:227, 244-251: code today: No review round runs; settle and the release audit still run."
+      ],
+      "tier": 4,
+      "shape": "process",
+      "frog_ev": 2.0,
+      "at": "2026-10-11T01:42:36+00:00",
+      "source_prompt": "Clayton confirmed L1: the rounds are bounded and the run ends.",
+      "record": "F489-2"
+    },
+    {
+      "id": "L2",
+      "text": "After a lost editor call, nothing reflects, keeps, settles, audits or edits again, and the floor blocks with no fallback.",
+      "author": "user",
+      "status": "accepted",
+      "candidate": "L2",
+      "evidence": [
+        "record F489-2 (tla, tier 4)",
+        "checked by LostIsFinal",
+        "src/cr/docgen/loop.py:257-263: code today: The run blocks; the kept release draft does not stand.",
+        "src/cr/docgen/session.py:119-124; src/cr/docgen/adapter.py:324-326: code today: Treated as lost (model_error).",
+        "src/cr/docgen/session.py:119-124; src/cr/docgen/loop.py:207-219: code today: Not lost: the partial edit is reflected and can be kept."
+      ],
+      "tier": 4,
+      "shape": "process",
+      "frog_ev": 2.0,
+      "at": "2026-10-11T01:42:36+00:00",
+      "source_prompt": "Clayton confirmed L2: a lost call is final and the floor blocks, and failed counts as lost.",
+      "record": "F489-2"
+    },
+    {
+      "id": "L3",
+      "text": "The edit rounds stop after a round that the accept rule did not keep and that changed no file, however the editor session ended.",
+      "author": "user",
+      "status": "accepted",
+      "candidate": "L3",
+      "evidence": [
+        "record F489-2 (tla, tier 4)",
+        "checked by IdleFinishedStops",
+        "src/cr/docgen/loop.py:101-107, 241-242: code today: Another round runs from the same draft and findings (TLC witness; replayed on the real loop)."
+      ],
+      "tier": 4,
+      "shape": "process",
+      "frog_ev": 2.0,
+      "at": "2026-10-11T01:42:36+00:00",
+      "source_prompt": "Clayton reworded L3: the rounds stop after an unkept round that changed no file, however the editor session ended.",
+      "possible_bug": [
+        {
+          "question": "What should happen if the editor hit its turn limit (or made no tool calls), changed no file, and the round was not kept?",
+          "expected": "the edit rounds stop",
+          "got": "another round runs from the same draft and findings, because _idle needs a finished session",
+          "where": "projects/clinical-reasoning/src/cr/docgen/loop.py:101-107 at 3758b090"
+        }
+      ],
+      "route": "code-first",
+      "fix_branch": "understando/489-ready",
+      "record": "F489-2"
+    },
+    {
+      "id": "L4",
+      "text": "No edit round, review or release, starts while a floor finding that no writable file holds remains.",
+      "author": "user",
+      "status": "accepted",
+      "candidate": "L4",
+      "evidence": [
+        "record F489-2 (tla, tier 4)",
+        "checked by UnfixableStops",
+        "src/cr/docgen/loop.py:228, 253; src/cr/docgen/accept.py:79-80: code today: Under LastClean the edit is kept, the next round does not start, and settle can restore an earlier clean draft; under StrictImprovement the edit is reverted (a new deterministic key)."
+      ],
+      "tier": 4,
+      "shape": "process",
+      "frog_ev": 2.0,
+      "at": "2026-10-11T01:42:36+00:00",
+      "source_prompt": "Clayton confirmed L4: no edit starts while an unfixable floor finding remains.",
+      "record": "F489-2"
+    },
+    {
+      "id": "L5",
+      "text": "finish is refused while a code check reports a blocking finding, at most max_finish_refusals (3) times; after that it is accepted and finished_with_blocking records it.",
+      "author": "user",
+      "status": "accepted",
+      "candidate": "L5",
+      "evidence": [
+        "record F489-3 (tla, tier 4)",
+        "checked by RefusalsBounded, RefusedOnlyWhileBlocking, BlockingAcceptedOnlyAtBudget, WithBlockingHonest",
+        "src/cr/docgen/session.py:255-260: code today: finish is still refused up to 3 times, spending turns on a finding the editor cannot fix.",
+        "src/cr/docgen/session.py:256: code today: No: finish reads only the code checks."
+      ],
+      "tier": 4,
+      "shape": "process",
+      "frog_ev": 2.0,
+      "at": "2026-10-11T01:42:36+00:00",
+      "source_prompt": "Clayton confirmed L5: only code checks block finish.",
+      "record": "F489-3"
+    },
+    {
+      "id": "A5-q2",
+      "text": "What should happen if a draft has no blocking finding but has a non-blocking floor finding?",
+      "author": "agent",
+      "status": "proposed",
+      "candidate": "A5-q2",
+      "evidence": [
+        "src/cr/docgen/accept.py:68-70; src/cr/docgen/loop.py:88-98: code today: settle counts it as clean (it reads only blocking); the floor then judges it by floor and can block or fall back.",
+        "the pilot: unclear: ask (can a code check emit floor=True, blocking=False?)"
+      ],
+      "reason": "Q2, a floor-but-not-blocking finding in settle. Clayton: defer all.",
+      "at": "2026-10-11T01:42:36+00:00",
+      "record": "F489-1",
+      "deferred": true,
+      "owner": "loop design (CR harness)",
+      "parent": "A5"
+    },
+    {
+      "id": "L2-q3",
+      "text": "What should happen if the response is incomplete (cut off) after a partial patch?",
+      "author": "agent",
+      "status": "proposed",
+      "candidate": "L2-q3",
+      "evidence": [
+        "src/cr/docgen/session.py:119-124; src/cr/docgen/loop.py:207-219: code today: Not lost: the partial edit is reflected and can be kept.",
+        "the pilot: unclear: ask"
+      ],
+      "reason": "Q3, an incomplete_response after a partial patch. Clayton: defer all.",
+      "at": "2026-10-11T01:42:36+00:00",
+      "record": "F489-2",
+      "deferred": true,
+      "owner": "CN team (note session)",
+      "parent": "L2"
+    },
+    {
+      "id": "L5-q1",
+      "text": "What should happen if the only blocking findings are ones no writable file holds?",
+      "author": "agent",
+      "status": "proposed",
+      "candidate": "L5-q1",
+      "evidence": [
+        "src/cr/docgen/session.py:255-260: code today: finish is still refused up to 3 times, spending turns on a finding the editor cannot fix.",
+        "the pilot: unclear: ask"
+      ],
+      "reason": "Q5, finish refused while only unfixable findings block. Clayton: defer all.",
+      "at": "2026-10-11T01:42:36+00:00",
+      "record": "F489-3",
+      "deferred": true,
+      "owner": "loop design (CR harness)",
+      "parent": "L5"
+    },
+    {
+      "id": "L6-q1",
+      "text": "What should happen if the fallback passes the code checks but would fail the release audit?",
+      "author": "agent",
+      "status": "proposed",
+      "candidate": "L6-q1",
+      "evidence": [
+        "src/cr/docgen/loop.py:91-96: code today: The fallback stands: only the code checks judge it.",
+        "the pilot: unclear: ask"
+      ],
+      "reason": "Q6, a fallback that passes the code checks but would fail the release audit. Clayton: defer all.",
+      "at": "2026-10-11T01:42:36+00:00",
+      "record": "F489-2",
+      "deferred": true,
+      "owner": "CR clinical-safety owners",
+      "flag": "the open safety question",
+      "parent": "L6"
+    },
+    {
+      "id": "L6",
+      "text": "The floor releases only a draft with no floor finding, and a fallback only when the code checks find no floor finding on it.",
+      "author": "agent",
+      "status": "proposed",
+      "candidate": "L6",
+      "evidence": [
+        "record F489-2 (tla, tier 4)",
+        "checked by FloorSafe",
+        "src/cr/docgen/loop.py:91-96: code today: The fallback stands: only the code checks judge it."
+      ],
+      "reason": "Q6 is open, so the floor rule waits for its owner. Clayton: defer all.",
+      "at": "2026-10-11T01:42:36+00:00",
+      "record": "F489-2",
+      "deferred": true,
+      "owner": "CR clinical-safety owners",
+      "flag": "the open safety question"
     }
   ]
 }

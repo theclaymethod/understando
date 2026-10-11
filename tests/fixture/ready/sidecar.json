@@ -1,0 +1,176 @@
+{
+  "schema": "understando.formal/1",
+  "repo": "wallet",
+  "pr": 1,
+  "head": "HEAD_SHA",
+  "proposed_claims": [
+    {
+      "id": "FCW1",
+      "text": "The withdraw function refuses an amount that is more than the balance.",
+      "source": "wallet/core.py docstring"
+    },
+    {
+      "id": "FCW2",
+      "text": "withdraw keeps the balance at zero or more.",
+      "source": "wallet/core.py:13"
+    }
+  ],
+  "verifiers": [
+    {
+      "id": "FW1",
+      "kind": "lean",
+      "ladder_tier": 5,
+      "claims": [
+        "C01",
+        "FCW1"
+      ],
+      "description": "A synthetic Lean record: the model of withdraw refuses an overdraft.",
+      "card": {
+        "surface": "wallet/core.py withdraw"
+      },
+      "check": {
+        "status": "green",
+        "theorems": {
+          "Wallet.refuses": {
+            "axioms": [
+              "propext"
+            ],
+            "axioms_clean": true
+          }
+        }
+      },
+      "conformance": {
+        "result": {
+          "status": "green",
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "tests.test_core"
+          ]
+        },
+        "checks": {
+          "statement_parity": {
+            "status": "pass",
+            "note": "synthetic fixture"
+          },
+          "state_parity": {
+            "status": "pass",
+            "note": "synthetic fixture"
+          },
+          "transition_parity": {
+            "status": "pass",
+            "note": "synthetic fixture"
+          },
+          "concurrency_parity": {
+            "status": "pass",
+            "note": "synthetic fixture"
+          },
+          "cancel_drain_parity": {
+            "status": "pass",
+            "note": "synthetic fixture"
+          },
+          "runtime_evidence": {
+            "status": "pass",
+            "note": "synthetic fixture"
+          },
+          "drift_gate": {
+            "status": "pass",
+            "note": "synthetic fixture"
+          }
+        }
+      },
+      "controls": [
+        {
+          "id": "KW1a",
+          "target": "model",
+          "result": {
+            "status": "red",
+            "exit": 1,
+            "control": {
+              "file": "formal/Wallet.lean",
+              "find": "if a > b",
+              "replace": "if false"
+            },
+            "output_tail": "error: unsolved goals"
+          }
+        },
+        {
+          "id": "KW1b",
+          "target": "code",
+          "result": {
+            "status": "red",
+            "exit": 1,
+            "edits": [
+              {
+                "op": "replace",
+                "path": "wallet/core.py",
+                "find": "    if amount > balance:\n",
+                "replace": "    if False:\n"
+              }
+            ],
+            "output_tail": "FAILED"
+          }
+        }
+      ],
+      "route": "none",
+      "blocker_open": false,
+      "invariant": {
+        "author": "agent",
+        "ref": null,
+        "status": "proposed",
+        "items": [
+          {
+            "id": "W1",
+            "sentence": "withdraw refuses each amount above the balance.",
+            "checked_by": [
+              "Wallet.refuses"
+            ],
+            "questions": [
+              {
+                "ask": "What should happen if the amount equals the balance?",
+                "code_today": "It pays out, and the balance is zero.",
+                "where": "wallet/core.py:13",
+                "looks": "intended"
+              },
+              {
+                "ask": "What should happen if the amount is below zero?",
+                "code_today": "It pays out a negative amount, so the balance grows.",
+                "where": "wallet/core.py:13",
+                "looks": "unclear: ask"
+              }
+            ]
+          }
+        ]
+      },
+      "witness": null,
+      "witness_test": null,
+      "independence": {
+        "by": "tool",
+        "tool": "lean"
+      },
+      "cost": {
+        "usd": 0
+      },
+      "formal": {
+        "verdict": "Formal (pending user confirmation)",
+        "missing": []
+      },
+      "drift": {
+        "commit": "synthetic",
+        "code_files": [
+          {
+            "path": "wallet/core.py",
+            "blob": "synthetic"
+          }
+        ],
+        "model_files": [
+          {
+            "path": "formal/Wallet.lean",
+            "sha256": "sha256:synthetic"
+          }
+        ]
+      }
+    }
+  ]
+}

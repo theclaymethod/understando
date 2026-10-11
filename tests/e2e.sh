@@ -257,5 +257,12 @@ test -z "$(ls -A "$WORK/scratch")" || { echo "FAIL: scratch dir is not empty"; e
 step "mode: the CLI verbs, the gates and the ledger (tests/mode-e2e.sh)"
 WORK="$WORK" REPO="$REPO" MAP="$MAP" HEAD="$HEAD" FIX="$FIX" bash "$ROOT/tests/mode-e2e.sh"
 
+if command -v lake >/dev/null && command -v java >/dev/null && [ -f "${UNDERSTANDO_TLA2TOOLS:-$HOME/.understando/tools/tla2tools.jar}" ]; then
+  step "formal: the formalize sub-skills (tests/formal/e2e.sh)"
+  bash "$ROOT/tests/formal/e2e.sh" | tail -5
+else
+  step "formal: skipped, because lake, java or tla2tools.jar is missing (tests/formal/e2e.sh needs them)"
+fi
+
 echo
 echo "PASS: understando e2e on the fixture"

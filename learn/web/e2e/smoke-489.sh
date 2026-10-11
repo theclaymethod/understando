@@ -24,7 +24,7 @@ import json, sys, time, urllib.request, urllib.error
 origin, control = sys.argv[1], sys.argv[2]
 ch = json.load(urllib.request.urlopen(origin + "/api/chapters"))
 print("chapters:", [c["title"] for c in ch["chapters"]])
-assert len(ch["chapters"]) == 8, "expected eight levels"
+assert len(ch["chapters"]) in (8, 9), "expected eight levels, or nine with the why level"
 req = lambda: urllib.request.Request(origin + "/api/run", data=json.dumps({"kind": "run-control", "id": control}).encode(),
                                      headers={"Content-Type": "application/json", "Origin": origin}, method="POST")
 start = time.time()

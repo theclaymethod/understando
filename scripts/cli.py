@@ -126,7 +126,13 @@ def do_formalize(c: context.Ctx, argv: list[str]) -> int:
     ap.add_argument("--claim")
     ap.add_argument("--invariant")
     ap.add_argument("--tier", type=int, choices=[4, 5])
+    ap.add_argument("--sidecar", help="runs/<repo>/<pr>/formal/verifiers.json: sync it with the trust map (scripts/formal_sync.py)")
     args = ap.parse_args(argv)
+    if args.sidecar:
+        import formal_sync
+        out = formal_sync.sync(c, args.sidecar)
+        context.emit(c, out, "\n".join(out["report"]))
+        return 0
     data = c.need_map()
     tools = context.tool_status()
     if args.invariant and not args.claim:

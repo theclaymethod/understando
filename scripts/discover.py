@@ -4,6 +4,7 @@
     understando discover questions                             the edge-case questions for each open candidate
     understando discover answer --answers FILE                 record the user's decisions
     understando discover status                                done when every candidate has a decision
+    understando discover import --sidecar FILE                 the proposed invariants of a formal sidecar
 
 1. mine: candidates from the code at the head (guards, asserts, early returns, isinstance
    narrowing, the result of a short function), with evidence from the tests, the controls and git
@@ -209,6 +210,42 @@ def save(run: Path, state: dict) -> None:
     (run / "discover.json").write_text(json.dumps(state, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def import_sidecar(c: context.Ctx, path: str) -> dict:
+    """Each proposed invariant of a formal sidecar becomes a candidate, with its edge-case questions
+    and what the code does today as evidence. Each question that the pilot marked unclear becomes
+    a candidate of its own (<item>-q<n>), so the user can answer or defer it alone."""
+    side = json.loads(Path(path).read_text(encoding="utf-8"))
+    state = load(c.run) or {"candidates": [], "decisions": {}}
+    state.setdefault("decisions", {})
+    have = {cd["id"] for cd in state["candidates"]}
+    added = []
+    for rec in side.get("verifiers", []):
+        inv = rec.get("invariant") or {}
+        for item in inv.get("items", []):
+            qs = item.get("questions", [])
+            ev = [f"record {rec['id']} ({rec['kind']}, tier {rec.get('ladder_tier')})"]
+            ev += [f"checked by {', '.join(item['checked_by'])}"] if item.get("checked_by") else []
+            ev += [f"{q['where']}: code today: {q['code_today']}" for q in qs if q.get("where")]
+            cand = {"id": item["id"], "kind": "formal", "source": "formal", "record": rec["id"], "record_kind": rec["kind"], "claims": rec.get("claims", []),
+                    "text": item["sentence"], "evidence": ev, "questions": [q["ask"] for q in qs][:3]}
+            rows = [cand]
+            for n, q in enumerate(qs, 1):
+                if str(q.get("looks", "")).startswith("unclear"):
+                    rows.append({"id": f"{item['id']}-q{n}", "kind": "question", "source": "formal", "record": rec["id"], "record_kind": rec["kind"],
+                                 "parent": item["id"], "text": q["ask"], "questions": [q["ask"]],
+                                 "evidence": [f"{q.get('where', '')}: code today: {q.get('code_today', '')}", f"the pilot: {q['looks']}"]})
+            for r in rows:
+                if r["id"] in have:
+                    state["candidates"] = [r if cd["id"] == r["id"] else cd for cd in state["candidates"]]
+                else:
+                    state["candidates"].append(r)
+                    have.add(r["id"])
+                    added.append(r["id"])
+    state["sidecar"] = str(Path(path).resolve())
+    save(c.run, state)
+    return {"added": added, **status(c)}
+
+
 def check_examples(repo: Path, data: dict, cand: dict, examples: list[dict]) -> list[dict]:
     """Run each example answer against the code at the head. A different result is a possible bug."""
     if not examples or cand.get("source") != "code" or not cand["path"].endswith(".py"):
@@ -233,6 +270,8 @@ def check_examples(repo: Path, data: dict, cand: dict, examples: list[dict]) -> 
 
 
 def shape_of(cand: dict) -> str:
+    if cand.get("record_kind"):
+        return {"lean": "rule", "tla": "process", "property": "input-space"}.get(cand["record_kind"], "rule")
     if cand.get("source") in ("pr", "journal"):
         return "flow"
     if cand["kind"] == "narrowing":
@@ -268,10 +307,16 @@ def answer(c: context.Ctx, path: str) -> dict:
             reason = a.get("reason") or ("deferred by the user" if decision == "defer" else None)
             if not reason:
                 tm.fail(f"discover: {cid}: a rejection needs a reason", 2)
-            state["decisions"][cid] = {"decision": decision, "reason": reason, "at": tm.now()}
+            state["decisions"][cid] = {"decision": decision, "reason": reason, "at": tm.now(), **({"owner": a["owner"]} if a.get("owner") else {})}
             journal.append(c.journal, "invariant", cand["text"], repo, author="user", status="rejected" if decision == "reject" else "deferred",
-                           candidate=cid, reason=reason, evidence=", ".join(cand["evidence"]))
-            report.append(f"{cid} {decision}: {reason}")
+                           candidate=cid, reason=reason, owner=a.get("owner"), flag=a.get("flag"), evidence=", ".join(cand["evidence"]))
+            if cand.get("source") == "formal":
+                row = {"id": cid, "text": cand["text"], "author": "agent", "status": "proposed" if decision == "defer" else "rejected",
+                       "candidate": cid, "evidence": cand["evidence"], "reason": reason, "at": tm.now(), "record": cand["record"],
+                       **({"deferred": True} if decision == "defer" else {}),
+                       **{k: a[k] for k in ("owner", "flag") if a.get(k)}, **({"parent": cand["parent"]} if cand.get("parent") else {})}
+                data["invariants"] = [i for i in data["invariants"] if i["id"] != cid] + [row]
+            report.append(f"{cid} {decision}: {reason}" + (f" Owner: {a['owner']}." if a.get("owner") else "") + (f" FLAG: {a['flag']}." if a.get("flag") else ""))
             continue
         text = a.get("text") if decision == "reword" else (a.get("text") or cand["text"])
         if decision == "reword" and not a.get("text"):
@@ -282,11 +327,16 @@ def answer(c: context.Ctx, path: str) -> dict:
         frog = a.get("frog") or {}
         ev = round(frog.get("risk", 2) * frog.get("impact", 2) / max(frog.get("effort", 2), 1), 2)
         inv = next((i for i in data["invariants"] if i["candidate"] == cid), None)
-        inv_id = inv["id"] if inv else ops.next_id(data, "I")
+        inv_id = inv["id"] if inv else (cid if cand.get("source") == "formal" else ops.next_id(data, "I"))
+        bugs += [{"question": b["question"], "expected": b["expected"], "got": b["got"], **({"where": b["where"]} if b.get("where") else {})}
+                 for b in a.get("possible_bug", [])]
         row = {"id": inv_id, "text": text, "author": author, "status": "accepted" if author == "user" else "proposed",
                "candidate": cid, "evidence": cand["evidence"], "tier": SHAPE_TIER[shape], "shape": shape, "frog_ev": ev,
                "at": tm.now(), **({"source_prompt": a["source_prompt"]} if a.get("source_prompt") else {}),
-               **({"possible_bug": bugs} if bugs else {})}
+               **({"possible_bug": bugs} if bugs else {}),
+               **{k: a[k] for k in ("route", "fix_branch", "flag", "owner") if a.get(k)},
+               **({"record": cand["record"]} if cand.get("record") else {}),
+               **({"parent": cand["parent"]} if cand.get("parent") else {})}
         if inv:
             inv.clear()
             inv.update(row)
@@ -343,7 +393,8 @@ def status_text(s: dict) -> str:
 def main(c: context.Ctx, argv: list[str]) -> int:
     import argparse
     ap = argparse.ArgumentParser(prog="understando discover", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("action", nargs="?", default="mine", choices=["mine", "questions", "answer", "status"])
+    ap.add_argument("action", nargs="?", default="mine", choices=["mine", "questions", "answer", "status", "import"])
+    ap.add_argument("--sidecar")
     ap.add_argument("--answers")
     ap.add_argument("--paths", nargs="*", default=[])
     ap.add_argument("--claim")
@@ -359,6 +410,11 @@ def main(c: context.Ctx, argv: list[str]) -> int:
                 for cd in state["candidates"] if cd["id"] not in decided]
         text = "\n".join(f"{r['id']}  {r['text']}\n    evidence: {', '.join(r['evidence'])}\n" + "\n".join(f"    - {q}" for q in r["questions"]) for r in rows)
         context.emit(c, {"open": rows}, text or "No open candidate.")
+    elif args.action == "import":
+        if not args.sidecar:
+            tm.fail("discover import: pass --sidecar runs/<repo>/<pr>/formal/verifiers.json", 2)
+        out = import_sidecar(c, args.sidecar)
+        context.emit(c, out, f"imported {len(out['added'])} candidates: {', '.join(out['added'])}\n" + status_text(out))
     elif args.action == "answer":
         if not args.answers:
             tm.fail("discover answer: pass --answers FILE", 2)
