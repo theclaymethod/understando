@@ -21,7 +21,7 @@ Run `formal_tlc.py check --spec <Name>.tla --cfg <Name>.cfg`. It prints the stat
 
 ## Control
 
-`formal_tlc.py control --spec <Name>.tla --cfg <Name>.cfg --find '<guard>' --replace '<guard removed>' --pattern <Invariant>`. TLC must report a violation of that invariant, with a trace. A planted spec that stays green means that the property does not read that guard.
+`formal_tlc.py control --spec <Name>.tla --cfg <Name>.cfg --symbol <Definition> --match '<guard>' --op delete-line --pattern <Invariant>` (an anchor edit: `--op replace-with --with '<text>'` rewrites the match; the symbol is a `<Name> ==` definition; never type the spec text again). TLC must report a violation of that invariant, with a trace. A planted spec that stays green means that the property does not read that guard.
 
 ## Conformance: trace replay
 

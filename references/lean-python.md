@@ -41,7 +41,7 @@ Run `lake build` in that directory. Add `.lake/` to `.gitignore`.
 
 ## Controls
 
-- Model control: `formal_lean.py control --file <Name>/<Rule>.lean --find '<guard>' --replace '<wrong guard>'`. The build must go red on a theorem.
+- Model control: `formal_lean.py control --file <Name>/<Rule>.lean --symbol <theorem|def|lemma name> --match '<guard>' --op replace-with --with '<wrong guard>'` (an anchor edit; the edit of `formal_run.py --edit` has the same keys: op, path, symbol, match, with). The build must go red on a theorem.
 - Code control: `formal_run.py --cwd <project> --copy <project> --link .venv --edit '<json edit>' --expect red -- <conformance test command>`. The conformance test must go red.
 - When a control stays green, the theorem or the test cannot see that defect. Strengthen it before you rate anything.
 

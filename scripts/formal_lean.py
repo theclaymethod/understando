@@ -2,7 +2,8 @@
 """Build a Lean model, check its axioms, hash its theorems, and run its controls and vectors.
 
     python3 scripts/formal_lean.py check   --project DIR --import Mod --theorem Ns.thm [--theorem ...]
-    python3 scripts/formal_lean.py control --project DIR --file REL.lean --find TEXT --replace TEXT
+    python3 scripts/formal_lean.py control --project DIR --file REL.lean --symbol NAME [--match RE]
+                                           [--op delete-line|replace-with|...] [--with TEXT]
                                            [--pattern REGEX]
     python3 scripts/formal_lean.py vectors --project DIR --exe NAME --out FILE [--check]
     python3 scripts/formal_lean.py attempt --project DIR --file REL.lean
@@ -11,8 +12,10 @@ check    runs `lake build`, then `#print axioms` for each theorem. Green only wh
          passes, no source file holds `sorry`, `admit` or a new `axiom`, and each theorem depends
          only on propext, Quot.sound and Classical.choice. Prints one JSON record with the sha256 of
          each theorem's source block and of every .lean file. Exit 0 green, 1 red, 2 error.
-control  copies the project (with its .lake build cache) to a temp dir, applies one exact
-         find/replace (the planted wrong model), and runs `lake build`. Exit 0 when the build goes
+control  copies the project (with its .lake build cache) to a temp dir, applies one anchor edit
+         (the planted wrong model; coderef.py: --symbol is a `theorem|def|lemma` name, --match a
+         unique text in it, --op one of its anchor ops, --with the new text), and runs `lake build`.
+         The deprecated --find/--replace pair still works and prints a warning. Exit 0 when the build goes
          red (and the output holds --pattern); exit 1 when it stays green: the theorems cannot
          fail on that edit.
 vectors  runs `lake exe NAME` and writes its stdout to FILE. With --check, compares instead and
@@ -35,6 +38,9 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import coderef  # noqa: E402
 
 ALLOWED = {"propext", "Quot.sound", "Classical.choice"}
 TAIL = 40
@@ -137,6 +143,20 @@ def cmd_check(args: argparse.Namespace) -> int:
     return 0 if clean else 1
 
 
+def plant(args: argparse.Namespace, text: str) -> tuple[dict, str]:
+    """(the edit that was applied, the planted text). An anchor edit, else the deprecated find/replace."""
+    if args.find is not None:
+        print("formal_lean.py: --find/--replace is deprecated; use --symbol, --match, --op and --with", file=sys.stderr)
+        if args.replace is None:
+            raise coderef.AnchorError("--find needs --replace")
+        edit = {"op": "replace", "path": args.file, "find": args.find, "replace": args.replace}
+        return edit, coderef.edit_text(text, edit)
+    if not (args.symbol or args.match):
+        raise coderef.AnchorError("a control needs --symbol or --match (an anchor edit)")
+    edit = coderef.cli_edit(args.file, args.op, args.symbol, args.match, args.with_)
+    return edit, coderef.apply_text(text, edit)
+
+
 def cmd_control(args: argparse.Namespace) -> int:
     project = Path(args.project).resolve()
     tmp = Path(tempfile.mkdtemp(prefix="lean-control-")) / project.name
@@ -144,17 +164,19 @@ def cmd_control(args: argparse.Namespace) -> int:
         shutil.copytree(project, tmp, symlinks=True)
         target = tmp / args.file
         text = target.read_text(encoding="utf-8")
-        if text.count(args.find) != 1:
-            print(json.dumps({"status": "error", "note": f"find text occurs {text.count(args.find)} times, expected 1"}))
+        try:
+            edit, after = plant(args, text)
+        except coderef.AnchorError as exc:
+            print(json.dumps({"status": "error", "note": f"ANCHOR ERROR: {exc}"}))
             return 2
-        target.write_text(text.replace(args.find, args.replace), encoding="utf-8")
+        target.write_text(after, encoding="utf-8")
         code, out, seconds = lake(tmp, "build")
     finally:
         shutil.rmtree(tmp.parent, ignore_errors=True)
     status = "green" if code == 0 else "red"
     matched = re.search(args.pattern, out) is not None if (status == "red" and args.pattern) else None
     print(json.dumps({"status": status, "exit": code, "seconds": seconds, "matched": matched,
-                      "control": {"file": args.file, "find": args.find, "replace": args.replace},
+                      "control": {"file": args.file, "edit": edit},
                       "output_tail": "\n".join(out.strip().splitlines()[-TAIL:])}, indent=2))
     if status == "red" and matched is not False:
         return 0
@@ -199,8 +221,12 @@ def main() -> int:
     p = sub.add_parser("control")
     p.add_argument("--project", required=True)
     p.add_argument("--file", required=True)
-    p.add_argument("--find", required=True)
-    p.add_argument("--replace", required=True)
+    p.add_argument("--symbol", help="a theorem, lemma or def name")
+    p.add_argument("--match", help='a literal, or "/RE/"; it must occur once in the symbol')
+    p.add_argument("--op", choices=coderef.ANCHOR_OPS)
+    p.add_argument("--with", dest="with_", help="the new text (replace-with)")
+    p.add_argument("--find", help="deprecated: use the anchor flags")
+    p.add_argument("--replace", help="deprecated: use the anchor flags")
     p.add_argument("--pattern")
     p = sub.add_parser("vectors")
     p.add_argument("--project", required=True)

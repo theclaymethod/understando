@@ -8,8 +8,12 @@
 Without --copy the command runs in DIR as it is. With --copy, ROOT (an ancestor of DIR, or DIR
 itself) is copied to a temp dir without .git, .venv, .lake, node_modules and caches; each --link
 REL becomes a symlink to ROOT/REL (for example a .venv, so the copy needs no install); each edit is
-applied exactly (the run_control.py edit format: {"op": "replace", "path", "find", "replace",
-"count"}); and the command runs in the copy's DIR. The copy is removed afterwards.
+applied (the run_control.py edit format, with the anchors of coderef.py: {"op": "delete-line" |
+"invert-condition" | "replace-with" | "drop-allowlist-row" | "corrupt-byte", "path", "symbol",
+"match", "with"}; the anchor must resolve to one place in the copy, else the run is an error);
+and the command runs in the copy's DIR. The copy is removed afterwards. The typed
+{"op": "replace", "path", "find", "replace", "count"} edit still works but is deprecated: it
+prints a warning.
 
 The status is green (exit 0), red (exit 1, and --pattern, when given, holds in the output), or
 error. With --expect, the script exits 0 only when the status is the expected one: a planted
@@ -30,6 +34,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import coderef  # noqa: E402
 from run_control import apply_edit  # noqa: E402
 
 TAIL = 40
@@ -64,7 +69,14 @@ def main() -> int:
             for rel in args.link:
                 (copy / rel).symlink_to(root / rel)
             for edit in edits:
-                apply_edit(copy, edit)
+                if edit.get("op") == "replace":
+                    print("formal_run.py: a find/replace edit is deprecated; use an anchor edit (symbol, match, op, with)",
+                          file=sys.stderr)
+                try:
+                    apply_edit(copy, edit)
+                except (coderef.AnchorError, ValueError, KeyError, OSError) as exc:
+                    print(json.dumps({"status": "error", "note": f"ANCHOR ERROR: {exc}", "edit": edit}, indent=2))
+                    return 2
             run_dir = copy / cwd.relative_to(root)
         else:
             run_dir = cwd

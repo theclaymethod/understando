@@ -5,7 +5,8 @@
     python3 scripts/formal_tlc.py dump   --spec DIR/Name.tla --cfg DIR/Vectors.cfg --out states.json
     python3 scripts/formal_tlc.py vectors --spec DIR/Name.tla --cfg DIR/Vectors.cfg --done 'result!="running"'
                                           --out vectors.json [--check]
-    python3 scripts/formal_tlc.py control --spec DIR/Name.tla [--cfg ...] --find TEXT --replace TEXT
+    python3 scripts/formal_tlc.py control --spec DIR/Name.tla [--cfg ...] --symbol Name [--match RE]
+                                          [--op delete-line|replace-with|...] [--with TEXT]
                                           [--pattern REGEX]
 
 check    runs TLC once and prints one JSON object: status green (no error), red (an invariant, a
@@ -17,8 +18,10 @@ vectors  runs dump and keeps the terminal states (those that match --done, `var=
          `var!=json`, repeatable) as test vectors, with the spec and cfg hashes and the cfg's
          constants, one vector per line (--keep VAR keeps only those variables). With --check, it
          compares with the committed file and exits 1 on drift.
-control  copies the spec directory to a temp dir, applies one exact find/replace to the .tla file
-         (the planted wrong spec), runs check, and exits 0 only when TLC goes red (and the red
+control  copies the spec directory to a temp dir, applies one anchor edit to the .tla file (the
+         planted wrong spec; coderef.py: --symbol is a `<Name> ==` definition, --match a unique text
+         in it, --op one of its anchor ops, --with the new text; the deprecated --find/--replace
+         pair still works and prints a warning), runs check, and exits 0 only when TLC goes red (and the red
          output holds --pattern). A control that stays green exits 1: the spec cannot fail there.
 
 Deadlock checking is on by default. Give a spec with terminal states an explicit stutter step
@@ -41,6 +44,9 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import coderef  # noqa: E402
 
 TAIL = 40
 
@@ -316,6 +322,20 @@ def cmd_vectors(args: argparse.Namespace) -> int:
     return 0
 
 
+def plant(args: argparse.Namespace, name: str, text: str) -> tuple[dict, str]:
+    """(the edit that was applied, the planted text). An anchor edit, else the deprecated find/replace."""
+    if args.find is not None:
+        print("formal_tlc.py: --find/--replace is deprecated; use --symbol, --match, --op and --with", file=sys.stderr)
+        if args.replace is None:
+            raise coderef.AnchorError("--find needs --replace")
+        edit = {"op": "replace", "path": name, "find": args.find, "replace": args.replace}
+        return edit, coderef.edit_text(text, edit)
+    if not (args.symbol or args.match):
+        raise coderef.AnchorError("a control needs --symbol or --match (an anchor edit)")
+    edit = coderef.cli_edit(name, args.op, args.symbol, args.match, args.with_)
+    return edit, coderef.apply_text(text, edit)
+
+
 def cmd_control(args: argparse.Namespace) -> int:
     spec = Path(args.spec).resolve()
     tmp = Path(tempfile.mkdtemp(prefix="tlc-control-"))
@@ -325,11 +345,12 @@ def cmd_control(args: argparse.Namespace) -> int:
                 shutil.copy2(f, tmp / f.name)
         planted = tmp / spec.name
         text = planted.read_text(encoding="utf-8")
-        count = text.count(args.find)
-        if count != 1:
-            print(json.dumps({"status": "error", "note": f"find text occurs {count} times, expected 1"}))
+        try:
+            edit, after = plant(args, spec.name, text)
+        except coderef.AnchorError as exc:
+            print(json.dumps({"status": "error", "note": f"ANCHOR ERROR: {exc}"}))
             return 2
-        planted.write_text(text.replace(args.find, args.replace), encoding="utf-8")
+        planted.write_text(after, encoding="utf-8")
         cfg = tmp / Path(args.cfg).name if args.cfg else None
         res = run(planted, cfg, not args.no_deadlock_check)
     finally:
@@ -337,7 +358,7 @@ def cmd_control(args: argparse.Namespace) -> int:
     matched = None
     if res["status"] == "red" and args.pattern:
         matched = re.search(args.pattern, str(res["output_tail"]) + json.dumps(res["violation"])) is not None
-    res["control"] = {"find": args.find, "replace": args.replace, "pattern": args.pattern, "matched": matched}
+    res["control"] = {"edit": edit, "pattern": args.pattern, "matched": matched}
     print(json.dumps(res, indent=2))
     if res["status"] == "red" and matched is not False:
         return 0
@@ -360,8 +381,12 @@ def main() -> int:
             p.add_argument("--keep", action="append", help="keep only these variables in each vector")
             p.add_argument("--check", action="store_true")
         if name == "control":
-            p.add_argument("--find", required=True)
-            p.add_argument("--replace", required=True)
+            p.add_argument("--symbol", help="a definition name (`Name ==`)")
+            p.add_argument("--match", help='a literal, or "/RE/"; it must occur once in the definition')
+            p.add_argument("--op", choices=coderef.ANCHOR_OPS)
+            p.add_argument("--with", dest="with_", help="the new text (replace-with)")
+            p.add_argument("--find", help="deprecated: use the anchor flags")
+            p.add_argument("--replace", help="deprecated: use the anchor flags")
             p.add_argument("--pattern")
     args = ap.parse_args()
     return {"check": cmd_check, "dump": cmd_dump, "vectors": cmd_vectors,

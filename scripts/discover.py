@@ -36,6 +36,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import coderef  # noqa: E402
 import ctx as context  # noqa: E402
 import journal  # noqa: E402
 import ops  # noqa: E402
@@ -103,6 +104,24 @@ def mine_python(path: str, source: str) -> list[dict]:
     return out
 
 
+def edit_hits(repo: Path, head: str, edit: dict, cand: dict, span: str) -> bool:
+    """Does a control edit change this candidate? An anchor edit resolves with coderef at the head and
+    is compared by its resolved lines (the match, else the whole symbol); a typed find by its text."""
+    if edit.get("op") in coderef.ANCHOR_OPS:
+        try:
+            r = coderef.resolve(repo, head, coderef.anchor_ref(edit), cap=False)
+        except coderef.AnchorError:
+            return False
+        if r.span:
+            starts = coderef.line_starts(r.text)
+            lo, hi = coderef.line_of(starts, r.span[0]), coderef.line_of(starts, max(r.span[0], r.span[1] - 1))
+        else:
+            lo = getattr(r.sym.node, "lineno", r.start) if r.sym else r.start
+            hi = r.end
+        return cand["start"] <= lo and hi <= cand["end"]
+    return bool(edit.get("find") and edit["find"].strip() and edit["find"].strip() in span)
+
+
 def evidence(repo: Path, data: dict, cand: dict, test_files: dict[str, str]) -> list[str]:
     ev = [f"{cand['path']}:{cand['line']}"]
     for path, text in test_files.items():
@@ -113,7 +132,7 @@ def evidence(repo: Path, data: dict, cand: dict, test_files: dict[str, str]) -> 
     head_text = git(repo, "show", f"{data['head']}:{cand['path']}").splitlines()
     span = "\n".join(head_text[cand["start"] - 1:cand["end"]])
     for k in data.get("controls", []):
-        if any(e["path"] == cand["path"] and e.get("find") and e["find"].strip() and e["find"].strip() in span for e in k["edits"]):
+        if any(e["path"] == cand["path"] and edit_hits(repo, data["head"], e, cand, span) for e in k["edits"]):
             ev.append(f"control {k['id']}")
     for line in git(repo, "log", "--format=%h %s", "-S", cand["function"], data["head"], "--", cand["path"]).splitlines()[:2]:
         ev.append(f"commit {line}")

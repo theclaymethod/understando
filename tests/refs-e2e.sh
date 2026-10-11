@@ -127,5 +127,91 @@ if any(k.startswith("anchor-drift") and k != "anchor-drift-" + sys.argv[2][:10] 
 print("doctor: " + drift["summary"][:110] + " ...")
 print("doctor: " + paste["summary"][:110] + " ...")
 PY
+step "refs: a .lean theorem anchor and a .tla definition anchor resolve in a fixture"
+FX="$WORK/formal-fx"
+mkdir -p "$FX"
+cat > "$FX/Model.lean" <<'LEAN'
+namespace Fx
+
+def settle (xs : List Nat) : Option Nat :=
+  match xs with
+  | [] => none
+  | x :: _ => some x
+
+theorem settle_nil : settle [] = none := by
+  rfl
+
+theorem settle_cons (x : Nat) (xs : List Nat) :
+    settle (x :: xs) = some x := by
+  rfl
+
+end Fx
+LEAN
+cat > "$FX/Spec.tla" <<'TLA'
+---- MODULE Spec ----
+EXTENDS Naturals
+VARIABLES n
+Init == n = 0
+
+Step(k) == /\ n < 3
+           /\ n' = n + k
+
+Next == Step(1)
+====
+TLA
+git -C "$FX" init -q
+g "$FX" add -A
+g "$FX" commit -q -m "A Lean model and a TLA+ spec"
+snip() { "${U[@]}" --repo "$FX" snippet "$@" | head -1 | sed -E 's/ at [0-9a-f]+.*//'; }
+[ "$(snip Model.lean::settle_cons)" = "Model.lean:11-13" ] || { echo "FAIL: the lean theorem did not resolve to lines 11-13"; snip Model.lean::settle_cons; exit 1; }
+[ "$(snip Model.lean::settle)" = "Model.lean:3-6" ] || { echo "FAIL: the lean def did not resolve to lines 3-6"; snip Model.lean::settle; exit 1; }
+[ "$(snip Spec.tla::Step)" = "Spec.tla:6-7" ] || { echo "FAIL: the tla definition did not resolve to lines 6-7"; snip Spec.tla::Step; exit 1; }
+"${U[@]}" --repo "$FX" snippet Spec.tla::Step --match "n' = n + k" | code_of | grep -Fqx "           /\\ n' = n + k" || { echo "FAIL: the tla match did not resolve"; exit 1; }
+expect_fail lean-missing "no such symbol" "${U[@]}" --repo "$FX" snippet Model.lean::settle_none
+expect_fail tla-missing "no such symbol" "${U[@]}" --repo "$FX" snippet Spec.tla::Stop
+echo "Model.lean::settle_cons is lines 11-13, Model.lean::settle is 3-6, Spec.tla::Step is 6-7"
+
+step "refs: formal_tlc control by anchor plants the spec, and a bad anchor is an ANCHOR ERROR"
+TLA="$ROOT/tests/formal/repo/formal/tla"
+S="$S" python3 - "$TLA/Retry.tla" "$WORK/Retry.planted.tla" <<'PY'
+import os
+import sys
+sys.path.insert(0, os.environ["S"])
+import coderef
+src = open(sys.argv[1]).read()
+edit = coderef.cli_edit("Retry.tla", None, "Call", '/== (\\/\\\\ result = "running")/', "TRUE")
+assert edit["op"] == "replace-with", edit
+open(sys.argv[2], "w").write(coderef.apply_text(src, edit))
+PY
+diff <(cat "$TLA/Retry.tla") "$WORK/Retry.planted.tla" > "$WORK/retry.diff" || true
+grep -qx '< Call(o) == /\\ result = "running"' "$WORK/retry.diff" && grep -qx '> Call(o) == TRUE' "$WORK/retry.diff" && [ "$(grep -c '^[<>]' "$WORK/retry.diff")" = 2 ] || { echo "FAIL: the anchor planted another spec"; cat "$WORK/retry.diff"; exit 1; }
+python3 "$S/formal_tlc.py" control --spec "$TLA/Retry.tla" --cfg "$TLA/Retry.cfg" \
+  --symbol Call --match '/== (\/\\ result = "running")/' --with TRUE --pattern NoCallAfterStop > "$WORK/tlc-anchor.json"
+python3 - "$WORK/tlc-anchor.json" <<'PY'
+import json, sys
+r = json.load(open(sys.argv[1]))
+want = {"op": "replace-with", "path": "Retry.tla", "symbol": "Call", "match": '/== (\\/\\\\ result = "running")/', "with": "TRUE"}
+if r["status"] != "red" or r["control"]["edit"] != want or r["control"]["matched"] is not True or "find" in r["control"]:
+    sys.exit(f"FAIL: the anchor control is {r['status']}: {r['control']}")
+print("formal_tlc control by anchor: TLC went red on NoCallAfterStop; the record holds the anchor edit, no typed find")
+PY
+expect_fail tlc-anchor-missing "ANCHOR ERROR" python3 "$S/formal_tlc.py" control --spec "$TLA/Retry.tla" --cfg "$TLA/Retry.cfg" --symbol NoSuchDefinition --match x --with y
+expect_fail tlc-find-deprecated "deprecated" python3 "$S/formal_tlc.py" control --spec "$TLA/Retry.tla" --cfg "$TLA/Retry.cfg" --find 'no such text' --replace x
+
+step "refs: discover finds an anchor control as existing, by its resolved location"
+mkdir -p "$WORK/disc-run"
+cp "$WORK/anchor-controls.json" "$WORK/disc-run/trust-map.json"
+"${U[@]}" --repo "$REPO" --run "$WORK/disc-run" discover > "$WORK/discover-anchor.txt"
+python3 - "$WORK/disc-run/discover.json" <<'PY'
+import json, sys
+cands = json.load(open(sys.argv[1]))["candidates"]
+hit = [c for c in cands if c.get("path") == "wallet/core.py" and any(e.startswith("control K9") for e in c["evidence"])]
+if not hit:
+    sys.exit("FAIL: discover missed the anchor controls: " + json.dumps([(c.get("path"), c.get("function"), c["evidence"]) for c in cands]))
+found = sorted({e for c in hit for e in c["evidence"] if e.startswith("control ")})
+if "control K90" not in found or "control K91" not in found:
+    sys.exit(f"FAIL: discover found only {found}")
+print("discover: wallet/core.py candidates already have", ", ".join(found))
+PY
 echo
 echo "PASS: code refs"

@@ -22,6 +22,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import coderef  # noqa: E402
 import ctx as context  # noqa: E402
 import formal_record  # noqa: E402
 import journal  # noqa: E402
@@ -147,9 +148,14 @@ def add_verifier(data: dict, rec: dict, idmap: dict[str, str], side_path: Path) 
     for k in rec.get("controls", []):
         r = k["result"]
         ctl = r.get("control") or {}
-        edits = r.get("edits") or ([{"op": "replace", "path": ctl.get("file") or (models[0] if models else "model"),
-                                      "find": ctl.get("find", ""), "replace": ctl.get("replace", "")}])
-        edits = [e for e in edits if e.get("find")] or [{"op": "append", "path": models[0] if models else "model", "text": "(recorded control)"}]
+        where = ctl.get("file") or (models[0] if models else "model")
+        if r.get("edits"):
+            edits = r["edits"]
+        elif ctl.get("edit"):
+            edits = [{**ctl["edit"], "path": where}]
+        else:  # a record from before anchor controls: the typed find and replace
+            edits = [{"op": "replace", "path": where, "find": ctl.get("find", ""), "replace": ctl.get("replace", "")}]
+        edits = [e for e in edits if e.get("find") or e["op"] in coderef.ANCHOR_OPS] or [{"op": "append", "path": models[0] if models else "model", "text": "(recorded control)"}]
         red = r.get("status") == "red"
         data["controls"].append({
             "id": k["id"], "verifier": v["id"], "recipe": "plant-violation",

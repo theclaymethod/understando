@@ -55,13 +55,13 @@ expect "withdraw conformance" "$(field "$OUT/w.conf.json" "d['status']")" green
 
 step "withdraw: model control (a planted wrong guard breaks the theorem)"
 python3 "$S/formal_lean.py" control --project "$LEAN" --file Fixture/Wallet.lean \
-  --find "amount > balance then" --replace "amount > balance + 1 then" --pattern "withdraw|omega" > "$OUT/w.k1.json"
+  --symbol withdraw --match "/amount > (balance) then/" --with "balance + 1" --pattern "withdraw|omega" > "$OUT/w.k1.json"
 expect "withdraw model control" "$(field "$OUT/w.k1.json" "d['status']")" red
 
 step "withdraw: code control (a planted wrong function breaks conformance)"
 python3 "$S/formal_run.py" --cwd "$REPO" --copy "$REPO" --expect red --pattern "AssertionError" \
   --env FORMAL_ORACLE="$ORACLE" --env FORMAL_REQUIRE_ORACLE=1 \
-  --edit '{"op":"replace","path":"mini/wallet.py","find":"amount > balance:","replace":"amount >= balance:"}' \
+  --edit '{"op":"replace-with","path":"mini/wallet.py","symbol":"withdraw","match":"/amount (>) balance:/","with":">="}' \
   -- python3 -m unittest tests.test_conformance_wallet > "$OUT/w.k2.json" || true
 expect "withdraw code control" "$(field "$OUT/w.k2.json" "d['status']")" red
 
@@ -81,7 +81,7 @@ expect "retry TLC" "$(field "$OUT/r.check.json" "d['status']")" green
 
 step "retry: planted spec (guard removed) must violate an invariant with a trace"
 python3 "$S/formal_tlc.py" control --spec "$TLA/Retry.tla" --cfg "$TLA/Retry.cfg" \
-  --find 'Call(o) == /\ result = "running"' --replace 'Call(o) == TRUE' --pattern NoCallAfterStop > "$OUT/r.k1.json"
+  --symbol Call --match '/== (\/\\ result = "running")/' --with TRUE --pattern NoCallAfterStop > "$OUT/r.k1.json"
 expect "retry spec control" "$(field "$OUT/r.k1.json" "d['status']")" red
 expect "retry spec control trace length > 1" "$(field "$OUT/r.k1.json" "len(d['trace']) > 1")" True
 field "$OUT/r.k1.json" "' -> '.join(str(s['state']) for s in d['trace'])"
@@ -94,7 +94,7 @@ expect "retry trace replay" "$(field "$OUT/r.conf.json" "d['status']")" green
 
 step "retry: code control (drop the fatal stop) breaks the replay"
 python3 "$S/formal_run.py" --cwd "$REPO" --copy "$REPO" --expect red --pattern "AssertionError|IndexError" \
-  --edit '{"op":"replace","path":"mini/retry.py","find":"        if outcome == \"fatal\":\n            return \"fatal\", tries\n","replace":""}' \
+  --edit '{"op":"delete-line","path":"mini/retry.py","symbol":"retry","match":"if outcome == \"fatal\":"}' \
   -- python3 -m unittest tests.test_conformance_retry > "$OUT/r.k2.json" || true
 expect "retry code control" "$(field "$OUT/r.k2.json" "d['status']")" red
 
@@ -126,7 +126,7 @@ python3 "$S/formal_run.py" --cwd "$REPO" --pattern "the claim sum\(result\) == t
   -- python3 -m unittest tests.test_witness_split_evenly > "$OUT/s.wtest.json" || true
 expect "witness test on the bug" "$(field "$OUT/s.wtest.json" "d['status']")" red
 python3 "$S/formal_run.py" --cwd "$REPO" --copy "$REPO" --expect green \
-  --edit '{"op":"replace","path":"mini/split.py","find":"i <= remainder","replace":"i < remainder"}' \
+  --edit '{"op":"replace-with","path":"mini/split.py","symbol":"split_evenly","match":"/i (<=) remainder/","with":"<"}' \
   -- python3 -m unittest tests.test_witness_split_evenly > "$OUT/s.wfix.json"
 expect "witness test on the fix" "$(field "$OUT/s.wfix.json" "d['status']")" green
 

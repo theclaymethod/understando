@@ -11,7 +11,8 @@ A code ref is one of:
 
   symbol    a dotted name: "run_document", "Editor.edit", "_idle", "DOCGEN_IMPORTS". Python
             resolves it with the stdlib ast (functions, classes, and module or class level
-            assignments); TS and JS with a balanced-brace scan; other files with a regex.
+            assignments); TS and JS with a balanced-brace scan; other files with a regex (Lean: `theorem|def|lemma
+            <name>`; TLA+: a `<Name> ==` definition; then the indented lines below it).
             A bare name that is not top level matches the last part of a dotted name.
   part      whole (default: with the decorators and the comment lines right above), signature
             (the header), body.
@@ -268,15 +269,19 @@ def js_symbols(text: str, symbol: str) -> list[Sym]:
 _GENERIC_DECL = r"^[ \t]*(?:(?:pub|export|private|public|protected|static|async|noncomputable|partial|@\w+)[ \t]+)*" \
                 r"(?:def|fn|func|function|class|struct|enum|trait|impl|interface|module|sub|proc|theorem|lemma|" \
                 r"structure|inductive|abbrev|instance|let|const|type|var|val|object)[ \t]+{name}\b|^{name}[ \t]*(?:\(|==|:=)"
+# Lean: `theorem|def|lemma <name>`. TLA+: a `<Name> ==` definition, with or without parameters.
+_LEAN_DECL = r"^(?:@\[[^\]]*\][ \t]*)?(?:(?:private|protected|noncomputable|partial|unsafe)[ \t]+)*(?:theorem|def|lemma)[ \t]+(?:[\w.']+\.)?{name}\b"
+_TLA_DECL = r"^(?:LOCAL[ \t]+)?{name}(?:[ \t]*\([^)]*\))?[ \t]*=="
 
 
-def generic_symbols(text: str, symbol: str) -> list[Sym]:
+def generic_symbols(text: str, symbol: str, suffix: str = "") -> list[Sym]:
     """The regex fallback: a declaration line, then a brace block or the indented lines below."""
     lines = text.splitlines()
     starts = line_starts(text)
     name = symbol.split(".")[-1]
     out = []
-    for m in re.finditer(_GENERIC_DECL.format(name=re.escape(name)), text, re.M):
+    decl = {".lean": _LEAN_DECL, ".tla": _TLA_DECL}.get(suffix, _GENERIC_DECL)
+    for m in re.finditer(decl.format(name=re.escape(name)), text, re.M):
         first = line_of(starts, m.start())
         line = lines[first - 1]
         if "{" in line:
@@ -303,7 +308,7 @@ def find_symbol(path: str, text: str, symbol: str) -> Sym:
     elif suffix in JS_EXT:
         hits = js_symbols(text, symbol)
     else:
-        hits = generic_symbols(text, symbol)
+        hits = generic_symbols(text, symbol, suffix)
     if not hits:
         raise AnchorError(f"{path}::{symbol}: no such symbol")
     if len(hits) > 1:
@@ -532,6 +537,15 @@ def _drop_item(path: str, text: str, res: Resolved) -> str:
 
 def anchor_ref(edit: dict) -> dict:
     return {k: edit[k] for k in ("path", "symbol", "part", "match", "context") if k in edit}
+
+
+def cli_edit(path: str, op: str | None, symbol: str | None, match: str | None, with_: str | None) -> dict:
+    """The anchor edit that a script's --op, --symbol, --match and --with flags name."""
+    edit = {"op": op or ("replace-with" if with_ is not None else "delete-line"), "path": path}
+    for key, val in (("symbol", symbol), ("match", match), ("with", with_)):
+        if val is not None:
+            edit[key] = val
+    return edit
 
 
 def apply_text(text: str, edit: dict) -> str:
