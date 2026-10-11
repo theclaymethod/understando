@@ -54,7 +54,7 @@ Recompute the frog ranking and start again at step 1, or stop.
 ## Report
 
 - Each frog: its invariants (proposed or confirmed), the theorems or properties, the verdict, the route, the control results and the conformance result.
-- A blocker routed code-first is a **bug in the PR**. Report it first, with the witness input, the failing witness test and the command that runs it. Do not fix the code. The witness test goes to the author as a patch on the scratch branch.
+- A blocker routed code-first is a **bug in the PR**. Report it first, in the finding format of [../references/adapted/find-bugs.md](../references/adapted/find-bugs.md). The heading is `P1 — [Small fix, 95% finding confidence, 90% fix confidence] <one line>`. Then give the trigger (the witness input), expected and actual, the impact, the fix direction and the evidence. The evidence is the failing witness test and the command that runs it. Do not fix the code. The witness test goes to the author as a patch on the scratch branch. Keep a refutation that has no witness run apart, as a lead.
 - Each proposed invariant, for the interview with the user: the plain sentence, the edge-case questions, what the code does today in each case (file:line), and whether that looks intended or like a bug.
 
 ## Sidecar

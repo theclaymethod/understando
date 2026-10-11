@@ -15,6 +15,7 @@ It looks for these problems:
 - A proof or a model older than its code.
 - The explainer runtime, and the learn app (paused).
 - Missing toolchains.
+- A link in the skill docs that points at no file.
 - Routed skills, and adapted copies older than the installed original.
 - A deleted `@cc` contract comment in the PR or on the ready branch.
 - Stale imported evidence.

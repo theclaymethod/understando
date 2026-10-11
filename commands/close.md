@@ -14,3 +14,5 @@ Each stop of this playbook ends with one question to the user. Ask it as [Asking
    - **Done when** the answer file holds each choice. Its shape is in `understando close --help`.
 4. **Apply.** Run `understando close --answers <file>`. A drafted test goes to a scratch clone. Probe runs it. When it is green, then red on its control, the commit goes to `understando/<pr>-ready`. A waiver shows in the ready checklist and in the PR section.
    - **Done when** it prints `DONE`, or each open claim has the reason why it stays open.
+
+A claim is one statement that a reviewer accepts or rejects. Its strength is the strength of its weakest check. When one check of a claim misses its planted bug, the question says so and offers to fix that check first. When a drafted test shows that the code is wrong, report it in the finding format ([../references/adapted/find-bugs.md](../references/adapted/find-bugs.md)), and keep it apart from the leads.

@@ -329,7 +329,27 @@ def findings(c: context.Ctx, explicit_head: str | None, formal: bool = False) ->
             add(f"link-{d.split('/')[0].lstrip('.')}", "route", f"{link} is not a link to {tm.ROOT}.", "Run setup.", "setup")
     if not shutil.which("understando"):
         add("cli-not-on-path", "route", "The understando command is not on PATH.", "Run setup.", "setup")
+    broken = doc_links()
+    if broken:
+        add("doc-links", "mention", f"{len(broken)} links in the skill docs point at no file: " + "; ".join(broken[:3]),
+            "Fix each link, or restore its target.")
     return out, fixed
+
+
+def doc_links() -> list[str]:
+    """Relative Markdown links in understando's own skill docs that point at no file (from skills-audit:
+    a broken reference or script in a skill is a finding)."""
+    import re
+    out = []
+    files = [tm.ROOT / "SKILL.md", *sorted((tm.ROOT / "commands").glob("*.md")), *sorted((tm.ROOT / "references").rglob("*.md"))]
+    for f in files:
+        for m in re.finditer(r"\]\(([^)#\s]+)(?:#[^)]*)?\)", f.read_text(encoding="utf-8")):
+            target = m.group(1)
+            if "://" in target or target.startswith("mailto:"):
+                continue
+            if not (f.parent / target).exists():
+                out.append(f"{f.relative_to(tm.ROOT)} -> {target}")
+    return out
 
 
 def main(c: context.Ctx, argv: list[str]) -> int:

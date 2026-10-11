@@ -14,7 +14,8 @@
       "line": "Build or update the claim ledger, verifiers, tiers and promises, then diff against the previous map.",
       "args": "[--scan-src DIR/ --scan-tests DIR/] [--fail-on-drop]",
       "invoke": "model",
-      "doc": "commands/map.md"
+      "doc": "commands/map.md",
+      "tier": "advanced"
     },
     {
       "id": "discover",
@@ -22,7 +23,8 @@
       "line": "Find the invariants with the user: mine candidates, ask edge-case questions, and record only the rules that the user accepts.",
       "args": "[mine | questions | answer --answers FILE | status | import --sidecar FILE] [--paths P] [--claim C01]",
       "invoke": "user",
-      "doc": "commands/discover.md"
+      "doc": "commands/discover.md",
+      "tier": "advanced"
     },
     {
       "id": "probe",
@@ -30,7 +32,8 @@
       "line": "Plant model-free controls in scratch worktrees and record which checks go red.",
       "args": "[--control K01] [--only V01,V02] [--env-file FILE]",
       "invoke": "user",
-      "doc": "commands/probe.md"
+      "doc": "commands/probe.md",
+      "tier": "advanced"
     },
     {
       "id": "formalize",
@@ -38,7 +41,8 @@
       "line": "Climb to tier 4 or 5: a TLA+ model check, or a Lean proof with a conformance link.",
       "args": "[--claim C01 | --invariant A1] [--tier 4|5] [--sidecar runs/<repo>/<pr>/formal/verifiers.json]",
       "invoke": "user",
-      "doc": "commands/formalize.md"
+      "doc": "commands/formalize.md",
+      "tier": "advanced"
     },
     {
       "id": "import",
@@ -46,7 +50,8 @@
       "line": "Record outside evidence (evo, impeccable, Lean, nemesis-review, show-me-your-work, `verify-<app>` feature files). A file with a wrong format is stale.",
       "args": "KIND FILE --claim C01 --description TEXT",
       "invoke": "model",
-      "doc": "commands/import.md"
+      "doc": "commands/import.md",
+      "tier": "advanced"
     },
     {
       "id": "snippet",
@@ -54,7 +59,8 @@
       "line": "Print the code of a ref at the head, with its line numbers and its GitHub permalink. Preview a ref with it. Never paste code.",
       "args": "PATH[::SYMBOL] [--match RE] [--part whole|signature|body] [--context N[,M]] [--head SHA] [--lines A-B --suggest]",
       "invoke": "model",
-      "doc": "commands/map.md"
+      "doc": "commands/map.md",
+      "tier": "advanced"
     },
     {
       "id": "close",
@@ -62,7 +68,8 @@
       "line": "Close each Asserted or Gap claim, riskiest first: a check that probe proves red, evidence, a new wording, or a waiver.",
       "args": "[--answers FILE] [--list] [--next]",
       "invoke": "user",
-      "doc": "commands/close.md"
+      "doc": "commands/close.md",
+      "tier": "advanced"
     },
     {
       "id": "trim",
@@ -70,7 +77,8 @@
       "line": "Find excess code, and delete unit tests that an e2e test already covers.",
       "args": "[--report] [--candidates FILE] [--coverage FILE] [--accept PATH[:NAME] --reason TEXT]",
       "invoke": "user",
-      "doc": "commands/trim.md"
+      "doc": "commands/trim.md",
+      "tier": "advanced"
     },
     {
       "id": "explain",
@@ -78,7 +86,8 @@
       "line": "Build the explainer and the PR-body section.",
       "args": "[--explainer-url URL]",
       "invoke": "model",
-      "doc": "commands/explain.md"
+      "doc": "commands/explain.md",
+      "tier": "advanced"
     },
     {
       "id": "publish",
@@ -86,7 +95,8 @@
       "line": "Share the review on the orphan branch understando/<pr>-review of the reviewed repo, after a clear yes. --feedback: a reviewer shares their confusion rows.",
       "args": "[<pr>] [--dry-run] [--answers FILE] [--feedback [--reviewer NAME]]",
       "invoke": "user",
-      "doc": "commands/publish.md"
+      "doc": "commands/publish.md",
+      "tier": "advanced"
     },
     {
       "id": "learn",
@@ -95,15 +105,26 @@
       "args": "[--port N] [--no-open]",
       "invoke": "user",
       "doc": "commands/learn.md",
-      "paused": true
+      "paused": true,
+      "tier": "advanced"
     },
     {
       "id": "review",
       "category": "Run all",
-      "line": "A full PR review from the PR number. It finds the run, the ready worktree and the CI profile, then asks one question. The steps chain into four stops: map + probe, close (one claim per question), trim, and ready + explain.",
+      "line": "For the author: a full PR review from the PR number. It merges new PR commits after your yes, re-checks the changed code, and runs through to the PR section. It stops only for the decisions that are yours.",
       "args": "<pr> [--go | --through] [--answers FILE] [--guard PATH] [--full]",
       "invoke": "user",
-      "doc": "commands/review.md"
+      "doc": "commands/review.md",
+      "tier": "entry"
+    },
+    {
+      "id": "open",
+      "category": "Run all",
+      "line": "For the reviewer: open the explainer of a PR (the local run, else the fetched review branch), then walk through it with teach.",
+      "args": "[<pr>] [--level L] [--anchor A] [--teach] [--ask TEXT] [--no-open]",
+      "invoke": "model",
+      "doc": "commands/open.md",
+      "tier": "entry"
     },
     {
       "id": "ready",
@@ -112,15 +133,17 @@
       "args": "[--report] [--answers FILE] [--cold-read]",
       "invoke": "user",
       "report_invoke": "model",
-      "doc": "commands/ready.md"
+      "doc": "commands/ready.md",
+      "tier": "advanced"
     },
     {
       "id": "build",
       "category": "Run all",
-      "line": "The verifier-first playbook for new work: discover, the @cc contract, a verifier that goes red before the code exists, code, probe, gates, explain.",
+      "line": "For new work, verifier first: the invariants, a check that goes red before the code exists, the code, probe and the gates.",
       "args": "[status | red-first --verifier V01 --at REF]",
       "invoke": "user",
-      "doc": "commands/build.md"
+      "doc": "commands/build.md",
+      "tier": "entry"
     },
     {
       "id": "setup",
@@ -128,7 +151,8 @@
       "line": "Install the CLI and the skill links. With --repo, write the per-repo understando.toml with the user.",
       "args": "[--scope project|global] [--links-only] | --repo [--answers FILE]",
       "invoke": "user",
-      "doc": "commands/setup.md"
+      "doc": "commands/setup.md",
+      "tier": "advanced"
     },
     {
       "id": "ci",
@@ -137,7 +161,8 @@
       "args": "[--head SHA] [--base REF] [--ready REF] [--question] [--approve [--project NAME]] [--check-argv ARG...]",
       "invoke": "model",
       "approve_invoke": "user",
-      "doc": "commands/ci.md"
+      "doc": "commands/ci.md",
+      "tier": "advanced"
     },
     {
       "id": "doctor",
@@ -145,7 +170,8 @@
       "line": "Find drift and setup problems. Each finding is auto, mention or route.",
       "args": "[--fix] [--pr-head SHA]",
       "invoke": "model",
-      "doc": "commands/doctor.md"
+      "doc": "commands/doctor.md",
+      "tier": "advanced"
     },
     {
       "id": "signals",
@@ -153,7 +179,8 @@
       "line": "Print the state of the run as JSON: map freshness, open claims, probe time, tiers, gates, mode, ledger, toolchains.",
       "args": "[--pr-head SHA]",
       "invoke": "model",
-      "doc": null
+      "doc": null,
+      "tier": "internal"
     },
     {
       "id": "menu",
@@ -161,7 +188,8 @@
       "line": "The bare-invocation question: two or three recommended verbs from signals, each with its concrete reason. --all adds the verb table.",
       "args": "[--all]",
       "invoke": "model",
-      "doc": null
+      "doc": null,
+      "tier": "internal"
     },
     {
       "id": "routes",
@@ -169,7 +197,8 @@
       "line": "For each routed step: the installed original skill, else understando's adapted copy, else the built-in rule.",
       "args": "",
       "invoke": "model",
-      "doc": "references/working-rules.md"
+      "doc": "references/working-rules.md",
+      "tier": "internal"
     },
     {
       "id": "mode",
@@ -177,7 +206,8 @@
       "line": "Turn the mode on or off, or show it. The state file holds the run folder, the repo and the PR.",
       "args": "on [--autonomy] [--with poteto-mode] | off | status",
       "invoke": "model",
-      "doc": null
+      "doc": null,
+      "tier": "internal"
     },
     {
       "id": "lock",
@@ -185,7 +215,8 @@
       "line": "Show, take or release the run lock. Each writing verb takes it for the paths that it writes.",
       "args": "[status | take --verb V --paths P1,P2 [--pid N] | release]",
       "invoke": "model",
-      "doc": null
+      "doc": null,
+      "tier": "internal"
     },
     {
       "id": "note",
@@ -193,7 +224,8 @@
       "line": "Append one row to the intent ledger. It redacts secrets.",
       "args": "prompt|decision|verifier-choice|waiver|result TEXT [--why --evidence --result --claims C01,C02]",
       "invoke": "model",
-      "doc": null
+      "doc": null,
+      "tier": "internal"
     },
     {
       "id": "hook",
@@ -201,7 +233,8 @@
       "line": "The prompt-hook entry: reads the hook JSON on stdin and notes the prompt only when the mode is on.",
       "args": "user-prompt",
       "invoke": "hook",
-      "doc": null
+      "doc": null,
+      "tier": "internal"
     }
   ],
   "aliases": {
@@ -279,14 +312,6 @@
     },
     {
       "skill": "nemesis-review",
-      "for": "the independent review in ready",
-      "verbs": [
-        "ready"
-      ],
-      "optional": true
-    },
-    {
-      "skill": "code-review",
       "for": "the independent review in ready",
       "verbs": [
         "ready"
@@ -522,6 +547,68 @@
         "explain"
       ],
       "required": true
+    },
+    {
+      "skill": "teach",
+      "for": "the teach stop of review and open",
+      "verbs": [
+        "review",
+        "open"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "concisely",
+      "for": "the reporting rules of each prompt and stop report",
+      "verbs": [
+        "*"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "find-bugs",
+      "for": "the finding format of each bug report",
+      "verbs": [
+        "discover",
+        "formalize",
+        "close",
+        "review"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "explain-report",
+      "for": "the content rules of the explainer",
+      "verbs": [
+        "explain"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "autoreview",
+      "for": "the independent review in ready, when interrogate and nemesis-review are missing",
+      "verbs": [
+        "ready"
+      ],
+      "optional": true
+    },
+    {
+      "skill": "maintain-verification-skill",
+      "for": "the upkeep of a verify-<app> skill and its feature map (user-invoked)",
+      "verbs": [
+        "build",
+        "close"
+      ],
+      "fallback": "Keep the tier-1 proof standards of references/controls.md.",
+      "optional": true
+    },
+    {
+      "skill": "code-review",
+      "for": "the independent review in ready",
+      "verbs": [
+        "ready"
+      ],
+      "optional": true
     }
   ]
 }

@@ -17,4 +17,12 @@ A control names its place with an anchor, not with copied code: `{"op", "path", 
 3. **Fix each error.** An `error` result means that the edit did not apply, or the check failed for another reason. An `ANCHOR ERROR` means that the anchor matches 0 places or more than 1. Make the `symbol` or the `match` more precise. Preview it with `understando snippet`, and run that control again. Fix an `expect.pattern` the same way.
    - **Done when** no control has an error that you can fix.
 
+## An e2e test must drive the user path
+
+An e2e verifier must follow the tier-1 proof standards of [../references/controls.md](../references/controls.md#tier-1-proof-standards). It drives the real CLI, service or UI. It captures the action and the state after it, and it checks the side effects. probe reads the test files of each e2e verifier. When a test only calls internal functions, probe prints `FLAG NOT-USER-PATH`, and the kind becomes `integration`. Report the flag. To make the test e2e, drive the real entry point in a subprocess, an HTTP call or a browser.
+
+## The env file
+
+A verifier that needs no model key runs with no env file. Only a paid verifier that the user said yes to (`--paid V36`) gets the key wrapper, for that run only. The flag never stays in the saved trust map. `--env-file` passes the user's own env file to each verifier with `env_file: true`. probe prints a skip line only for a paid verifier in scope (`--only`). `review` shows the paid ones once, as one option with their cost.
+
 A tier on the ladder counts for a claim only after a control shows that its check can fail. See [../references/verdicts.md](../references/verdicts.md).

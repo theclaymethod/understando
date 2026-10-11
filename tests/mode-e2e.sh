@@ -110,6 +110,8 @@ json.dump({"answers": [
      "examples": [{"question": "What should fee give when amount is 250?", "expr": "fee(250)", "expect": "3"}]},
     {"candidate": find("denial returns"), "decision": "reject", "reason": "The message text is copy, not a rule."},
     {"candidate": find("withdraw returns"), "decision": "accept", "confirmed": True,
+     "rating": {"priority": "P1", "fix": "Small", "finding_confidence": 95, "fix_confidence": 90,
+                "fix_direction": "Refuse an amount below zero before the balance check."},
      "examples": [{"question": "What should withdraw do when amount is below zero?", "expr": "withdraw(10, -5)", "raises": "ValueError"}]},
     {"candidate": find("The wallet module is safe"), "decision": "accept"}],
   "rest": {"decision": "defer", "reason": "Not in scope for this review."}}, open(sys.argv[2], "w"))
@@ -117,8 +119,12 @@ PY
 "$U" discover answer --answers "$WORK/discover-answers.json" > "$O/discover1.txt"
 has "$O/discover1.txt" "reword as I02 (accepted, author user"
 has "$O/discover1.txt" "reject: The message text is copy, not a rule."
-has "$O/discover1.txt" "POSSIBLE BUG"
-has "$O/discover1.txt" "the code gives 15"
+# A bug finding renders in the find-bugs format: the rating in the heading, then the trigger, expected and actual, and the evidence.
+has "$O/discover1.txt" "P1 — [Small fix, 95% finding confidence, 90% fix confidence] "
+has "$O/discover1.txt" "  Trigger: What should withdraw do when amount is below zero?"
+has "$O/discover1.txt" "  Expected: raises ValueError. Actual: 15."
+has "$O/discover1.txt" "  Fix: Refuse an amount below zero before the balance check."
+has "$O/discover1.txt" "  Evidence: "
 has "$O/discover1.txt" "PROPOSED: no user confirm"
 has "$O/discover1.txt" "DONE: every candidate has a decision."
 AGENT_INV="$(python3 -c 'import json,sys; print(next(i["id"] for i in json.load(open(sys.argv[1]))["invariants"] if i["author"] == "agent"))' "$RUN/trust-map.json")"
@@ -169,7 +175,7 @@ PY
 
 step "ready --report: the four gates"
 "$U" ready --report > "$O/ready.txt"
-for g in "gate 1 verified: pass" "gate 2 no excess code: fail" "gate 3 no unit test that an e2e test covers: pass" "gate 4 explainable: pass" "Independent review"; do
+for g in "gate 1 verified: pass" "gate 2 no excess code: fail" "gate 3 no unit test that an e2e test covers: pass" "gate 4 explainable: pass" "Independent review" "references/adapted/autoreview.md" "a self-review is not independent"; do
   has "$O/ready.txt" "$g"
 done
 
@@ -419,7 +425,7 @@ has "$O/probe-noci.txt" "refuse: the CI profile is not approved"
 step "review prompt: one question, at most 5 situation lines, at most 4 options, a cost and a time, no verb table"
 (cd "$CL" && "$U" review 1 --json) > "$O/review-prompt.json"
 (cd "$CL" && "$U" review 1) > "$O/review-prompt.txt"
-python3 - "$O/review-prompt.json" "$O/review-prompt.txt" <<'PY'
+python3 - "$O/review-prompt.json" "$O/review-prompt.txt" "$ROOT" <<'PY'
 import json, sys
 p = json.load(open(sys.argv[1]))["prompt"]
 text = open(sys.argv[2]).read()
@@ -432,7 +438,15 @@ assert p["next"]["scope"] and p["next"]["writes"], p["next"]
 assert p["question"] in text and "Next: " in text and "Cost: $" in text and "Time: " in text, text
 for word in ("Get ready", "Aliases:", "| Verb |", "Understand\n", "  discover  "):
     assert word not in text, word
-assert len(text.strip().splitlines()) <= 5 + 1 + 2 + 4, text
+assert len(text.strip().splitlines()) <= 5 + 2 + 2 + 4, text
+# Plain names only: no bare ID, SHA or path:line in the words that the user reads.
+import re, sys as _s
+_s.path.insert(0, sys.argv[3] + "/scripts")
+import prompt as P
+bad = [x for t in P.user_texts(p) for x in P.plain_problems(t)]
+assert not bad, bad
+for line in p["situation"]:
+    assert not re.search(r"\b[0-9a-f]{7,40}\b", line) and not re.search(r"\.\w+:\d+", line) and "selector" not in line, line
 print(f"review: {len(p['situation'])} situation lines, {len(p['options'])} options, cost {p['next']['cost']!r}, time {p['next']['time']!r}")
 PY
 
@@ -477,7 +491,8 @@ printf '{"ci": "approve"}' > "$WORK/ci-yes.json"
 (cd "$CL" && "$U" review 1 --answers "$WORK/ci-yes.json") > "$O/ci-yes.txt"
 has "$O/ci-yes.txt" "Run map + probe on the changed code?"
 (cd "$CL" && "$U" review 1 --go) > "$O/go-check.txt" 2>&1 || { tail -30 "$O/go-check.txt"; fail "the check stop failed"; }
-has "$O/go-check.txt" "== review: map"; has "$O/go-check.txt" "== review: probe"
+has "$O/go-check.txt" "Map: the verdicts are up to date at the review-branch tip ✓"; has "$O/go-check.txt" "== review: probe"
+test -s "$R/logs/review-map.log" || fail "the map output is not in the run log"
 lacks "$O/go-check.txt" "== review: trim"
 (cd "$CL" && "$U" review 1 --json) > "$O/close-prompt.json"
 python3 - "$O/close-prompt.json" <<'PY'
@@ -486,8 +501,9 @@ d = json.load(open(sys.argv[1]))
 p = d["prompt"]
 others = [o["id"] for o in d["open"] if o["id"] != p["claim"]]
 assert p["claim"] in [o["id"] for o in d["open"]], p
-assert p["question"] == f"How do we close {p['claim']}?", p["question"]
-assert others and not any(x in json.dumps(p) for x in others), (others, p)
+assert p["question"].startswith("How do we close '") and p["claim"] not in p["question"], p["question"]
+shown = json.dumps([p["situation"], p["question"], p["options"]])
+assert others and not any(x in shown for x in others), (others, p)
 assert 2 <= len(p["options"]) <= 4 and p["options"][0].get("recommended") and p["options"][-1]["label"] == "Something else", p["options"]
 assert any(s.startswith("Why it is weak:") for s in p["situation"]), p["situation"]
 print(f"close asks about {p['claim']} only; {len(others)} other open claims wait")
@@ -498,7 +514,7 @@ python3 - "$FIX/ready/close-answers.json" "$WORK/through.json" <<'PY'
 import json, sys
 json.dump({"go": "run through", "ci": "approve", "close": json.load(open(sys.argv[1]))}, open(sys.argv[2], "w"))
 PY
-(cd "$CL" && "$U" review 1 --answers "$WORK/through.json") > "$O/through.txt" 2>&1 || { tail -40 "$O/through.txt"; fail "the run through failed"; }
+(cd "$CL" && "$U" review 1 --verbose --answers "$WORK/through.json") > "$O/through.txt" 2>&1 || { tail -40 "$O/through.txt"; fail "the run through failed"; }
 for s in "== review: close --answers" "== review: trim" "== review: ready --report" "== review: explain" \
          "C03: V09 goes green, and red on control K09" "### Ready checklist" "understando never edits the PR" "review: every step is done."; do
   has "$O/through.txt" "$s"
@@ -544,6 +560,196 @@ PY
 "$U" --run "$R" --repo "$CL" close --answers "$WORK/protected.json" > "$O/close-protected.txt"
 has "$O/close-protected.txt" "refuse: bin/check_denial.py is protected (owner Ops team"
 git -C "$WT" show HEAD:bin/check_denial.py > /dev/null 2>&1 && fail "close wrote a protected file"
+
+step "review: the explainer opens first, at the merge verdict; open --no-open prints the path and the anchor"
+cat > "$RV/bin/fake-open" <<OPEN
+#!/usr/bin/env bash
+echo "\$*" >> "$RV/open.log"
+OPEN
+chmod +x "$RV/bin/fake-open"
+export UNDERSTANDO_OPENER="$RV/bin/fake-open"
+"$U" --run "$R" --repo "$CL" explain --html > "$O/explain-html.txt" 2>&1 || { tail -20 "$O/explain-html.txt"; fail "explain --html failed"; }
+test -s "$R/explainer.html" || fail "explain --html wrote no page"
+"$U" --run "$R" open --anchor C03 --no-open > "$O/open1.txt"
+has "$O/open1.txt" "runs/wallet/1/explainer.html"
+has "$O/open1.txt" "explainer.html#claim-c03"
+"$U" --run "$R" open --level changed --no-open > "$O/open2.txt"; has "$O/open2.txt" "explainer.html#change"
+test ! -f "$RV/open.log" || fail "open --no-open ran the opener"
+
+step "review: a new PR commit and a fix with a new test on -ready: the merge question comes first"
+printf '\n[llm]\nkey_source = "env-file"\nenv_file = "%s"\nenv_var = "FAKE_KEY"\nrequire_key_for = ["test_messages"]\n' "$WORK/fake-key.env" >> "$UNDERSTANDO_RUNS/wallet/understando.toml"
+printf 'FAKE_KEY=\n' > "$WORK/fake-key.env"
+FIXER="$RV/fixer"; git clone -q -b understando/1-ready "$RV/wallet.git" "$FIXER"
+cat > "$FIXER/wallet/fees.py" <<'PYF'
+"""Added by the PR. No test names this module, and the PR text does not mention it."""
+
+
+def fee(amount: int) -> int:
+    if amount < 0:
+        raise ValueError("the amount is below zero")
+    return amount // 100 + 1
+PYF
+cat > "$FIXER/tests/test_fee_floor.py" <<'PYF'
+"""A fee for an amount below zero is refused."""
+
+import unittest
+
+from wallet.fees import fee
+
+
+class FeeFloorTest(unittest.TestCase):
+    def test_fee_refuses_an_amount_below_zero(self) -> None:
+        with self.assertRaises(ValueError):
+            fee(-1)
+
+
+if __name__ == "__main__":
+    unittest.main()
+PYF
+rg -C "$FIXER" add -A && rg -C "$FIXER" commit -q -m "fix(fees): refuse an amount below zero, with its test"
+rg -C "$FIXER" push -q origin HEAD:understando/1-ready
+READY_PUSHED="$(git -C "$FIXER" rev-parse HEAD)"
+PRW="$RV/author"; git clone -q "$RV/wallet.git" "$PRW"
+printf '\n# a later PR commit\n' >> "$PRW/wallet/messages.py"
+rg -C "$PRW" commit -q -am "docs(messages): a note from the author"
+rg -C "$PRW" push -q origin HEAD:main
+PR_HEAD2="$(git -C "$PRW" rev-parse HEAD)"; echo "$PR_HEAD2" > "$RV/head"
+(cd "$CL" && "$U" review 1 --json --no-rebuild) > "$O/merge-q.json"
+(cd "$CL" && "$U" review 1 --no-rebuild) > "$O/merge-q.txt"
+python3 - "$O/merge-q.json" "$ROOT" "$R" <<'PY'
+import json, re, sys
+sys.path.insert(0, sys.argv[2] + "/scripts")
+import prompt as P
+d = json.load(open(sys.argv[1]))
+p = d["prompt"]
+assert p["question"].startswith("Bring the new commit into the review branch? (a merge, no force-push)"), p["question"]
+assert p["situation"][0] == "Your PR has 1 new commit that the review branch does not have yet.", p["situation"]
+assert [o["label"] for o in p["options"]][0].startswith("Merge, then re-check everything"), p["options"]
+assert p["options"][1]["label"].startswith("Show what") and p["options"][2]["label"].startswith("Skip; re-check only"), p["options"]
+assert not [x for t in P.user_texts(p) for x in P.plain_problems(t)], p
+for line in p["situation"]:
+    assert not re.search(r"\b[0-9a-f]{7,40}\b", line) and not re.search(r"\.\w+:\d+", line), line
+assert any(l.startswith("I opened the explainer: start with 'Can you merge it?'") for l in p["situation"]), p["situation"]
+# The blocker count is the count of the explainer's merge verdict.
+n = int(re.search(r"Not ready: (\d+) blockers?", " ".join(p["situation"])).group(1))
+story = open(sys.argv[3] + "/chapters/01-story.mdx").read()
+items = story.count("<li><a href=") if "data-merge-items" in story else 0
+more = re.search(r"And (\d+) more", story)
+assert n == items + (int(more.group(1)) if more else 0), (n, items, more)
+print(f"the merge question is first; {n} blockers, the same as the explainer")
+PY
+has "$RV/open.log" "explainer.html#story-verdict"
+test -s "$R/opened.jsonl" || fail "review recorded no open event"
+WT_TIP0="$(git -C "$WT" rev-parse HEAD)"
+(cd "$CL" && "$U" review 1 --show-new) > "$O/show-new.txt"; has "$O/show-new.txt" "docs(messages): a note from the author"
+test "$(git -C "$WT" rev-parse HEAD)" = "$WT_TIP0" || fail "--show-new changed the review branch"
+
+step "review: the merge path merges the PR head with a merge commit, no rebase and no push"
+(cd "$CL" && "$U" review 1 --merge --no-rebuild) > "$O/merge.txt" 2>&1 || { cat "$O/merge.txt"; fail "the merge failed"; }
+has "$O/merge.txt" "Merged the new PR commits into the review branch"
+TIP2="$(git -C "$WT" rev-parse HEAD)"
+test "$(git -C "$WT" rev-list --parents -n 1 HEAD | wc -w | tr -d ' ')" = 3 || fail "the merge is not a merge commit"
+test "$(git -C "$WT" rev-parse HEAD^1)" = "$WT_TIP0" || fail "the first parent is not the old review-branch tip"
+git -C "$WT" merge-base --is-ancestor "$PR_HEAD2" HEAD || fail "the PR head is not in the review branch"
+git -C "$WT" merge-base --is-ancestor "$READY_PUSHED" HEAD || fail "the review branch lost a commit: a rebase"
+test "$(git -C "$RV/wallet.git" rev-parse refs/heads/understando/1-ready)" = "$READY_PUSHED" || fail "understando pushed the merge"
+
+step "review: the new test on -ready is proposed for its claim, one question; then a manual probe counts as the probe step"
+(cd "$CL" && "$U" review 1 --json --no-rebuild) > "$O/link-q.json"
+python3 - "$O/link-q.json" <<'PY'
+import json, sys
+p = json.load(open(sys.argv[1]))["prompt"]
+assert p["question"].startswith("Link the new test to '"), p["question"]
+assert "fee floor" in p["situation"][-1] or "fee refuses" in p["situation"][-1] or "test that" in p["situation"][-1], p["situation"]
+print(p["question"])
+PY
+(cd "$CL" && "$U" review 1 --link yes --no-rebuild) > "$O/link.txt"; has "$O/link.txt" "Linked the new test to '"
+NEWV="$(python3 -c 'import json,sys; print(next(v["id"] for v in json.load(open(sys.argv[1]))["verifiers"] if v.get("link")))' "$R/trust-map.json")"
+python3 - "$R/trust-map.json" "$NEWV" <<'PY'
+import json, sys
+d, vid = json.load(open(sys.argv[1])), sys.argv[2]
+v = next(v for v in d["verifiers"] if v["id"] == vid)
+assert v["claims"] == ["C03"] and v["command"]["argv"][-1] == "tests.test_fee_floor.FeeFloorTest", v
+k = next(k for k in d["controls"] if k["verifier"] == vid)
+assert k["edits"][0]["op"] == "restore-file" and k["edits"][0]["path"] == "wallet/fees.py", k
+v["command"]["env_file"] = True     # regression: a verifier with env_file and no key runs with no env file
+json.dump(d, open(sys.argv[1], "w"), indent=2)
+print(f"{vid} links the new test to C03, with a restore-file control")
+PY
+"$U" --run "$R" --repo "$CL" probe --only "$NEWV" > "$O/probe-new.txt" 2>&1 || { tail -20 "$O/probe-new.txt"; fail "probe of the new test failed"; }
+lacks "$O/probe-new.txt" "needs --env-file"
+lacks "$O/probe-new.txt" "skip V07"
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); v=next(v for v in d["verifiers"] if v["id"]==sys.argv[2]); assert v["state"]=="proven", v["state"]' "$R/trust-map.json" "$NEWV" \
+  || fail "the new test did not go red on the code before the fix"
+
+step "review: --step runs the check stop, then offers the teach stop; teach opens the story first"
+(cd "$CL" && "$U" review 1 --go --step --no-rebuild) > "$O/step.txt" 2>&1 || { tail -30 "$O/step.txt"; fail "the step run failed"; }
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); d["done"]=[x for x in d["done"] if x!="probe"]; json.dump(d, open(sys.argv[1],"w"))' "$R/review.json"
+(cd "$CL" && "$U" review 1 --go --step --no-rebuild) > "$O/step2.txt" 2>&1 || { tail -30 "$O/step2.txt"; fail "the second step run failed"; }
+has "$O/step2.txt" "already ran at its commit after this review started; done"
+has "$O/step2.txt" "Walk through the change before the next stop?"
+has "$O/step2.txt" "Walk me through the change"
+python3 -c 'import json,sys; t=json.load(open(sys.argv[1]))["timings"]; assert "formal" in t, t' "$R/review.json" || fail "the chain did not reach the formal step"
+: > "$RV/open.log"
+(cd "$CL" && "$U" review 1 --teach) > "$O/teach1.txt"
+python3 - "$O/teach1.txt" "$ROOT" <<'PY'
+import re, sys
+sys.path.insert(0, sys.argv[2] + "/scripts")
+import prompt as P
+text = open(sys.argv[1]).read()
+lines = text.splitlines()
+assert lines[0].startswith("I opened the story"), lines[0]
+concepts = [l for l in lines if re.match(r"  \d\. ", l)]
+assert 1 <= len(concepts) <= 4, concepts
+assert all("(ref: " in l for l in concepts) and "understando snippet " in text, concepts
+assert not [x for l in lines for x in P.plain_problems(l)], lines
+assert lines[-1].endswith("?") or "next" in lines[-1], lines[-1]
+print(f"teach turn 1 opens the story and names {len(concepts)} ideas, each with refs")
+PY
+has "$RV/open.log" "explainer.html#story"
+
+step "review: a stale explainer is flagged; the first stop rebuilds it"
+sleep 1; python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); d["title"]=(d.get("title") or "")+" (edited)"; json.dump(d, open(sys.argv[1],"w"), indent=2)' "$R/trust-map.json"
+(cd "$CL" && "$U" review 1 --json --no-rebuild) > "$O/stale.json"
+python3 -c 'import json,sys; s=json.load(open(sys.argv[1]))["prompt"]["situation"]; assert any("out of date" in x for x in s), s' "$O/stale.json" || fail "the stale explainer is not flagged"
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); d["opened"]=None; json.dump(d, open(sys.argv[1],"w"))' "$R/review.json"
+(cd "$CL" && "$U" review 1) > "$O/rebuild.txt" 2>&1
+has "$O/rebuild.txt" "I rebuilt it ✓"
+
+step "review: run through by default, with one plain progress line for each item; --json gives NDJSON events"
+(cd "$CL" && "$U" review 1 --go --json) > "$O/through2.ndjson" 2> "$O/through2.err" || { tail -30 "$O/through2.err"; fail "the run through failed"; }
+python3 - "$O/through2.ndjson" "$ROOT" <<'PY'
+import json, sys
+sys.path.insert(0, sys.argv[2] + "/scripts")
+import prompt as P
+text = open(sys.argv[1]).read()
+events = [json.loads(l) for l in text.splitlines() if l.startswith('{"event"')]
+assert events and all(e["id"] and e["text"][-1] in "✓✗" or "✗" in e["text"] for e in events), events
+for e in events:
+    assert not P.plain_problems(e["text"]), e
+final = json.loads(text[text.index("\n{\n") + 1:] if "\n{\n" in text else text[text.index("{\n"):])
+assert "done" in final or "prompt" in final, list(final)
+print(f"{len(events)} progress events; the last object has {sorted(final)[:4]}")
+PY
+
+step "review: a failed step is recorded; the next run asks to retry or skip it; --json always prints JSON"
+cp "$R/trust-map.json" "$WORK/map-good.json"
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); d["claims"][0]["bogus"]=1; json.dump(d, open(sys.argv[1],"w"))' "$R/trust-map.json"
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); d["done"]=[]; json.dump(d, open(sys.argv[1],"w"))' "$R/review.json"
+(cd "$CL" && "$U" review 1 --go --no-rebuild) > "$O/fail1.txt" 2>&1 && fail "review --go passed with an invalid map"
+has "$O/fail1.txt" "Map ✗"
+(cd "$CL" && "$U" review 1 --json --no-rebuild) > "$O/fail2.json"
+python3 -c 'import json,sys; p=json.load(open(sys.argv[1]))["prompt"]; assert p["question"]=="Retry the map step?" and p["options"][1]["label"]=="Skip map", p' "$O/fail2.json" \
+  || fail "no retry-or-skip question after a failed step"
+cp "$WORK/map-good.json" "$R/trust-map.json"
+(cd "$WORK" && "$U" review 1 --json) > "$O/err.json" 2>/dev/null || true
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["error"], d' "$O/err.json" || fail "review --json printed no JSON error"
+
+step "map: a run folder with no history diffs against the map as it was"
+R3="$WORK/run-nohist"; cp -R "$R" "$R3"; rm -rf "$R3/history"
+"$U" --run "$R3" --repo "$CL" map > "$O/map-nohist.txt"
+lacks "$O/map-nohist.txt" "first one"
+has "$O/map-nohist.txt" "# Trust-map diff"
 unset UNDERSTANDO_RUNS
 
 step "signals: a possible bug whose code changed on -ready asks for a re-check, not discover"
@@ -573,14 +779,14 @@ python3 - "$O/bug2.json" "$BUG" "$BUGFILE" "$FIXSHA" <<'PY'
 import json, sys
 d, bug, path, sha = json.load(open(sys.argv[1])), sys.argv[2], sys.argv[3], sys.argv[4]
 first = d["recommend"][0]
-assert first["verb"] == "map" and first["label"] == f"re-check {bug}", d["recommend"]
+assert first["verb"] == "map" and first["label"].startswith("Re-check the fix for '") and bug not in first["label"], d["recommend"]
 assert "map + probe on the changed code" in first["why"] and path in first["why"] and sha in first["why"], first["why"]
 assert all(bug not in x["why"] for x in d["recommend"] if x["verb"] == "discover"), d["recommend"]
 b = d["signals"]["discover"]["bug_changes"][0]
 assert b["changed"] and b["claims"], b
 print(f"-ready changed {path}: {first['label']}: {first['why'][:110]}")
 PY
-has "$O/bug2.txt" "1. re-check $BUG (recommended)"
+has "$O/bug2.txt" "1. Re-check the fix for '"
 
 step "ci: the approval is one question with a project option, and --project approves only that project"
 CR="$WORK/mono"; mkdir -p "$CR/.github/workflows" "$CR/projects/alpha/tests" "$CR/projects/beta/tests"
@@ -633,4 +839,51 @@ N="$(wc -l < "$RUN/journal.jsonl")"
 echo '{"prompt": "This prompt must not be noted."}' | "$U" hook user-prompt
 test "$(wc -l < "$RUN/journal.jsonl")" = "$N" || fail "the hook wrote while the mode was off"
 test "$(git -C "$REPO" rev-parse main)" = "$HEAD" || fail "the PR's own commits changed"
+step "probe: an e2e verifier that only calls internal functions is flagged and becomes integration"
+RUP="$WORK/run-userpath"; cp -R "$RUN" "$RUP"
+python3 - "$RUP/trust-map.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+d["verifiers"].append({"id": "V99", "kind": "e2e", "claims": ["C02"], "tier": "fact",
+    "description": "BalanceTest is labelled end to end, but it calls withdraw directly.",
+    "command": {"argv": ["python3", "-m", "unittest", "-q", "tests.test_core.BalanceTest"], "timeout_s": 60},
+    "independence": {"by": "tool", "tool": "unittest"}, "cost": {"usd": 0}, "provenance": "the e2e test"})
+json.dump(d, open(sys.argv[1], "w"), indent=2)
+PY
+E2EV="$(python3 -c 'import json,sys; print(next(v["id"] for v in json.load(open(sys.argv[1]))["verifiers"] if v["kind"]=="e2e" and v["id"]!="V99"))' "$RUP/trust-map.json")"
+"$U" --run "$RUP" --repo "$REPO" probe --only "V99,$E2EV" > "$O/probe-up.txt" 2>&1 || { tail -20 "$O/probe-up.txt"; fail "probe failed"; }
+has "$O/probe-up.txt" "FLAG NOT-USER-PATH: V99 is labelled e2e, but it only calls internal functions: not a user-path e2e."
+python3 - "$RUP/trust-map.json" "$E2EV" <<'PY'
+import json, sys
+d = {v["id"]: v for v in json.load(open(sys.argv[1]))["verifiers"]}
+assert d["V99"]["kind"] == "integration" and d["V99"]["user_path"]["result"] == "internal-only" and d["V99"]["user_path"]["claimed_kind"] == "e2e", d["V99"]
+assert d[sys.argv[2]]["kind"] == "e2e" and d[sys.argv[2]]["user_path"]["result"] == "user-path", d[sys.argv[2]]
+print(f"V99 is integration (not a user-path e2e); {sys.argv[2]} drives a process, so it stays e2e")
+PY
+
+step "entry points: help shows review, open and build; the rest is advanced; a bare menu recommends build, open or review"
+"$U" help > "$O/help.txt"
+for v in review open build; do grep -qE "^  $v " "$O/help.txt" || fail "help lacks $v"; done
+has "$O/help.txt" "Advanced verbs: \`understando help --all\`."
+if grep -qE "^  discover " "$O/help.txt"; then fail "help shows an advanced verb"; fi
+"$U" help --all > "$O/help-all.txt"; has "$O/help-all.txt" "  discover"
+python3 -c 'import json,sys; t={v["id"]: v["tier"] for v in json.load(open(sys.argv[1]))["verbs"]}; assert {k for k,v in t.items() if v=="entry"} == {"review","open","build"}, t' "$ROOT/commands.json"
+(cd "$WORK" && "$U" --json menu) > "$O/menu-build.json"
+python3 -c 'import json,sys; p=json.load(open(sys.argv[1]))["recommend"]; assert p[0]["verb"]=="build", p' "$O/menu-build.json" || fail "the bare menu does not recommend build"
+git -C "$CL" update-ref refs/remotes/origin/understando/7-review HEAD
+(cd "$CL" && "$U" --json menu) > "$O/menu-open.json"
+python3 -c 'import json,sys; p=json.load(open(sys.argv[1]))["recommend"]; assert p[0]["command"]=="understando open 7", p' "$O/menu-open.json" || fail "the menu does not recommend open on a review branch"
+if (cd "$CL" && UNDERSTANDO_RUNS="$WORK/runs" "$U" open 7 --no-open) > "$O/open7.txt"; then fail "open 7 passed with no run and no fetch helper"; fi
+has "$O/open7.txt" "fetch_review_branch"
+
+step "open: the reviewer path asks one question; a question is a confusion row at its anchor, in the local journal only"
+(cd "$CL" && UNDERSTANDO_RUNS="$WORK/runs" "$U" open 1 --no-open) > "$O/open-r.txt"
+has "$O/open-r.txt" "How do you want to read it?"
+has "$O/open-r.txt" "1. Walk me through it (recommended)"
+(cd "$CL" && UNDERSTANDO_RUNS="$WORK/runs" "$U" open 1 --teach --no-open) > "$O/open-teach.txt"
+has "$O/open-teach.txt" "the story"
+(cd "$CL" && UNDERSTANDO_RUNS="$WORK/runs" "$U" open 1 --ask "I do not get the restore step." --anchor C03 --no-open) > "$O/open-ask.txt"
+has "$O/open-ask.txt" "nothing is pushed"
+python3 -c 'import json,sys; r=[json.loads(l) for l in open(sys.argv[1])][-1]; assert r["kind"]=="confusion" and r["anchor"]=="claim-c03", r' "$WORK/runs/wallet/1/journal.jsonl" \
+  || fail "no confusion row with its anchor"
 echo "PASS: mode e2e"

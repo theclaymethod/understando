@@ -309,5 +309,64 @@
       "build",
       "close"
     ]
+  },
+  {
+    "id": "teach",
+    "file": "references/adapted/teach.md",
+    "original_skill": "teach",
+    "source": "agent-guards",
+    "source_path": "skills/teach/SKILL.md",
+    "source_version": "c86d619",
+    "used_by": [
+      "review",
+      "open"
+    ]
+  },
+  {
+    "id": "concisely",
+    "file": "references/adapted/concisely.md",
+    "original_skill": "concisely",
+    "source": "agent-guards",
+    "source_path": "skills/concisely/SKILL.md",
+    "source_version": "c86d619",
+    "used_by": [
+      "*"
+    ]
+  },
+  {
+    "id": "find-bugs",
+    "file": "references/adapted/find-bugs.md",
+    "original_skill": "find-bugs",
+    "source": "agent-guards",
+    "source_path": "skills/find-bugs/SKILL.md",
+    "source_version": "c86d619",
+    "used_by": [
+      "discover",
+      "formalize",
+      "close",
+      "review"
+    ]
+  },
+  {
+    "id": "explain-report",
+    "file": "references/adapted/explain-report.md",
+    "original_skill": "explain-report",
+    "source": "agent-guards",
+    "source_path": "skills/explain-report/SKILL.md",
+    "source_version": "c86d619",
+    "used_by": [
+      "explain"
+    ]
+  },
+  {
+    "id": "autoreview",
+    "file": "references/adapted/autoreview.md",
+    "original_skill": "autoreview",
+    "source": "agent-guards",
+    "source_path": "skills/autoreview/SKILL.md",
+    "source_version": "c86d619",
+    "used_by": [
+      "ready"
+    ]
   }
 ]

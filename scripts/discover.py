@@ -352,7 +352,8 @@ def answer(c: context.Ctx, path: str) -> dict:
         inv_id = inv["id"] if inv else (cid if cand.get("source") == "formal" else ops.next_id(data, "I"))
         bugs += [{"question": b["question"], "expected": b["expected"], "got": b["got"], **({"where": b["where"]} if b.get("where") else {})}
                  for b in a.get("possible_bug", [])]
-        bugs = [{**b, "at_commit": data["head"]} for b in bugs]
+        bugs = [{**b, "at_commit": data["head"], **({"rating": b.get("rating") or a["rating"]} if (b.get("rating") or a.get("rating")) else {})}
+                for b in bugs]
         row = {"id": inv_id, "text": text, "author": author, "status": "accepted" if author == "user" else "proposed",
                "candidate": cid, "evidence": cand["evidence"], "tier": SHAPE_TIER[shape], "shape": shape, "frog_ev": ev,
                "at": tm.now(), **({"source_prompt": a["source_prompt"]} if a.get("source_prompt") else {}),
@@ -379,8 +380,11 @@ def answer(c: context.Ctx, path: str) -> dict:
         if author != "user":
             line += " PROPOSED: no user confirm, so no verifier may use it."
         report.append(line)
+        import findings
+        import names
+        named = {**row, "name": names.short(text)}
         for b in bugs:
-            report.append(f"POSSIBLE BUG in {cid}: {b['question']} The user expects {b['expected']}; the code gives {b['got']}.")
+            report += findings.render(findings.from_possible_bug(named, b, author == "user"))
     tm.save(data, c.map)
     save(c.run, state)
     return {"report": report, **status(c)}
