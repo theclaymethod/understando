@@ -24,6 +24,67 @@ import journal  # noqa: E402
 CLOSED = ("Formal", "Proven", "Backed")
 
 
+def ready_changes(c: context.Ctx, data: dict, branch: str | None, tip: str | None) -> dict:
+    """What the ready branch changed after the map: the files, and the claims and verifiers whose
+    code, test or formal artifact is one of them. Those can be verified again at the ready tip."""
+    out = {"branch": branch, "tip": tip, "since": None, "changed": [], "claims": [], "verifiers": []}
+    if not (c.repo and tip and data):
+        return out
+    since = (data.get("ready") or {}).get("head") or data["head"]
+    if since == tip:
+        since = data["head"]
+    out["since"] = since
+    import config
+    import repoinfo
+    cfg = config.load(repoinfo.repo_name(c.repo))
+    diff = subprocess.run(["git", "-C", str(c.repo), "diff", "--name-only", "--no-renames", data["head"], tip, "--", ".",
+                           *config.pathspec_excludes(cfg)], capture_output=True, text=True)
+    changed = sorted(p for p in diff.stdout.splitlines() if p)
+    out["changed"] = changed
+    if not changed:
+        return out
+    hit = set(changed)
+
+    def touches(paths: list[str]) -> bool:
+        return any(p in hit or any(h.endswith("/" + p) or p.endswith("/" + h) for h in hit) for p in paths if p)
+
+    code_hit = {cl["id"] for cl in data["claims"] if touches([r["path"] for r in cl.get("code", [])])}
+    vids, claims = set(), set(code_hit)
+    for v in data["verifiers"]:
+        drift = (v.get("formal_record") or {}).get("drift") or {}
+        paths = [(v.get("formal") or {}).get("artifact", "")] + [m["path"] for m in drift.get("model_files", []) + drift.get("code_files", [])]
+        cmd = v.get("command") or {}
+        cwd = cmd.get("cwd", ".").strip("./")
+        paths += [f"{cwd}/{a.split('::')[0]}" if cwd else a.split("::")[0] for a in cmd.get("argv", []) if "/" in a or a.endswith(".py")]
+        if touches(paths):
+            vids.add(v["id"])
+            claims |= set(v["claims"])
+        elif set(v["claims"]) & code_hit:
+            vids.add(v["id"])
+    out["claims"] = sorted(claims, key=lambda x: (len(x), x))
+    out["verifiers"] = sorted(vids)
+    return out
+
+
+def review_hint(c: context.Ctx) -> dict | None:
+    """The PR to review from the cwd: a repo with a run folder for an open PR."""
+    import config
+    import repoinfo
+    root = repoinfo.repo_root(Path.cwd())
+    if not root:
+        return None
+    base = config.runs_root() / repoinfo.repo_name(root)
+    prs = sorted((p.name for p in base.glob("*") if p.is_dir() and p.name.isdigit()), key=int, reverse=True) if base.is_dir() else []
+    if not prs or os.environ.get("UNDERSTANDO_OFFLINE"):
+        return None
+    slug = repoinfo.slug(repoinfo.origin_url(root))
+    for n in prs:
+        info = repoinfo.gh_pr(n, slug, "state")
+        if info and str(info.get("state", "")).upper() == "OPEN":
+            return {"pr": n, "repo": str(root), "run": str(base / n)}
+    return None
+
+
 def pr_head(data: dict | None, explicit: str | None) -> str | None:
     if explicit:
         return explicit
@@ -79,6 +140,16 @@ def collect(c: context.Ctx, explicit_head: str | None = None) -> dict:
     sig["trim"] = {"ran": trim_p.is_file() and json.loads(trim_p.read_text()).get("head") == data["head"]}
     exp = c.run / "explainer.mdx"
     sig["explainer"] = {"present": exp.is_file(), "stale": exp.is_file() and exp.stat().st_mtime < c.map.stat().st_mtime}
+    if c.repo:
+        import config
+        import repoinfo
+        cfg = config.load(repoinfo.repo_name(c.repo))
+        branch = cfg["ready_branch"].format(pr=data.get("pr"))
+        tip = repoinfo.rev(c.repo, f"refs/remotes/origin/{branch}") or repoinfo.rev(c.repo, f"refs/heads/{branch}")
+        local = repoinfo.rev(c.repo, f"refs/heads/{branch}")
+        sig["ready_branch"] = {**({"reverify": ready_changes(c, data, branch, tip)} if tip else {"reverify": None}),
+                               "branch": branch, "tip": tip, "local": local,
+                               "local_behind_origin": bool(tip and local and tip != local)}
     d = discover.status(c)
     sig["discover"] = {"candidates": d["candidates"], "open": len(d["open"]), "possible_bugs": d["possible_bugs"], "proposed": d["proposed"]}
     return sig
@@ -92,7 +163,14 @@ def recommend(sig: dict) -> list[dict]:
         if verb not in [p["verb"] for p in picks]:
             picks.append({"verb": verb, "why": why, "command": f"understando {verb}"})
 
+    hint = sig.get("review_hint")
+    if hint:
+        picks.append({"verb": "review", "why": f"PR #{hint['pr']} is open and has a run folder: one line runs the whole review.",
+                      "command": f"understando review {hint['pr']}"})
     tmap = sig["trust_map"]
+    rv = (sig.get("ready_branch") or {}).get("reverify") or {}
+    if tmap["present"] and rv.get("claims"):
+        add("map", f"The ready branch changed the code or checks of {', '.join(rv['claims'][:6])}: map, probe and formalize can verify them again.")
     if not tmap["present"]:
         add("map", "No trust map exists for this run yet.")
         add("discover", "Find the invariants with the user before you write any verifier.")
@@ -133,7 +211,8 @@ def table(cmds: dict) -> str:
         lines.append(f"\n{cat}")
         for v in verbs:
             flag = " (paused)" if v.get("paused") else ""
-            by = who[v["invoke"]] + ("; --report: you or the agent" if v.get("report_invoke") == "model" else "")
+            by = who[v["invoke"]] + ("; --report: you or the agent" if v.get("report_invoke") == "model" else "") \
+                + ("; --approve: you only" if v.get("approve_invoke") == "user" else "")
             lines.append(f"  {v['id']:<10} {v['line']}{flag}  [{by}]")
     lines.append("\nAliases: " + ", ".join(f"{a} -> {b}" for a, b in cmds["aliases"].items()) + " (deprecated)")
     return "\n".join(lines)
@@ -141,6 +220,7 @@ def table(cmds: dict) -> str:
 
 def menu(c: context.Ctx, explicit_head: str | None = None) -> int:
     sig = collect(c, explicit_head)
+    sig["review_hint"] = review_hint(c)
     picks = recommend(sig)
     cmds = context.commands()
     payload = {"recommend": picks, "signals": sig, "verbs": cmds["verbs"]}

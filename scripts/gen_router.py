@@ -22,7 +22,8 @@ def table() -> str:
     for v in cmds["verbs"]:
         if v["invoke"] == "hook":
             continue
-        who = WHO[v["invoke"]] + (". With `--report`: you or the user" if v.get("report_invoke") == "model" else "")
+        who = WHO[v["invoke"]] + (". With `--report`: you or the user" if v.get("report_invoke") == "model" else "") \
+            + (". `--approve`: the user only" if v.get("approve_invoke") == "user" else "")
         doc = f"[{v['doc']}]({v['doc']})" if v.get("doc") else "`--help`"
         rows.append(f"| `{v['id']}` | {v['category']} | {v['line']} | {who} | {doc} |")
     return "\n".join([START, *rows, END])

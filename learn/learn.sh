@@ -29,6 +29,9 @@ if [ -z "$REPO" ]; then
     *) echo "learn.sh: pass --repo <local clone of $NAME>" >&2; exit 2 ;;
   esac
 fi
+# The secret_paths of the per-repo understando.toml join the tutor sandbox's read-deny list.
+UNDERSTANDO_DENY_EXTRA="$(python3 "$L/../scripts/config.py" deny-globs --repo "$REPO" 2>/dev/null || true)"
+export UNDERSTANDO_DENY_EXTRA
 BIN="${UNDERSTANDO_LEARN_BIN:-$L/target/release/understando-learn}"
 if [ ! -x "$BIN" ]; then
   [ -f "$L/web/dist/index.html" ] || { (cd "$L/web" && { [ -d node_modules ] || npm ci; } && npm run build); }

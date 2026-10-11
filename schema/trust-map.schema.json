@@ -1355,8 +1355,25 @@
               },
               "where": {
                 "type": "string"
+              },
+              "at_commit": {
+                "type": "string",
+                "description": "The PR head where discover saw the possible bug."
               }
             }
+          }
+        },
+        "possible_bug_fixed": {
+          "type": "object",
+          "description": "formalize --sidecar moved the possible bug here: a formal record is green at a later commit whose code changed.",
+          "required": ["commit", "record", "why", "bugs"],
+          "additionalProperties": false,
+          "properties": {
+            "commit": {"type": "string"},
+            "record": {"type": "string"},
+            "at": {"type": "string"},
+            "why": {"type": "string"},
+            "bugs": {"type": "array"}
           }
         },
         "at": {

@@ -8,3 +8,8 @@ runs/*/*/journal.jsonl
 runs/*/*/decisions.tsv
 runs/*/*/history/
 runs/*/*/discover.json
+runs/*/*/ci.json
+runs/*/*/review.json
+runs/*/*/.lock
+runs/*/*/.lock.mutex
+runs/*/*/formal-recheck.json

@@ -14,6 +14,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -36,6 +37,8 @@ def split_globals(argv: list[str]) -> tuple[dict, list[str]]:
         if name in GLOBAL:
             if eq:
                 opts[GLOBAL[name]] = value
+            elif name == "--repo" and (i + 1 >= len(argv) or argv[i + 1].startswith("-")):
+                opts["repo_flag"] = True  # `setup --repo` with no folder: the cwd clone
             else:
                 if i + 1 >= len(argv):
                     tm.fail(f"{name} needs a value", 2)
@@ -102,12 +105,44 @@ def do_probe(c: context.Ctx, argv: list[str]) -> int:
     ap.add_argument("--control", help="comma-separated control IDs")
     ap.add_argument("--only", help="comma-separated verifier IDs")
     ap.add_argument("--env-file")
+    ap.add_argument("--paid", default="", help="verifier IDs that need the model key: the user said yes to their shown cost")
     args = ap.parse_args(argv)
     data, repo = c.need_map(), c.need_repo()
     only = {x for x in (args.only or "").split(",") if x} or None
     ks = {x for x in (args.control or "").split(",") if x} or None
-    with ops.scratch_clone(repo) as (clone, wt):
-        ops.probe(data, clone, wt, only, ks, str(Path(args.env_file).resolve()) if args.env_file else None)
+    import ci
+    import config
+    import repoinfo
+    cfg = config.load(repoinfo.repo_name(repo))
+    config.drop_inherited_key(cfg)
+    refusal, notes = ci.gate(c, data, only)
+    for n in notes:
+        print(f"probe: {n}", file=sys.stderr)
+    if refusal:
+        print(refusal)
+        return 1
+    paid = {x for x in args.paid.split(",") if x}
+    keyed = {v["id"] for v in data["verifiers"] if "command" in v and config.needs_key(cfg, v["command"]["argv"])}
+    skip = keyed - paid
+    for vid in sorted(skip):
+        print(f"skip {vid}: it needs {(cfg.get('llm') or {}).get('env_var', 'the model key')} from the key file, and it is a paid step. "
+              f"It never runs with the key unset. Show the cost; after a clear yes, run probe --paid {vid}.")
+    if skip:
+        only = (only or {v["id"] for v in data["verifiers"] if "command" in v}) - skip
+        ks = {k["id"] for k in data["controls"] if k["verifier"] in only} if ks is None else ks - {k["id"] for k in data["controls"] if k["verifier"] in skip}
+    env_file = str(Path(args.env_file).resolve()) if args.env_file else None
+    with tempfile.TemporaryDirectory(prefix="understando-key-") as kd:
+        if keyed & paid:
+            llm = cfg.get("llm") or {}
+            if not llm.get("env_file") or not config.key_names_present(Path(llm["env_file"]), llm.get("env_var", "")):
+                print(f"refuse: {', '.join(sorted(keyed & paid))} need {llm.get('env_var')} from {llm.get('env_file')}, and it is not set there.")
+                return 1
+            env_file = str(config.key_wrapper(cfg, Path(kd), env_file))
+            for v in data["verifiers"]:
+                if v["id"] in keyed & paid:
+                    v["command"]["env_file"] = True
+        with ops.scratch_clone(repo) as (clone, wt):
+            ops.probe(data, clone, wt, only, ks, env_file)
     tm.save(data, c.map)
     for cl in data["claims"]:
         print(f"{cl['id']:<5} {cl['verdict']:<9} tier {cl.get('tier') or '-'}  {cl['text']}")
@@ -206,7 +241,19 @@ def do_learn(c: context.Ctx, argv: list[str]) -> int:
 
 
 def do_setup(c: context.Ctx, argv: list[str]) -> int:
+    if REPO_FLAG[0] or "--repo" in argv:
+        import config
+        import repoinfo
+        args = [a for a in argv if a != "--repo"]
+        answers = args[args.index("--answers") + 1] if "--answers" in args else None
+        repo = c.repo or repoinfo.repo_root(Path.cwd())
+        if not repo:
+            tm.fail("setup --repo: run it in a clone of the reviewed repo, or pass --repo DIR", 2)
+        return config.setup_repo(repoinfo.repo_name(repo), repoinfo.slug(repoinfo.origin_url(repo)), answers)
     return subprocess.run(["bash", str(S / "setup.sh"), *argv]).returncode
+
+
+REPO_FLAG = [False]
 
 
 def do_mode(c: context.Ctx, argv: list[str]) -> int:
@@ -276,12 +323,65 @@ def do_hook(c: context.Ctx, argv: list[str]) -> int:
     return 0
 
 
+def lock_paths(verb: str, argv: list[str]) -> list[str]:
+    """The paths that a verb writes, for the run lock. Read-only forms take no lock."""
+    if "--help" in argv or "-h" in argv:
+        return []
+    if verb == "map":
+        return ["run:trust-map.json", "run:history/"]
+    if verb == "probe":
+        return ["run:trust-map.json"]
+    if verb == "close":
+        return [] if "--list" in argv or not (argv or sys.stdin.isatty()) else ["run:trust-map.json", "ready:"]
+    if verb == "trim":
+        if "--accept" in argv:
+            return ["run:trim.json"]
+        return ["run:trim.json"] if "--report" in argv else ["run:trust-map.json", "run:trim.json", "ready:"]
+    if verb == "discover":
+        return [] if (argv[:1] in (["status"], ["questions"])) else ["run:trust-map.json", "run:discover.json"]
+    if verb == "formalize":
+        return ["run:trust-map.json", "run:formal/"] if "--sidecar" in argv or "--claim" in argv or "--invariant" in argv else []
+    if verb == "import":
+        return ["run:trust-map.json"]
+    if verb == "explain":
+        return ["run:explainer.mdx", "run:chapters/", "run:pr-section.md", "run:GLOSSARY.md"]
+    if verb == "ready":
+        return ["run:ready.json"]
+    if verb == "ci":
+        return [] if "--check-argv" in argv else ["run:ci.json"]
+    if verb == "build":
+        return ["run:trust-map.json"] if argv[:1] in (["claim"], ["verifier"], ["red-first"]) else []
+    return []
+
+
 def run_verb(verb: str, argv: list[str], c: context.Ctx) -> int:
     cmds = context.commands()
     if verb in cmds["aliases"]:
         new = cmds["aliases"][verb]
         print(f"understando {verb} is deprecated: use `understando {new}`.", file=sys.stderr)
         verb = new
+    paths = lock_paths(verb, argv)
+    if paths and c.run:
+        import lock
+        try:
+            with lock.held(c.run, verb, paths):
+                return dispatch(verb, argv, c)
+        except lock.Busy as exc:
+            print(str(exc))
+            return 1
+    return dispatch(verb, argv, c)
+
+
+def dispatch(verb: str, argv: list[str], c: context.Ctx) -> int:
+    if verb == "review":
+        import review
+        return review.main(c, argv)
+    if verb == "ci":
+        import ci
+        return ci.main(c, argv)
+    if verb == "lock":
+        import lock
+        return lock.main(c, argv)
     if verb == "map":
         return do_map(c, argv)
     if verb == "probe":
@@ -350,6 +450,7 @@ def help_text() -> str:
 
 def main(argv: list[str]) -> int:
     opts, rest = split_globals(argv)
+    REPO_FLAG[0] = bool(opts["repo"] or opts.get("repo_flag")) and rest[:1] == ["setup"]
     c = context.resolve(opts["run"], opts["repo"], opts["pr"], opts["json"])
     if not rest:
         return run_verb("menu", [], c)

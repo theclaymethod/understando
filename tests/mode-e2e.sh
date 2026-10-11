@@ -317,6 +317,208 @@ assert next(i for i in d["invariants"] if i["id"] == "W1-q2")["status"] == "prop
 print("the sidecar record is Formal after the user confirmed W1; the deferred question stays proposed")
 PY
 
+step "review: the context from the PR number alone, with a fake gh, a fixture workflow and a fixture understando.toml"
+RV="$WORK/rv"; mkdir -p "$RV/bin"
+export UNDERSTANDO_RUNS="$WORK/runs"
+rg() { git -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false "$@"; }
+git clone -q --bare "$REPO" "$RV/wallet.git"
+git -C "$RV/wallet.git" for-each-ref --format='%(refname)' refs/heads/understando | while read -r ref; do git -C "$RV/wallet.git" update-ref -d "$ref"; done
+SEED="$RV/seed"; git clone -q "$RV/wallet.git" "$SEED"
+mkdir -p "$SEED/.github/workflows" "$SEED/wallet/private"
+cat > "$SEED/.github/workflows/ci.yml" <<'YML'
+name: CI
+on:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Tests
+        run: python3 -m unittest -q
+      - name: Needs CI context
+        run: echo "${{ github.sha }}"
+YML
+CANARY="understando-canary-7731"
+printf 'TOKEN=%s\n' "$CANARY" > "$SEED/wallet/.env.local"
+mkdir -p "$SEED/formal"; printf '{"amount": 1, "fee": 1}\n' > "$SEED/formal/fee_vectors.jsonl"
+printf '"""Planted secret: understando must never read this file."""\n\n\n# @cc wallet.private.hook\ndef hook(x: int) -> int:\n    if x > 7731:\n        raise ValueError("%s")\n    return x\n' "$CANARY" > "$SEED/wallet/private/hook.py"
+rg -C "$SEED" add -A && rg -C "$SEED" commit -q -m "CI workflow and a planted secret"
+PR_HEAD="$(git -C "$SEED" rev-parse HEAD)"
+rg -C "$SEED" push -q origin HEAD:main
+rg -C "$SEED" push -q origin "HEAD:refs/heads/understando/1-ready"
+echo "$PR_HEAD" > "$RV/head"
+cat > "$RV/bin/gh" <<GH
+#!/usr/bin/env bash
+echo "\$*" >> "$RV/gh.log"
+if [ "\$1 \$2" = "pr view" ]; then
+  case " \$* " in *" -q "*) cat "$RV/head"; exit 0 ;; esac
+  printf '{"headRefOid":"%s","baseRefName":"main","state":"OPEN","title":"Refuse overdrafts"}\n' "\$(cat "$RV/head")"
+  exit 0
+fi
+echo "fake gh refuses: \$*" >&2; exit 3
+GH
+chmod +x "$RV/bin/gh"
+export PATH="$RV/bin:$PATH"
+CL="$RV/wallet"; git clone -q "$RV/wallet.git" "$CL"
+R="$UNDERSTANDO_RUNS/wallet/1"; mkdir -p "$R"
+sed "s/$HEAD/$PR_HEAD/g" "$MAP" > "$R/trust-map.json"
+cp "$FIX/explain.json" "$R/explain.json"
+cat > "$UNDERSTANDO_RUNS/wallet/understando.toml" <<'TOML'
+schema = "understando.repo/1"
+repo = "fixture/wallet"
+budget_usd = 0
+secret_paths = ["**/.env*", "wallet/private/**"]
+[[protected_paths]]
+path = "bin/"
+owner = "Ops team"
+reason = "The ops team owns the report script."
+[deferred_owners]
+TOML
+(cd "$CL" && "$U" review 1 --json) > "$O/review1.json"
+python3 - "$O/review1.json" "$R" "$CL" <<'PY'
+import json, os, sys
+d, run, cl = json.load(open(sys.argv[1])), sys.argv[2], sys.argv[3]
+assert os.path.realpath(d["run"]) == os.path.realpath(run), d["run"]
+wt = os.path.join(cl, ".claude/worktrees/understando-1-ready")
+assert os.path.realpath(d["worktree"]) == os.path.realpath(wt) and os.path.isdir(wt), d["worktree"]
+assert d["stopped"] == "before map" and d["next"] == "map" and d["awaiting"] == "go", (d["stopped"], d["next"])
+assert d["ci"]["present"] and not d["ci"]["approved"], d["ci"]
+ci = json.load(open(os.path.join(run, "ci.json")))
+cmd = [c for c in ci["commands"] if c.get("argv") == ["python3", "-m", "unittest", "-q"]]
+assert cmd and cmd[0]["source"] == ".github/workflows/ci.yml:10" and cmd[0]["job"] == "test", ci["commands"]
+assert any("CI expression" in e["excluded"] for e in ci["excluded"]), ci["excluded"]
+assert ci["approval"] is None
+assert d["verdicts"] and isinstance(d["open"], list) and "gates" in d
+print("review resolves the run, makes the ready worktree, writes ci.json from the workflow, and stops before map")
+PY
+test -f "$R/review.json" || fail "no review.json"
+test "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["on"])' "$UNDERSTANDO_HOME/mode.json")" = True || fail "review did not turn the mode on"
+
+step "review: the menu offers review for the open PR of the cwd"
+(cd "$CL" && env -u UNDERSTANDO_OFFLINE "$U" --json menu) > "$O/menu-review.json"
+python3 -c 'import json,sys; p=json.load(open(sys.argv[1]))["recommend"]; assert p[0]["command"] == "understando review 1", p' "$O/menu-review.json"
+
+step "review: a remote ready branch that is ahead; the guard refuses, then review pulls with --no-rebase"
+WT="$CL/.claude/worktrees/understando-1-ready"
+OTHER="$RV/other"; git clone -q -b understando/1-ready "$RV/wallet.git" "$OTHER"
+printf '# a note from another agent\n' >> "$OTHER/wallet/fees.py"
+rg -C "$OTHER" commit -q -am "another agent: a note in fees.py"
+rg -C "$OTHER" push -q origin HEAD:understando/1-ready
+AHEAD="$(git -C "$OTHER" rev-parse HEAD)"
+if (cd "$CL" && "$U" review 1 --guard wallet/core.py) > "$O/guard1.txt"; then fail "the guard allowed an edit with unpulled commits"; fi
+has "$O/guard1.txt" "has 1 commits on origin that"
+(cd "$CL" && "$U" review 1 --json) > "$O/review2.json"
+python3 - "$O/review2.json" "$AHEAD" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["pulled"] and d["pulled"]["commits"] == 1 and d["pulled"]["to"] == sys.argv[2], d["pulled"]
+assert d["ready_tip"] == sys.argv[2]
+assert "C03" in d["reverify"]["claims"], d["reverify"]
+print("review pulled 1 commit; it offers C03 to verify again")
+PY
+test "$(git -C "$WT" rev-parse HEAD)" = "$AHEAD" || fail "the worktree did not pull"
+(cd "$CL" && "$U" review 1 --guard wallet/core.py) > "$O/guard2.txt" || fail "the guard refused after the pull"
+if (cd "$CL" && "$U" review 1 --guard bin/report.py) > "$O/guard3.txt"; then fail "the guard allowed a protected path"; fi
+has "$O/guard3.txt" "refuse: bin/report.py is protected (owner Ops team"
+if (cd "$CL" && "$U" review 1 --guard wallet/.env.local) > "$O/guard4.txt"; then fail "the guard allowed a secret path"; fi
+has "$O/guard4.txt" "is a secret path"
+
+step "review: --go stops while the CI profile is not approved"
+(cd "$CL" && "$U" review 1 --go) > "$O/review3.txt"
+has "$O/review3.txt" "STOP: the CI profile is not approved"
+if "$U" --run "$R" --repo "$CL" probe > "$O/probe-noci.txt"; then fail "probe ran with an unapproved CI profile"; fi
+has "$O/probe-noci.txt" "refuse: the CI profile is not approved"
+
+step "lock: a second writer on an overlapping path is refused; a free path is not"
+sleep 60 & P1=$!
+sleep 60 & P2=$!
+"$U" --run "$R" lock take --verb formalize --paths ready:wallet/ --pid "$P1" --owner agent-a > "$O/lock1.txt"
+if "$U" --run "$R" lock take --verb close --paths ready:wallet/core.py --pid "$P2" --owner agent-b > "$O/lock2.txt"; then fail "the lock let a second writer in"; fi
+has "$O/lock2.txt" "refuse: agent-a holds the run lock for \`formalize\` (pid $P1"
+"$U" --run "$R" lock take --verb trim --paths ready:tests/ --pid "$P2" --owner agent-b > "$O/lock3.txt" || fail "the lock refused a free path"
+if (cd "$CL" && "$U" review 1 --guard wallet/core.py) > "$O/guard5.txt"; then fail "the guard ignored a live lock"; fi
+has "$O/guard5.txt" "agent-a holds the run lock"
+if "$U" --run "$R" --repo "$CL" close --answers "$FIX/ready/close-answers.json" > "$O/close-locked.txt"; then fail "close ran under a live lock"; fi
+has "$O/close-locked.txt" "refuse: agent-"
+kill "$P1" "$P2"; wait "$P1" "$P2" 2>/dev/null || true
+"$U" --run "$R" lock status > "$O/lock4.txt"; has "$O/lock4.txt" "lock: free"
+
+step "secret paths: discover and a mechanical grep never read them"
+"$U" --run "$R" --repo "$CL" discover > /dev/null
+python3 - "$R" "$CL" "$PR_HEAD" "$CANARY" "$ROOT" <<'PY'
+import json, sys
+run, cl, head, canary, root = sys.argv[1:6]
+sys.path.insert(0, root + "/scripts")
+import mechanical
+assert canary not in open(run + "/discover.json").read(), "discover read a secret file"
+r = mechanical.run(cl, head, head, {"op": "grep-present", "pattern": canary, "paths": ["wallet/"]})
+assert r["status"] == "fail" and "No match" in r["detail"], r
+print("discover and git grep skip the secret paths")
+PY
+python3 - "$R/discover.json" "$WORK/discover-answers-r.json" <<'PY'
+import json, sys
+st = json.load(open(sys.argv[1]))
+fee = next(c["id"] for c in st["candidates"] if c["text"].startswith("fee returns"))
+json.dump({"answers": [{"candidate": fee, "decision": "reword", "confirmed": True, "claims": ["C03"],
+                        "text": "The fee is one, plus one for each full hundred of the amount."}],
+           "rest": {"decision": "defer", "reason": "Not in scope for this review.", "owner": "wallet team"}}, open(sys.argv[2], "w"))
+PY
+"$U" --run "$R" --repo "$CL" discover answer --answers "$WORK/discover-answers-r.json" > /dev/null
+
+step "review: a scripted 'run through' runs map, probe, close, trim, ready --report and explain, and edits no PR"
+python3 - "$FIX/ready/close-answers.json" "$WORK/through.json" <<'PY'
+import json, sys
+json.dump({"go": "run through", "ci": "approve", "close": json.load(open(sys.argv[1]))}, open(sys.argv[2], "w"))
+PY
+(cd "$CL" && "$U" review 1 --answers "$WORK/through.json") > "$O/through.txt" 2>&1 || { tail -40 "$O/through.txt"; fail "the run through failed"; }
+for s in "== review: map" "== review: probe" "== review: close --answers" "== review: trim" "== review: ready --report" "== review: explain" \
+         "C03: V09 goes green, and red on control K09" "### Ready checklist" "understando never edits the PR" "review: every step is done."; do
+  has "$O/through.txt" "$s"
+done
+lacks "$O/through.txt" "STOP:"
+python3 - "$R/review.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["done"] == ["map", "probe", "formal", "close", "trim", "ready", "explain"], d["done"]
+PY
+python3 - "$R/trim.json" <<'PY'
+import json, sys
+t = json.load(open(sys.argv[1]))
+assert any(p["path"] == "bin/report.py" for p in t["gate2"]["protected"]), t["gate2"]
+assert "wallet/private" not in json.dumps(t), "trim read a secret path"
+print("trim keeps the protected path and never reads the secret path")
+PY
+if grep -rl "$CANARY" "$R" > "$O/canary.txt"; then cat "$O/canary.txt"; fail "a run file holds the secret canary"; fi
+git -C "$WT" log --oneline "$AHEAD..HEAD" > "$O/ready-log.txt"; has "$O/ready-log.txt" "understando close"
+test "$(git -C "$RV/wallet.git" rev-parse refs/heads/understando/1-ready)" = "$AHEAD" || fail "understando pushed to origin"
+test "$(git -C "$RV/wallet.git" rev-parse refs/heads/main)" = "$PR_HEAD" || fail "the PR head moved"
+if grep -v '^pr view ' "$RV/gh.log"; then fail "review called gh for more than pr view"; fi
+echo "gh calls: $(sort -u "$RV/gh.log" | tr '\n' ';')"
+
+step "doctor: a committed vectors file with no committed generator"
+"$U" --run "$R" --repo "$CL" --json doctor > "$O/doctor-review.json"
+python3 - "$O/doctor-review.json" <<'PY'
+import json, sys
+ids = [f["id"] for f in json.load(open(sys.argv[1]))["findings"]]
+assert "vectors-no-generator-fee_vectors.jsonl" in ids, ids
+assert "ci-unapproved" not in ids, ids
+print("doctor flags formal/fee_vectors.jsonl: no committed generator writes it")
+PY
+
+step "close refuses an edit on a protected path"
+python3 - "$WORK/protected.json" <<'PY'
+import json, sys
+json.dump({"answers": [{"claim": "C05", "choice": "e2e", "files": {"bin/check_denial.py": "print(1)\n"},
+  "verifier": {"description": "A denial check.", "command": {"argv": ["python3", "-m", "unittest", "-q", "bin.check_denial"], "timeout_s": 60}},
+  "control": {"description": "Break it.", "edits": [{"op": "replace", "path": "bin/check_denial.py", "find": "1", "replace": "2"}],
+              "expect": {"status": "red"}}}]}, open(sys.argv[1], "w"))
+PY
+"$U" --run "$R" --repo "$CL" close --answers "$WORK/protected.json" > "$O/close-protected.txt"
+has "$O/close-protected.txt" "refuse: bin/check_denial.py is protected (owner Ops team"
+git -C "$WT" show HEAD:bin/check_denial.py > /dev/null 2>&1 && fail "close wrote a protected file"
+unset UNDERSTANDO_RUNS
+
 step "mode off: the hook writes nothing"
 "$U" mode off > /dev/null
 N="$(wc -l < "$RUN/journal.jsonl")"

@@ -32,6 +32,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import config  # noqa: E402
 import ctx as context  # noqa: E402
 import journal  # noqa: E402
 import ops  # noqa: E402
@@ -42,6 +43,7 @@ import verdicts  # noqa: E402
 E2E_KINDS = ("e2e", "integration")
 COV_SITE = Path(__file__).resolve().parent / "coverage_site"
 DEAD = ("cannot-fail", "failing", "broken")
+CFG: dict = config.load(None)
 
 
 def is_test(path: str) -> bool:
@@ -140,6 +142,9 @@ def gate3(data: dict, clone: Path, wt: Path, tip: str, e2e: list[dict]) -> dict:
                 uncovered.append(k["id"])
         files = set(ops.git(clone, "ls-tree", "-r", "--name-only", tip).split())
         loc = location(u, lambda rel: rel in files)
+        if loc and config.refuse_edit(CFG, loc[0]):
+            out.setdefault("protected", []).append({"id": u["id"], "note": config.refuse_edit(CFG, loc[0])})
+            continue
         if loc and loc[1]:
             try:
                 remove_def(ops.git(clone, "show", f"{tip}:{loc[0]}"), loc[1])
@@ -160,6 +165,8 @@ def gate2(data: dict, clone: Path, wt: Path, tip: str, e2e: list[dict], extra: l
     changed = ops.git(clone, "diff", "--name-only", "--no-renames", "--diff-filter=AM", data["base"], data["head"]).split()
     cands = []
     for path in changed:
+        if config.secret(CFG, path):
+            continue
         if path.endswith(".py") and not is_test(path):
             cands += functions(path, ops.git(clone, "show", f"{tip}:{path}"))
     for x in extra:
@@ -190,6 +197,10 @@ def gate2(data: dict, clone: Path, wt: Path, tip: str, e2e: list[dict], extra: l
     out = {"deletable": [], "needed": [], "excess_or_untested": [], "protected": []}
     for cd in uniq:
         item = {"path": cd["path"], "name": cd["name"], "source": cd["source"], **({"why": cd["why"]} if cd.get("why") else {})}
+        owner = config.protected(CFG, cd["path"])
+        if owner:
+            out["protected"].append({**item, "note": f"a protected path (owner {owner.get('owner')}): report it, never delete it"})
+            continue
         if not cd["lines"] or not hits.get(cd["path"], set()) & set(cd["lines"]):
             out["excess_or_untested"].append({**item, "note": "no e2e test runs it: excess, or untested. The user decides."})
             continue
@@ -231,6 +242,21 @@ def main(c: context.Ctx, argv: list[str]) -> int:
         context.emit(c, prev, f"accepted {args.accept}: {args.reason}")
         return 0
     verdicts.apply(data)
+    global CFG
+    import ci
+    import repoinfo
+    CFG = config.load(repoinfo.repo_name(repo))
+    config.drop_inherited_key(CFG)
+    refusal, _ = ci.gate(c, data)
+    if refusal:
+        print(refusal)
+        return 1
+    if not args.report:
+        import review
+        bad = [b for b in review.guard(c.run, [], CFG)]
+        if bad:
+            print("\n".join(bad))
+            return 1
     e2e = [v for v in data["verifiers"] if v["kind"] in E2E_KINDS and "command" in v and v.get("state") not in DEAD]
     if not e2e:
         tm.fail("trim: no e2e verifier with a command; write one first (understando close, option 4)", 1)

@@ -37,8 +37,10 @@ def git(repo: str, *args: str) -> subprocess.CompletedProcess:
 def run(repo: str, base: str, head: str, check: dict) -> dict:
     """The result of one mechanical check: {status, detail, command}."""
     op, paths = check["op"], check["paths"]
+    import config
+    excludes = config.pathspec_excludes(config.for_repo(repo))
     if op in ("grep-absent", "grep-present"):
-        argv = ["grep", "-n", "-E", check["pattern"], head, "--", *paths]
+        argv = ["grep", "-n", "-E", check["pattern"], head, "--", *paths, *excludes]
         out = git(repo, *argv)
         if out.returncode not in (0, 1):
             tm.fail(f"git grep failed: {out.stderr.strip()}", 1)

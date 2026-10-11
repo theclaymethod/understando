@@ -137,8 +137,11 @@ def mine(c: context.Ctx, paths: list[str], claim: str | None) -> dict:
         if not cl:
             tm.fail(f"discover: no claim {claim}", 2)
         paths = paths + [r["path"] for r in cl.get("code", [])]
+    import config
+    cfg = config.for_repo(repo)
+    changed = config.readable(cfg, changed)
     sources = [p for p in changed if p.endswith(".py") and not is_test(p) and (not paths or any(p.startswith(x) for x in paths))]
-    tests = {p: git(repo, "show", f"{data['head']}:{p}") for p in git(repo, "ls-tree", "-r", "--name-only", data["head"]).split() if is_test(p)}
+    tests = {p: git(repo, "show", f"{data['head']}:{p}") for p in config.readable(cfg, git(repo, "ls-tree", "-r", "--name-only", data["head"]).split()) if is_test(p)}
     found = []
     for path in sources:
         for cand in mine_python(path, git(repo, "show", f"{data['head']}:{path}")):
@@ -330,6 +333,7 @@ def answer(c: context.Ctx, path: str) -> dict:
         inv_id = inv["id"] if inv else (cid if cand.get("source") == "formal" else ops.next_id(data, "I"))
         bugs += [{"question": b["question"], "expected": b["expected"], "got": b["got"], **({"where": b["where"]} if b.get("where") else {})}
                  for b in a.get("possible_bug", [])]
+        bugs = [{**b, "at_commit": data["head"]} for b in bugs]
         row = {"id": inv_id, "text": text, "author": author, "status": "accepted" if author == "user" else "proposed",
                "candidate": cid, "evidence": cand["evidence"], "tier": SHAPE_TIER[shape], "shape": shape, "frog_ev": ev,
                "at": tm.now(), **({"source_prompt": a["source_prompt"]} if a.get("source_prompt") else {}),

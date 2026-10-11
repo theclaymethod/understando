@@ -6,7 +6,7 @@ result, claims and source. The columns match the decision log of the show-me-you
 
 Each text field is redacted before it is written: key-like strings, bearer tokens, key=value
 pairs with a secret name, and each value from the .env files of the repo, the working folder and
-$UNDERSTANDO_ENV_FILES. The journal stays out of git (.gitignore) and out of the reviewed repo.
+$UNDERSTANDO_ENV_FILES (a file that matches `secret_paths` of understando.toml is never read). The journal stays out of git (.gitignore) and out of the reviewed repo.
 """
 
 from __future__ import annotations
@@ -42,8 +42,13 @@ ASSIGN = re.compile(r"(?i)\b([A-Z0-9_]*(?:api[_-]?key|secret|token|password|pass
 def env_values(extra_dirs: list[Path]) -> list[str]:
     """Values from .env files, longest first. They are read only to mask them, never printed."""
     files: list[Path] = []
+    import config
     for d in extra_dirs + [Path.cwd()]:
-        files += sorted(d.glob(".env*")) if d.is_dir() else []
+        if not d.is_dir():
+            continue
+        cfg = config.for_repo(d) if (d / ".git").exists() else config.load(None)
+        # A secret path is never read, not even to mask its values: the key patterns still apply.
+        files += [f for f in sorted(d.glob(".env*")) if not config.secret(cfg, f.name)]
     files += [Path(p) for p in os.environ.get("UNDERSTANDO_ENV_FILES", "").split(os.pathsep) if p]
     values = set()
     for f in files:

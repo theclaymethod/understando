@@ -15,6 +15,9 @@ Start this sub-command only on an explicit request from the user.
 
 Run this part on the first use in a repo, and only after the user approves each item.
 
+0. **The per-repo config.** Run `understando setup --repo` in the clone. On a terminal, it asks each item. Else ask the user each item, write the answers as JSON, and run `understando setup --repo --answers <file>`. The items are `protected_paths` (path, owner, reason), `secret_paths` and the `[llm]` key source. The key source is one env file, one variable, and the command words that need the key. The other items are `budget_usd` (default 0), `ready_branch`, `worktree_root` and `deferred_owners`. The file goes to `<runs root>/<repo>/understando.toml`, never into the reviewed repo.
+   - **Done when** it prints `wrote` and no route finding.
+
 1. **Code Contracts.** Propose this line for the repo's `AGENTS.md`: "Use `$code-contracts` for `@cc` contracts. Check their syntax with `npx @spolu/cc-check@0.2.0 format`." Write it on a separate branch, as a patch for the author.
    - **Done when** the user approved the line and the patch exists, or the user declined.
 2. **Web or mobile UI.** When the repo has a web or mobile surface, propose `E2E_TELEMETRY_DISABLED=1 npx e2e init` (tester-army). `init` asks for a model provider. Show that choice to the user, because agent steps cost money.

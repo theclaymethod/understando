@@ -45,7 +45,17 @@ def scratch_clone(repo: Path):
 
 
 def ready_branch(data: dict) -> str:
-    return f"understando/{data.get('pr')}-ready"
+    """The ready branch name: `ready_branch` of the per-repo config, default understando/<pr>-ready."""
+    pattern = "understando/{pr}-ready"
+    try:
+        import config
+        import repoinfo
+        name = repoinfo.slug_name(str(data.get("repo") or ""))
+        if name:
+            pattern = config.load(name).get("ready_branch") or pattern
+    except Exception:  # noqa: BLE001  the default name is always safe
+        pass
+    return pattern.format(pr=data.get("pr"))
 
 
 def ready_tip(repo: Path, data: dict) -> str:
@@ -73,9 +83,24 @@ def commit_on_ready(clone: Path, wt: Path, tip: str, message: str, change) -> st
 
 
 def publish(clone: Path, data: dict, commit: str) -> None:
-    """Fast-forward understando/<pr>-ready in the reviewed repo to `commit`. Never a force push."""
-    git(clone, "push", "-q", "origin", f"{commit}:refs/heads/{ready_branch(data)}")
-    data["ready"] = {"branch": ready_branch(data), "head": commit}
+    """Fast-forward understando/<pr>-ready in the reviewed repo to `commit`. Never a force push.
+
+    When a worktree has the branch checked out (the review worktree), the commit goes to a
+    scratch ref first, and the worktree merges it with --ff-only, so its files follow the branch."""
+    branch = ready_branch(data)
+    repo = Path(git(clone, "remote", "get-url", "origin"))
+    import repoinfo
+    wt = repoinfo.worktree_of(repo, branch)
+    if wt is None:
+        git(clone, "push", "-q", "origin", f"{commit}:refs/heads/{branch}")
+    else:
+        incoming = f"refs/understando/incoming/{data.get('pr')}"
+        git(clone, "push", "-q", "-f", "origin", f"{commit}:{incoming}")
+        try:
+            git(wt, "merge", "-q", "--ff-only", commit)
+        finally:
+            git(repo, "update-ref", "-d", incoming)
+    data["ready"] = {"branch": branch, "head": commit}
 
 
 def probe(data: dict, clone: Path, wt: Path, verifier_ids: set[str] | None = None,

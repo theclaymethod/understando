@@ -90,6 +90,14 @@
       "paused": true
     },
     {
+      "id": "review",
+      "category": "Run all",
+      "line": "A full PR review from the PR number. It finds the run, the ready worktree and the CI profile, and shows the state. Then it runs map, probe, close, trim, ready and explain, with a stop between steps.",
+      "args": "<pr> [--go | --through] [--answers FILE] [--guard PATH]",
+      "invoke": "user",
+      "doc": "commands/review.md"
+    },
+    {
       "id": "ready",
       "category": "Run all",
       "line": "Run map, probe, close, trim and explain, then print the four-gate checklist.",
@@ -109,10 +117,19 @@
     {
       "id": "setup",
       "category": "Maintain",
-      "line": "Install the CLI and the skill links. Ask project or global for the optional skills, and offer the prompt hook.",
-      "args": "[--scope project|global] [--links-only]",
+      "line": "Install the CLI and the skill links. With --repo, write the per-repo understando.toml with the user.",
+      "args": "[--scope project|global] [--links-only] | --repo [--answers FILE]",
       "invoke": "user",
       "doc": "commands/setup.md"
+    },
+    {
+      "id": "ci",
+      "category": "Maintain",
+      "line": "Derive the repo's reviewed CI profile for the PR (workflows, the catalog, AGENTS.md, formal tools) into ci.json. Only the user approves it.",
+      "args": "[--head SHA] [--base REF] [--ready REF] [--approve] [--check-argv ARG...]",
+      "invoke": "model",
+      "approve_invoke": "user",
+      "doc": "commands/ci.md"
     },
     {
       "id": "doctor",
@@ -151,6 +168,14 @@
       "category": "Mode",
       "line": "Turn the mode on or off, or show it. The state file holds the run folder, the repo and the PR.",
       "args": "on [--autonomy] [--with poteto-mode] | off | status",
+      "invoke": "model",
+      "doc": null
+    },
+    {
+      "id": "lock",
+      "category": "Mode",
+      "line": "Show, take or release the run lock. Each writing verb takes it for the paths that it writes.",
+      "args": "[status | take --verb V --paths P1,P2 [--pid N] | release]",
       "invoke": "model",
       "doc": null
     },

@@ -58,6 +58,7 @@ class Ctx:
     repo: Path | None
     pr: str | None
     json: bool
+    explicit_repo: bool = False
 
     @property
     def map(self) -> Path | None:
@@ -91,17 +92,20 @@ def resolve(run: str | None, repo: str | None, pr: str | None, as_json: bool) ->
     state = load_mode() if load_mode().get("on") else {}
     repo_p = Path(repo).expanduser().resolve() if repo else (Path(state["repo"]) if state.get("repo") else None)
     pr_s = str(pr) if pr else (str(state["pr"]) if state.get("pr") else None)
+    import repoinfo
+    if not repo_p and pr_s and not run and not state.get("run"):
+        repo_p = repoinfo.repo_root(Path.cwd())
     if run:
         run_p = Path(run).expanduser().resolve()
-    elif state.get("run"):
+    elif state.get("run") and not (pr and state.get("pr") and str(state["pr"]) != str(pr)):
         run_p = Path(state["run"])
     elif repo_p and pr_s:
-        run_p = Path(os.environ.get("UNDERSTANDO_RUNS") or ROOT / "runs") / repo_p.name / pr_s
+        run_p = Path(os.environ.get("UNDERSTANDO_RUNS") or ROOT / "runs") / repoinfo.repo_name(repo_p) / pr_s
     else:
         run_p = None
     if run_p and not pr_s and (run_p / "trust-map.json").is_file():
         pr_s = str(tm.load(run_p / "trust-map.json").get("pr"))
-    return Ctx(run_p, repo_p, pr_s, as_json)
+    return Ctx(run_p, repo_p, pr_s, as_json, bool(repo))
 
 
 def git(repo: Path, *args: str, check: bool = True) -> str:
