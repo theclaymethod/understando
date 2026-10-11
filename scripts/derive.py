@@ -140,6 +140,8 @@ def same_bug_catcher(data: dict, v: dict) -> dict | None:
 
 def check_action(data: dict, v: dict, claim: dict, result: str, fix: str | None) -> str:
     """One reviewer action for a check, in plain words."""
+    if v.get("formal_record") and (v["formal_record"].get("formal") or {}).get("verdict") != "Formal":
+        return "Its formal record is not Formal yet. Finish its conformance run (understando formalize)."
     if result == "caught":
         return "No action: it caught its planted bug."
     if result == "none":
@@ -200,12 +202,14 @@ def claim_rows(data: dict, explain: dict | None = None) -> dict[str, dict]:
                             "No tool checks this claim, and the PR text does not state it."}[result]
             if strength == "Backed" and not onto.intent(data, c) and onto.check_strength(data, weak, {**c, "stated": True, "parts": None}) != "Backed":
                 said += " The claim stays Backed: the PR does not state each part, and no invariant that the user confirmed backs it."
+            if result == "caught" and strength == "Backed" and (tm.ladder(weak) or 0) >= 4:
+                said += " Its conformance link does not pass, so it counts only as Backed."
             action = check_action(data, weak, c, result, fx.get(c["id"]))
             import verdicts
             bug = next((b for b in (verdicts.disagreeing(data, i) for i in onto.invariants_of(c)) if b), None)
             if bug:
                 said = (f"The code disagrees with a rule that the user confirmed: {names.of(data, bug['id'])}. " + said)
-                action = "Do not trust this claim until the code change lands: see the bugs found." + (" Then " + action[0].lower() + action[1:] if result != "caught" else "")
+                action = "Do not trust this claim until the code change lands: see the bugs found." + (" Then " + action[0].lower() + action[1:] if not action.startswith("No action") else "")
             w = {"id": weak["id"], "name": name, "result": result, "strength": strength, "text": said, "action": action}
         out[c["id"]] = {"strength": c.get("verdict") or strength, "tier": c.get("tier"), "checks": rows, "n": len(tools),
                         "counts": counts, "summary": summary, "weakest": w}

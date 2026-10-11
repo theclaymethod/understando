@@ -82,23 +82,25 @@ def run_probe(argv: list[str], env: dict | None = None) -> tuple[bool | None, st
 def java_bin() -> str | None:
     """A java that runs: $UNDERSTANDO_JAVA, $JAVA_HOME/bin/java, Homebrew's openjdk, java on PATH.
     The macOS stub /usr/bin/java prints an install prompt and fails, so it never counts."""
-    hit, val = _cached("java")
-    if hit and (val is None or Path(val).is_file()):
-        return val
     cands = [os.environ.get("UNDERSTANDO_JAVA")]
     if os.environ.get("JAVA_HOME"):
         cands.append(str(Path(os.environ["JAVA_HOME"]) / "bin" / "java"))
+    # The cache entry belongs to the environment that names a java ($UNDERSTANDO_JAVA, $JAVA_HOME).
+    key = "java" + "".join(f"|{c}" for c in cands if c)
+    hit, val = _cached(key)
+    if hit and (val is None or Path(val).is_file()):
+        return val
     cands += [f"{h}/bin/java" for h in JAVA_HOMES] + [shutil.which("java")]
     unfinished = False
     for c in cands:
         if c and Path(c).is_file() and os.access(c, os.X_OK):
             ok, _ = run_probe([c, "-version"])
             if ok:
-                _store("java", c)
+                _store(key, c)
                 return c
             unfinished = unfinished or ok is None
     if not unfinished:
-        _store("java", None)
+        _store(key, None)
     return None
 
 

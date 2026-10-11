@@ -891,10 +891,12 @@ python3 -c 'import json,sys; r=[json.loads(l) for l in open(sys.argv[1])][-1]; a
 step "review offline: gh exits 1 and the remote is unreachable; the last known head, offline mode, the merge question skipped"
 NO="$WORK/offline"; mkdir -p "$NO/bin" "$NO/runs"
 printf '#!/usr/bin/env bash\necho "Error connecting to api.github.com" >&2; exit 1\n' > "$NO/bin/gh"; chmod +x "$NO/bin/gh"
-cp -R "$UNDERSTANDO_RUNS/wallet" "$NO/runs/wallet"
+cp -R "$WORK/runs/wallet" "$NO/runs/wallet"
 git clone -q "$RV/wallet.git" "$NO/clone"; CL2="$NO/clone"
 git -C "$CL2" remote set-url origin "$NO/gone/wallet.git"
-NEWC="$(git -C "$CL2" -c user.name=f -c user.email=f@example.invalid commit-tree -p "$PR_HEAD" -m "a newer PR commit" "$PR_HEAD^{tree}")"
+# The newer commit sits on the last known head of the run (an earlier step moved it past PR_HEAD).
+LASTH="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["head"])' "$NO/runs/wallet/1/review.json")"
+NEWC="$(git -C "$CL2" -c user.name=f -c user.email=f@example.invalid commit-tree -p "$LASTH" -m "a newer PR commit" "$LASTH^{tree}")"
 git -C "$CL2" update-ref refs/remotes/origin/feature "$NEWC"
 python3 - "$NO/runs/wallet/1/review.json" <<'PY'
 import json, sys
@@ -918,7 +920,7 @@ has "$O/publish-offline.txt" "I can't reach GitHub"
 
 step "review: gh fails but git ls-remote works (a local file remote); the head is resolved from refs/pull/N/head"
 git -C "$RV/wallet.git" update-ref refs/pull/9/head "$PR_HEAD"
-LR="$WORK/lsr"; mkdir -p "$LR/runs"; cp "$UNDERSTANDO_RUNS/wallet/understando.toml" "$LR/runs/"; mkdir -p "$LR/runs/wallet"; mv "$LR/runs/understando.toml" "$LR/runs/wallet/"
+LR="$WORK/lsr"; mkdir -p "$LR/runs"; cp "$WORK/runs/wallet/understando.toml" "$LR/runs/"; mkdir -p "$LR/runs/wallet"; mv "$LR/runs/understando.toml" "$LR/runs/wallet/"
 git clone -q "$RV/wallet.git" "$LR/clone"
 (cd "$LR/clone" && PATH="$NO/bin:$PATH" UNDERSTANDO_RUNS="$LR/runs" "$U" review 9 --json) > "$O/review-lsr.json" || { cat "$O/review-lsr.json"; fail "review with ls-remote stopped"; }
 python3 - "$O/review-lsr.json" "$PR_HEAD" <<'PY'
