@@ -189,8 +189,8 @@ done
 
 step "explain: the checklist on top of the PR section, the glossary file, the pre-rendered page"
 "$U" explain > "$O/explain.txt"
-has "$RUN/explainer.html" 'data-ve-trust="merge"'
-has "$RUN/explainer.html" "Why it was built this way"
+has "$RUN/explainer.html" 'data-ve-trust="start"'
+has "$RUN/explainer.html" "What was wrong, and what changed?"
 has "$RUN/pr-section.md" "### Ready checklist"
 has "$RUN/pr-section.md" "**Formal**"
 has "$RUN/pr-section.md" "waived: The wallet keeps no shared state"
@@ -648,10 +648,9 @@ assert any(l.startswith("I opened the explainer: start with 'Can you merge it?'"
 # The blocker count is the count of the explainer's merge verdict.
 n = int(re.search(r"Not ready: (\d+) blockers?", " ".join(p["situation"])).group(1))
 page = open(sys.argv[3] + "/explainer.html").read().split('<div id="root">', 1)[1]
-story = page[page.index('id="merge"'):page.index('id="story-promises"')]
-items = len(re.findall(r"<li><a href=", story.split("data-merge-items", 1)[1].split("</ol>", 1)[0])) if "data-merge-items" in story else 0
-more = re.search(r"And (?:<!-- -->)?(\d+)(?:<!-- -->)? more", story)
-assert n == items + (int(more.group(1)) if more else 0), (n, items, more)
+# The guided review lists each blocker as a checklist item that blocks the merge.
+items = len(re.findall(r'data-ve-blocks="true"', page))
+assert 'id="merge"' in page and n == items, (n, items)
 print(f"the merge question is first; {n} blockers, the same as the explainer")
 PY
 has "$RV/open.log" "explainer.html#merge"

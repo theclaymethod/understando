@@ -56,13 +56,13 @@ function splitSections(source) {
     if (/^<\/?ExplainerShell\b/.test(line) || /^\{\/\*.*\*\/\}\s*$/.test(line)) continue;
     const open = SECTION_OPEN.exec(line);
     if (open && !current) {
-      current = { id: attr(line, "id"), title: attr(line, "navLabel") || attr(line, "title"), heading: attr(line, "title"), lines: [line] };
+      current = { id: attr(line, "id"), title: attr(line, "navLabel") || attr(line, "title"), heading: attr(line, "title"), aliases: aliases(line), lines: [line] };
       continue;
     }
     if (current) {
       current.lines.push(line);
       if (/^<\/Section>\s*$/.test(line)) {
-        chapters.push({ id: current.id, title: current.title, heading: current.heading, mdx: current.lines.join("\n") });
+        chapters.push({ id: current.id, title: current.title, heading: current.heading, aliases: current.aliases, mdx: current.lines.join("\n") });
         current = null;
       }
     } else if (line.trim()) intro.push(line);
@@ -74,6 +74,12 @@ function splitSections(source) {
 
 const CHAPTER_IMPORT = /^import\s+([A-Z][A-Za-z0-9]*)\s+from\s+['"](\.\/chapters\/[^'"]+\.mdx)['"];?\s*$/gm;
 const SECTION_LINE = /^<Section\b[^>]*>\s*$/;
+
+/** The old ids that a Section keeps as aliases (aliases={['exercises']}), so a link made for them still lands. */
+function aliases(tag) {
+  const m = /\baliases=\{\[([^\]]*)\]\}/.exec(tag);
+  return m ? [...m[1].matchAll(/['"]([^'"]+)['"]/g)].map((x) => x[1]) : [];
+}
 
 function attr(tag, name) {
   const m = new RegExp(`\\b${name}=(?:"([^"]*)"|\\{"((?:[^"\\\\]|\\\\.)*)"\\})`).exec(tag);
@@ -98,7 +104,7 @@ async function entryChapters(text) {
       if (m && imports.has(m[1])) parts.push((await readFile(join(runDir, imports.get(m[1])), "utf8")).replace(IMPORT, "").replace(/^\{\/\*.*\*\/\}\s*$/gm, ""));
       else parts.push(line);
     }
-    chapters.push({ id: attr(open, "id"), title: attr(open, "navLabel") || attr(open, "title"), heading: attr(open, "title"),
+    chapters.push({ id: attr(open, "id"), title: attr(open, "navLabel") || attr(open, "title"), heading: attr(open, "title"), aliases: aliases(open),
       mdx: [open, ...parts, "</Section>"].join("\n") });
   }
   return { css, chapters };
@@ -150,7 +156,7 @@ for (const [index, chapter] of chapters.entries()) {
   const inline = [...data].filter(([name]) => new RegExp(`\\b${name}\\b`).test(body)).map(([name, value]) => `export const ${name} = ${JSON.stringify(value)};\n\n`).join("");
   const prepared = inline + (await preflight(header + body, `${basename(runDir)}/${id}`)).replace(IMPORT, "");
   const code = String(await compile(prepared, { outputFormat: "function-body", development: false }));
-  compiled.push({ id, title: chapter.title, heading: chapter.heading || chapter.title, code });
+  compiled.push({ id, title: chapter.title, heading: chapter.heading || chapter.title, ...(chapter.aliases?.length ? { aliases: chapter.aliases } : {}), code });
 }
 const trustMap = JSON.parse(await readFile(join(runDir, "trust-map.json"), "utf8"));
 const out = {

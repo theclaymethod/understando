@@ -66,7 +66,7 @@ function App() {
           {section === "exercises" && <ExercisesView kind={id || "predict"} />}
           {section === "setup" && <SetupView />}
           {section !== "exercises" && section !== "setup" && (
-            error ? <p role="alert" className="learn-error">{error}</p> : data ? <ChapterView data={data} id={chapterId} anchor={routed ? undefined : route}>{chapterId === "exercises" && <ExerciseHub />}</ChapterView> : <p role="status">Loading the chapters.</p>
+            error ? <p role="alert" className="learn-error">{error}</p> : data ? <ChapterView data={data} id={chapterId} anchor={routed ? undefined : route}>{(chapterId === "exercises" || data.chapters.find((c) => c.id === chapterId)?.aliases?.includes("exercises")) && <ExerciseHub />}</ChapterView> : <p role="status">Loading the chapters.</p>
           )}
         </main>
         <TutorPanel />

@@ -5,7 +5,7 @@ import * as VE from "@ve/components";
 import { getJson } from "./api";
 import { askTutor } from "./tutor-bus";
 
-export type Chapter = { id: string; title: string; heading?: string; code: string };
+export type Chapter = { id: string; title: string; heading?: string; aliases?: string[]; code: string };
 export type Chapters = { schema: number; title: string; summary: string; head: string; source: string; css?: string; chapters: Chapter[] };
 
 /** The chapter that holds an element id, for links such as #claim-c01. */

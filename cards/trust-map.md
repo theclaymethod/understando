@@ -1,6 +1,6 @@
 # Trust map card
 
-The explainer of a PR's trust map is a visual-explainer page. Its card is **`trust-map`** in the visual-explainer skill (`<visual-explainer>/cards/trust-map.md`). Read that card before you write the explainer: it holds the data contract, the stable anchors, the components and the export checks.
+The explainer of a PR's trust map is a visual-explainer page: a **guided review** in ten chapters (start, the problem and the change, how it works, what changed, reading the evidence, the checks, check yourself, the review, the verdict, every changed file). Its card is **`trust-map`** in the visual-explainer skill (`<visual-explainer>/cards/trust-map.md`). Read that card before you write the explainer: it holds the data contract, the stable anchors, the components and the export checks.
 
 The page follows the review ontology: promise, then claim, then check (`commands/map.md`). Each promise card shows its claim count. Each claim card shows "N checks: x caught their bug, y missed", then its weakest check in plain words, with its action. The checks of a claim stay collapsed. "Can these checks catch a bug?" counts checks, not planted bugs. `scripts/derive.py` derives each of these values. The components only show them.
 
@@ -11,7 +11,9 @@ Each claim shows its evidence bar. The bars are in [../references/evidence-bars.
 understando's part is small:
 
 - **The data.** `trust-map.json` (the map step, the controls and the verdicts) and `explain.json` (the explain step: the diagrams, the change areas, the unclaimed notes and roles, the risks, the control walkthroughs and the PR-body bullets). Both in strict STE.
-- **The narrative.** `explainer.mdx` in the run folder, written by the explain step: Markdown for the story, why it was built this way, the loop and the trade-offs, with the data components of the card dropped in (`MergeVerdict`, `PromiseList`, `VerifyTheVerifiers`, `UnclaimedChanges` and the others).
+- **The narrative.** `explainer.mdx` in the run folder, written by the explain step: Markdown for the start, the problem and the change, the loop and the trade-offs, with the data components of the card dropped in (`ReviewStart`, `DiffSpine`, `EvidenceGuide`, `VerifierView`, `ReviewChecklist` and the others).
+- **The review.** The checklist lists each blocker, then each risk to accept, in the order of `derive.py` (`derived.merge.items` and `derived.merge.accept`). The reviewer marks each item OK, Needs a fix or Accept the risk, with a note. The calls stay in the reviewer's browser; the page can copy them as Markdown for a PR comment and never posts them.
+- **What changed.** `derive.py` puts each changed file in its chapter of the change (`explain.json` `change.chapters`) with its protection (protected by N claims, covered in part, no claim, low risk), its claims and its "look closely" flags. A flag comes only from a verified source: a bug that find-bugs found, a check that missed or cannot fail, or risky code with no claim. Tests are not a chapter: each test shows as the checks that it provides, and the tests that back no claim show as one line with an action.
 - **The glue.** `understando explain` (`scripts/explain.py`) checks the data, resolves each code ref (each claim ref and each `<CodeRef>` of the MDX) and each control patch at the head into `refs.resolved.json`, runs the visual-explainer export with the no-hand-copy guard, writes `pr-section.md` through the same rules as the page, and stamps the build (`explain.stamp.json`).
 
 ## The PR-body section

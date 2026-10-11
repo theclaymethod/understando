@@ -155,7 +155,7 @@ cases = {
     "term": (mdx.replace(story, "The ZQX ledger lets a withdrawal take the balance below zero."), extra, data),
     "mode": (mdx, {**extra, "diagrams": {**extra["diagrams"], "loop": {k: v for k, v in extra["diagrams"]["loop"].items() if k != "detailed"}}}, data),
     "action": (mdx, extra, {**data, "promises": [{k: v for k, v in p.items() if k != "reviewer_action"} if p["id"] == "P4" else p for p in data["promises"]]}),
-    "pasted": (mdx.replace("Next: [see why it was built this way](#why).", "```python\nclass OverdraftError(ValueError):\n    pass\n```\n\nNext: [see why it was built this way](#why)."), extra, data),
+    "pasted": (mdx.replace("Next: [see how one withdrawal runs](#ch-2).", "```python\nclass OverdraftError(ValueError):\n    pass\n```\n\nNext: [see how one withdrawal runs](#ch-2)."), extra, data),
 }
 for name, (m, e, d) in cases.items():
     out = work / f"bad-{name}"
@@ -212,7 +212,7 @@ const url = 'file://' + path.resolve(html);
     const still = await off.newPage();
     await still.goto(url + '#claim-c02', { waitUntil: 'load' });
     const text = await still.innerText('main');
-    for (const want of ['Can you merge it?', data.promises[0].label, data.claims[0].name ?? data.claims[0].plain.what.split('`')[0].trim()]) if (!text.toLowerCase().includes(want.toLowerCase())) fail(`without JavaScript the page lacks "${want}"`);
+    for (const want of ['things to review', data.promises[0].label, data.claims[0].name ?? data.claims[0].plain.what.split('`')[0].trim()]) if (!text.toLowerCase().includes(want.toLowerCase())) fail(`without JavaScript the page lacks "${want}"`);
     if (!(await still.$eval('#claim-c02 .ve-disclosure-body', (b) => b.getBoundingClientRect().height > 0))) fail('without JavaScript the deep link does not show claim C02');
     await off.close();
     console.log('without JavaScript the page shows the merge verdict, the promises and the claims, and a deep link shows its claim');
@@ -231,9 +231,17 @@ const url = 'file://' + path.resolve(html);
       levels: [...document.querySelectorAll('main section.ve-section[id]')].map((s) => s.id).join(','),
     }));
     if (got.styles || got.presets.join() !== 'iso') fail(`the explainer has ${got.styles} page <style> elements and presets [${got.presets}]; want 0 and [iso]`);
-    if (got.levels !== 'story,why,loop,changed,promises,verifiers,unclaimed,tradeoffs,exercises,glossary') fail(`the level ids are ${got.levels}`);
-    console.log('the page hydrates with no error, has no page <style>, uses only the iso preset and has the stable level ids');
+    if (got.levels !== 'ch-0,ch-1,ch-2,ch-3,ch-4,ch-5,ch-6,ch-7,ch-8,ch-9') fail(`the chapter ids are ${got.levels}`);
+    // The old level anchors still land: each is an alias in the chapter that holds its level.
+    for (const old of ['story', 'why', 'loop', 'changed', 'unclaimed', 'verifiers', 'promises', 'tradeoffs', 'exercises', 'glossary']) {
+      if (!(await page.$(`section.ve-section > #${old}`))) fail(`the old anchor #${old} has no target`);
+    }
+    console.log('the page hydrates with no error, has no page <style>, uses only the iso preset, has the chapter ids and keeps the old anchors');
 
+    // Read as one page from here: every chapter shows, so each figure can be measured.
+    await page.evaluate(() => localStorage.setItem('ve-read-mode:' + location.pathname, 'one'));
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForSelector('main[data-ve-paged="one"]');
     // Each architecture diagram renders both modes; the mode is shared and remembered.
     const codeLike = /`|\b[a-z][a-z0-9]*_[a-z0-9_]+\b|\b[A-Z][a-z0-9]+[A-Z][A-Za-z0-9]*\b|\b[a-z]+[A-Z][A-Za-z0-9]*\b|\b[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]+\b|\w\(\)/;
     const diagrams = page.locator('[data-ve-diagram-modes]');
@@ -250,33 +258,32 @@ const url = 'file://' + path.resolve(html);
     console.log(`${count} diagrams render a Simple and a Detailed mode`);
 
     // The glossary is a level of its own, in the rail; a term in the text shows its definition.
-    const terms = await page.$$eval('#glossary dt', (t) => t.map((x) => x.textContent));
+    const terms = await page.$$eval('[data-ve-glossary] dt', (t) => t.map((x) => x.textContent));
     for (const want of ['Overdraft', 'Balance', 'Proven', 'PR']) if (!terms.includes(want)) fail(`the glossary has no ${want}: ${terms}`);
-    if (!(await page.$('.ve-chapter-list a[href="#glossary"]'))) fail('the rail has no Glossary entry');
-    const term = page.locator('#story .ve-term').first();
+    if (!(await page.$('.ve-chapter-list a[href="#verdict-glossary"]')) && !(await page.$('.ve-chapter-list a[href="#ch-8"]'))) fail('the rail has no way to the glossary');
+    const term = page.locator('#ch-0 .ve-term').first();
     await term.focus();
     if (!(await term.locator('[role="tooltip"]').isVisible())) fail('a focused term shows no definition');
     console.log(`the glossary holds ${terms.length} terms and is in the rail; a focused term shows its definition`);
 
-    // The merge verdict: #merge, first in the story, inside the first screen, each item a link.
+    // The merge state: #merge, in the start chapter, inside the first screen, each item a link to its checklist item.
     const verdict = await page.evaluate(() => {
       const line = document.querySelector('#merge [data-merge-verdict]');
-      const first = document.querySelector('#story .ve-section-body > *');
-      return line && { form: line.dataset.mergeVerdict, top: line.getBoundingClientRect().top, first: first.contains(line),
-        links: [...document.querySelectorAll('[data-merge-items] a, [data-merge-verdict] ~ p a')].map((a) => a.getAttribute('href')) };
+      return line && { form: line.dataset.mergeVerdict, top: line.getBoundingClientRect().top, first: Boolean(line.closest('#ch-0')),
+        links: [...document.querySelectorAll('[data-merge-items] a')].map((a) => a.getAttribute('href')) };
     });
-    const targets = [...data.promises.map((p) => '#promise-' + p.id.toLowerCase()), '#story-ready', '#unclaimed'];
-    if (!verdict || !verdict.first || verdict.top > 900) fail(`the merge verdict is not first in the first screen: ${JSON.stringify(verdict)}`);
+    const targets = [...data.promises.map((p) => '#promise-' + p.id.toLowerCase()), '#review-story-ready', '#review-unclaimed'];
+    if (!verdict || !verdict.first || verdict.top > 900) fail(`the merge state is not in the first screen: ${JSON.stringify(verdict)}`);
     if (verdict.form !== 'ready' && (!verdict.links.length || verdict.links.some((h) => !targets.includes(h) && !h.startsWith('#claim-')))) fail(`a merge item does not link to a promise: ${verdict.links}`);
     console.log(`the merge verdict (${verdict.form}) is first in the first screen and links to ${verdict.links.length} targets`);
 
     // Reader copy: no "red" or "green" outside code, and no ID in the prose of the narrative and the verify level.
     const prose = await page.evaluate(() => {
-      const skip = 'pre, code, [data-ve-code-block], [data-ve-data-table], .ve-terminal, details:not([open]) > .ve-disclosure-body, .ve-disclosure-meta, [role="tooltip"]';
+      const skip = 'pre, code, [data-ve-code-block], [data-ve-data-table], .ve-terminal, details:not([open]) > .ve-disclosure-body, .ve-disclosure-meta, [role="tooltip"], [data-ve-glossary]';
       const text = (root) => { const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); const out = [];
         for (let n = w.nextNode(); n; n = w.nextNode()) if (!n.parentElement.closest(skip)) out.push(n.textContent); return out.join(' '); };
-      return { all: text(document.querySelector('main')), levels: ['story', 'loop', 'changed', 'verifiers', 'tradeoffs'].map((id) => [id, text(document.getElementById(id))]),
-        first: document.querySelector('#verifiers [data-ve-trust="verifiers"] > *')?.textContent };
+      return { all: text(document.querySelector('main')), levels: ['ch-0', 'ch-1', 'ch-2', 'ch-3', 'ch-4', 'ch-8'].map((id) => [id, text(document.getElementById(id))]),
+        first: document.querySelector('#ch-4 [data-ve-trust="verifiers"] > *')?.textContent };
     });
     const colour = prose.all.match(/\b(red|green)\b/i);
     if (colour) fail(`reader copy says "${colour[0]}": ${prose.all.slice(Math.max(0, colour.index - 60), colour.index + 40)}`);
@@ -299,24 +306,28 @@ const url = 'file://' + path.resolve(html);
     if (wide.length) fail(`a diagram overflows its column: ${JSON.stringify(wide)}`);
     console.log('no diagram overflows its column');
 
-    // A deep link into a closed claim opens it and its promise, and puts its headline in view.
-    await page.goto(url + '#claim-c02', { waitUntil: 'load' });
-    await page.waitForFunction(() => { const c = document.getElementById('claim-c02'); return c && c.open && c.parentElement.closest('details').open; });
+    // A deep link into a closed claim shows its chapter, opens it and each block around it, and puts its headline in view.
+    await page.goto(url + '#claim-c01', { waitUntil: 'load' });
+    await page.waitForFunction(() => { const c = document.getElementById('claim-c01'); return c && c.open && !c.closest('section').hidden && [...document.querySelectorAll('details')].filter((d) => d.contains(c)).every((d) => d.open); });
     await page.waitForTimeout(400);
-    const top = await page.$eval('#claim-c02', (c) => c.getBoundingClientRect().top);
-    if (top < 0 || top > 200) fail(`the deep link to claim C02 puts its headline at ${top}px`);
-    await page.click('#claim-c01 > summary .ve-disclosure-label');
-    await page.waitForFunction(() => location.hash === '#claim-c01');
+    const top = await page.$eval('#claim-c01', (c) => c.getBoundingClientRect().top);
+    if (top < 0 || top > 200) fail(`the deep link to claim C01 puts its headline at ${top}px`);
+    await page.click('#promise-p4 > summary .ve-disclosure-label');
+    await page.waitForFunction(() => location.hash === '#promise-p4');
     await page.reload({ waitUntil: 'load' });
-    await page.waitForFunction(() => document.getElementById('claim-c01')?.open);
-    console.log(`a deep link opens claim C02 with its headline at ${Math.round(top)}px; an open block writes its link and stays open on reload`);
+    await page.waitForFunction(() => document.getElementById('promise-p4')?.open);
+    console.log(`a deep link opens claim C01 with its headline at ${Math.round(top)}px; an open block writes its link and stays open on reload`);
 
-    // Unclaimed changes: the file that the fixture adds without a claim, with an action.
-    const unclaimed = await page.$eval('#unclaimed', (s) => s.innerText);
-    if (!unclaimed.includes('bin/report.py')) fail('the unclaimed level does not list bin/report.py');
-    if (unclaimed.includes('wallet/fees.py')) fail('the unclaimed level lists wallet/fees.py, which a claim cites');
-    if (!/changed files? ha(s|ve) no claim/.test(unclaimed)) fail('the unclaimed level has no summary line');
-    console.log('the unclaimed level lists bin/report.py, with its summary and its action');
+    // What changed: the file that the fixture adds without a claim, with its status, and a file that a claim protects.
+    await page.goto(url + '#ch-3', { waitUntil: 'load' });
+    await page.waitForFunction(() => !document.getElementById('ch-3').hidden);
+    const report = await page.$eval('[data-ve-spine-file="bin/report.py"]', (s) => s.innerText);
+    if (!/Low risk: skim|No claim/.test(report)) fail(`bin/report.py has no protection status: ${report}`);
+    const fees = await page.$eval('[data-ve-spine-file="wallet/fees.py"]', (s) => s.innerText);
+    if (!/Protected by 1 claim/.test(fees)) fail(`wallet/fees.py does not show the claim that protects it: ${fees}`);
+    const spine = await page.$eval('#ch-3', (s) => s.innerText);
+    if (!/changed files? ha(s|ve) no claim/.test(spine)) fail('what changed has no summary line of the unclaimed files');
+    console.log('what changed shows bin/report.py with its status, wallet/fees.py with its claim, and the summary');
   } finally {
     await browser.close();
   }
