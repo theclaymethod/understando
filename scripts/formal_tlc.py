@@ -28,7 +28,8 @@ Deadlock checking is on by default. Give a spec with terminal states an explicit
 (`Done == phase = "done" /\\ UNCHANGED vars`) rather than turn the check off.
 
 Environment: UNDERSTANDO_JAVA (default $JAVA_HOME/bin/java, then /opt/homebrew/opt/openjdk/bin/java, else java on PATH) and
-UNDERSTANDO_TLA2TOOLS (default ~/.understando/tools/tla2tools.jar). Standard library only.
+UNDERSTANDO_TLA2TOOLS (default ~/.understando/tools/tla2tools.jar). UNDERSTANDO_TLC_WORKERS sets the TLC
+workers (default auto); 1 gives the same counterexample on each run. Standard library only.
 """
 
 from __future__ import annotations
@@ -162,7 +163,8 @@ def run(spec: Path, cfg: Path | None, deadlock_check: bool, dump: Path | None = 
         timeout: int = 900) -> dict[str, object]:
     spec = spec.resolve()
     meta = Path(tempfile.mkdtemp(prefix="tlc-meta-"))
-    argv = [java(), "-XX:+UseParallelGC", "-cp", jar(), "tlc2.TLC", "-workers", "auto",
+    # One worker makes the search order, and so the counterexample, the same on each run.
+    argv = [java(), "-XX:+UseParallelGC", "-cp", jar(), "tlc2.TLC", "-workers", os.environ.get("UNDERSTANDO_TLC_WORKERS") or "auto",
             "-metadir", str(meta), "-cleanup"]
     if cfg is not None:
         argv += ["-config", str(cfg.resolve())]

@@ -145,6 +145,52 @@ cp "$MAP" "$WORK/previous.json"
 python3 "$S/rerun.py" "$WORK/previous.json" "$MAP" --fail-on-drop | tee "$WORK/rerun.md"
 grep -q "No verdict, state or control result changed." "$WORK/rerun.md"
 
+step "example: the worked examples come from a control run and the fixture's own test at the head, with provenance"
+python3 "$S/example.py" --spec "$FIX/examples.spec.json" --map "$MAP" --repo "$REPO" --out "$WORK/examples.json"
+python3 - "$WORK/examples.json" "$MAP" <<'PY'
+# Each value comes from a run of the fixture's test (the capture of wallet.core.withdraw), never
+# from the spec: without the guard the test fails, the head refuses the overdraft. Each step names its pointers.
+import json, sys
+body, data = json.load(open(sys.argv[1])), json.load(open(sys.argv[2]))
+assert body["head"] == data["head"], body["head"]
+ex = {e["id"]: e for e in body["examples"]}
+assert set(ex) == {"overdraft-before-after", "one-withdrawal"}, set(ex)
+src = ex["overdraft-before-after"]["sources"]
+assert (src["control"]["kind"], src["control"]["ids"], src["after"]["commit"]) == ("controls", ["K01"], data["head"]), src
+for e in body["examples"]:
+    for name, s in e["sources"].items():
+        assert s["sha256"].startswith("sha256:") and (s["kind"] == "controls" or s["argv"][:3] == ["python3", "-m", "unittest"]), s
+    for st in e["steps"]:
+        assert st["provenance"] and all(":/" in p for p in st["provenance"]), st
+        assert all(v["from"].split(":")[0] in e["sources"] for v in st["in"] + st["decision"] + st["out"]), st
+before, after = ex["overdraft-before-after"]["steps"]
+assert before["decision"][0]["value"] == "red" and "OverdraftError not raised" in before["out"][0]["value"], before
+assert "raise OverdraftError" in before["diff"]["patch"] and before["diff"]["path"] == "wallet/core.py", before["diff"]
+assert after["in"][0]["value"] == {"balance": 10, "amount": 11}, after["in"]
+assert after["decision"][0]["value"] == {"raised": "OverdraftError: 11 is above the balance"}, after["decision"]
+assert after["code"] == {"path": "wallet/core.py", "symbol": "withdraw"}
+pay = ex["one-withdrawal"]["steps"][1]
+assert pay["out"][0]["value"] == {"new balance": 7} and pay["station"] == "pay", pay
+print("the examples hold real values from the control run and the head run, each with its source pointers")
+PY
+# A spec value must be a pointer into a source, and an assert that the real value breaks fails.
+python3 - "$FIX/examples.spec.json" "$WORK" <<'PY'
+import json, pathlib, sys
+spec, work = json.load(open(sys.argv[1])), pathlib.Path(sys.argv[2])
+typed = json.loads(json.dumps(spec)); typed["examples"][0]["steps"][0]["out"] = {"result": {"literal": -1}}
+(work / "spec-typed.json").write_text(json.dumps(typed))
+wrong = json.loads(json.dumps(spec)); wrong["examples"][1]["steps"][1]["assert"] = [{"value": {"from": "/run/withdraw", "where": {"/args/1": 3}, "at": 0, "fields": {"r": "/result"}}, "equals": {"r": 8}}]
+(work / "spec-wrong.json").write_text(json.dumps(wrong))
+PY
+for case in "typed:the spec holds no value" "wrong:the reason assumes"; do
+  name="${case%%:*}"; want="${case#*:}"
+  if python3 "$S/example.py" --spec "$WORK/spec-$name.json" --map "$MAP" --repo "$REPO" --out "$WORK/ex-$name.json" > "$WORK/ex-$name.txt" 2>&1; then
+    echo "FAIL: example.py accepted the $name spec"; exit 1
+  fi
+  grep -q "$want" "$WORK/ex-$name.txt" || { echo "FAIL: the $name spec failed for another reason:"; cat "$WORK/ex-$name.txt"; exit 1; }
+done
+echo "example.py refuses a value that the spec types, and a real value that breaks an assert"
+
 step "explain: the agent's MDX through the visual-explainer pipeline: refs, the pre-rendered HTML, the PR section"
 # The explain step writes explainer.mdx next to the map (the narrative and the data components).
 cp "$FIX/explainer.mdx" "$WORK/explainer.mdx"
@@ -172,21 +218,29 @@ cases = {
     "action": (mdx, extra, {**data, "promises": [{k: v for k, v in p.items() if k != "reviewer_action"} if p["id"] == "P4" else p for p in data["promises"]]}),
     "pasted": (mdx.replace("Next: [see how one withdrawal runs](#ch-2).", "```python\nclass OverdraftError(ValueError):\n    pass\n```\n\nNext: [see how one withdrawal runs](#ch-2)."), extra, data),
 }
+examples = json.loads((work / "examples.json").read_text())
+# A how-it-works level with no worked example, and an example step with no provenance.
+cases["example"] = (mdx.replace('<WorkedExample refs={refs} id="one-withdrawal" explain={explain} />', ""), extra, data)
+cases["provenance"] = (mdx, extra, data)
 for name, (m, e, d) in cases.items():
     out = work / f"bad-{name}"
     out.mkdir(exist_ok=True)
     (out / "explainer.mdx").write_text(m)
     (out / "explain.json").write_text(json.dumps(e))
     (out / "trust-map.json").write_text(json.dumps(d))
+    ex = json.loads(json.dumps(examples))
+    if name == "provenance":
+        ex["examples"][1]["steps"][0]["provenance"] = []
+    (out / "examples.json").write_text(json.dumps(ex))
 PY
-for case in "leak:the ID C01 is in the narrative prose" "term:does not define: ZQX" "mode:has no detailed mode" "action:needs a reviewer_action" "pasted:pasted code from wallet/core.py"; do
+for case in "leak:the ID C01 is in the narrative prose" "term:does not define: ZQX" "mode:has no detailed mode" "action:needs a reviewer_action" "pasted:pasted code from wallet/core.py" "example:ch-2: a how-it-works level has no worked example" "provenance:step 1: no provenance"; do
   name="${case%%:*}"; want="${case#*:}"; B="$WORK/bad-$name"
   if python3 "$S/explain.py" --map "$B/trust-map.json" --repo "$REPO" --out "$B" --extra "$B/explain.json" > "$B/out.txt" 2>&1; then
     echo "FAIL: the export accepted the $name case"; exit 1
   fi
   grep -q "$want" "$B/out.txt" || { echo "FAIL: the $name case failed for another reason:"; cat "$B/out.txt"; exit 1; }
 done
-echo "the export refuses a visible ID, an undefined term, a one-mode diagram, a weak promise without an action and pasted code"
+echo "the export refuses a visible ID, an undefined term, a one-mode diagram, a weak promise without an action, pasted code, a how-it-works level with no example and an example step with no provenance"
 
 python3 - "$MAP" "$WORK/explain" <<'PY'
 # The refs, the stamp and the pre-render: each claim has one block, and the page names its map.
@@ -198,6 +252,11 @@ assert refs["schema"] == 2 and refs["head"] == data["head"], refs.get("head")
 assert all(k["id"] in refs["controls"] for k in data["controls"]), "a control has no patch"
 html = (out / "explainer.html").read_text()
 assert f'<meta name="ve-trust-map-head" content="{data["head"]}">' in html, "no head stamp"
+# The worked examples render their real values, and each step its source pointers.
+assert [e["id"] for e in refs["examples"]] == ["overdraft-before-after", "one-withdrawal"], refs.get("examples")
+assert 'data-ve-example="overdraft-before-after"' in html and 'data-ve-example="one-withdrawal"' in html, "no worked example"
+assert "OverdraftError: 11 is above the balance" in html and "OverdraftError not raised" in html, "the example lacks its real values"
+assert html.count("<ul class=\"ve-example-provenance\" data-ve-provenance") == sum(len(e["steps"]) for e in refs["examples"]), "a step has no provenance list"
 assert f'<meta name="ve-trust-map-sha256" content="{hashlib.sha256((out / "trust-map.json").read_bytes()).hexdigest()}">' in html, "no map hash stamp"
 root = html.split('<div id="root">', 1)[1]
 text = h.unescape(re.sub(r"<[^>]+>", "", root))

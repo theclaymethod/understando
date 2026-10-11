@@ -312,7 +312,10 @@ def do_explain(c: context.Ctx, argv: list[str]) -> int:
         if not cli.is_file():
             print(f"explain --html: no Artifacture runtime at {runtime}. Set UNDERSTANDO_VE_RUNTIME, or run setup.")
             return 1
-        code = subprocess.run(["node", str(cli), "export", str(c.run / "explainer.mdx"), "--out", str(c.run / "explainer.html")]).returncode
+        sys.path.insert(0, str(S))
+        import explain
+        exporter, cwd = explain.export_command(runtime)
+        code = subprocess.run([*exporter, str((c.run / "explainer.mdx").resolve()), "--out", str((c.run / "explainer.html").resolve())], cwd=cwd).returncode
     return code
 
 

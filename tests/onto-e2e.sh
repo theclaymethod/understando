@@ -139,6 +139,7 @@ PY
 python3 "$S/verdicts.py" "$O/old/trust-map.json" > /dev/null
 python3 "$S/validate.py" "$O/old/trust-map.json"
 cp "$FIX/explainer.mdx" "$O/old/explainer.mdx"
+cp "$WORK/examples.json" "$O/old/examples.json"
 python3 "$S/explain.py" --map "$O/old/trust-map.json" --repo "$REPO" --out "$O/old" --extra "$FIX/explain.json" > /dev/null
 python3 - "$O/old" "$MAP" <<'PY'
 import json, pathlib, sys
@@ -263,6 +264,7 @@ echo "a gate that filters model findings is backend; words about model output wi
 for v in fe-unit fe-video llm-flagged llm-degraded; do
   python3 "$S/verdicts.py" "$B/$v/trust-map.json" > /dev/null
   cp "$FIX/explainer.mdx" "$B/$v/explainer.mdx"
+  cp "$WORK/examples.json" "$B/$v/examples.json"
   python3 "$S/explain.py" --map "$B/$v/trust-map.json" --repo "$REPO" --out "$B/$v" --extra "$FIX/explain.json" > "$B/$v/out.txt" 2>&1 || { cat "$B/$v/out.txt"; exit 1; }
 done
 python3 - "$B" <<'PY'

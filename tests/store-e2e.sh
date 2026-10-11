@@ -57,6 +57,7 @@ echo "the guard refuses the reviewed repo, understando's checkout and a runs_dir
 step "publish: build the explainer through the CLI, then export it"
 R="$T/run"; mkdir -p "$R"
 cp "$MAP" "$R/trust-map.json"; cp "$FIX/explain.json" "$R/explain.json"; cp "$FIX/explainer.mdx" "$R/explainer.mdx"
+cp "$WORK/examples.json" "$R/examples.json"
 "$U" --run "$R" --repo "$A" explain > "$T/explain1.txt"
 test -f "$R/explain.stamp.json" || fail "explain wrote no stamp"
 test -s "$R/explainer.html" || fail "explain exported no explainer.html"

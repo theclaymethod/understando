@@ -14,11 +14,22 @@ understando's part is small:
 - **The narrative.** `explainer.mdx` in the run folder, written by the explain step: Markdown for the start, the problem and the change, the loop and the trade-offs, with the data components of the card dropped in (`ReviewStart`, `DiffSpine`, `EvidenceGuide`, `VerifierView`, `ReviewChecklist` and the others).
 - **The review.** The checklist lists each blocker, then each risk to accept, in the order of `derive.py` (`derived.merge.items` and `derived.merge.accept`). The reviewer marks each item OK, Needs a fix or Accept the risk, with a note. The calls stay in the reviewer's browser; the page can copy them as Markdown for a PR comment and never posts them.
 - **What changed.** `derive.py` puts each changed file in its chapter of the change (`explain.json` `change.chapters`) with its protection (protected by N claims, covered in part, no claim, low risk), its claims and its "look closely" flags. A flag comes only from a verified source: a bug that find-bugs found, a check that missed or cannot fail, or risky code with no claim. Tests are not a chapter: each test shows as the checks that it provides, and the tests that back no claim show as one line with an action.
+- **The worked examples.** `examples.json` in the run folder holds one run of real data through each how-it-works chapter. `scripts/example.py` reads each value from a synthetic source, with its pointer, as the agent's `examples.spec.json` tells it. `explain` copies the examples into `refs.resolved.json`, and `WorkedExample` shows them.
 - **The glue.** `understando explain` (`scripts/explain.py`) checks the data, resolves each code ref (each claim ref and each `<CodeRef>` of the MDX) and each control patch at the head into `refs.resolved.json`, runs the visual-explainer export with the no-hand-copy guard, writes `pr-section.md` through the same rules as the page, and stamps the build (`explain.stamp.json`).
 
 ## The PR-body section
 
 Keep it short: the merge verdict, the ready checklist when `ready.json` is at the map head, one Mermaid diagram (each claim layer, an edge to each verdict, the count on the edge), the claims-and-verdicts table, and short bullets (the verdict counts, the strength of each promise, each `cannot-fail` verifier, each other loud flag, the control count and cost, the explainer path). Put long samples, output and code in the explainer, not in the PR body.
+
+## Writing the explainer
+
+Lead with a real example moving through the flow; abstract diagrams come after. Examples come only from synthetic fixtures, traces or vectors, with provenance.
+
+- Where a chapter explains how something works, show one real example first: the values, the decision at each step and the result. The station diagram and the general steps come after it, as the overview. The problem and the change (`ch-1`) and how it works (`ch-2`) always lead with one. The export fails without it.
+- The sources are synthetic only. Use the repo's test fixtures, scripted tests, goldens, TLA+ traces and replay vectors, Lean conformance vectors, and the planted-bug control runs of the map. Never use member or patient data, a private harness folder or an env file.
+- Write the spec, not the values. Each value is a pointer into a source. `scripts/example.py` reads it and records the source (kind, commit, command, sha256) and the pointers of each step. Add an `assert` for each value that the reason needs, so the extraction fails when the real value differs.
+- Prefer an example that shows the risk of the PR: for a loop with an anti-gaming gate, a finding that the gate holds back.
+- The reason of a step is plain STE prose with no value and no ID: the values are in the step's rows, in code.
 
 ## Rules
 

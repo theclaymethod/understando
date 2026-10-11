@@ -3,7 +3,7 @@
 
     python3 scripts/explain.py --map trust-map.json --repo <git repo> --out DIR \
         [--extra explain.json] [--mdx explainer.mdx] [--ready ready.json] [--runtime REPO] \
-        [--explainer-url URL] [--no-html]
+        [--explainer-url URL] [--examples examples.json] [--no-html]
 
 The agent writes the explainer as MDX (the narrative in Markdown, with the data components of
 visual-explainer: MergeVerdict, PromiseList, CodeRef and the others). The visual-explainer card
@@ -12,8 +12,9 @@ This script is the glue:
 
   1. It checks the data: the map is valid and has verdicts, each mechanical check gives its
      recorded result again, and no data input holds pasted code (coderef.pasted).
-  2. It resolves the code refs at the head (each claim code ref, and each <CodeRef .../> of the
-     MDX) and the patch of each control, reads the diff, derives the shared values (derive.py:
+  2. It resolves the code refs at the head (each claim code ref, each <CodeRef .../> of the MDX
+     and each step of a worked example) and the patch of each control, copies the worked examples
+     of scripts/example.py (examples.json next to the map), reads the diff, derives the shared values (derive.py:
      the promise strengths, the merge verdict, the unclaimed changes, the bugs found), and writes
      all of it to DIR/refs.resolved.json.
   3. It runs `artifacture export` with the no-hand-copy guard (the repo and the head). The export
@@ -77,6 +78,16 @@ def runtime_path(explicit: str | None) -> str:
     if out.returncode != 0:
         tm.fail("cannot resolve the Artifacture runtime; pass --runtime")
     return out.stdout.strip().splitlines()[-1]
+
+
+def export_command(runtime: str) -> tuple[list[str], str | None]:
+    """The export command of the runtime and its folder. A checkout has the exporter script
+    (scripts/ve-mdx/export.mjs), which runs from the checkout so that it finds its packages; an
+    older runtime has `artifacture.mjs export`."""
+    script = Path(runtime) / "scripts" / "ve-mdx" / "export.mjs"
+    if script.is_file():
+        return ["node", str(script)], str(runtime)
+    return ["node", str(Path(runtime) / "scripts" / "artifacture.mjs"), "export"], None
 
 
 def mdx_refs(text: str) -> list[dict]:
@@ -283,6 +294,23 @@ def changed_imports(repo: str, head: str, diff: dict) -> list[list[str]]:
     return sorted([list(e) for e in edges])
 
 
+def load_examples(path: Path, head: str) -> list[dict]:
+    """The worked examples of scripts/example.py, when the file is there. Each one must be at the
+    map head, and each step must name the source values that it shows (its provenance)."""
+    if not path.is_file():
+        return []
+    body = tm.load(path)
+    if body.get("head") != head:
+        fail(f"{path} is for head {str(body.get('head'))[:10]}, the map is at {head[:10]}. Run scripts/example.py again.")
+    for ex in body.get("examples", []):
+        if not ex.get("sources"):
+            fail(f"the example {ex.get('id')} has no source")
+        for st in ex.get("steps", []):
+            if not st.get("provenance"):
+                fail(f"the example {ex.get('id')}, step {st.get('n')}: no provenance. Run scripts/example.py again.")
+    return body.get("examples", [])
+
+
 def stage(src: Path, dest: Path) -> None:
     if src.resolve() != dest.resolve():
         shutil.copyfile(src, dest)
@@ -297,6 +325,7 @@ def main() -> int:
     ap.add_argument("--mdx", help="the explainer MDX; default: explainer.mdx next to the map")
     ap.add_argument("--ready", help="ready.json of the run: the ready checklist of the PR section")
     ap.add_argument("--coverage", help="the coverage record of the run (understando coverage); default: coverage.json next to the map")
+    ap.add_argument("--examples", help="the worked examples of the run (scripts/example.py); default: examples.json next to the map")
     ap.add_argument("--runtime")
     ap.add_argument("--explainer-url")
     ap.add_argument("--no-html", action="store_true", help="resolve the refs and write pr-section.md; no HTML export")
@@ -335,6 +364,9 @@ def main() -> int:
         refs += mdx_refs(mdx.read_text(encoding="utf-8"))
     # A verdict check of explain.json can point to the lines to read.
     refs += [c["ref"] for c in (extra.get("verdict") or {}).get("checks") or [] if c.get("ref")]
+    # The worked examples (scripts/example.py): real values from synthetic sources, at the map head.
+    examples = load_examples(Path(args.examples) if args.examples else Path(args.map).parent / "examples.json", data["head"])
+    refs += [st["code"] for ex in examples for st in ex["steps"] if st.get("code")]
     diff = diff_data(args.repo, data["base"], data["head"])
     diff["symbols"], mains = changed_symbols(args.repo, data["head"], diff)
     diff["imports"] = changed_imports(args.repo, data["head"], diff)
@@ -343,7 +375,7 @@ def main() -> int:
     have = {coderef.ref_key(r["ref"]) for r in resolved}
     resolved += [{**r, "excerpt": "", "link_only": True} for r in resolve_refs(args.repo, data, mains) if coderef.ref_key(r["ref"]) not in have]
     body = {"schema": REFS_SCHEMA, "head": data["head"], "repo": data.get("repo"), "refs": resolved,
-            "controls": control_edits(args.repo, data), "diff": diff}
+            "controls": control_edits(args.repo, data), "diff": diff, "examples": examples}
     ready = tm.load(args.ready) if args.ready and Path(args.ready).is_file() else None
     # The values that the review CLI, the PR section and the page share (scripts/derive.py).
     cov = derive.load_coverage(Path(args.coverage) if args.coverage else Path(args.map).parent / "coverage.json", data["head"])
@@ -374,9 +406,10 @@ def main() -> int:
     (out / coderef.CACHE_NAME).write_text(json.dumps(body, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     runtime = runtime_path(args.runtime)
     if not args.no_html:
-        cli = [str(Path(runtime) / "scripts" / "artifacture.mjs"), "export", str(out / "explainer.mdx"), "--out", str(out / "explainer.html"),
-               "--guard-repo", str(args.repo), "--guard-head", data["head"]]
-        if subprocess.run(["node", *cli]).returncode != 0:
+        argv, cwd = export_command(runtime)
+        argv += [str((out / "explainer.mdx").resolve()), "--out", str((out / "explainer.html").resolve()),
+                 "--guard-repo", str(Path(args.repo).resolve()), "--guard-head", data["head"]]
+        if subprocess.run(argv, cwd=cwd).returncode != 0:
             fail("the export failed. Fix the MDX or the data, not the HTML.")
     section = ["node", str(Path(runtime) / "scripts" / "ve-mdx" / "trust-map.mjs"), "pr-section", "--map", str(out / "trust-map.json"),
                "--refs", str(out / coderef.CACHE_NAME), "--explain", str(out / "explain.json"), "--out", str(out / "pr-section.md")]
