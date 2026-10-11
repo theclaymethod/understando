@@ -32,8 +32,8 @@ done
 test "$(readlink "$FH/.local/bin/understando")" = "$ROOT/bin/understando" || fail "no CLI link"
 for d in .agents .claude .codex .cursor; do
   l="$REAL_HOME/$d/skills/understando"
-  if [ -L "$l" ] && [ "$(readlink -f "$l")" != "$(readlink -f "$ROOT")" ]; then fail "$l points to another skill"; fi
-  [ -e "$l" ] && echo "real link ok: $l" || echo "real link absent: $l (run setup)"
+  if [ -e "$l" ] && ! grep -q '^name: understando$' "$l/SKILL.md" 2>/dev/null; then fail "$l holds another skill"; fi
+  [ -e "$l" ] && echo "real link ok: $l -> $(readlink -f "$l")" || echo "real link absent: $l (run setup)"
 done
 
 step "portability: the router text names no Claude-only tool, and the CLI runs without Claude"
