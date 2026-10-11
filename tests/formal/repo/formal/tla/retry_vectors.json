@@ -1,0 +1,72 @@
+{
+ "cfg": "RetryVectors.cfg",
+ "cfg_sha256": "sha256:96a35e27003db6da00a8ba89623ad7c0141dbb49ed35271097f58fbd0c3ef1ae",
+ "constants": {
+  "MaxTries": 3
+ },
+ "done": [
+  "result!=\"running\""
+ ],
+ "spec": "Retry.tla",
+ "spec_sha256": "sha256:bb10dcd33f06153e59b2e75a98f052892b28ec0b8740b1e8d53ee9bf5e953a35",
+ "states": 11,
+ "vectors": [
+  {
+   "hist": [
+    "fatal"
+   ],
+   "result": "fatal",
+   "tries": 1
+  },
+  {
+   "hist": [
+    "ok"
+   ],
+   "result": "ok",
+   "tries": 1
+  },
+  {
+   "hist": [
+    "transient",
+    "fatal"
+   ],
+   "result": "fatal",
+   "tries": 2
+  },
+  {
+   "hist": [
+    "transient",
+    "ok"
+   ],
+   "result": "ok",
+   "tries": 2
+  },
+  {
+   "hist": [
+    "transient",
+    "transient",
+    "fatal"
+   ],
+   "result": "fatal",
+   "tries": 3
+  },
+  {
+   "hist": [
+    "transient",
+    "transient",
+    "ok"
+   ],
+   "result": "ok",
+   "tries": 3
+  },
+  {
+   "hist": [
+    "transient",
+    "transient",
+    "transient"
+   ],
+   "result": "gave_up",
+   "tries": 3
+  }
+ ]
+}

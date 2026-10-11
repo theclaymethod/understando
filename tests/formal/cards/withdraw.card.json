@@ -1,0 +1,3 @@
+{"frog": "wallet.withdraw.no_overdraft", "ev": {"impact": 5, "bug_prior": 2, "reach": 4, "proof_cost": 1, "model_cost": 1, "ev": 40.0},
+ "surface": "mini/wallet.py::withdraw", "failure_class": "guard boundary (off-by-one at amount == balance)",
+ "math": "case split on the guard; omega over Int", "artifact": "theorems withdraw_nonneg, withdraw_le, withdraw_exact; vectors withdraw_vectors.jsonl; oracle `vectors --oracle`"}

@@ -1,0 +1,7 @@
+{"statement_parity": {"status": "pass", "note": "the model is the guard and the debit as written; non-goal: amounts that are not int"},
+ "state_parity": {"status": "pass", "note": "Python int is unbounded; the model uses Int"},
+ "transition_parity": {"status": "pass", "note": "both branches mapped: refuse and debit"},
+ "concurrency_parity": {"status": "n/a", "note": "pure function"},
+ "cancel_drain_parity": {"status": "n/a", "note": "no cancellation"},
+ "runtime_evidence": {"status": "pass", "note": "570 vectors plus 3000 oracle inputs, both green"},
+ "drift_gate": {"status": "pass", "note": "stamped with the commit and blob of mini/wallet.py"}}
