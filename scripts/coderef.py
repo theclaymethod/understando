@@ -21,7 +21,9 @@ A code ref is one of:
   context   lines around the match: N, or [before, after]. Default 0.
 
 A ref that resolves to 0 places, or to more than 1, raises AnchorError. Nothing writes resolved
-line numbers back into the data: explain.py writes them to <run>/refs.resolved.json.
+line numbers back into the data: explain.py writes them to <run>/refs.resolved.json, each with the
+commit where it resolved (ref_commit): the PR head for the PR's own code, the ready head for the
+code of a check that runs on the review branch.
 
 Control edits use the same anchors. The anchor ops:
   delete-line         delete the target lines. In Python, the whole statement that starts on the
@@ -408,6 +410,29 @@ def resolve(repo: str | Path, head: str, ref: dict, cap: bool = True) -> Resolve
     return resolve_text(ref["path"], text, ref, cap)
 
 
+REVIEW_BRANCH = "on the review branch"
+
+
+def ref_commit(repo: str | Path, data: dict, ref: dict, at: str | None = None) -> str:
+    """The commit where a code ref of a trust map resolves. The PR's own refs resolve at the map
+    head (the PR head). A check that runs at the ready tip is verification code on the review branch:
+    `at` is the commit of its verifier (`at`, which reverify_map sets), and its refs resolve there.
+    A ref whose file is absent at the map head resolves at the ready head of the map
+    (`ready: {branch, head}`), when the file is there. Else the map head, where it fails."""
+    if at:
+        return at
+    ready = (data.get("ready") or {}).get("head")
+    if ready and show(repo, data["head"], ref["path"]) is None and show(repo, ready, ref["path"]) is not None:
+        return ready
+    return data["head"]
+
+
+def resolve_for(repo: str | Path, data: dict, ref: dict, at: str | None = None, cap: bool = True) -> tuple[Resolved, str]:
+    """A code ref of a trust map, resolved at its commit (ref_commit): (the lines, the commit)."""
+    commit = ref_commit(repo, data, ref, at)
+    return resolve(repo, commit, ref, cap), commit
+
+
 def ref_key(ref: dict) -> str:
     return json.dumps({k: v for k, v in ref.items() if k != "note"}, sort_keys=True)
 
@@ -775,12 +800,11 @@ def main(c, argv: list[str]) -> int:
     ap.add_argument("--part", choices=["whole", "signature", "body"])
     ap.add_argument("--context", help="N, or BEFORE,AFTER")
     ap.add_argument("--lines", help="START-END: a line range (discouraged)")
-    ap.add_argument("--head", help="commit (default: the trust map head, else HEAD)")
+    ap.add_argument("--head", help="commit (default: where the trust map resolves the ref, its head or its ready head; else HEAD)")
     ap.add_argument("--suggest", action="store_true", help="with --lines: print the anchor that resolves to the same lines")
     args = ap.parse_args(argv)
     repo = c.repo or Path.cwd()
     data = c.data() if c.run else None
-    head = rev(repo, args.head or (data or {}).get("head") or "HEAD")
     path, _, symbol = args.target.partition("::")
     ref: dict = {"path": path}
     if symbol:
@@ -796,6 +820,8 @@ def main(c, argv: list[str]) -> int:
         a, _, b = args.lines.partition("-")
         ref.update(start=int(a), end=int(b or a))
     try:
+        # With no --head, a ref of the map resolves where explain resolves it (ref_commit).
+        head = rev(repo, args.head or (ref_commit(repo, data, ref) if data and data.get("head") else "HEAD"))
         if args.suggest:
             text = show(repo, head, path)
             if text is None or not args.lines:
@@ -813,7 +839,8 @@ def main(c, argv: list[str]) -> int:
     if c.json:
         print(json.dumps({"ref": ref, "head": head, "start": r.start, "end": r.end, "cut": r.cut, "permalink": link, "code": r.excerpt}))
         return 0
-    print(f"{path}:{r.start}-{r.end} at {head[:10]}" + (" (cut at 30 lines)" if r.cut else ""))
+    where = f" ({REVIEW_BRANCH})" if data and data.get("head") and head != rev(repo, data["head"]) and not args.head else ""
+    print(f"{path}:{r.start}-{r.end} at {head[:10]}{where}" + (" (cut at 30 lines)" if r.cut else ""))
     if link:
         print(link)
     width = len(str(r.end))

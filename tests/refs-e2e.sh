@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Code refs end to end, on the fixture repo that tests/e2e.sh builds: symbol anchors, the snippet
-# verb, permalinks, anchor controls, the no-hand-copy guard and the drift check in doctor.
+# verb, permalinks, anchor controls, the no-hand-copy guard, the drift check in doctor, and the
+# refs of a check that runs on the review branch.
 #
 #   WORK=... REPO=... MAP=... HEAD=... FIX=... bash tests/refs-e2e.sh    (tests/e2e.sh calls it)
 set -euo pipefail
@@ -128,6 +129,81 @@ if any(k.startswith("anchor-drift") and k != "anchor-drift-" + sys.argv[2][:10] 
 print("doctor: " + drift["summary"][:110] + " ...")
 print("doctor: " + paste["summary"][:110] + " ...")
 PY
+step "refs: a check that runs on the review branch resolves at the ready head; the PR's own code keeps the PR head"
+# The review branch adds a test that the PR head does not have. Its check has `at` (reverify_map
+# sets it); a CodeRef of the MDX names the same file, absent at the PR head.
+READY_REPO="$WORK/ready-repo"
+git clone -q "$REPO" "$READY_REPO"
+git -C "$READY_REPO" remote set-url origin https://github.com/example/wallet.git
+g "$READY_REPO" checkout -q -b understando/7-ready
+cat > "$READY_REPO/tests/test_ready_only.py" <<'PYT'
+import unittest
+
+from wallet.core import withdraw
+
+
+class ReadyOnlyTest(unittest.TestCase):
+    def test_an_overdraft_is_refused_on_the_review_branch(self):
+        with self.assertRaises(ValueError):
+            withdraw(5, 10)
+PYT
+g "$READY_REPO" add -A
+g "$READY_REPO" commit -q -m "A check that the review adds"
+READY="$(g "$READY_REPO" rev-parse HEAD)"
+mkdir -p "$WORK/ready-run"
+cp "$WORK/examples.json" "$WORK/ready-run/examples.json"
+python3 - "$MAP" "$WORK/ready-run/trust-map.json" "$READY" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1]))
+data["ready"] = {"branch": "understando/7-ready", "head": sys.argv[3]}
+v = next(v for v in data["verifiers"] if v["id"] == "V07")
+v["at"] = sys.argv[3]
+v["command"]["argv"] = ["python3", "-m", "pytest", "-q", "tests/test_ready_only.py::ReadyOnlyTest::test_an_overdraft_is_refused_on_the_review_branch"]
+json.dump(data, open(sys.argv[2], "w"), indent=2)
+PY
+sed 's|<CodeRef refs={refs} path="wallet/core.py" symbol="withdraw" />|&\
+\
+<CodeRef refs={refs} path="tests/test_ready_only.py" symbol="ReadyOnlyTest" />|' "$FIX/explainer.mdx" > "$WORK/ready-run/explainer.mdx"
+grep -q 'path="tests/test_ready_only.py"' "$WORK/ready-run/explainer.mdx" || { echo "FAIL: the fixture MDX has no CodeRef for the ready-only file"; exit 1; }
+python3 "$S/explain.py" --map "$WORK/ready-run/trust-map.json" --repo "$READY_REPO" --out "$WORK/ready-run" --extra "$FIX/explain.json" > "$WORK/ready-explain.out" 2>&1 \
+  || { echo "FAIL: explain did not build with a check on the review branch"; tail -20 "$WORK/ready-explain.out"; exit 1; }
+if grep -q "does not resolve" "$WORK/ready-explain.out"; then echo "FAIL: explain reports a ref that does not resolve"; cat "$WORK/ready-explain.out"; exit 1; fi
+python3 - "$WORK/ready-run" "$HEAD" "$READY" <<'PY'
+import html as h, json, re, sys
+from pathlib import Path
+run, head, ready = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
+refs = json.loads((run / "refs.resolved.json").read_text())
+by = {(r["ref"]["path"], r["ref"].get("symbol")): r for r in refs["refs"]}
+check = by.get(("tests/test_ready_only.py", "ReadyOnlyTest.test_an_overdraft_is_refused_on_the_review_branch"))
+cls = by.get(("tests/test_ready_only.py", "ReadyOnlyTest"))
+pr = by.get(("wallet/core.py", "withdraw"))
+for name, r, sha in (("the check test", check, ready), ("the CodeRef on the review branch", cls, ready), ("the PR-head ref", pr, head)):
+    if not r:
+        sys.exit(f"FAIL: {name} is not in refs.resolved.json")
+    if r["commit"] != sha:
+        sys.exit(f"FAIL: {name} resolved at {r['commit'][:10]}, not {sha[:10]}")
+    if f"/blob/{sha}/{r['ref']['path']}#L{r['start']}" not in (r["permalink"] or ""):
+        sys.exit(f"FAIL: the permalink of {name} is {r['permalink']}")
+    if bool(r.get("on_review_branch")) != (sha == ready):
+        sys.exit(f"FAIL: {name} is marked on_review_branch={r.get('on_review_branch')}")
+if check["start"] != 7 or check["end"] != 9 or "withdraw(5, 10)" not in check["excerpt"]:
+    sys.exit(f"FAIL: the check test resolved to lines {check['start']}-{check['end']}")
+if refs["derived"]["checks"]["V07"]["ref"] != check["ref"]:
+    sys.exit("FAIL: the V07 check row does not name its test")
+# The page: the code of the review branch is marked in its code block; the PR code is not.
+page = re.sub(r"<script\b.*?</script>", "", (run / "explainer.html").read_text(), flags=re.S)
+names = [h.unescape(re.sub(r"<[^>]+>", "", m)) for m in re.findall(r'class="ve-code-name">(.*?)</span></figcaption>', page, flags=re.S)]
+if not any(n.startswith("On the review branch, tests/test_ready_only.py:") for n in names):
+    sys.exit(f"FAIL: the page does not mark the review-branch code: {names}")
+if not any(n.startswith("wallet/core.py:") for n in names):
+    sys.exit(f"FAIL: the page does not show the PR code at the PR head: {names}")
+print(f"the check test and the CodeRef resolve at the ready head {ready[:10]}, the PR code at {head[:10]}; the page shows: "
+      + next(n for n in names if n.startswith("On the review branch")))
+PY
+"${U[@]}" --repo "$READY_REPO" --run "$WORK/ready-run" snippet tests/test_ready_only.py::ReadyOnlyTest | head -1 | grep -q "at ${READY:0:10} (on the review branch)" \
+  || { echo "FAIL: snippet does not resolve the ready-only file at the ready head"; exit 1; }
+echo "snippet: tests/test_ready_only.py::ReadyOnlyTest resolves at the ready head"
+
 step "refs: a .lean theorem anchor and a .tla definition anchor resolve in a fixture"
 FX="$WORK/formal-fx"
 mkdir -p "$FX"

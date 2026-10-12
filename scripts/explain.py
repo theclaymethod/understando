@@ -12,9 +12,12 @@ This script is the glue:
 
   1. It checks the data: the map is valid and has verdicts, each mechanical check gives its
      recorded result again, and no data input holds pasted code (coderef.pasted).
-  2. It resolves the code refs at the head (each claim code ref, each <CodeRef .../> of the MDX
-     and each step of a worked example) and the patch of each control, copies the worked examples
-     of scripts/example.py (examples.json next to the map), reads the diff, derives the shared values (derive.py:
+  2. It resolves the code refs (each claim code ref, each <CodeRef .../> of the MDX, each step of
+     a worked example and the test of each check) and the patch of each control. A ref resolves at
+     the PR head, else on the review branch (coderef.ref_commit): the ready head for a check that
+     runs there, or for a file that the PR head does not have. Each resolved ref records its
+     commit, and its permalink points there. It copies the worked examples of scripts/example.py
+     (examples.json next to the map), reads the diff, derives the shared values (derive.py:
      the promise strengths, the merge verdict, the unclaimed changes, the bugs found), and writes
      all of it to DIR/refs.resolved.json.
   3. It runs `artifacture export` with the no-hand-copy guard (the repo and the head). The export
@@ -102,22 +105,38 @@ def mdx_refs(text: str) -> list[dict]:
     return refs
 
 
-def resolve_refs(repo: str, data: dict, refs: list[dict]) -> list[dict]:
-    """Each ref at the head: the excerpt (capped), the whole span (for the unclaimed level) and the permalink."""
+def resolve_refs(repo: str, data: dict, refs: list[dict], at: str | None = None, misses: list[str] | None = None) -> list[dict]:
+    """Each ref at its commit (coderef.ref_commit): the excerpt (capped), the whole span (for the
+    unclaimed level), the commit and the permalink at that commit. The PR's own code resolves at the
+    PR head; `at` is the commit of the check that the refs belong to (its verifier `at`). A ref that
+    resolves on the review branch says so in its path, the name that the page shows, and has no
+    diff status: the PR diff does not hold its lines. With `misses`, a ref that does not resolve goes
+    there; else it fails the build."""
     out, seen = [], set()
+    ready, head = data.get("ready") or {}, coderef.rev(repo, data["head"])
     for ref in refs:
         key = coderef.ref_key(ref)
         if key in seen:
             continue
         seen.add(key)
         try:
-            r = coderef.resolve(repo, data["head"], ref)
-            whole = coderef.resolve(repo, data["head"], ref, cap=False)
+            r, commit = coderef.resolve_for(repo, data, ref, at)
+            whole = coderef.resolve(repo, commit, ref, cap=False)
+            sha = coderef.rev(repo, commit)
         except coderef.AnchorError as exc:
+            if misses is not None:
+                misses.append(str(exc))
+                continue
             fail(f"a code ref does not resolve at the head: {exc}. Fix the ref (understando snippet), then build again.")
-        out.append({"ref": json.loads(key), "path": ref["path"], "start": r.start, "end": r.end, "span": [whole.start, whole.end],
-                    "language": LANG.get(Path(ref["path"]).suffix, "text"), "excerpt": r.excerpt,
-                    "permalink": coderef.permalink(repo, data["head"], ref["path"], r.start, r.end, data.get("repo"))})
+        review = sha != head
+        row = {"ref": json.loads(key), "path": ref["path"], "start": r.start, "end": r.end, "span": [whole.start, whole.end],
+               "language": LANG.get(Path(ref["path"]).suffix, "text"), "excerpt": r.excerpt, "commit": sha,
+               "permalink": coderef.permalink(repo, sha, ref["path"], r.start, r.end, data.get("repo"))}
+        if review:
+            row.update(path=f"{coderef.REVIEW_BRANCH.capitalize()}, {ref['path']}", on_review_branch=True,
+                       branch=ready.get("branch") or f"understando/{data.get('pr')}-ready",
+                       changes={"added": [], "modified": [], "removed": []})
+        out.append(row)
     return out
 
 
@@ -357,14 +376,19 @@ def main() -> int:
     if mdx.is_file():
         stage(mdx, out / "explainer.mdx")
         refs += mdx_refs(mdx.read_text(encoding="utf-8"))
-    # A verdict check of explain.json can point to the lines to read.
-    refs += [c["ref"] for c in (extra.get("verdict") or {}).get("checks") or [] if c.get("ref")]
+    # A verdict check of explain.json can point to the lines to read: at the commit of its check.
+    at = {v["id"]: v.get("at") for v in data["verifiers"]}
+    check_refs = [(c["ref"], at.get(c.get("check"))) for c in (extra.get("verdict") or {}).get("checks") or [] if c.get("ref")]
+    refs += [r for r, commit in check_refs if not commit]
     # The worked examples (scripts/example.py): real values from synthetic sources, at the map head.
     examples = load_examples(Path(args.examples) if args.examples else Path(args.map).parent / "examples.json", data["head"])
     refs += [st["code"] for ex in examples for st in ex["steps"] if st.get("code")]
     diff = diff_data(args.repo, data["base"], data["head"])
     diff["symbols"], mains = changed_symbols(args.repo, data["head"], diff)
     resolved = resolve_refs(args.repo, data, refs)
+    for ref, commit in check_refs:
+        if commit and coderef.ref_key(ref) not in {coderef.ref_key(r["ref"]) for r in resolved}:
+            resolved += resolve_refs(args.repo, data, [ref], commit)
     # The main changed symbol of a file is a link to read, not an excerpt.
     have = {coderef.ref_key(r["ref"]) for r in resolved}
     resolved += [{**r, "excerpt": "", "link_only": True} for r in resolve_refs(args.repo, data, mains) if coderef.ref_key(r["ref"]) not in have]
@@ -389,18 +413,19 @@ def main() -> int:
     body["refs"] = [full.get(coderef.ref_key(r["ref"]), r) if r.get("link_only") else r for r in body["refs"]]
     have = {coderef.ref_key(r["ref"]) for r in body["refs"]}
     body["refs"] += [r for r in resolve_refs(args.repo, data, [x["ref"] for f in spine_files for x in f["flags"]]) if coderef.ref_key(r["ref"]) not in have]
-    # The test that each check runs shows behind its check row: its lines at the head, when they resolve.
-    have = {coderef.ref_key(r["ref"]) for r in body["refs"]}
-    tests = [c["ref"] for c in body["derived"]["checks"].values() if c["ref"] and coderef.ref_key(c["ref"]) not in have]
-    for ref in tests:
-        try:
-            body["refs"] += resolve_refs(args.repo, data, [ref])
-        except SystemExit:
-            pass  # a test that the command names but the file does not hold as a symbol: the row shows its path
+    # The test that each check runs shows behind its check row: its lines where the check runs (the
+    # ready head for a check with `at`), when they resolve. Else the row shows its path.
+    misses: list[str] = []
+    for c in body["derived"]["checks"].values():
+        have = {coderef.ref_key(r["ref"]) for r in body["refs"]}
+        if c["ref"] and coderef.ref_key(c["ref"]) not in have:
+            body["refs"] += resolve_refs(args.repo, data, [c["ref"]], at.get(c["id"]), misses)
+    if misses:
+        print(f"explain.py: {len(misses)} check tests do not resolve where their check runs; their rows show the path: " + "; ".join(misses[:3]), file=sys.stderr)
     # Each excerpt gets the diff status of its lines, so the page can mark the added, modified and removed lines.
     hunks = diff_hunks(args.repo, data["base"], data["head"])
     for r in body["refs"]:
-        if r.get("excerpt") and not r.get("link_only"):
+        if r.get("excerpt") and not r.get("link_only") and not r.get("on_review_branch"):
             r["changes"] = line_changes(hunks.get(r["path"], []), r["start"], r["end"])
     (out / coderef.CACHE_NAME).write_text(json.dumps(body, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     runtime = runtime_path(args.runtime)
