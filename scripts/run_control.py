@@ -84,22 +84,8 @@ def apply_edit(root: Path, edit: dict) -> None:
         data[offset] ^= 0x01
         path.write_bytes(bytes(data))
         return
-    text = path.read_text(encoding="utf-8")
-    if op in coderef.ANCHOR_OPS:
-        # The anchor resolves here, in the scratch worktree at the commit: 0 or 2+ places raise.
-        path.write_text(coderef.apply_text(text, edit), encoding="utf-8")
-        return
-    if op == "append":
-        path.write_text(text + edit["text"], encoding="utf-8")
-        return
-    if op == "replace":
-        want = edit.get("count", 1)
-        found = text.count(edit["find"])
-        if found != want:
-            raise ValueError(f"{edit['path']}: find text occurs {found} times, expected {want}")
-        path.write_text(text.replace(edit["find"], edit["replace"]), encoding="utf-8")
-        return
-    raise ValueError(f"unknown op {op}")
+    # A text op. An anchor resolves here, in the scratch worktree at the commit: 0 or 2+ places raise.
+    path.write_text(coderef.edit_text(path.read_text(encoding="utf-8"), edit), encoding="utf-8")
 
 
 def run_command(root: Path, command: dict, env_file: str | None = None, extra_env: dict | None = None) -> tuple[int | None, str, float]:

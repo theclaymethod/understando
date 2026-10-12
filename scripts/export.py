@@ -118,7 +118,7 @@ def control_patches(repo: Path, data: dict) -> dict[str, list[dict]]:
             try:
                 rows = [{"path": p, "language": LANG.get(Path(p).suffix, "text"), **({"patch": patch} if patch else {"note": "changed bytes"})}
                         for p, patch in coderef.control_patches(repo, commit, k["edits"])]
-            except coderef.AnchorError as exc:
+            except ValueError as exc:  # an AnchorError too
                 rows = [{"path": e["path"], "note": f"{e['op']}: {exc}"} for e in k["edits"]]
         out[k["id"]] = rows
     return out

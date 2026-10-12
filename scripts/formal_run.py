@@ -31,7 +31,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
-import coderef  # noqa: E402
 from formal_common import rerun_json, scratch  # noqa: E402
 from run_control import apply_edit, classify, run_command, tail  # noqa: E402
 
@@ -70,7 +69,7 @@ def main() -> int:
                           file=sys.stderr)
                 try:
                     apply_edit(copy, edit)
-                except (coderef.AnchorError, ValueError, KeyError, OSError) as exc:
+                except (ValueError, KeyError, OSError) as exc:  # an AnchorError is a ValueError
                     print(rerun_json({"status": "error", "note": f"ANCHOR ERROR: {exc}", "edit": edit}, indent=2))
                     return 2
             code, text, seconds = run_command(copy / cwd.relative_to(root), command)

@@ -40,6 +40,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
+import coderef  # noqa: E402
 import ops  # noqa: E402
 import run_control  # noqa: E402
 import store  # noqa: E402
@@ -318,7 +319,7 @@ def run_cosmic(root: Path, v: Path, lines: dict[str, list[int]], tests: str, mat
                     continue
                 covering = [t for t in ids if line in cov[t].get(path, set())]
                 m = {"id": mid, "path": path, "line": line, "operator": item["operator_name"], "occurrence": item["occurrence"],
-                     "diff": "".join(__import__("difflib").unified_diff(src.splitlines(True), after.splitlines(True), f"a/{path}", f"b/{path}", n=1)),
+                     "diff": coderef.unified(path, src, after, context=1),
                      "tests": covering}
                 f = equivalent(src, after)
                 if f:

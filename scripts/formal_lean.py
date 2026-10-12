@@ -146,7 +146,7 @@ def cmd_control(args: argparse.Namespace) -> int:
         target = tmp / args.file
         try:
             edit, after = plant(args, args.file, target.read_text(encoding="utf-8"))
-        except coderef.AnchorError as exc:
+        except ValueError as exc:  # an AnchorError too
             print(rerun_json({"status": "error", "note": f"ANCHOR ERROR: {exc}"}))
             return 2
         target.write_text(after, encoding="utf-8")

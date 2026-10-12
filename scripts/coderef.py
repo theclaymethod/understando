@@ -614,20 +614,24 @@ def unified(path: str, before: str, after: str, context: int = 2) -> str:
 
 
 def edit_text(text: str, edit: dict) -> str:
-    """The file text after one text edit: an anchor op, or a legacy replace or append."""
+    """The file text after one text edit: an anchor op, or a legacy replace or append. The one
+    implementation: run_control.apply_edit, the export patches and the formal controls use it.
+    An anchor that does not resolve once raises AnchorError; a replace whose find text does not
+    occur `count` times, or an op with no text form, raises ValueError."""
     op = edit["op"]
     if op in ANCHOR_OPS:
         return apply_text(text, edit)
     if op == "replace":
+        want = edit.get("count", 1)
         found = text.count(edit["find"])
-        if found != edit.get("count", 1):
-            raise AnchorError(f"{edit['path']}: find text occurs {found} times, expected {edit.get('count', 1)}")
+        if found != want:
+            raise ValueError(f"{edit['path']}: find text occurs {found} times, expected {want}")
         return text.replace(edit["find"], edit["replace"])
     if op == "append":
         return text + edit["text"]
     if op == "delete-file":
         return ""
-    raise AnchorError(f"{edit['path']}: no text form for {op}")
+    raise ValueError(f"{edit['path']}: no text form for {op}")
 
 
 def control_patches(repo: str | Path, head: str, edits: list[dict]) -> list[tuple[str, str | None]]:

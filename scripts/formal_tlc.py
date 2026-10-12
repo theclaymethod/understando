@@ -313,7 +313,7 @@ def cmd_control(args: argparse.Namespace) -> int:
         text = planted.read_text(encoding="utf-8")
         try:
             edit, after = plant(args, spec.name, text)
-        except coderef.AnchorError as exc:
+        except ValueError as exc:  # an AnchorError too
             print(rerun_json({"status": "error", "note": f"ANCHOR ERROR: {exc}"}))
             return 2
         planted.write_text(after, encoding="utf-8")
