@@ -9,7 +9,8 @@
 #   mutate    mutmut reports killed, survived and filtered mutants with a kill matrix; cosmic-ray
 #             runs on the riskiest changed lines;
 #   snippet   resolves a code ref and gives its permalink;
-#   export    writes verify-data.json and refs.resolved.json for visual-explainer;
+#   export    writes trust-map.json and refs.resolved.json for visual-explainer, and (with
+#             UNDERSTANDO_VE_RUNTIME) its ve:export renders them;
 #   maintain  flags the drive whose control no longer fails after a code change.
 # Then tests/formal/e2e.sh: Lean and TLA+ to Formal, the sync into the store, and recheck.
 #
@@ -201,12 +202,24 @@ has "$OUT/snippet-ready.txt" "(on the understando branch)"
 step "export: the data and refs.resolved.json for visual-explainer"
 U export --base "$BASE" > "$OUT/export.txt"
 X="$RUN/export"
-expect "claim strength" "$(field "$X/verify-data.json" "next(c['strength'] for c in d['claims'] if c['id'] == '$CL')")" Proven
-expect "invariant authors" "$(field "$X/verify-data.json" "sorted((i['id'], i['author']) for i in d['invariants'] if i['status'] != 'deferred')")" "[('I1', 'user'), ('I2', 'agent')]"
+expect "claim strength" "$(field "$X/refs.resolved.json" "d['derived']['claims']['$CL']['strength']")" Proven
+expect "invariant authors" "$(field "$X/trust-map.json" "sorted((i['id'], i['author']) for i in d['invariants'] if i['status'] != 'deferred')")" "[('I1', 'user'), ('I2', 'agent')]"
 expect "the ref of the check has diff marks" "$(field "$X/refs.resolved.json" "next(r['changes']['added'] != [] for r in d['refs'] if r['path'] == 'tests/test_core.py')")" True
 expect "a permalink at the head" "$(field "$X/refs.resolved.json" "all(r['permalink'].startswith('https://github.com/fixture/wallet/blob/') for r in d['refs'])")" True
 expect "the control patch" "$(field "$X/refs.resolved.json" "'-    if amount > balance:' in d['controls']['K1'][0]['patch']")" True
-expect "the mutation runs" "$(field "$X/verify-data.json" "[m['tool'] for m in d['mutation']]")" "['mutmut', 'cosmic-ray']"
+expect "the mutation runs" "$(field "$X/trust-map.json" "[m['tool'] for m in d['mutation']]")" "['mutmut', 'cosmic-ray']"
+
+step "export to visual-explainer: the card's contract holds, so the explainer renders (needs UNDERSTANDO_VE_RUNTIME, a visual-explainer checkout)"
+expect "the map is schema 2 with verifiers" "$(field "$X/trust-map.json" "(d['schema_version'], [v['id'] for v in d['verifiers']])")" "(2, ['$V', '$WEAK'])"
+expect "the derived result line" "$(field "$X/refs.resolved.json" "d['derived']['verify']['result']")" "1 of 2 checks caught their planted bug. 1 cannot fail."
+if [ -n "${UNDERSTANDO_VE_RUNTIME:-}" ] && [ -f "$UNDERSTANDO_VE_RUNTIME/scripts/ve-mdx/export.mjs" ]; then
+  mkdir -p "$WORK/page" && cp "$X/trust-map.json" "$X/refs.resolved.json" "$FIX/explainer.mdx" "$WORK/page/"
+  npm --prefix "$UNDERSTANDO_VE_RUNTIME" run ve:export -- "$WORK/page/explainer.mdx" --out "$WORK/page/explainer.html" > "$OUT/ve-export.txt" 2>&1 || { cat "$OUT/ve-export.txt"; fail "ve:export refused the export"; }
+  has "$WORK/page/explainer.html" "caught its planted bug"
+  has "$WORK/page/explainer.html" "cannot fail: it passed on each planted bug"
+else
+  echo "skip: UNDERSTANDO_VE_RUNTIME is not set"
+fi
 
 step "export: the no-hand-copy guard refuses pasted code"
 cp "$RUN/verify.json" "$OUT/verify.keep.json"

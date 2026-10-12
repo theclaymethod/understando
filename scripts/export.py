@@ -4,14 +4,18 @@
 
 It writes two files for visual-explainer to render (the default DIR is $R/export/):
 
-- verify-data.json: the features, the invariants (with their author), the claims with their derived
-  strength and bar, the checks with their state and their last results, the controls with their
-  results, the mutation runs (summary, survivors, kill matrix), the last proof of the verify skill
-  and the last upkeep pass. Each code ref is a key into refs.resolved.json.
+- trust-map.json: the trust map of the visual-explainer card (plugins/visual-explainer/cards/trust-map.md),
+  schema_version 2: the invariants (with their author), the claims, each with its checks, the
+  verifiers (the checks), the controls (the planted bugs) and the flags. Each claim lists the
+  code refs that it cites as objects, which refs.resolved.json resolves. Extras that the page
+  ignores: the features, the mutation runs (summary, survivors, kill matrix), the last proof of
+  the verify skill, the last upkeep pass, and the checks that back no claim (feature_checks).
 - refs.resolved.json: each code ref resolved at its commit (coderef.ref_commit: the store head, or
   the understando branch for a file that only the branch has), with the excerpt, the line numbers,
   the permalink at that commit and, with a base, the diff line marks (added, modified, removed).
-  It also holds the patch of each control: the real before and after of its planted bug.
+  It also holds the patch of each control: the real before and after of its planted bug, and the
+  derived block (scripts/derive.py): the strength, the checks and the bar of each claim, and
+  whether the checks can catch a bug.
 
 The export refuses text in the store that is a copy of code at the head (the no-hand-copy guard):
 write a code ref instead (`understando snippet`). understando writes no page: visual-explainer
@@ -29,6 +33,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 import coderef  # noqa: E402
+import derive  # noqa: E402
 import store  # noqa: E402
 import strength  # noqa: E402
 
@@ -119,38 +124,70 @@ def control_patches(repo: Path, data: dict) -> dict[str, list[dict]]:
     return out
 
 
-def build(data: dict, rep: dict, refs: list[dict]) -> dict:
+def build(data: dict, rep: dict, refs: list[dict], head: str) -> tuple[dict, dict]:
+    """The trust map of the card (trust-map.json) and the derived block of refs.resolved.json.
+    Each check that a claim lists is a verifier; a check that backs no claim (the drive of a
+    feature) stays in `feature_checks`, and a claim with no check gets a check of kind none."""
     keys = {r["key"] for r in refs}
-    refkeys = lambda item: [coderef.ref_key(r) for r in item.get("code", []) if coderef.ref_key(r) in keys]  # noqa: E731
+    specs = lambda item: [r for r in item.get("code", []) if coderef.ref_key(r) in keys]  # noqa: E731
     by_claim = {c["id"]: c for c in rep["claims"]}
     trim = lambda r: {k: r[k] for k in ("status", "exit", "seconds", "score", "ran_at", "head", "note", "evidence", "matched", "output_tail") if r and k in r}  # noqa: E731
-    return {
-        "schema": "understando.export/1", "repo": data["repo"], "app": data["app"], "head": data["head"], "base": data.get("base"),
-        "skill": data.get("skill"), "ready": data.get("ready"),
-        "ladder": {str(k): v for k, v in store.LADDER_NAMES.items()},
+    features = {f["id"]: f for f in data["features"]}
+    claim_rows = []
+    for c in data["claims"]:
+        checks = c["checks"] or [derive.none_check(c["id"])["id"]]
+        f = features.get(c.get("feature")) or {}
+        row = {"id": c["id"], "text": c["text"], "source": f.get("file") or "the claims of the verify skill", "layer": f.get("name"), "feature": c.get("feature"),
+               "code": specs(c), "invariants": c.get("invariants", []), "checks": checks, "tier": by_claim[c["id"]]["tier"],
+               "verdict": by_claim[c["id"]]["verdict"], "reason": by_claim[c["id"]]["why"]}
+        if c.get("parts"):
+            row["parts"] = [{k: p[k] for k in ("id", "text") if k in p} | ({"invariant": p["invariants"][0]} if p.get("invariants") else {}) for p in c["parts"]]
+        claim_rows.append(row)
+    backs: dict[str, list[str]] = {}
+    for c in claim_rows:
+        for i in c["checks"]:
+            backs.setdefault(i, []).append(c["id"])
+
+    def check_row(v: dict) -> dict:
+        paths = sorted({r["path"] for r in v.get("code", [])})
+        row = {"id": v["id"], "name": v.get("name") or v["id"], "kind": v["kind"], "claims": backs.get(v["id"], []), "tier": "fact",
+               "description": v.get("description") or f"{v.get('name') or v['id']}: a {v['kind']} check.",
+               "provenance": ", ".join(paths) or "the verify skill of the repo", "state": v.get("state"), "ladder": store.ladder(v), "at": v.get("at"),
+               "feature": v.get("feature"), "baseline": trim(v.get("baseline")), "red_first": trim(v.get("red_first")), "formal": v.get("formal"),
+               "recorded": v.get("recorded"), "property": v.get("property"),
+               "formal_verdict": ((v.get("formal_record") or {}).get("formal") or {}).get("verdict")}
+        if (v.get("command") or {}).get("argv"):
+            row["command"] = {"argv": v["command"]["argv"]}
+        return {k: x for k, x in row.items() if x is not None}
+
+    control_row = lambda k: {"id": k["id"], "verifier": k["check"], "kind": k["kind"], "description": derive.broke(k), "edits": k.get("edits"),  # noqa: E731
+                             "outcome": strength.outcome(next(v for v in data["checks"] if v["id"] == k["check"]), k), "result": trim(k.get("result"))}
+    listed = [v for v in data["checks"] if v["id"] in backs]
+    verifiers = [check_row(v) for v in listed] + [check_row({**derive.none_check(c["id"]), "state": "untested"}) | {"claims": [c["id"]], "description": "No tool checks this claim.",
+                                                                                                                  "provenance": "none"}
+                                                 for c in data["claims"] if not c["checks"]]
+    controls = [control_row(k) for k in data["controls"] if k["check"] in backs]
+    test_ref = {v["id"]: v["code"][0] for v in listed if v.get("code")}
+    trust = {
+        "schema_version": 2, "repo": data["repo"], "app": data["app"], "title": data["app"], "base": data.get("base") or head, "head": head,
+        "skill": data.get("skill"), "ready": data.get("ready"), "ladder": {str(k): v for k, v in store.LADDER_NAMES.items()},
         "features": [{**f, "claims": [c["id"] for c in data["claims"] if c.get("feature") == f["id"]],
                       "checks": [v["id"] for v in data["checks"] if v.get("feature") == f["id"]]} for f in data["features"]],
-        "invariants": [{k: i[k] for k in ("id", "feature", "text", "author", "status", "shape", "risky", "evidence", "possible_bug") if k in i}
-                       | {"code": refkeys(i)} for i in data["invariants"]],
-        "claims": [{"id": c["id"], "feature": c.get("feature"), "text": c["text"], "invariants": c.get("invariants", []),
-                    "checks": c["checks"], "parts": by_claim[c["id"]]["parts"], "strength": by_claim[c["id"]]["verdict"],
-                    "tier": by_claim[c["id"]]["tier"], "bar_met": by_claim[c["id"]]["bar_met"], "why": by_claim[c["id"]]["why"],
-                    "code": refkeys(c)} for c in data["claims"]],
-        "checks": [{"id": v["id"], "feature": v.get("feature"), "name": v.get("name"), "kind": v["kind"], "rung": store.ladder(v),
-                    "state": v.get("state"), "command": (v.get("command") or {}).get("argv"), "at": v.get("at"),
-                    "baseline": trim(v.get("baseline")), "red_first": trim(v.get("red_first")),
-                    "formal": v.get("formal"), "property": v.get("property"),
-                    "formal_verdict": ((v.get("formal_record") or {}).get("formal") or {}).get("verdict"),
-                    "code": refkeys(v)} for v in data["checks"]],
-        "controls": [{"id": k["id"], "check": k["check"], "kind": k["kind"], "description": k.get("description"),
-                      "outcome": strength.outcome(next(v for v in data["checks"] if v["id"] == k["check"]), k),
-                      "result": trim(k.get("result")), "patch": k["id"]} for k in data["controls"]],
+        "invariants": [{k: i[k] for k in ("id", "feature", "text", "author", "status", "shape", "risky", "evidence", "possible_bug") if k in i} | {"code": specs(i)}
+                       for i in data["invariants"]],
+        "claims": claim_rows, "verifiers": verifiers, "controls": controls,
+        "feature_checks": [check_row(v) for v in data["checks"] if v["id"] not in backs],
+        "feature_controls": [control_row(k) for k in data["controls"] if k["check"] not in backs],
         "mutation": [{"id": m["id"], "tool": m["tool"], "feature": m.get("feature"), "paths": m["paths"], "at": m.get("at"),
                       "summary": m["summary"], "lines": m.get("lines"),
                       "mutants": [{x: mu[x] for x in ("id", "path", "line", "status", "filter", "diff", "killed_by", "operator") if x in mu} for mu in m["mutants"]],
                       "matrix": m.get("matrix", {})} for m in data["mutation"]],
         "flags": rep["flags"], "summary": rep["summary"], "proved": data.get("proved"), "maintained": data.get("maintained"),
     }
+    by_id = {v["id"]: v for v in listed} | {c["id"] + "-none": derive.none_check(c["id"]) | {"state": "untested"} for c in data["claims"] if not c["checks"]}
+    claims_for_derive = [{**c, "checks": row["checks"]} for c, row in zip(data["claims"], claim_rows)]
+    d = derive.derived({**data, "claims": claims_for_derive}, rep, head, by_id, [k for k in data["controls"] if k["check"] in backs], test_ref)
+    return trust, d
 
 
 def main(c: store.Ctx, argv: list[str]) -> int:
@@ -175,11 +212,13 @@ def main(c: store.Ctx, argv: list[str]) -> int:
     if refusal:
         store.fail(refusal, 1)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "refs.resolved.json").write_text(json.dumps({"schema": 2, "head": coderef.rev(repo, data["head"]), "refs": refs,
-                                                         "controls": control_patches(repo, data)}, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
-    (out / "verify-data.json").write_text(json.dumps(build(data, rep, refs), indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    head = coderef.rev(repo, data["head"])
+    trust, derived = build(data, rep, refs, head)
+    (out / "refs.resolved.json").write_text(json.dumps({"schema": 2, "head": head, "refs": refs, "controls": control_patches(repo, data),
+                                                         "derived": derived}, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    (out / "trust-map.json").write_text(json.dumps(trust, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     c.save(data)
     store.emit(c, {"out": str(out), "refs": len(refs), "claims": len(data["claims"]), "summary": rep["summary"]},
-               f"export: {out / 'verify-data.json'} and {out / 'refs.resolved.json'} ({len(refs)} code refs, "
+               f"export: {out / 'trust-map.json'} and {out / 'refs.resolved.json'} ({len(refs)} code refs, "
                + ", ".join(f"{k} {v}" for k, v in rep["summary"].items()) + "). visual-explainer renders them.")
     return 0

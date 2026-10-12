@@ -1,0 +1,28 @@
+import { CodeRef, ExplainerShell, Glossary, Invariants, Lead, Section, VerifierView } from 'visual-explainer-mdx/components';
+import trust from './trust-map.json';
+import refs from './refs.resolved.json';
+
+<ExplainerShell title="Refuse overdrafts in the wallet: what is verified" paged appearance="auto" reviewTools={false}>
+
+<Section id="ch-0" title="What does the withdraw feature promise?" navLabel="The promise">
+<Lead>
+
+The wallet refuses an amount above the balance.
+
+</Lead>
+<CodeRef refs={refs} path="wallet/core.py" symbol="withdraw" />
+</Section>
+
+<Section id="ch-1" title="Which rules must always hold?" navLabel="The invariants">
+<Invariants data={trust} />
+</Section>
+
+<Section id="ch-2" title="Which checks back the claim?" navLabel="The claims and checks">
+<VerifierView data={trust} refs={refs} />
+</Section>
+
+<Section id="ch-3" title="The words on this page" navLabel="Glossary">
+<Glossary data={trust} only="used" />
+</Section>
+
+</ExplainerShell>
