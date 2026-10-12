@@ -1,77 +1,82 @@
-# The verify skill and its spec
+# The project-local verify skill
 
-`understando create` writes a project-local verify skill from a spec that you write after the interview. The skill is for the next agent: it reads it cold, mid-task.
-
-## The tree
+The verify skill lets the next agent drive the real app and prove a behavior. That agent reads it cold, mid-task, with no memory of the app. Write it in the working tree, as ordinary uncommitted files. The user commits it.
 
 ```text
 .agents/skills/verify-<app>/
-  SKILL.md                 frontmatter (name, description), then Launch, Doctor, Drive, Evidence, Cleanup, Helpers
-  helpers/verify           executable: launch | doctor | drive <feature> | cleanup | prove <feature>
-  features/README.md       the index: baseline preconditions, proof and skip reporting, the entry contract, the features
-  features/<feature>.md    one file for each user-facing feature
-.claude/skills/verify-<app> -> ../../.agents/skills/verify-<app>    (a relative symlink)
+  SKILL.md               frontmatter, then Launch, Doctor, Drive, Evidence, Cleanup, Helpers
+  features/README.md     the index: baseline preconditions, driving conventions, proof rules, the features
+  features/<feature>.md  one file for each user-facing feature
+.claude/skills/verify-<app> -> ../../.agents/skills/verify-<app>   (a relative symlink)
 ```
 
-A repo that has a verify skill already (for example `.cursor/skills/verify-<app>/` from create-verification-skill) keeps it: `create` adds the missing feature files, the Verifier sections and, when the skill has none, `helpers/verify`.
+When the repo has a verify skill already (for example `.cursor/skills/verify-<app>/` from pstack), keep it. Add the missing feature files and the Verifier sections.
+
+## SKILL.md
+
+The frontmatter has `name: verify-<app>` and a `description` that names the app, the surface and when to use the skill. Without frontmatter, the skill does not register. Each section comes from the code:
+
+- **Launch:** the exact start command, how to tell that it is ready (a log line, a port, a prompt), and its teardown. For a short-lived CLI, launch builds once, and each drive runs in its own process.
+- **Doctor:** one read-only check: is this instance worth driving? The process is up, the build is right, the port is ours.
+- **Drive:** the harness recipe with the real selectors and commands of this repo. Use stable handles (ARIA names, data attributes, prompt strings, routes), not coordinates.
+- **Evidence:** what a drive keeps and where ([verifiers.md](verifiers.md)).
+- **Cleanup:** stop only what launch started. Keep the evidence, and check that it is still at its place after cleanup.
+- **Helpers:** each script that the skill ships is executable, and the skill body shows how to call it.
 
 ## The feature file
 
 ```markdown
 # <Feature name>
 
-<One paragraph: the user-visible behaviour.>
+<One paragraph: the behavior that the user sees.>
 
 ## Sub-features
-- `<id>` <one line for each behaviour>
+- `<id>` <one line for each behavior>
 
 ## How to get to it (user POV)
 - <each user entry point>
 
 ## Driving it with <harness>
 Preconditions:
-- <the state a drive needs>
+- <the state that a drive needs>
 
 - **<Action>.** <What the user does.> Run `<exact command>`. <The observable result.>
-- **Proof.** Run `.agents/skills/verify-<app>/helpers/verify drive <feature>`. <What it keeps as evidence.>
 
 ## Gotchas
-- <traps that waste or invalidate a run>
+- <traps that waste or spoil a run>
 
-## Verifier                     (understando writes this section from its store; do not edit it by hand)
-- **Surface:** frontend | backend | llm | other.
-- **Bar:**
-  - frontend: a real-browser e2e of the user path, with a recorded video and screenshots.
-  - backend: **Formal** (Lean or TLA+ with conformance, for a risky invariant); **Code Contracts** (a `@cc` contract states the invariant, and a check with a control proves it); **types, import rules and property tests**, for wiring.
-  - llm: a recorded eval with a frozen judge or labels, and a degraded variant that must score worse.
-- **Invariants:** each one with its author: the user's, or agent-picked and not accepted yet.
-- **Verifiers that meet the bar:** each one with its command, its controls and what made it fail.
-- **Verifiers below the bar or not proven yet**, and **verifiers that do not count** (cannot fail, failing).
-- **Rule:** every verifier has a control that must make it fail.
+## Verifier
+- **Surface:** backend | frontend | llm.
+- **Bar:** <the bar for this surface, from verifiers.md>.
+- **Invariants:** <each one, with its author: user, or agent-picked>.
+- **Verifiers that meet the bar:** <each one: the command, and each control as a `control.sh` command with its result>.
+- **Verifiers that do not count:** <each one, and why: cannot fail, below the bar, not proven yet>.
 ```
 
-## The spec (create.spec.json)
+## Worked example: wallet withdraw
 
-```json
-{
-  "app": "wallet",
-  "description": "Names the app, the surface and when to reach for the skill.",
-  "intro": "One paragraph for the top of SKILL.md.",
-  "launch": {"text": "...", "ready": "how to tell it is ready"},
-  "doctor": {"text": "one read-only check: is this instance worth driving?"},
-  "drive": {"harness": "the name of the harness", "text": "..."},
-  "evidence": {"text": "what a drive keeps, and where"},
-  "cleanup": {"text": "kill only what launch started; keep the evidence"},
-  "preconditions": ["the baseline state of every drive"],
-  "helper": {"launch": "bash", "doctor": "bash", "cleanup": "bash", "drive": {"<feature>": "bash: exits 0 only when the end state holds"}},
-  "features": [{
-    "id": "withdraw", "name": "Withdraw money", "summary": "...", "surface": "backend", "paths": ["wallet/"],
-    "sub_features": [{"id": "...", "text": "..."}], "entry_points": ["..."], "preconditions": ["..."],
-    "steps": [{"label": "...", "action": "...", "command": "...", "result": "..."}], "gotchas": ["..."],
-    "evidence": ["withdraw-ok.txt"],
-    "control": {"description": "...", "edits": [{"op": "delete-line", "path": "wallet/core.py", "symbol": "withdraw", "match": "if amount > balance:"}]}
-  }]
-}
+The fixture app is a CLI: `python3 -m wallet withdraw BALANCE AMOUNT` prints the new balance, or refuses an overdraft with exit code 3.
+
+```markdown
+## Driving it with the wallet CLI
+Preconditions:
+- `python3 -m wallet --version` prints `wallet 1.0`.
+
+- **Withdraw.** Run `python3 -m wallet withdraw 10 3`. Exit code 0, and stdout is `7`.
+- **Refuse an overdraft.** Run `python3 -m wallet withdraw 10 11`. Exit code 3, and stderr holds `refused`.
+
+## Verifier
+- **Surface:** backend.
+- **Bar:** a proof for the risky invariant; a contract, types or a property test for wiring.
+- **Invariants:**
+  - I1 (user): a withdrawal never takes the balance below zero.
+  - I2 (agent-picked): a refused withdrawal leaves the balance unchanged.
+- **Verifiers that meet the bar:**
+  - Lean `withdraw_nonneg` with vector conformance: `$U/scripts/lean-check.sh --dir formal/lean --import Wallet withdraw_nonneg`, then `python3 -m pytest tests/test_conformance_wallet.py`.
+    - Code control, red: `$U/scripts/control.sh --replace wallet/core.py 'if amount > balance:' 'if False:' -- python3 -m pytest tests/test_conformance_wallet.py`.
+    - Model control, red on `withdraw_nonneg`: `$U/scripts/control.sh --dir formal/lean --replace Wallet.lean 'balance - amount' 'balance - amount - 1' -- $U/scripts/lean-check.sh --import Wallet withdraw_nonneg`.
+  - The CLI e2e above: `.agents/skills/verify-wallet/helpers/drive withdraw`. Control, red (exit 0, not 3): the same code control, with the drive as the command.
+- **Verifiers that do not count:**
+  - `tests/test_core.py::test_withdraw_ok`: it stayed green on the deleted guard (cannot fail).
+- I2 has no verifier yet. It stays at Backed until the user accepts it.
 ```
-
-The helper bodies run in bash from the repo root, with `$EVIDENCE` (the evidence folder, `$VERIFY_EVIDENCE_DIR`) and `$STATE` (scratch state, `$VERIFY_STATE_DIR`). A drive writes its proof to `$EVIDENCE` and exits non-zero when the end state does not hold, so a planted bug can make it fail. The drive of each feature becomes an e2e check in the store, and its `control` becomes the control of that check.

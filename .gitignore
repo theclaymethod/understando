@@ -1,9 +1,6 @@
 .DS_Store
-*.log
-node_modules/
 __pycache__/
-# The build output of the learn app, which the strip removed (the tag pre-strip holds it).
-learn/
-# Run state lives under ~/.understando/runs/<repo>/<app>/, never in this repo. The test fixture is
-# tests/fixture. Every verb refuses to write a run folder inside a git repo.
+.lake/
+mutants/
+# Old run folders from before the lean cut; run state lives under ~/.understando, never here.
 runs/
