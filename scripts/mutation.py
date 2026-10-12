@@ -46,6 +46,35 @@ import store  # noqa: E402
 import toolprobe  # noqa: E402
 
 COV_SITE = Path(__file__).resolve().parent / "coverage_site"
+# The helpers that run in the mutation venv: each one imports its tool once for every mutant.
+# MUTMUT_SHOW: the `mutmut show` diff of each mutant name (stdin: the JSON list of names).
+MUTMUT_SHOW = r"""
+import json, sys
+from mutmut.mutation.diff_apply import find_mutant, get_diff_for_mutant
+out = {}
+for name in json.load(sys.stdin):
+    try:
+        out[name] = get_diff_for_mutant(name, path=find_mutant(name).path)
+    except Exception:
+        out[name] = ""
+json.dump(out, sys.stdout)
+"""
+# COSMIC_APPLY: the file text of each mutant, as `cosmic-ray apply` writes it, or None when the
+# operator does not apply (stdin: the JSON list of [path, operator, occurrence]).
+COSMIC_APPLY = r"""
+import json, sys
+from pathlib import Path
+import cosmic_ray.plugins
+from cosmic_ray.mutating import mutate_code
+from cosmic_ray.util import read_python_source
+out = []
+for path, operator, occurrence in json.load(sys.stdin):
+    try:
+        out.append({"text": mutate_code(read_python_source(Path(path)), cosmic_ray.plugins.get_operator(operator)(), occurrence)})
+    except Exception as exc:
+        out.append({"text": None, "error": f"{type(exc).__name__}: {exc}"})
+json.dump(out, sys.stdout)
+"""
 MESSAGE_CALLS = re.compile(r"(Error|Exception|Warning|print|warn|warning|info|debug|error|exception|critical|log)$")
 
 
@@ -149,6 +178,16 @@ def sh(argv: list[str], cwd: Path, env: dict, timeout: int = 1800) -> subprocess
     return subprocess.run(argv, cwd=cwd, env=env, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
 
 
+def helper(v: Path, script: str, items: list, cwd: Path, env: dict):
+    """Run one helper of the mutation venv on the JSON items, and return its JSON answer."""
+    out = subprocess.run([str(v / "bin" / "python"), "-c", script], cwd=cwd, env=env, input=json.dumps(items),
+                         capture_output=True, text=True, timeout=1800)
+    try:
+        return json.loads(out.stdout)
+    except json.JSONDecodeError:
+        raise RuntimeError(f"a mutation helper failed (exit {out.returncode}): {run_control.tail(out.stdout + out.stderr)}") from None
+
+
 def pytest_one(v: Path, cwd: Path, test: str, env: dict) -> int:
     out = sh([str(v / "bin" / "python"), "-m", "pytest", "-x", "-q", "-p", "no:cacheprovider", test], cwd, env, timeout=600)
     return out.returncode
@@ -188,16 +227,21 @@ def run_mutmut(root: Path, v: Path, paths: list[str], tests: str, matrix_max: in
     if sp.is_file():
         stats = json.loads(sp.read_text())
     by_fn = stats.get("tests_by_mangled_function_name") or {}
-    mutants, matrix, cells = [], {}, 0
+    rows = []  # (n, name, status, fn, path) of each mutant in the paths
     for n, line in enumerate(x for x in res.stdout.splitlines() if ": " in x):
         name, _, status = line.strip().partition(": ")
         fn = name.rsplit("__mutmut_", 1)[0]
         path = fn.split(".x_")[0].replace(".", "/") + ".py"
-        if not any(path == p or path.startswith(p.rstrip("/") + "/") for p in paths):
-            continue
-        diff = sh([str(v / "bin" / "mutmut"), "show", name], root, env).stdout
-        diff = "\n".join(x for x in diff.splitlines() if not x.startswith("# "))
-        src = (root / path).read_text(encoding="utf-8")
+        if any(path == p or path.startswith(p.rstrip("/") + "/") for p in paths):
+            rows.append((n, name, status, fn, path))
+    diffs = helper(v, MUTMUT_SHOW, [r[1] for r in rows], root, env) if rows else {}
+    sources: dict[str, str] = {}
+    mutants, matrix, cells = [], {}, 0
+    for n, name, status, fn, path in rows:
+        diff = "\n".join(x for x in diffs.get(name, "").splitlines() if not x.startswith("# "))
+        if path not in sources:
+            sources[path] = (root / path).read_text(encoding="utf-8")
+        src = sources[path]
         applied = apply_show(src, diff)
         mid = f"m{n + 1}"
         m = {"id": mid, "name": name, "path": path, "line": applied[1] if applied else None, "status": status,
@@ -291,8 +335,8 @@ def run_cosmic(root: Path, v: Path, lines: dict[str, list[int]], tests: str, mat
     env = env_for(v, root)
     ids = collect(v, root, tests)
     cov = {t: coverage_of(v, root, t) for t in ids}
-    mutants, matrix, cells, n = [], {}, 0, 0
-    for path, wanted in lines.items():
+    wanted, sources = [], {}  # (path, line, item) of each mutant on a wanted line, in dump order
+    for path, keep in lines.items():
         cfg = root / ".understando-cr.toml"
         cfg.write_text(f'[cosmic-ray]\nmodule-path = "{path}"\ntimeout = 60.0\nexcluded-modules = []\n'
                        f'test-command = "python -m pytest -x -q {tests}"\n[cosmic-ray.distributor]\nname = "local"\n')
@@ -301,45 +345,45 @@ def run_cosmic(root: Path, v: Path, lines: dict[str, list[int]], tests: str, mat
         if init.returncode:
             raise RuntimeError(f"cosmic-ray init failed: {run_control.tail(init.stdout + init.stderr)}")
         dump = sh([str(v / "bin" / "cosmic-ray"), "dump", str(sess)], root, env).stdout
-        src = (root / path).read_text(encoding="utf-8")
+        sources[path] = (root / path).read_text(encoding="utf-8")
         for row in dump.splitlines():
             item = json.loads(row)[0]["mutations"][0]
-            line = item["start_pos"][0]
-            if line not in wanted:
-                continue
-            n += 1
-            mid = f"m{n}"
-            ap = sh([str(v / "bin" / "cosmic-ray"), "apply", path, item["operator_name"], str(item["occurrence"])], root, env)
-            after = (root / path).read_text(encoding="utf-8")
-            try:
-                if ap.returncode or after == src:
-                    mutants.append({"id": mid, "path": path, "line": line, "operator": item["operator_name"], "status": "error",
-                                    "note": run_control.tail(ap.stdout + ap.stderr)})
-                    continue
-                covering = [t for t in ids if line in cov[t].get(path, set())]
-                m = {"id": mid, "path": path, "line": line, "operator": item["operator_name"], "occurrence": item["occurrence"],
-                     "diff": coderef.unified(path, src, after, context=1),
-                     "tests": covering}
-                f = equivalent(src, after)
-                if f:
-                    m.update(status="survived", filter=f)
-                elif not covering:
-                    m["status"] = "no tests"
-                else:
-                    row = {}
-                    for t in covering:
-                        if cells >= matrix_max:
-                            break
-                        cells += 1
-                        row[t] = "survived" if pytest_one(v, root, t, env) == 0 else "killed"
-                    matrix[mid] = row
-                    m["killed_by"] = [t for t, x in row.items() if x == "killed"]
-                    m["status"] = "killed" if m["killed_by"] else "survived"
-                mutants.append(m)
-            finally:
-                (root / path).write_text(src, encoding="utf-8")
+            if item["start_pos"][0] in keep:
+                wanted.append((path, item["start_pos"][0], item))
         cfg.unlink()
         sess.unlink(missing_ok=True)
+    texts = helper(v, COSMIC_APPLY, [[p, it["operator_name"], it["occurrence"]] for p, _, it in wanted], root, env) if wanted else []
+    mutants, matrix, cells = [], {}, 0
+    for n, ((path, line, item), got) in enumerate(zip(wanted, texts), 1):
+        mid, src = f"m{n}", sources[path]
+        after = got["text"] if got["text"] is not None else src
+        if after == src:
+            mutants.append({"id": mid, "path": path, "line": line, "operator": item["operator_name"], "status": "error",
+                            "note": run_control.tail(got.get("error", ""))})
+            continue
+        covering = [t for t in ids if line in cov[t].get(path, set())]
+        m = {"id": mid, "path": path, "line": line, "operator": item["operator_name"], "occurrence": item["occurrence"],
+             "diff": coderef.unified(path, src, after, context=1), "tests": covering}
+        f = equivalent(src, after)
+        if f:
+            m.update(status="survived", filter=f)
+        elif not covering:
+            m["status"] = "no tests"
+        else:
+            (root / path).write_text(after, encoding="utf-8")
+            try:
+                row = {}
+                for t in covering:
+                    if cells >= matrix_max:
+                        break
+                    cells += 1
+                    row[t] = "survived" if pytest_one(v, root, t, env) == 0 else "killed"
+            finally:
+                (root / path).write_text(src, encoding="utf-8")
+            matrix[mid] = row
+            m["killed_by"] = [t for t, x in row.items() if x == "killed"]
+            m["status"] = "killed" if m["killed_by"] else "survived"
+        mutants.append(m)
     return {"tool": "cosmic-ray", "mutants": mutants, "matrix": matrix, "tests": ids, "lines": lines}
 
 

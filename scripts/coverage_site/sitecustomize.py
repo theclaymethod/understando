@@ -16,12 +16,17 @@ _out = os.environ.get("UNDERSTANDO_COV_DIR")
 if _root and _out:
     _root = os.path.realpath(_root) + os.sep
     _hits = {}
+    _rel = {}  # co_filename -> its path under the root, or None: one realpath for each file
 
     def _tracer(frame, event, arg):
         path = frame.f_code.co_filename
-        if not path.startswith(_root) and not os.path.realpath(path).startswith(_root):
+        try:
+            rel = _rel[path]
+        except KeyError:
+            real = os.path.realpath(path)
+            rel = _rel[path] = os.path.relpath(real, _root) if path.startswith(_root) or real.startswith(_root) else None
+        if rel is None:
             return None
-        rel = os.path.relpath(os.path.realpath(path), _root)
         lines = _hits.setdefault(rel, set())
 
         def local(f, e, a):
