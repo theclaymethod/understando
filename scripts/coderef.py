@@ -55,7 +55,6 @@ MAX_LINES = 30
 MAX_WITH = 80
 ANCHOR_OPS = ("delete-line", "invert-condition", "replace-with", "drop-allowlist-row")
 JS_EXT = {".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"}
-CACHE_NAME = "refs.resolved.json"
 
 
 class AnchorError(ValueError):
@@ -352,7 +351,7 @@ def pattern(match: str) -> re.Pattern:
     return re.compile(re.escape(match))
 
 
-def find_match(path: str, text: str, region: tuple[int, int], match: str, where: str) -> tuple[int, int]:
+def find_match(text: str, region: tuple[int, int], match: str, where: str) -> tuple[int, int]:
     starts = line_starts(text)
     lo = starts[region[0] - 1]
     hi = starts[region[1]] if region[1] < len(starts) else len(text)
@@ -385,7 +384,7 @@ def resolve_text(path: str, text: str, ref: dict, cap: bool = True) -> Resolved:
             raise AnchorError(f"{where}: unknown part {part!r}")
         start, end, span = region[0], region[1], None
         if ref.get("match"):
-            span = find_match(path, text, region, ref["match"], where)
+            span = find_match(text, region, ref["match"], where)
             starts = line_starts(text)
             first, last = line_of(starts, span[0]), line_of(starts, max(span[0], span[1] - 1))
             ctx = ref.get("context", 0)
@@ -426,22 +425,14 @@ def ref_commit(repo: str | Path, data: dict, ref: dict, at: str | None = None) -
     return data["head"]
 
 
-def resolve_for(repo: str | Path, data: dict, ref: dict, at: str | None = None, cap: bool = True) -> tuple[Resolved, str]:
+def resolve_for(repo: str | Path, data: dict, ref: dict, at: str | None = None) -> tuple[Resolved, str]:
     """A code ref of the store, resolved at its commit (ref_commit): (the lines, the commit)."""
     commit = ref_commit(repo, data, ref, at)
-    return resolve(repo, commit, ref, cap), commit
+    return resolve(repo, commit, ref), commit
 
 
 def ref_key(ref: dict) -> str:
     return json.dumps({k: v for k, v in ref.items() if k != "note"}, sort_keys=True)
-
-
-def write_cache(run: str | Path, head: str, resolved: dict[str, Resolved]) -> Path:
-    """The resolved line numbers, for people and doctor. The data keeps only the anchors."""
-    dest = Path(run) / CACHE_NAME
-    body = {"head": head, "refs": [{"ref": json.loads(k), "start": r.start, "end": r.end} for k, r in sorted(resolved.items())]}
-    dest.write_text(json.dumps(body, indent=1) + "\n", encoding="utf-8")
-    return dest
 
 
 def walk_refs(data: dict):
@@ -722,16 +713,14 @@ def pasted(repo: str | Path, head: str, inputs: list[tuple[str, str]]) -> list[s
     return found
 
 
-def guard_inputs(data: dict, extra: list[Path] | None = None) -> list[tuple[str, str]]:
-    """The text that a person or a model writes into the store, and each extra file."""
+def guard_inputs(data: dict) -> list[tuple[str, str]]:
+    """The text that a person or a model writes into the store."""
     out = []
     for section in ("features", "invariants", "claims", "checks", "controls"):
         for item in data.get(section, []):
             for key in ("text", "name", "description", "reason"):
                 if key in item:
                     out += list(strings(item[key], f"verify.json {item['id']}.{key}"))
-    for p in extra or []:
-        out.append((str(p), p.read_text(encoding="utf-8")))
     return out
 
 
@@ -842,14 +831,5 @@ def main(c, argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
-    if sys.argv[1:2] == ["--apply-edit"]:
-        # python3 -I coderef.py --apply-edit FILE EDIT_JSON: one anchor edit, in place.
-        try:
-            p = Path(sys.argv[2])
-            p.write_text(apply_text(p.read_text(encoding="utf-8"), json.loads(sys.argv[3])), encoding="utf-8")
-        except (AnchorError, KeyError, ValueError) as exc:
-            print(f"ANCHOR ERROR: {exc}", file=sys.stderr)
-            sys.exit(1)
-        sys.exit(0)
     print("run it as `understando snippet ...`", file=sys.stderr)
     sys.exit(2)

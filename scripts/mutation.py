@@ -105,7 +105,6 @@ def equivalent(before: str, after: str) -> str | None:
 def apply_show(text: str, diff: str) -> tuple[str, int] | None:
     """Apply the diff of `mutmut show` (one function, line numbers of the function) to the file text
     by content. Returns (the mutated text, the file line of the first changed line)."""
-    lines = text.splitlines(keepends=True)
     out = text
     first = None
     for hunk in re.split(r"(?m)^@@[^\n]*@@\n", diff)[1:]:

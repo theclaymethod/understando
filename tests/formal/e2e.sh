@@ -14,7 +14,7 @@
 #
 # Offline: needs lake (elan, Lean 4.34.1), java and tla2tools.jar, python3. No network, no model.
 # The fixture's invariants are written in the fixture itself, so the run passes
-# --invariant-author user --invariant-ref fixture:<file>; that stands in for the user's journal row.
+# --invariant-author user --invariant-ref fixture:<file>; that stands in for an invariant that the user accepted.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

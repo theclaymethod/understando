@@ -169,7 +169,7 @@ def kept(d: Path | None) -> list[str]:
     return sorted(str(p) for p in d.rglob("*") if p.is_file()) if d else []
 
 
-def run_baseline(data: dict, repo: Path, scratch: Path, only: set[str] | None = None, env_file: str | None = None,
+def run_baseline(data: dict, repo: Path, scratch: Path, only: set[str], env_file: str | None = None,
                  evidence: Path | None = None) -> None:
     targets = [v for v in data["checks"] if "command" in v and (not only or v["id"] in only)]
     for commit in dict.fromkeys(commit_of(v, data) for v in targets):

@@ -4,8 +4,7 @@ Presence comes from the filesystem and PATH first. A tool runs only to check tha
 stdin closed and a 5 second limit. npx runs with `--no-install` and npm_config_offline=true, and
 it does not run at all while the network is known to be down ($UNDERSTANDO_OFFLINE). A probe that
 fails or times out is never fatal: it becomes a note, which doctor shows as a mention.
-Definite results are cached in ~/.understando/toolprobe.json for one day; `doctor --refresh`
-probes again. Standard library only.
+Definite results are cached in ~/.understando/toolprobe.json for one day. Standard library only.
 """
 
 from __future__ import annotations
@@ -23,12 +22,6 @@ TIMEOUT = 5
 TTL = 24 * 3600
 CC_PKG = "@spolu/cc-check@0.2.0"
 JAVA_HOMES = ("/opt/homebrew/opt/openjdk", "/usr/local/opt/openjdk")
-_REFRESH = [False]
-
-
-def refresh(on: bool = True) -> None:
-    _REFRESH[0] = on
-
 
 def _home() -> Path:
     return Path(os.environ.get("UNDERSTANDO_HOME") or Path.home() / ".understando")
@@ -48,8 +41,6 @@ def _load() -> dict:
 
 def _cached(name: str):
     """(hit, value). A hit is a definite result younger than the TTL."""
-    if _REFRESH[0]:
-        return False, None
     e = _load().get(name)
     if isinstance(e, dict) and time.time() - float(e.get("at", 0)) < TTL:
         return True, e.get("value")

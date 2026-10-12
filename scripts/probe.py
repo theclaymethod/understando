@@ -31,7 +31,7 @@ def pick(data: dict, feature: str | None, checks: set[str] | None) -> set[str]:
     return out
 
 
-def run(c: store.Ctx, data: dict, check_ids: set[str], control_ids: set[str] | None = None, baseline: bool = True,
+def run(c: store.Ctx, data: dict, check_ids: set[str], control_ids: set[str] | None = None,
         env_file: str | None = None, what: str = "probe") -> bool:
     """The baseline of each check, then each chosen control. False when the user has not said yes."""
     repo = c.need_repo()
@@ -41,14 +41,14 @@ def run(c: store.Ctx, data: dict, check_ids: set[str], control_ids: set[str] | N
     if not store.confirm(c, what, cmds):
         return False
     with ops.scratch_clone(repo) as (clone, wt):
-        if baseline and targets:
+        if targets:
             run_control.run_baseline(data, clone, wt, {v["id"] for v in targets}, env_file, c.run / "evidence")
         for k in controls:
             run_control.run_one(data, k, clone, wt, env_file)
     return True
 
 
-def report(c: store.Ctx, data: dict, feature: str | None = None) -> dict:
+def report(data: dict, feature: str | None = None) -> dict:
     rep = strength.apply(data)
     if feature:
         rep = {**rep, "claims": [x for x in rep["claims"] if x["feature"] == feature]}
@@ -72,7 +72,7 @@ def main(c: store.Ctx, argv: list[str]) -> int:
     ks = {x for x in (args.control or "").split(",") if x} or None
     if not run(c, data, ids, ks, env_file=str(Path(args.env_file).resolve()) if args.env_file else None):
         return 0
-    rep = report(c, data, args.feature)
+    rep = report(data, args.feature)
     c.save(data)
     store.emit(c, rep, "\n".join(strength.lines(rep)))
     return 0

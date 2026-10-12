@@ -107,7 +107,6 @@ def findings(c: store.Ctx) -> list[dict]:
 
 
 def main(c: store.Ctx, argv: list[str]) -> int:
-    testguard.read_only()
     rows = findings(c)
     if c.json:
         print(json.dumps({"findings": rows}, indent=2))

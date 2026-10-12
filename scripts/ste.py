@@ -75,18 +75,6 @@ def require(texts: list[str], what: str) -> None:
         raise ValueError(f"{what}: the text is not strict STE (asd-ste100): " + "; ".join(bad))
 
 
-def store_problems(data: dict, sections: tuple[str, ...] = ("invariants", "claims")) -> list[str]:
-    """One finding for each hard STE violation in the written text of the store: the invariant and
-    claim statements and their names."""
-    problems = []
-    for section in sections:
-        for item in data.get(section, []):
-            for key in ("text", "name"):
-                if item.get(key):
-                    problems += [f"{section[:-1]} {item['id']}: not strict STE: {b}" for b in hard_violations(prose(item[key]))]
-    return problems
-
-
 def main(argv: list[str]) -> int:
     code = 0
     for a in argv:

@@ -30,7 +30,6 @@ import testguard  # noqa: E402,F401  (the test-isolation guard: it must load bef
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_PATH = ROOT / "schema" / "verify.schema.json"
 SCHEMA = "understando.verify/1"
-SURFACES = ("frontend", "backend", "llm", "other")
 # The verification ladder. A rung counts only after a control shows that the check can fail.
 LADDER = {"e2e": 1, "integration": 1, "eval": 1, "property": 2, "fuzz": 2, "type": 3, "contract": 3,
           "static": 3, "tla": 4, "lean": 5}
@@ -102,7 +101,7 @@ class Ctx:
     def need_run(self) -> Path:
         if not self.run:
             fail("no run folder: pass --run DIR, or --repo DIR (and --app NAME)", 2)
-        refusal = refuse_run_write(self.run, self.repo)
+        refusal = refuse_run_write(self.run)
         if refusal:
             fail(refusal, 1)
         self.run.mkdir(parents=True, exist_ok=True)
@@ -159,7 +158,7 @@ def git_toplevel(path: Path) -> Path | None:
     return Path(out.stdout.strip()).resolve() if out.returncode == 0 and out.stdout.strip() else None
 
 
-def refuse_run_write(run: Path | None, repo: Path | None = None) -> str | None:
+def refuse_run_write(run: Path | None) -> str | None:
     """None when run output may go into `run`. Run output never goes into a git repo."""
     if not run:
         return None

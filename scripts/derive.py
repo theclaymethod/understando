@@ -1,21 +1,21 @@
 """The derived block of refs.resolved.json: the values that visual-explainer renders and never computes
 again (its card plugins/visual-explainer/cards/trust-map.md, "The data contract").
 
-    derive.derived(data, rep, head, controls_of) -> {"schema": 2, "head", "claims", "verify", "checks"}
+    derive.derived(data, rep, head, checks, controls, refs) -> {"schema": 2, "head", "claims", "verify", "checks"}
 
 - claims[id]: strength, tier, the claim's checks with their result, "2 checks: 2 caught their bug.",
   the evidence of its weakest part with its action, the flagged checks, its parts, and its bar.
-- verify: "4 of 5 checks caught their planted bug.", each check that missed its bug or cannot fail,
-  and one "what we broke" sentence for each control.
+- verify: "4 of 5 checks caught their planted bug.", each check that cannot fail, and one "what we
+  broke" sentence for each control.
 - checks[id]: the result of each check, the claims it backs, its test ref and its controls.
 
 The strength itself comes from strength.py (`rep`); this file words it. A check result is one of
-caught, missed, cannot-fail, broken, no-bug, recorded, checked or none.
+caught, cannot-fail, broken, no-bug, recorded or none. The card also reads `verify.missed`, which
+stays 0: a check that stayed green on one control and was caught by another is proven.
 """
 
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 
@@ -31,21 +31,16 @@ BAR = {  # surface -> (level, need); a risky backend claim needs a proof
     "other": ("check", "a check that a planted bug proved"),
 }
 RISKY_BAR = ("formal", "a Lean or TLA+ proof that matches the code")
-WORDS = {"caught": "caught their bug", "missed": "missed", "cannot-fail": "cannot fail", "no-bug": "had no planted bug",
-         "recorded": "are records of a past run", "checked": "are mechanical checks", "broken": "fail at the head"}
-ONE = {"caught": "caught its bug", "missed": "missed", "cannot-fail": "cannot fail", "no-bug": "had no planted bug",
-       "recorded": "is a record of a past run", "checked": "is a mechanical check", "broken": "fails at the head"}
-SAID = {"caught": "It caught its planted bug.", "missed": "It missed its planted bug.",
-        "cannot-fail": "It cannot fail: it passed on each planted bug.", "broken": "It fails or does not complete.",
-        "no-bug": "No planted bug ran, so no run proved that it can fail.", "recorded": "It is a record of a past run, and we did not run it again.",
-        "checked": "It is a mechanical check with no planted bug.", "none": "No tool checks it."}
+WORDS = {"caught": "caught their bug", "cannot-fail": "cannot fail", "no-bug": "had no planted bug",
+         "recorded": "are records of a past run", "broken": "fail at the head"}
+ONE = {"caught": "caught its bug", "cannot-fail": "cannot fail", "no-bug": "had no planted bug",
+       "recorded": "is a record of a past run", "broken": "fails at the head"}
+SAID = {"caught": "It caught its planted bug.", "cannot-fail": "It cannot fail: it passed on each planted bug.",
+        "broken": "It fails or does not complete.", "no-bug": "No planted bug ran, so no run proved that it can fail.",
+        "recorded": "It is a record of a past run, and we did not run it again.", "none": "No tool checks it."}
 OP = {"delete-line": "We deleted the line", "invert-condition": "We inverted the condition", "replace-with": "We replaced the code",
       "drop-allowlist-row": "We deleted a row of an allowlist", "restore-file": "We restored the stub of", "corrupt-byte": "We changed one byte of",
       "delete-file": "We deleted the file"}
-
-
-def capital(text: str) -> str:
-    return text[:1].upper() + text[1:]
 
 
 def listing(items: list[str]) -> str:
@@ -86,8 +81,7 @@ def action_of(v: dict, result: str) -> str:
         return "No action is necessary, because the check caught its planted bug."
     if result == "recorded" and (store.ladder(v) or 0) >= 4:
         return "Its conformance link does not pass, or its record is not Formal. Finish its conformance run (understando formalize)."
-    return {"missed": "Add a check that fails on this bug, or change this check so that it does.",
-            "cannot-fail": "Change this check so that it can fail, or replace it.",
+    return {"cannot-fail": "Change this check so that it can fail, or replace it.",
             "broken": "Repair this check: it fails or does not complete.",
             "no-bug": "Plant a bug for this check (understando probe), so a run shows that it can fail.",
             "recorded": "It is a record of a past run. Run it again, or accept the record as it stands.",
@@ -122,10 +116,10 @@ def claim_row(cl: dict, rc: dict, checks: dict[str, dict]) -> dict:
     action = action_of(next((v for v in vs if v["id"] == pick["id"]), vs[0]), pick["result"])
     if pick["result"] == "caught" and rc["verdict"] == "Backed":
         action = "Ask the user to accept the invariant of this claim (understando discover)."
-    flagged = [r for r in tools if r["result"] in ("missed", "cannot-fail", "broken")]
+    flagged = [r for r in tools if r["result"] in ("cannot-fail", "broken")]
     warn = None
     if flagged:
-        word = {"missed": "missed its bug", "cannot-fail": "cannot fail", "broken": "fails at the head"}[flagged[0]["result"]]
+        word = {"cannot-fail": "cannot fail", "broken": "fails at the head"}[flagged[0]["result"]]
         warn = {"text": f"{len(flagged)} of {len(tools)} {'check' if len(tools) == 1 else 'checks'} "
                         f"{word if len(flagged) == 1 else 'missed their bug, cannot fail or fail'}: {listing([r['name'] for r in flagged])}. Fix it or drop it.",
                 "checks": [r["id"] for r in flagged], "action": action_of(checks[flagged[0]["id"]], flagged[0]["result"])}
@@ -140,31 +134,29 @@ def claim_row(cl: dict, rc: dict, checks: dict[str, dict]) -> dict:
 def verify_block(checks: dict[str, dict], controls: list[dict], claims_of: dict[str, list[str]], names: dict[str, str]) -> dict:
     tools = [v for v in checks.values() if v["kind"] != "none"]
     result = {v["id"]: result_of(v) for v in tools}
-    ran = [v for v in tools if result[v["id"]] in ("caught", "missed", "cannot-fail")]
+    ran = [v for v in tools if result[v["id"]] in ("caught", "cannot-fail")]
     caught = [v for v in ran if result[v["id"]] == "caught"]
-    missed = [v for v in ran if result[v["id"]] == "missed"]
     cannot = [v for v in ran if result[v["id"]] == "cannot-fail"]
-    tail = [f"{len(missed)} missed {'it' if len(missed) == 1 else 'theirs'}" if missed else "", f"{len(cannot)} cannot fail" if cannot else ""]
-    line = f"{len(caught)} of {len(ran)} checks caught their planted bug." + (" " + " and ".join(t for t in tail if t).capitalize() + "." if any(tail) else "")
+    line = f"{len(caught)} of {len(ran)} checks caught their planted bug." + (f" {len(cannot)} cannot fail." if cannot else "")
     rest = len(tools) - len(ran)
     other = (f"{rest} more {'check has' if rest == 1 else 'checks have'} no planted bug: records of a past run, mechanical checks or checks that no control ran."
              if rest else "")
     weak = []
-    for v in missed + cannot:
+    for v in cannot:
         k = next((k for k in controls if k["check"] == v["id"] and strength.outcome(v, k) != "caught"), None)
         if not k:
             continue
         other_v = next((checks[o["check"]] for o in controls if o["check"] != v["id"] and o["check"] in checks and strength.outcome(checks[o["check"]], o) == "caught"
                         and o.get("edits") == k.get("edits")), None)
         own = claims_of.get(v["id"], [])
-        happened = "The check passed on each planted bug, so it can fail on nothing." if result[v["id"]] == "cannot-fail" else "The check still passed on its planted bug."
-        weak.append({"check": v["id"], "control": k["id"], "name": v.get("name") or v["id"], "broke": broke(k), "happened": happened,
+        weak.append({"check": v["id"], "control": k["id"], "name": v.get("name") or v["id"], "broke": broke(k),
+                     "happened": "The check passed on each planted bug, so it can fail on nothing.",
                      "why": f"So this check does not protect {listing([names[c] for c in own])}." if own else "So this check protects no claim.",
                      "action": action_of(v, result[v["id"]]), "ids": " · ".join([k["id"], v["id"], *own]), "claims": own,
                      "caught_by": {"check": other_v["id"], "name": other_v.get("name") or other_v["id"], "control": next(o["id"] for o in controls if o["check"] == other_v["id"]), "missed": k["id"]}
                      if other_v else None})
-    return {"result": line, "other": other, "tone": "err" if cannot else "warn" if missed else "ok", "checks": len(tools), "ran": len(ran),
-            "caught": len(caught), "missed": len(missed), "cannot": len(cannot), "weak": weak, "broke": {k["id"]: broke(k) for k in controls}}
+    return {"result": line, "other": other, "tone": "err" if cannot else "ok", "checks": len(tools), "ran": len(ran),
+            "caught": len(caught), "missed": 0, "cannot": len(cannot), "weak": weak, "broke": {k["id"]: broke(k) for k in controls}}
 
 
 def derived(data: dict, rep: dict, head: str, checks: dict[str, dict], controls: list[dict], refs: dict[str, dict]) -> dict:

@@ -63,8 +63,3 @@ def worktree_of(repo: Path, branch: str) -> Path | None:
         elif line == f"branch refs/heads/{branch}" and path:
             return path
     return None
-
-
-def rev(repo: Path, ref: str) -> str | None:
-    out = subprocess.run(["git", "-C", str(repo), "rev-parse", "-q", "--verify", f"{ref}^{{commit}}"], capture_output=True, text=True)
-    return out.stdout.strip() or None

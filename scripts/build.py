@@ -85,7 +85,7 @@ def steps(data: dict, feature: str | None) -> list[dict]:
     ]
 
 
-def add_claim(c: store.Ctx, data: dict, inv_id: str, risky: bool, text: str | None) -> dict:
+def add_claim(data: dict, inv_id: str, risky: bool, text: str | None) -> dict:
     inv = store.need(data, "invariants", inv_id)
     if inv["status"] in ("rejected", "deferred"):
         store.fail(f"build claim: {inv_id} is {inv['status']}", 2)
@@ -204,7 +204,7 @@ def main(c: store.Ctx, argv: list[str]) -> int:
     if args.action == "claim":
         if not args.invariant:
             store.fail("build claim: pass --invariant I1", 2)
-        cl = add_claim(c, data, args.invariant, args.risky, args.text)
+        cl = add_claim(data, args.invariant, args.risky, args.text)
         c.save(data)
         inv = store.find(data, "invariants", args.invariant)
         note = "" if inv["author"] == "user" else " The invariant is agent-picked: the claim stays Backed until the user accepts it."

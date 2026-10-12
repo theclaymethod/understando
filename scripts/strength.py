@@ -110,14 +110,14 @@ def evidence_ok(v: dict) -> tuple[bool, str]:
     want = (v.get("evidence") or {}).get("require") or []
     got = (v.get("baseline") or {}).get("evidence") or []
     has = lambda globs, files: any(fnmatch.fnmatch(Path(f).name, g) for f in files for g in globs)  # noqa: E731
-    if not (has(VIDEO, want) or any(g in VIDEO for g in want)) or not (has(SHOT, want) or any(g in SHOT for g in want)):
+    if not (has(VIDEO, want) and has(SHOT, want)):
         return False, "the e2e does not ask for a video and a screenshot (evidence.require)"
     if not (has(VIDEO, got) and has(SHOT, got)):
         return False, "the last run left no video and screenshot"
     return True, ""
 
 
-def meets_bar(data: dict, surface: str, risky: bool, v: dict, controls: list[dict]) -> tuple[bool, str]:
+def meets_bar(surface: str, risky: bool, v: dict, controls: list[dict]) -> tuple[bool, str]:
     """Does one proven check meet the bar of its surface?"""
     rung = store.ladder(v) or 0
     if surface == "frontend":
@@ -175,7 +175,7 @@ def apply(data: dict) -> dict:
                 verdict = "Backed"
             else:
                 verdict = "Gap"
-            bar = [meets_bar(data, surface, risky, v, by_check.get(v["id"], [])) for v in proven]
+            bar = [meets_bar(surface, risky, v, by_check.get(v["id"], [])) for v in proven]
             met = any(b[0] for b in bar)
             why = "" if met else next((b[1] for b in bar if b[1]), "no check that a control proved")
             if best and not ok:

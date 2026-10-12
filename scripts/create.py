@@ -39,7 +39,6 @@ import strength  # noqa: E402
 SECTIONS = ("Launch", "Doctor", "Drive", "Evidence", "Cleanup", "Helpers")
 FEATURE_H2 = ("Sub-features", "How to get to it (user POV)", "Driving it with", "Gotchas", "Verifier")
 START, END = "<!-- understando:verifier:start -->", "<!-- understando:verifier:end -->"
-HOMES = (".agents/skills", ".cursor/skills", ".claude/skills")
 BAR_TEXT = {
     "frontend": ["A real-browser e2e that drives the user path, with a recorded video and screenshots as evidence.",
                  "A unit or component test is below the bar."],
@@ -245,8 +244,8 @@ def render_verifier(data: dict, fid: str) -> str:
         if v["state"] in ("cannot-fail", "failing", "broken"):
             dead.append(row + f" It is **{v['state']}**: it does not count.")
             continue
-        ok = v["state"] == "proven" and any(strength.meets_bar(data, surface, c["risky"], v, ks)[0] for c in claims) if claims else \
-            v["state"] == "proven" and strength.meets_bar(data, surface, False, v, ks)[0]
+        ok = v["state"] == "proven" and any(strength.meets_bar(surface, c["risky"], v, ks)[0] for c in claims) if claims else \
+            v["state"] == "proven" and strength.meets_bar(surface, False, v, ks)[0]
         state = f"proven: {', '.join(caught)} made it fail" if v["state"] == "proven" else f"{v['state']}: no control made it fail yet"
         (meet if ok else below).append(row + f" {state[0].upper() + state[1:]}.")
     lines.append("- **Verifiers that meet the bar:**" + ("" if meet else " none yet."))
@@ -267,7 +266,7 @@ def set_verifier(text: str, block: str) -> str:
     return text.rstrip("\n") + "\n\n" + START + "\n" + block + "\n" + END + "\n"
 
 
-def register(data: dict, spec: dict, skill: str, tip: str | None) -> None:
+def register(data: dict, spec: dict, skill: str) -> None:
     """The features of the spec, and the drive of each one as an e2e check with its control."""
     for f in spec["features"]:
         feat = store.find(data, "features", f["id"])
@@ -289,8 +288,6 @@ def register(data: dict, spec: dict, skill: str, tip: str | None) -> None:
             feat["drive"] = v["id"]
         v["command"] = {"argv": ["bash", f"{skill}/helpers/verify", "prove", f["id"]]}
         v["evidence"] = {"require": f.get("evidence") or EVIDENCE.get(feat["surface"], ["*"])}
-        if tip:
-            v["at"] = tip
         if f.get("control") and not any(k["check"] == v["id"] for k in data["controls"]):
             data["controls"].append({"id": store.next_id(data, "controls"), "check": v["id"], "kind": "planted",
                                      "description": f["control"].get("description", "A planted bug in the feature's code."),
@@ -367,7 +364,7 @@ def write(c: store.Ctx, spec_path: str | None, patch: str | None, verifier_only:
     other = [x for x in found if x != skill_dir(app)]
     extend = None if skill_dir(app) in found or not other else (next((x for x in other if x.endswith(f"verify-{app}")), other[0]))
     sk = extend or skill_dir(app)
-    register(data, spec, sk, None)
+    register(data, spec, sk)
     preview = [f"{sk}/SKILL.md", f"{sk}/helpers/verify", f"{sk}/features/README.md"] + [f"{sk}/features/{f['id']}.md" for f in spec["features"]]
     where = f"a patch at {patch}" if patch else f"the branch {branch} ({'a new commit on it' if tip else 'a new branch from HEAD'})"
     if not c.yes:

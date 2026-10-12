@@ -21,9 +21,8 @@ import os
 import pwd
 import sys
 
-MARKERS = ("UNDERSTANDO_TEST",)
+MARKER = "UNDERSTANDO_TEST"
 PREFIX = "understando test guard:"
-ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 _READ_ONLY = [False]
 _INSTALLED = [False]
 _WRITE_MODES = set("waxl+")
@@ -40,7 +39,7 @@ class Refused(BaseException):
 
 
 def active() -> bool:
-    return any(os.environ.get(m) for m in MARKERS)
+    return bool(os.environ.get(MARKER))
 
 
 def test_root() -> str | None:
@@ -95,7 +94,7 @@ def write_refusal(path, dir_fd=None) -> str | None:
         return None
     root = test_root()
     if not root:
-        return (f"{PREFIX} refuse to write {p}: a test marker is set ({', '.join(m for m in MARKERS if os.environ.get(m))}) "
+        return (f"{PREFIX} refuse to write {p}: a test marker is set ({MARKER}) "
                 "and UNDERSTANDO_TEST_ROOT is not set. Source tests/isolate.sh at the top of the test script.")
     if under(p, root):
         return None

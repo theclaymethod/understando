@@ -1,8 +1,8 @@
-"""Line coverage for understando trim, standard library only.
+"""Per-test line coverage for `probe mutate --tool cosmic-ray`, standard library only.
 
-trim puts this folder first on PYTHONPATH when it runs the e2e suite, so each Python process of
-the suite, also a subprocess, records the lines it runs under $UNDERSTANDO_COV_ROOT. Each process
-writes one JSON file into $UNDERSTANDO_COV_DIR at exit.
+scripts/mutation.py puts this folder first on PYTHONPATH when it runs one test, so each Python
+process of the test, also a subprocess, records the lines it runs under $UNDERSTANDO_COV_ROOT.
+Each process writes one JSON file into $UNDERSTANDO_COV_DIR at exit.
 """
 
 import atexit

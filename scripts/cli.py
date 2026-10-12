@@ -34,7 +34,7 @@ import store  # noqa: E402
 
 S = Path(__file__).resolve().parent
 VERBS = ("create", "discover", "build", "probe", "formalize", "maintain", "snippet", "export", "doctor", "setup")
-READ_ONLY = {"help", "-h", "--help", "snippet", "doctor"}
+READ_ONLY = {"snippet", "doctor"}
 INTERNAL_EXIT = 70
 
 
