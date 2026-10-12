@@ -39,27 +39,13 @@ import run_control  # noqa: E402
 import store  # noqa: E402
 import strength  # noqa: E402
 
-SHAPE_KIND = {"rule": "lean", "process": "tla", "wiring": "type", "input-space": "property", "flow": "e2e"}
-
-
 def plan(data: dict, claim: dict) -> dict:
-    """The check kind for a claim: the surface bar first, then the shape of its invariant."""
+    """The check kind for a claim (strength.plan), from its feature's surface and its invariants."""
     feat = store.find(data, "features", claim.get("feature")) or {}
-    surface = feat.get("surface", "other")
     invs = [store.find(data, "invariants", i) or {} for i in claim.get("invariants", [])]
     shape = next((i.get("shape") for i in invs if i.get("shape")), "input-space")
-    risky = claim.get("risky") or any(i.get("risky") for i in invs)
-    if surface == "frontend":
-        return {"kind": "e2e", "why": "frontend: a real-browser e2e of the user path, with a video and screenshots"}
-    if surface == "llm":
-        return {"kind": "eval", "why": "llm: a recorded eval with a frozen judge or labels, and a degraded variant that must score worse"}
-    if surface == "backend" and risky:
-        kind = "tla" if shape == "process" else "lean"
-        return {"kind": kind, "why": f"backend, risky {shape}: {'TLA+' if kind == 'tla' else 'Lean'} with conformance against the real code (formalize)"}
-    if surface == "backend":
-        kind = {"wiring": "type", "flow": "property"}.get(shape, "property")
-        return {"kind": kind, "why": f"backend {shape}: a property test, types, a @cc contract or an import rule"}
-    return {"kind": SHAPE_KIND.get(shape, "e2e"), "why": f"other: the strongest practical check for a {shape}"}
+    risky = bool(claim.get("risky") or any(i.get("risky") for i in invs))
+    return strength.plan(feat.get("surface", "other"), risky, shape)
 
 
 def steps(data: dict, feature: str | None) -> list[dict]:

@@ -39,16 +39,6 @@ import strength  # noqa: E402
 SECTIONS = ("Launch", "Doctor", "Drive", "Evidence", "Cleanup", "Helpers")
 FEATURE_H2 = ("Sub-features", "How to get to it (user POV)", "Driving it with", "Gotchas", "Verifier")
 START, END = "<!-- understando:verifier:start -->", "<!-- understando:verifier:end -->"
-BAR_TEXT = {
-    "frontend": ["A real-browser e2e that drives the user path, with a recorded video and screenshots as evidence.",
-                 "A unit or component test is below the bar."],
-    "backend": ["**Formal:** Lean or TLA+ with conformance against the real code, for a risky invariant (`understando formalize`).",
-                "**Code Contracts:** a `@cc` contract states the invariant, and a check with a control proves it. `cc-check format` checks the contract.",
-                "**Types, import rules and property tests,** for wiring."],
-    "llm": ["A recorded eval with a frozen judge or labels.", "A degraded variant of the prompt or the model must score worse."],
-    "other": ["A check that a control can make fail."],
-}
-EVIDENCE = {"frontend": ["*.webm", "*.png"], "backend": ["*.txt"], "llm": ["*.json"], "other": ["*"]}
 
 
 def branch_of(app: str) -> str:
@@ -224,11 +214,11 @@ def render_verifier(data: dict, fid: str) -> str:
     feat = store.need(data, "features", fid)
     rep = strength.apply(data)
     surface = feat["surface"]
-    lines = ["## Verifier", "", f"- **Surface:** {surface}.", "- **Bar:**"] + [f"  - {x}" for x in BAR_TEXT[surface]]
+    lines = ["## Verifier", "", f"- **Surface:** {surface}.", "- **Bar:**"] + [f"  - {x}" for x in strength.BARS[surface]["doc"]]
     invs = [i for i in data["invariants"] if i.get("feature") == fid and i["status"] in ("accepted", "proposed")]
     lines.append("- **Invariants:**" + ("" if invs else " none yet. Run `understando discover --feature " + fid + "`."))
     for i in invs:
-        who = "the user's" if i["author"] == "user" and i["status"] == "accepted" else "agent-picked, not accepted by the user yet"
+        who = "the user's" if strength.users(i) else "agent-picked, not accepted by the user yet"
         lines.append(f"  - `{i['id']}` ({who}): {i['text']}")
     by_check = {}
     for k in data["controls"]:
@@ -287,7 +277,7 @@ def register(data: dict, spec: dict, skill: str) -> None:
             data["checks"].append(v)
             feat["drive"] = v["id"]
         v["command"] = {"argv": ["bash", f"{skill}/helpers/verify", "prove", f["id"]]}
-        v["evidence"] = {"require": f.get("evidence") or EVIDENCE.get(feat["surface"], ["*"])}
+        v["evidence"] = {"require": f.get("evidence") or list(strength.bar(feat["surface"])["evidence"])}
         if f.get("control") and not any(k["check"] == v["id"] for k in data["controls"]):
             data["controls"].append({"id": store.next_id(data, "controls"), "check": v["id"], "kind": "planted",
                                      "description": f["control"].get("description", "A planted bug in the feature's code."),

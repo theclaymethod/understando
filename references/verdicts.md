@@ -1,6 +1,6 @@
 # Strengths, check states and flags
 
-`scripts/strength.py` is the only implementation of these rules. This file says what they mean. When the two disagree, the script is the fact and this file has a bug.
+`scripts/strength.py` is the only implementation of these rules: the other scripts read its report, and `scripts/derive.py` only words it for the explainer. This file says what they mean. When the two disagree, the script is the fact and this file has a bug.
 
 ## The verification ladder
 

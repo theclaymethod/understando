@@ -35,6 +35,7 @@ LADDER = {"e2e": 1, "integration": 1, "eval": 1, "property": 2, "fuzz": 2, "type
           "static": 3, "tla": 4, "lean": 5}
 LADDER_NAMES = {1: "e2e or integration test", 2: "property or fuzz test", 3: "types, contracts or static rules",
                 4: "model check (TLA+)", 5: "proof with conformance (Lean)"}
+FORMAL_RUNG = 4  # TLA+ and Lean: a check at this rung or above needs a formal record and conformance
 PREFIX = {"features": "F", "invariants": "I", "claims": "C", "checks": "V", "controls": "K", "mutation": "M"}
 
 _SECRET = [re.compile(r"sk-[A-Za-z0-9_-]{16,}"), re.compile(r"(?i)\b(api[_-]?key|token|secret|password)\b(\s*[=:]\s*)\S+"),
@@ -62,6 +63,11 @@ def fail(message: str, code: int = 2):
 
 def ladder(check: dict) -> int | None:
     return check.get("ladder") or LADDER.get(check.get("kind", ""))
+
+
+def is_formal_rung(check: dict) -> bool:
+    """A TLA+ or Lean check (rung 4 or 5)."""
+    return (ladder(check) or 0) >= FORMAL_RUNG
 
 
 def home() -> Path:
@@ -294,6 +300,6 @@ def validate(data: dict) -> list[str]:
         if k["check"] not in ids["checks"]:
             errors.append(f"control {k['id']}: unknown check {k['check']}")
     for v in data.get("checks", []):
-        if (ladder(v) or 0) >= 4 and "formal" not in v:
+        if is_formal_rung(v) and "formal" not in v:
             errors.append(f"check {v['id']}: a rung {ladder(v)} check needs a formal block with its conformance link")
     return errors

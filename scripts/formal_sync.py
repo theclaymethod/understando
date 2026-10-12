@@ -86,10 +86,9 @@ def resolve_proposed(data: dict, side: dict, report: list[str]) -> dict[str, str
 
 def judge(rec: dict, ids: list[str], data: dict) -> tuple[dict, dict]:
     """The invariant block and the rating of a record (or of one property of it)."""
-    invs = {i["id"]: i for i in data["invariants"]}
-    confirmed = [i for i in ids if invs.get(i, {}).get("author") == "user" and invs[i].get("status") == "accepted"]
+    import strength
     inv = dict(rec.get("invariant") or {})
-    if ids and len(confirmed) == len(ids):
+    if strength.intent(data, ids)[0]:
         inv.update(author="user", ref="store invariants " + ", ".join(ids), status="confirmed")
     elif ids or inv.get("author") != "user":
         inv.update(author="agent", ref=None, status="proposed")
@@ -138,7 +137,7 @@ def base_check(rec: dict, side_path: Path, models: list[str], feature: str | Non
                       "result": f"check {(rec.get('check') or {}).get('status')}; conformance {conf.get('status')}"},
          "formal_record": {**{k: copy.deepcopy(rec[k]) for k in KEEP if k in rec}, "sidecar": str(side_path)},
          **({"feature": feature} if feature else {})}
-    if rec["ladder_tier"] >= 4:
+    if rec["ladder_tier"] >= store.FORMAL_RUNG:
         v["formal"] = {"tool": "lean" if rec["kind"] == "lean" else "tla", "artifact": models[0] if models else "unknown",
                        "conformance": {"status": "pass" if conf.get("status") == "green" else "fail",
                                        "source": " ".join(conf.get("argv") or []) or "the conformance run of the record"}}

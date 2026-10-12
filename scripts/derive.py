@@ -24,13 +24,6 @@ import testguard  # noqa: E402,F401  (the test-isolation guard: it must load bef
 import store  # noqa: E402
 import strength  # noqa: E402
 
-BAR = {  # surface -> (level, need); a risky backend claim needs a proof
-    "frontend": ("e2e", "a real-browser e2e with a video and screenshots"),
-    "backend": ("property", "a property test, types, a contract or an import rule"),
-    "llm": ("eval", "a recorded eval with a frozen judge and a degraded variant that scored worse"),
-    "other": ("check", "a check that a planted bug proved"),
-}
-RISKY_BAR = ("formal", "a Lean or TLA+ proof that matches the code")
 WORDS = {"caught": "caught their bug", "cannot-fail": "cannot fail", "no-bug": "had no planted bug",
          "recorded": "are records of a past run", "broken": "fail at the head"}
 ONE = {"caught": "caught its bug", "cannot-fail": "cannot fail", "no-bug": "had no planted bug",
@@ -52,17 +45,7 @@ def none_check(claim_id: str) -> dict:
     return {"id": f"{claim_id}-none", "name": "no check", "kind": "none"}
 
 
-def result_of(v: dict) -> str:
-    """The result of one check, from the state that strength.py wrote."""
-    if v["kind"] == "none":
-        return "none"
-    return {"proven": "caught", "cannot-fail": "cannot-fail", "failing": "broken", "broken": "broken", "recorded": "recorded"}.get(v.get("state"), "no-bug")
-
-
-def strength_of(v: dict) -> str:
-    if v.get("state") != "proven":
-        return "Gap" if v["kind"] == "none" else "Backed"
-    return "Formal" if (store.ladder(v) or 0) >= 4 else "Proven"
+NONE = {"strength": "Gap", "result": "none"}  # the result and the strength of the placeholder check
 
 
 def broke(k: dict) -> str:
@@ -79,7 +62,7 @@ def broke(k: dict) -> str:
 def action_of(v: dict, result: str) -> str:
     if result == "caught":
         return "No action is necessary, because the check caught its planted bug."
-    if result == "recorded" and (store.ladder(v) or 0) >= 4:
+    if result == "recorded" and store.is_formal_rung(v):
         return "Its conformance link does not pass, or its record is not Formal. Finish its conformance run (understando formalize)."
     return {"cannot-fail": "Change this check so that it can fail, or replace it.",
             "broken": "Repair this check: it fails or does not complete.",
@@ -89,15 +72,16 @@ def action_of(v: dict, result: str) -> str:
 
 
 def bar_of(surface: str, risky: bool, met: bool, why: str, part: str | None) -> dict:
-    level, need = RISKY_BAR if surface == "backend" and risky else BAR.get(surface, BAR["other"])
+    row = strength.bar(surface, risky)
+    level, need = row["level"], row["need"]
     return {"surface": surface, "surfaces": [surface], "mixed": False, "risky": risky, "level": level, "need": need, "met": met,
             "why": why or ("" if met else "no check that a planted bug proved"), "part": part,
             "text": f"Bar: {need} · {'met' if met else 'below'}"}
 
 
-def claim_row(cl: dict, rc: dict, checks: dict[str, dict]) -> dict:
+def claim_row(cl: dict, rc: dict, checks: dict[str, dict], results: dict[str, dict]) -> dict:
     vs = [checks[i] for i in cl["checks"] if i in checks] or [none_check(cl["id"])]
-    rows = [{"id": v["id"], "name": v.get("name") or v["id"], "kind": v["kind"], "strength": strength_of(v), "result": result_of(v)} for v in vs]
+    rows = [{"id": v["id"], "name": v.get("name") or v["id"], "kind": v["kind"], **results.get(v["id"], NONE)} for v in vs]
     tools = [r for r in rows if r["kind"] != "none"]
     counts = {r: sum(1 for x in tools if x["result"] == r) for r in WORDS if any(x["result"] == r for x in tools)}
     if len(tools) == 1:
@@ -107,7 +91,7 @@ def claim_row(cl: dict, rc: dict, checks: dict[str, dict]) -> dict:
     else:
         summary = "No check backs this claim."
     many = len(rc["parts"]) > 1
-    weak = max(rc["parts"], key=lambda p: (strength.ORDER.index(p["verdict"]), -(p["tier"] or 0)))
+    weak = next(p for p in rc["parts"] if p["part"] == rc["weakest_part"])
     pick = next((r for r in rows if r["id"] == weak["best"]), None) or rows[0]
     lead = f"The weakest part is: {next((p['text'] for p in cl.get('parts') or [] if p['id'] == weak['part']), weak['part']).rstrip('.')}. " if many else ""
     text = lead + (f"The {'best' if many else 'strongest'} check is {pick['name']}. {SAID[pick['result']]}" if pick["kind"] != "none" else SAID["none"])
@@ -131,9 +115,10 @@ def claim_row(cl: dict, rc: dict, checks: dict[str, dict]) -> dict:
             "flagged": warn, "parts": parts, "bar": bar_of(rc["surface"], rc["risky"], rc["bar_met"], rc["why"], weak["part"] if many else None)}
 
 
-def verify_block(checks: dict[str, dict], controls: list[dict], claims_of: dict[str, list[str]], names: dict[str, str]) -> dict:
+def verify_block(checks: dict[str, dict], results: dict[str, dict], controls: list[dict], claims_of: dict[str, list[str]],
+                 names: dict[str, str]) -> dict:
     tools = [v for v in checks.values() if v["kind"] != "none"]
-    result = {v["id"]: result_of(v) for v in tools}
+    result = {v["id"]: results[v["id"]]["result"] for v in tools}
     ran = [v for v in tools if result[v["id"]] in ("caught", "cannot-fail")]
     caught = [v for v in ran if result[v["id"]] == "caught"]
     cannot = [v for v in ran if result[v["id"]] == "cannot-fail"]
@@ -162,10 +147,11 @@ def verify_block(checks: dict[str, dict], controls: list[dict], claims_of: dict[
 def derived(data: dict, rep: dict, head: str, checks: dict[str, dict], controls: list[dict], refs: dict[str, dict]) -> dict:
     """`checks` and `controls` are the ones of the trust map (each check backs a claim); `refs` maps a check id to its test ref."""
     by_claim = {c["id"]: c for c in rep["claims"]}
-    claims = {cl["id"]: claim_row(cl, by_claim[cl["id"]], checks) for cl in data["claims"]}
+    results = {i: NONE if v["kind"] == "none" else rep["checks"][i] for i, v in checks.items()}
+    claims = {cl["id"]: claim_row(cl, by_claim[cl["id"]], checks, results) for cl in data["claims"]}
     claims_of = {i: [cl["id"] for cl in data["claims"] if i in cl["checks"]] for i in checks}
     names = {cl["id"]: cl.get("name") or cl["text"] for cl in data["claims"]}
-    rows = {i: {"id": i, "name": v.get("name") or i, "kind": v["kind"], "result": result_of(v),
+    rows = {i: {"id": i, "name": v.get("name") or i, "kind": v["kind"], "result": results[i]["result"],
                 "claims": [{"id": c, "name": names[c], "parts": []} for c in claims_of[i]], "tests": [], "controls": [k["id"] for k in controls if k["check"] == i],
                 "ref": refs.get(i)} for i, v in checks.items()}
-    return {"schema": 2, "head": head, "claims": claims, "checks": rows, "verify": verify_block(checks, controls, claims_of, names)}
+    return {"schema": 2, "head": head, "claims": claims, "checks": rows, "verify": verify_block(checks, results, controls, claims_of, names)}

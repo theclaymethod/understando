@@ -39,11 +39,10 @@ import testguard  # noqa: E402,F401  (the test-isolation guard: it must load bef
 import coderef  # noqa: E402
 import ops  # noqa: E402
 import store  # noqa: E402
+import strength  # noqa: E402
 from store import git  # noqa: E402
 
 DECISIONS = ("accept", "reword", "reject", "defer")
-# The ladder rung that suits each shape of invariant (references/evidence-bars.md).
-SHAPE_TIER = {"rule": 5, "process": 4, "wiring": 3, "input-space": 2, "flow": 1}
 
 
 def is_test(path: str) -> bool:
@@ -295,7 +294,7 @@ def answer(c: store.Ctx, path: str) -> dict:
         else:
             data["invariants"].append(row)
         state["decisions"][cid] = {"decision": decision, "invariant": row["id"], "author": author, "at": store.now()}
-        line = f"{cid} {decision} as {row['id']} ({row['status']}, author {author}, shape {shape}, suggested tier {SHAPE_TIER[shape]}): {text}"
+        line = f"{cid} {decision} as {row['id']} ({row['status']}, author {author}, shape {shape}, suggested tier {store.LADDER[strength.SHAPE_KIND[shape]]}): {text}"
         if author != "user":
             line += " It is agent-picked: a claim on it stays Backed until the user accepts it."
         report.append(line)

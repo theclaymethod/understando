@@ -1,5 +1,6 @@
 """The strength of each check, part and claim, and the evidence bar of its feature. The rules live
-in references/verdicts.md and references/evidence-bars.md; this file is their only implementation.
+in references/verdicts.md and references/evidence-bars.md; this file is their only implementation:
+the other scripts read BARS, plan() and the report of apply().
 
 - A check is proven when it is green at the head and a control (a planted bug, a stub, a mutant or
   a degraded variant) made it fail. A check that stayed green on each of its controls cannot fail:
@@ -9,10 +10,10 @@ in references/verdicts.md and references/evidence-bars.md; this file is their on
 - A part is as strong as its strongest proven check. A claim is as strong as its weakest part.
 - Proven and Formal need intent: each invariant of the claim is the user's (author user,
   accepted). A claim on an agent-picked invariant stays Backed, and the report says so.
-- The bar of the feature's surface: frontend, a real-browser e2e with a video and screenshots;
-  backend, Formal for a risky claim, else a property test, types, a contract or an import rule;
-  llm, an eval with a frozen judge or labels and a degraded variant that scored worse; other, any
-  proven check.
+- The bar of the feature's surface (BARS): frontend, a real-browser e2e with a video and
+  screenshots; backend, Formal for a risky claim, else a property test, types, a contract or an
+  import rule; llm, an eval with a frozen judge or labels and a degraded variant that scored worse;
+  other, any proven check.
 
     python3 scripts/strength.py verify.json     print the strengths
 """
@@ -31,6 +32,52 @@ import store  # noqa: E402
 ORDER = ["Formal", "Proven", "Backed", "Gap"]
 VIDEO = ("*.webm", "*.mp4", "*.mov")
 SHOT = ("*.png", "*.jpg", "*.jpeg")
+# The check kind that suits each shape of invariant (discover); its rung is the suggested tier.
+SHAPE_KIND = {"rule": "lean", "process": "tla", "wiring": "type", "input-space": "property", "flow": "e2e"}
+# The bar of each surface. level and need: the bar line of the explainer (derive.py). why: the plan
+# that `build claim` prints. rung: the lowest rung that meets the bar. below: why a proven check is
+# below it. evidence: the files that a drive must leave (create.py). doc: the bar in the Verifier
+# section of a feature file. risky: the bar of a risky claim, in place of these keys.
+BARS = {
+    "frontend": {"level": "e2e", "need": "a real-browser e2e with a video and screenshots",
+                 "why": "a real-browser e2e of the user path, with a video and screenshots",
+                 "below": "frontend needs a real-browser e2e", "evidence": ["*.webm", "*.png"],
+                 "doc": ["A real-browser e2e that drives the user path, with a recorded video and screenshots as evidence.",
+                         "A unit or component test is below the bar."]},
+    "backend": {"level": "property", "need": "a property test, types, a contract or an import rule",
+                "why": "a property test, types, a @cc contract or an import rule", "rung": 2,
+                "below": "backend needs a property test, types, a @cc contract or an import rule", "evidence": ["*.txt"],
+                "doc": ["**Formal:** Lean or TLA+ with conformance against the real code, for a risky invariant (`understando formalize`).",
+                        "**Code Contracts:** a `@cc` contract states the invariant, and a check with a control proves it. `cc-check format` checks the contract.",
+                        "**Types, import rules and property tests,** for wiring."],
+                "risky": {"level": "formal", "need": "a Lean or TLA+ proof that matches the code", "rung": store.FORMAL_RUNG,
+                          "below": "a risky backend claim needs a Lean or TLA+ check with conformance"}},
+    "llm": {"level": "eval", "need": "a recorded eval with a frozen judge and a degraded variant that scored worse",
+            "why": "a recorded eval with a frozen judge or labels, and a degraded variant that must score worse",
+            "below": "llm needs a recorded eval with a frozen judge or labels", "evidence": ["*.json"],
+            "doc": ["A recorded eval with a frozen judge or labels.", "A degraded variant of the prompt or the model must score worse."]},
+    "other": {"level": "check", "need": "a check that a planted bug proved", "rung": 0, "evidence": ["*"],
+              "doc": ["A check that a control can make fail."]},
+}
+RESULT = {"proven": "caught", "cannot-fail": "cannot-fail", "failing": "broken", "broken": "broken", "recorded": "recorded"}
+
+
+def bar(surface: str, risky: bool = False) -> dict:
+    """The bar of a surface (BARS), with its risky variant for a risky claim."""
+    row = BARS.get(surface, BARS["other"])
+    return {**row, **row["risky"]} if risky and "risky" in row else row
+
+
+def plan(surface: str, risky: bool, shape: str) -> dict:
+    """The check kind for a claim: the surface bar first, then the shape of its invariant."""
+    if surface in ("frontend", "llm"):
+        return {"kind": BARS[surface]["level"], "why": f"{surface}: {BARS[surface]['why']}"}
+    if surface == "backend" and risky:
+        kind = "tla" if shape == "process" else "lean"
+        return {"kind": kind, "why": f"backend, risky {shape}: {'TLA+' if kind == 'tla' else 'Lean'} with conformance against the real code (formalize)"}
+    if surface == "backend":
+        return {"kind": "type" if shape == "wiring" else "property", "why": f"backend {shape}: {BARS['backend']['why']}"}
+    return {"kind": SHAPE_KIND.get(shape, "e2e"), "why": f"other: the strongest practical check for a {shape}"}
 
 
 def score_of(check: dict, result: dict | None) -> float | None:
@@ -62,7 +109,7 @@ def outcome(check: dict, k: dict) -> str:
 
 
 def conformant(v: dict) -> bool:
-    if (store.ladder(v) or 0) < 4:
+    if not store.is_formal_rung(v):
         return True
     rec = v.get("formal_record")
     if rec and (rec.get("formal") or {}).get("verdict") != "Formal":
@@ -118,29 +165,30 @@ def evidence_ok(v: dict) -> tuple[bool, str]:
 
 
 def meets_bar(surface: str, risky: bool, v: dict, controls: list[dict]) -> tuple[bool, str]:
-    """Does one proven check meet the bar of its surface?"""
-    rung = store.ladder(v) or 0
+    """Does one proven check meet the bar of its surface (BARS)?"""
+    row = bar(surface, risky)
     if surface == "frontend":
         if v["kind"] != "e2e":
-            return False, "frontend needs a real-browser e2e"
+            return False, row["below"]
         return evidence_ok(v)
-    if surface == "backend":
-        if risky:
-            return (rung >= 4, "" if rung >= 4 else "a risky backend claim needs a Lean or TLA+ check with conformance")
-        return (rung >= 2, "" if rung >= 2 else "backend needs a property test, types, a @cc contract or an import rule")
     if surface == "llm":
         if v["kind"] != "eval" or not (v.get("eval") or {}).get("frozen"):
-            return False, "llm needs a recorded eval with a frozen judge or labels"
+            return False, row["below"]
         if not any(k["kind"] == "degraded" and outcome(v, k) == "caught" for k in controls):
             return False, "llm needs a degraded variant that scored worse"
         return True, ""
-    return True, ""
+    ok = (store.ladder(v) or 0) >= row["rung"]
+    return ok, "" if ok else row["below"]
+
+
+def users(inv: dict | None) -> bool:
+    """The invariant is the user's: author user, and accepted."""
+    return bool(inv) and inv["author"] == "user" and inv["status"] == "accepted"
 
 
 def intent(data: dict, invs: list[str]) -> tuple[bool, list[str]]:
     """True when each invariant is the user's. The second value lists the agent-picked ones."""
-    rows = [store.find(data, "invariants", i) for i in invs]
-    agent = [i for i, r in zip(invs, rows) if not r or r["author"] != "user" or r["status"] != "accepted"]
+    agent = [i for i in invs if not users(store.find(data, "invariants", i))]
     return bool(invs) and not agent, agent
 
 
@@ -148,8 +196,16 @@ def parts_of(cl: dict) -> list[dict]:
     return cl.get("parts") or [{"id": cl["id"], "text": cl["text"], "checks": cl.get("checks", []), "invariants": cl.get("invariants", [])}]
 
 
+def check_strength(v: dict) -> str:
+    """The strength of one check: Formal or Proven when a control proved it, else Backed."""
+    if v["state"] != "proven":
+        return "Backed"
+    return "Formal" if store.is_formal_rung(v) else "Proven"
+
+
 def apply(data: dict) -> dict:
-    """Write each check's state, and return the derived report: the flags, each claim's strength and bar."""
+    """Write each check's state, and return the derived report: the flags, the result and the
+    strength of each check, and each claim's strength, weakest part and bar."""
     flags: list[dict] = []
     by_check: dict[str, list[dict]] = {}
     for k in data["controls"]:
@@ -170,7 +226,7 @@ def apply(data: dict) -> dict:
             ok, agent = intent(data, p.get("invariants") or cl.get("invariants", []))
             best = max(proven, key=lambda v: store.ladder(v) or 0, default=None)
             if best and ok:
-                verdict = "Formal" if (store.ladder(best) or 0) >= 4 else "Proven"
+                verdict = check_strength(best)
             elif vs:
                 verdict = "Backed"
             else:
@@ -188,7 +244,8 @@ def apply(data: dict) -> dict:
         claims.append({"id": cl["id"], "feature": cl.get("feature"), "surface": surface, "risky": risky, "text": cl["text"],
                        "verdict": weakest["verdict"], "tier": weakest["tier"], "weakest_part": weakest["part"],
                        "bar_met": all(r["bar_met"] for r in rows), "why": weakest["why"], "parts": rows})
-    return {"flags": flags, "claims": claims, "summary": summary}
+    results = {v["id"]: {"strength": check_strength(v), "result": RESULT.get(v["state"], "no-bug")} for v in data["checks"]}
+    return {"flags": flags, "checks": results, "claims": claims, "summary": summary}
 
 
 def lines(report: dict) -> list[str]:
