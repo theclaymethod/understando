@@ -21,16 +21,11 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 FIX="$ROOT/tests/formal"
 S="$ROOT/scripts"
 . "$ROOT/tests/isolate.sh" formal
+. "$ROOT/tests/lib.sh"
 WORK="$(mktemp -d "$UNDERSTANDO_TEST_ROOT/understando-formal-e2e.XXXXXX")"
 REPO="$WORK/repo"
 OUT="$WORK/out"
-cleanup() { if [ "${KEEP:-0}" = 1 ]; then echo "kept $WORK"; else rm -rf "$WORK"; fi; isolate_cleanup; }
 trap cleanup EXIT
-
-step() { printf '\n== %s\n' "$*"; }
-g() { git -C "$REPO" -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false "$@"; }
-field() { python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(eval(sys.argv[2], {'d': d}))" "$@"; }
-expect() { [ "$2" = "$3" ] || { echo "FAIL: $1: expected '$3', got '$2'"; exit 1; }; echo "ok: $1 = $2"; }
 
 step "build the fixture repo"
 mkdir -p "$OUT"
@@ -147,8 +142,9 @@ for r in F01 F02 F03; do
 done
 expect "F01 withdraw" "$(field "$OUT/F01.json" "d['formal']['verdict']")" Formal
 expect "F02 retry" "$(field "$OUT/F02.json" "d['formal']['verdict']")" Formal
-expect "F03 split" "$(field "$OUT/F03.json" "d['formal']['verdict']")" "Not formal"
-expect "F03 bug in the PR" "$(field "$OUT/F03.json" "d['route'] + ' ' + str(d['witness']['args'])")" "code-first {'total': 0, 'parts': 1}"
+fields "$OUT/F03.json" "d['formal']['verdict']" "d['route'] + ' ' + str(d['witness']['args'])"
+expect "F03 split" "${F[0]}" "Not formal"
+expect "F03 bug in the PR" "${F[1]}" "code-first {'total': 0, 'parts': 1}"
 
 step "an agent-proposed invariant is never Formal"
 python3 - "$OUT/F01.json" "$OUT/F01p.json" <<'PY'
@@ -176,17 +172,19 @@ PY
 U="$ROOT/bin/understando --run $RUN --repo $REPO"
 $U formalize --sidecar "$SIDE" > "$OUT/sync1.txt"
 cat "$OUT/sync1.txt"
-grep -q "3 formal checks" "$OUT/sync1.txt" || { echo "FAIL: sync"; exit 1; }
-expect "one check for each property, with its controls" "$(field "$RUN/verify.json" "[(v['id'], v.get('property'), v['name']) for v in d['checks'] if v['id'].startswith('F02')]")" "[('F02a', 'NoCallAfterStop', 'the stop rule')]"
-expect "the controls of the property" "$(field "$RUN/verify.json" "sorted(k['id'] for k in d['controls'] if k['check'] == 'F02a')")" "['K03', 'K04']"
+grep -q "3 formal checks" "$OUT/sync1.txt" || fail "sync"
+fields "$RUN/verify.json" "[(v['id'], v.get('property'), v['name']) for v in d['checks'] if v['id'].startswith('F02')]" \
+  "sorted(k['id'] for k in d['controls'] if k['check'] == 'F02a')"
+expect "one check for each property, with its controls" "${F[0]}" "[('F02a', 'NoCallAfterStop', 'the stop rule')]"
+expect "the controls of the property" "${F[1]}" "['K03', 'K04']"
 python3 "$S/strength.py" "$RUN/verify.json" > "$OUT/strength.txt"
 cat "$OUT/strength.txt"
-grep -q "^C1   Formal  tier 5  meets its bar" "$OUT/strength.txt" || { echo "FAIL: C1 is not Formal"; exit 1; }
-grep -q "^C2   Formal  tier 4  meets its bar" "$OUT/strength.txt" || { echo "FAIL: C2 is not Formal"; exit 1; }
-grep -q "^C3   Backed" "$OUT/strength.txt" || { echo "FAIL: C3 is not Backed"; exit 1; }
+grep -q "^C1   Formal  tier 5  meets its bar" "$OUT/strength.txt" || fail "C1 is not Formal"
+grep -q "^C2   Formal  tier 4  meets its bar" "$OUT/strength.txt" || fail "C2 is not Formal"
+grep -q "^C3   Backed" "$OUT/strength.txt" || fail "C3 is not Backed"
 sleep 1  # a new timestamp would show as a change
 $U formalize --sidecar "$SIDE" > "$OUT/sync2.txt"
-grep -q "the store is the same" "$OUT/sync2.txt" || { cat "$OUT/sync2.txt"; echo "FAIL: the second sync changed the store"; exit 1; }
+grep -q "the store is the same" "$OUT/sync2.txt" || { cat "$OUT/sync2.txt"; fail "the second sync changed the store"; }
 echo "ok: a second sync changes nothing"
 
 step "drift gate"
@@ -199,10 +197,10 @@ expect "drift after a code change" "$(field "$OUT/d2.json" "d['status']")" red
 
 step "formalize --recheck F01: the check, the conformance run and the controls again, at the new code"
 $U formalize --recheck F01 --sidecar "$SIDE" > "$OUT/recheck-ask.txt"
-grep -q "formal_lean.py check" "$OUT/recheck-ask.txt" || { cat "$OUT/recheck-ask.txt"; echo "FAIL: recheck did not show its commands"; exit 1; }
+grep -q "formal_lean.py check" "$OUT/recheck-ask.txt" || { cat "$OUT/recheck-ask.txt"; fail "recheck did not show its commands"; }
 $U --yes formalize --recheck F01 --sidecar "$SIDE" > "$OUT/recheck.txt"
 cat "$OUT/recheck.txt"
-grep -q "^F01: Formal at $(g rev-parse HEAD | cut -c1-10)" "$OUT/recheck.txt" || { echo "FAIL: recheck"; exit 1; }
+grep -q "^F01: Formal at $(g rev-parse HEAD | cut -c1-10)" "$OUT/recheck.txt" || fail "recheck"
 expect "the record is stamped at the new head" "$(field "$SIDE" "next(v['drift']['commit'] for v in d['verifiers'] if v['id'] == 'F01')")" "$(g rev-parse HEAD)"
 field "$SIDE" "__import__('json').dumps(next(v for v in d['verifiers'] if v['id'] == 'F01'))" > "$OUT/F01.after.json"
 python3 "$S/formal_record.py" drift --record "$OUT/F01.after.json" --repo "$REPO" > "$OUT/d3.json"

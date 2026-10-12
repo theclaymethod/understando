@@ -10,12 +10,10 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$ROOT/tests/isolate.sh" isolate
+. "$ROOT/tests/lib.sh"
 S="$ROOT/scripts"
 U="$ROOT/bin/understando"
 O="$WORK/isolate"; mkdir -p "$O"
-step() { printf '\n== %s\n' "$*"; }
-fail() { echo "FAIL: $*"; exit 1; }
-has() { grep -qF -- "$2" "$1" || { echo "--- $1"; cat "$1"; fail "$1 lacks: $2"; }; }
 # A folder outside the test root, in the system temp folder: a write there is harmless if the guard fails.
 OUTSIDE="$(mktemp -d /tmp/understando-guard-outside.XXXXXX)"
 trap 'rm -rf "$OUTSIDE"; isolate_cleanup' EXIT

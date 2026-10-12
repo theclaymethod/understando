@@ -22,23 +22,16 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FIX="$ROOT/tests/fixture"
 . "$ROOT/tests/isolate.sh" e2e
+. "$ROOT/tests/lib.sh"
 isolate_snapshot "$UNDERSTANDO_TEST_ROOT/real-before.sha256"
 # The mutation venv lives in the real store; the tests run its programs, they never write there.
 export UNDERSTANDO_MUTATION_VENV="${UNDERSTANDO_MUTATION_VENV:-$ISOLATE_REAL_STORE/tools/mutation}"
 WORK="$(mktemp -d "$UNDERSTANDO_TEST_ROOT/understando-e2e.XXXXXX")"
 REPO="$WORK/wallet"
 OUT="$WORK/out"; mkdir -p "$OUT"
-cleanup() { if [ "${KEEP:-0}" = 1 ]; then echo "kept $WORK"; else rm -rf "$WORK"; fi; isolate_cleanup; }
 trap cleanup EXIT
 
 U() { "$ROOT/bin/understando" --repo "$REPO" "$@"; }
-step() { printf '\n== %s\n' "$*"; }
-fail() { echo "FAIL: $*"; exit 1; }
-has() { grep -qF -- "$2" "$1" || { echo "--- $1"; cat "$1"; fail "$1 lacks: $2"; }; }
-lacks() { if grep -qF -- "$2" "$1"; then echo "--- $1"; cat "$1"; fail "$1 has: $2"; fi; }
-field() { python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(eval(sys.argv[2], {'d': d}))" "$@"; }
-expect() { [ "$2" = "$3" ] || fail "$1: expected '$3', got '$2'"; echo "ok: $1 = $2"; }
-g() { git -C "$REPO" -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false "$@"; }
 
 step "isolation: the guard refuses a planted write and a read of the real data (tests/isolate-e2e.sh)"
 WORK="$WORK" bash "$ROOT/tests/isolate-e2e.sh"
@@ -105,8 +98,9 @@ has "$EV" "python3 -m wallet withdraw"
 step "discover: candidates and edge-case questions for the withdraw feature"
 U discover --feature withdraw > "$OUT/discover.txt"
 U --json discover questions > "$OUT/questions.json"
-GUARD="$(field "$OUT/questions.json" "next(r['id'] for r in d['open'] if 'raises OverdraftError' in r['text'])")"
-RESULT="$(field "$OUT/questions.json" "next(r['id'] for r in d['open'] if 'returns balance - amount' in r['text'])")"
+fields "$OUT/questions.json" "next(r['id'] for r in d['open'] if 'raises OverdraftError' in r['text'])" \
+  "next(r['id'] for r in d['open'] if 'returns balance - amount' in r['text'])"
+GUARD="${F[0]}" RESULT="${F[1]}"
 field "$OUT/questions.json" "'\n'.join(q for r in d['open'] if r['id'] == '$GUARD' for q in r['questions'])"
 sed -e "s/\"GUARD\"/\"$GUARD\"/" -e "s/\"RESULT\"/\"$RESULT\"/" "$FIX/answers.json" > "$OUT/answers.json"
 
@@ -162,23 +156,27 @@ has "$OUT/probe.txt" "$CL   Proven  tier 3  meets its bar"
 step "probe mutate (mutmut): killed, survived and filtered mutants, with the kill matrix"
 U --yes probe mutate --feature withdraw --paths wallet/core.py > "$OUT/mutmut.txt"
 cat "$OUT/mutmut.txt"
-M1="$(field "$RUN/verify.json" "d['mutation'][-1]['id']")"
 SUM="$RUN/verify.json"
-[ "$(field "$SUM" "d['mutation'][-1]['summary'].get('killed', 0) >= 1")" = True ] || fail "no killed mutant"
-[ "$(field "$SUM" "d['mutation'][-1]['summary'].get('survived', 0) >= 1")" = True ] || fail "no survived mutant"
-expect "the message mutant is filtered" "$(field "$SUM" "[m['filter'] for m in d['mutation'][-1]['mutants'] if m.get('filter')]")" "['message-text']"
-expect "the boundary mutant survives" "$(field "$SUM" "[m['line'] for m in d['mutation'][-1]['mutants'] if m['status'] == 'survived' and not m.get('filter')]")" "[13]"
-expect "the kill matrix names the exact test" "$(field "$SUM" "sorted({t for row in d['mutation'][-1]['matrix'].values() for t, x in row.items() if x == 'killed'})")" \
-  "['tests/test_core.py::ExactTest::test_withdraw_debits_the_amount']"
+fields "$SUM" "d['mutation'][-1]['summary'].get('killed', 0) >= 1" "d['mutation'][-1]['summary'].get('survived', 0) >= 1" \
+  "[m['filter'] for m in d['mutation'][-1]['mutants'] if m.get('filter')]" \
+  "[m['line'] for m in d['mutation'][-1]['mutants'] if m['status'] == 'survived' and not m.get('filter')]" \
+  "sorted({t for row in d['mutation'][-1]['matrix'].values() for t, x in row.items() if x == 'killed'})"
+[ "${F[0]}" = True ] || fail "no killed mutant"
+[ "${F[1]}" = True ] || fail "no survived mutant"
+expect "the message mutant is filtered" "${F[2]}" "['message-text']"
+expect "the boundary mutant survives" "${F[3]}" "[13]"
+expect "the kill matrix names the exact test" "${F[4]}" "['tests/test_core.py::ExactTest::test_withdraw_debits_the_amount']"
 has "$OUT/mutmut.txt" "SURVIVED"
 
 step "probe mutate (cosmic-ray): the riskiest changed lines, per-test coverage, the kill matrix"
 U --yes probe mutate --tool cosmic-ray --feature withdraw --paths wallet/core.py --base "$BASE" > "$OUT/cr.txt"
 cat "$OUT/cr.txt"
-expect "the targeted lines" "$(field "$SUM" "d['mutation'][-1]['lines']")" "{'wallet/core.py': [13, 14]}"
-[ "$(field "$SUM" "d['mutation'][-1]['summary'].get('killed', 0) >= 1 and d['mutation'][-1]['summary'].get('survived', 0) >= 1")" = True ] \
-  || fail "cosmic-ray: no killed and survived mutants"
-expect "only covering tests ran" "$(field "$SUM" "all(set(r) <= set(m['tests']) for m in d['mutation'][-1]['mutants'] for r in [d['mutation'][-1]['matrix'].get(m['id'], {})])")" True
+fields "$SUM" "d['mutation'][-1]['lines']" \
+  "d['mutation'][-1]['summary'].get('killed', 0) >= 1 and d['mutation'][-1]['summary'].get('survived', 0) >= 1" \
+  "all(set(r) <= set(m['tests']) for m in d['mutation'][-1]['mutants'] for r in [d['mutation'][-1]['matrix'].get(m['id'], {})])"
+expect "the targeted lines" "${F[0]}" "{'wallet/core.py': [13, 14]}"
+[ "${F[1]}" = True ] || fail "cosmic-ray: no killed and survived mutants"
+expect "only covering tests ran" "${F[2]}" True
 lacks "$OUT/cr.txt" "test_cli"
 
 # ------------------------------------------------------------------------------------ the explainer
@@ -202,12 +200,18 @@ has "$OUT/snippet-branch.txt" "(on the understando branch)"
 step "export: the data and refs.resolved.json for visual-explainer"
 U export --base "$BASE" > "$OUT/export.txt"
 X="$RUN/export"
-expect "claim strength" "$(field "$X/refs.resolved.json" "d['derived']['claims']['$CL']['strength']")" Proven
-expect "invariant authors" "$(field "$X/trust-map.json" "sorted((i['id'], i['author']) for i in d['invariants'] if i['status'] != 'deferred')")" "[('I1', 'user'), ('I2', 'agent')]"
-expect "the ref of the check has diff marks" "$(field "$X/refs.resolved.json" "next(r['changes']['added'] != [] for r in d['refs'] if r['path'] == 'tests/test_core.py')")" True
-expect "a permalink at the head" "$(field "$X/refs.resolved.json" "all(r['permalink'].startswith('https://github.com/fixture/wallet/blob/') for r in d['refs'])")" True
-expect "the control patch" "$(field "$X/refs.resolved.json" "'-    if amount > balance:' in d['controls']['K1'][0]['patch']")" True
-expect "the mutation runs" "$(field "$X/trust-map.json" "[m['tool'] for m in d['mutation']]")" "['mutmut', 'cosmic-ray']"
+fields "$X/refs.resolved.json" "d['derived']['claims']['$CL']['strength']" \
+  "next(r['changes']['added'] != [] for r in d['refs'] if r['path'] == 'tests/test_core.py')" \
+  "all(r['permalink'].startswith('https://github.com/fixture/wallet/blob/') for r in d['refs'])" \
+  "'-    if amount > balance:' in d['controls']['K1'][0]['patch']"
+REFS=("${F[@]}")
+fields "$X/trust-map.json" "sorted((i['id'], i['author']) for i in d['invariants'] if i['status'] != 'deferred')" "[m['tool'] for m in d['mutation']]"
+expect "claim strength" "${REFS[0]}" Proven
+expect "invariant authors" "${F[0]}" "[('I1', 'user'), ('I2', 'agent')]"
+expect "the ref of the check has diff marks" "${REFS[1]}" True
+expect "a permalink at the head" "${REFS[2]}" True
+expect "the control patch" "${REFS[3]}" True
+expect "the mutation runs" "${F[1]}" "['mutmut', 'cosmic-ray']"
 
 step "export to visual-explainer: the card's contract holds, so the explainer renders (needs UNDERSTANDO_VE_RUNTIME, a visual-explainer checkout)"
 expect "the map is schema 2 with verifiers" "$(field "$X/trust-map.json" "(d['schema_version'], [v['id'] for v in d['verifiers']])")" "(2, ['$V', '$WEAK'])"
