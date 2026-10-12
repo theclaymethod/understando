@@ -2,6 +2,6 @@
 *.log
 node_modules/
 __pycache__/
-# Run state lives under ~/.understando/runs/<repo>/<pr>/, never in this repo. The test fixture is
+# Run state lives under ~/.understando/runs/<repo>/<app>/, never in this repo. The test fixture is
 # tests/fixture. Every verb refuses to write a run folder inside a git repo.
 runs/

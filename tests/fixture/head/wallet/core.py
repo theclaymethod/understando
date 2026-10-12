@@ -1,4 +1,4 @@
-"""A small wallet. The head commit of the understando fixture: the PR under review."""
+"""A small wallet. The head commit of the understando fixture: the work under verification."""
 
 
 class OverdraftError(ValueError):

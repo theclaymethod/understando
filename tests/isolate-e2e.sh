@@ -3,10 +3,9 @@
 # scripts/testguard.py on the real CLI and the real write helpers:
 #   - each script imports the guard;
 #   - a planted write outside the test root fails with the guard error, and the target stays empty:
-#     the journal, mode.json, toolprobe.json, config.toml, trust-map.json (tm.save), ci.json and
-#     review.json, also behind an `except Exception`;
-#   - a read of the real ~/.understando fails, except in a read-only verb;
-#   - out of a test run, review refuses a real run folder when the gh on PATH is a fake one.
+#     the run folder of a verb, verify.json (store.save), toolprobe.json, the evidence, also behind
+#     an `except Exception`;
+#   - a read of the real ~/.understando fails, except in a read-only verb.
 # tests/e2e.sh compares the sha256 of the real run files before and after the whole suite.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -28,12 +27,12 @@ missing="$(cd "$S" && grep -L '^import testguard' $(ls *.py | grep -v '^testguar
 [ -z "$missing" ] || fail "these scripts do not import testguard: $missing"
 echo "$(ls "$S"/*.py | wc -l | tr -d ' ') scripts; each imports the guard"
 
-step "guard: the CLI refuses a planted journal write outside the test root"
-if "$U" --run "$OUTSIDE/run" note decision "a planted write" > "$O/note.txt" 2>&1; then fail "note wrote outside the test root"; fi
-has "$O/note.txt" "understando test guard: refuse to write $(isolate_resolve "$OUTSIDE")/run"
-has "$O/note.txt" "outside the test root $UNDERSTANDO_TEST_ROOT"
-empty "note"
-echo "note: refused, and the folder outside the root is empty"
+step "guard: the CLI refuses a planted run-folder write outside the test root"
+if "$U" --run "$OUTSIDE/run" --repo "$ROOT" discover status > "$O/cli.txt" 2>&1; then fail "discover wrote outside the test root"; fi
+has "$O/cli.txt" "understando test guard: refuse to write $(isolate_resolve "$OUTSIDE")/run"
+has "$O/cli.txt" "outside the test root $UNDERSTANDO_TEST_ROOT"
+empty "discover"
+echo "discover: refused, and the folder outside the root is empty"
 
 step "guard: each write helper refuses a target outside the test root, also behind an except"
 python3 - "$S" "$OUTSIDE" "$O" <<'PY'
@@ -41,13 +40,10 @@ import os, subprocess, sys
 s, outside, out = sys.argv[1:4]
 run = os.path.join(outside, "run")
 cases = {
-    "mode.json (ctx.save_mode)": "import ctx; ctx.save_mode({'on': True})",
+    "verify.json (store.save)": f"import store; store.save(store.new('fixture/wallet', 'wallet', 'x'), {outside!r} + '/verify.json')",
     "toolprobe.json": "import toolprobe; toolprobe._store('java', '/x')  # _store hides each OSError",
-    "config.toml (config.save_global)": "import config; config.save_global({'ve_runtime': '/x'})",
-    "journal (journal.append)": f"import journal, pathlib; journal.append(pathlib.Path({run!r}) / 'journal.jsonl', 'decision', 'x')",
-    "trust-map.json (tm.save)": f"import tm; tm.save({{'schema_version': 1}}, {outside!r} + '/trust-map.json')",
-    "ci.json (write_text)": f"import pathlib, testguard; pathlib.Path({outside!r}, 'ci.json').write_text('{{}}')",
-    "review.json (os.replace)": f"import os, testguard; src = {os.environ['UNDERSTANDO_TEST_ROOT']!r} + '/review.json'; open(src, 'w').write('{{}}'); os.replace(src, {outside!r} + '/review.json')",
+    "evidence (mkdir)": f"import os, testguard; os.makedirs({outside!r} + '/evidence/V1')",
+    "rename (os.replace)": f"import os, testguard; src = {os.environ['UNDERSTANDO_TEST_ROOT']!r} + '/x.json'; open(src, 'w').write('{{}}'); os.replace(src, {outside!r} + '/x.json')",
     "behind except Exception": f"import testguard\ntry:\n    open({outside!r} + '/x.json', 'w')\nexcept Exception:\n    pass\nprint('swallowed')",
 }
 env = {**os.environ, "UNDERSTANDO_HOME": os.path.join(outside, "uhome")}
@@ -62,33 +58,13 @@ PY
 empty "a write helper"
 
 step "guard: a read of the real ~/.understando fails, except in a read-only verb"
-REAL_PROBE="$ISOLATE_REAL_STORE/understando-guard-read-probe/trust-map.json"
-if python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import tm; tm.load(sys.argv[2])' "$S" "$REAL_PROBE" > "$O/read.txt" 2>&1; then fail "a test read the real store"; fi
+REAL_PROBE="$ISOLATE_REAL_STORE/understando-guard-read-probe/verify.json"
+if python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import store; store.load(sys.argv[2])' "$S" "$REAL_PROBE" > "$O/read.txt" 2>&1; then fail "a test read the real store"; fi
 has "$O/read.txt" "understando test guard: refuse to read $REAL_PROBE"
-"$U" --run "$(dirname "$REAL_PROBE")" --json signals > "$O/signals-real.json" 2> "$O/signals-real.err" || true
-if grep -q "understando test guard" "$O/signals-real.json" "$O/signals-real.err"; then cat "$O/signals-real.err"; fail "the read-only verb signals was refused"; fi
-test ! -e "$(dirname "$REAL_PROBE")" || fail "signals made $(dirname "$REAL_PROBE")"
-echo "a read: refused; the read-only verb signals: allowed"
-
-step "fake gh: out of a test run, review refuses a real run folder when the gh on PATH is a fake"
-FG="$WORK/fake-gh"; mkdir -p "$FG/bin"
-cat > "$FG/bin/gh" <<'GH'
-#!/usr/bin/env bash
-printf '{"headRefOid":"%s","baseRefName":"main","headRefName":"x","state":"OPEN","title":"x"}\n' 0123456789012345678901234567890123456789
-GH
-chmod +x "$FG/bin/gh"
-git init -q "$FG/wallet"
-git -C "$FG/wallet" remote add origin https://github.com/fixture/wallet.git
-# /understando-guard-absent cannot be made (the root folder is read-only), so a failed guard writes nothing.
-NOT_TEMP="/understando-guard-absent/runs"
-(cd "$FG/wallet" && env -u UNDERSTANDO_TEST PATH="$FG/bin:$PATH" UNDERSTANDO_RUNS="$NOT_TEMP" "$U" review 7) > "$O/fake-gh.txt" 2>&1 && fail "review ran with a fake gh"
-has "$O/fake-gh.txt" "refuse: the gh on PATH is $FG/bin/gh"
-has "$O/fake-gh.txt" "a fake gh in a temp folder"
-has "$O/fake-gh.txt" "the real run folder $NOT_TEMP/wallet/7"
-test ! -e "$UNDERSTANDO_HOME/mode.json" || fail "review turned the mode on before the refusal"
-env -u UNDERSTANDO_TEST PATH="$FG/bin:$PATH" python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import testguard; assert testguard.fake_gh_refusal(sys.argv[2]) is None' "$S" "$WORK/runs/wallet/7" \
-  || fail "the fake-gh check refused a run folder in a temp folder"
-echo "review: refused with the fake gh named; a temp run folder is allowed"
+"$U" --run "$(dirname "$REAL_PROBE")" --repo "$ROOT" doctor > "$O/doctor-real.txt" 2>&1 || true
+if grep -q "understando test guard" "$O/doctor-real.txt"; then cat "$O/doctor-real.txt"; fail "the read-only verb doctor was refused"; fi
+test ! -e "$(dirname "$REAL_PROBE")" || fail "doctor made $(dirname "$REAL_PROBE")"
+echo "a read: refused; the read-only verb doctor: allowed"
 
 echo
 echo "PASS: isolation e2e"

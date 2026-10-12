@@ -7,9 +7,7 @@
     "source_path": "skills/poteto-mode/SKILL.md",
     "source_version": "0.15.5",
     "used_by": [
-      "explain",
-      "ready",
-      "close"
+      "every verb"
     ]
   },
   {
@@ -20,10 +18,7 @@
     "source_path": "skills/poteto-mode/SKILL.md",
     "source_version": "0.15.5",
     "used_by": [
-      "probe",
-      "ready",
-      "build",
-      "close"
+      "maintain"
     ]
   },
   {
@@ -34,9 +29,7 @@
     "source_path": "skills/principle-prove-it-works/SKILL.md",
     "source_version": "0.15.5",
     "used_by": [
-      "probe",
-      "trim",
-      "ready"
+      "probe"
     ]
   },
   {
@@ -48,8 +41,6 @@
     "source_version": "0.15.5",
     "used_by": [
       "probe",
-      "trim",
-      "close",
       "build"
     ]
   },
@@ -61,8 +52,7 @@
     "source_path": "skills/principle-sequence-verifiable-units/SKILL.md",
     "source_version": "0.15.5",
     "used_by": [
-      "build",
-      "close"
+      "build"
     ]
   },
   {
@@ -73,9 +63,7 @@
     "source_path": "skills/principle-subtract-before-you-add/SKILL.md",
     "source_version": "0.15.5",
     "used_by": [
-      "trim",
-      "build",
-      "ready"
+      "build"
     ]
   },
   {
@@ -86,8 +74,7 @@
     "source_path": "skills/principle-laziness-protocol/SKILL.md",
     "source_version": "0.15.5",
     "used_by": [
-      "trim",
-      "ready"
+      "build"
     ]
   },
   {
@@ -124,8 +111,7 @@
     "source_path": "skills/principle-fix-root-causes/SKILL.md",
     "source_version": "0.15.5",
     "used_by": [
-      "formalize",
-      "close"
+      "formalize"
     ]
   },
   {
@@ -136,8 +122,7 @@
     "source_path": "skills/principle-attack-the-premise/SKILL.md",
     "source_version": "0.15.5",
     "used_by": [
-      "formalize",
-      "close"
+      "formalize"
     ]
   },
   {
@@ -148,8 +133,7 @@
     "source_path": "skills/principle-encode-lessons-in-structure/SKILL.md",
     "source_version": "0.15.5",
     "used_by": [
-      "doctor",
-      "ready"
+      "doctor"
     ]
   },
   {
@@ -174,7 +158,6 @@
     "source_version": "0.15.5",
     "used_by": [
       "probe",
-      "ready",
       "build"
     ]
   },
@@ -187,9 +170,7 @@
     "source_version": "0.15.5",
     "used_by": [
       "discover",
-      "close",
-      "build",
-      "ready"
+      "build"
     ]
   },
   {
@@ -201,29 +182,6 @@
     "source_version": "0.15.5",
     "used_by": [
       "build"
-    ]
-  },
-  {
-    "id": "pr-verification",
-    "file": "references/adapted/pr-verification.md",
-    "original_skill": "poteto-mode",
-    "source": "pstack",
-    "source_path": "skills/poteto-mode/playbooks/opening-a-pr.md and skills/poteto-mode/playbooks/shipping.md",
-    "source_version": "0.15.5",
-    "used_by": [
-      "ready"
-    ]
-  },
-  {
-    "id": "unslop-core",
-    "file": "references/adapted/unslop-core.md",
-    "original_skill": "unslop",
-    "source": "pstack",
-    "source_path": "skills/unslop/SKILL.md",
-    "source_version": "0.15.5",
-    "used_by": [
-      "explain",
-      "ready"
     ]
   },
   {
@@ -245,9 +203,7 @@
     "source_path": "skills/productivity/writing-for-agents/SKILL.md and skills/productivity/writing-for-agents/SKILL-MECHANICS.md",
     "source_version": "1.3.1",
     "used_by": [
-      "explain",
-      "doctor",
-      "build"
+      "create"
     ]
   },
   {
@@ -258,68 +214,7 @@
     "source_path": "skills/engineering/tdd/SKILL.md",
     "source_version": "1.3.1",
     "used_by": [
-      "build",
-      "close"
-    ]
-  },
-  {
-    "id": "to-spec",
-    "file": "references/adapted/to-spec.md",
-    "original_skill": "to-spec",
-    "source": "mattpocock-skills",
-    "source_path": "skills/engineering/to-spec/SKILL.md",
-    "source_version": "1.3.1",
-    "used_by": [
-      "formalize",
-      "explain"
-    ]
-  },
-  {
-    "id": "glossary-format",
-    "file": "references/adapted/glossary-format.md",
-    "original_skill": "domain-modeling",
-    "source": "mattpocock-skills",
-    "source_path": "skills/engineering/domain-modeling/GLOSSARY-FORMAT.md",
-    "source_version": "1.3.1",
-    "used_by": [
-      "discover",
-      "explain",
-      "formalize"
-    ]
-  },
-  {
-    "id": "code-review",
-    "file": "references/adapted/code-review.md",
-    "original_skill": "code-review",
-    "source": "mattpocock-skills",
-    "source_path": "skills/engineering/code-review/SKILL.md",
-    "source_version": "1.3.1",
-    "used_by": [
-      "ready"
-    ]
-  },
-  {
-    "id": "handoff",
-    "file": "references/adapted/handoff.md",
-    "original_skill": "handoff",
-    "source": "mattpocock-skills",
-    "source_path": "skills/productivity/handoff/SKILL.md",
-    "source_version": "1.3.1",
-    "used_by": [
-      "build",
-      "close"
-    ]
-  },
-  {
-    "id": "teach",
-    "file": "references/adapted/teach.md",
-    "original_skill": "teach",
-    "source": "agent-guards",
-    "source_path": "skills/teach/SKILL.md",
-    "source_version": "c86d619",
-    "used_by": [
-      "review",
-      "open"
+      "build"
     ]
   },
   {
@@ -330,7 +225,7 @@
     "source_path": "skills/concisely/SKILL.md",
     "source_version": "c86d619",
     "used_by": [
-      "*"
+      "every verb"
     ]
   },
   {
@@ -342,31 +237,29 @@
     "source_version": "c86d619",
     "used_by": [
       "discover",
-      "formalize",
-      "close",
-      "review"
+      "formalize"
     ]
   },
   {
-    "id": "explain-report",
-    "file": "references/adapted/explain-report.md",
-    "original_skill": "explain-report",
-    "source": "agent-guards",
-    "source_path": "skills/explain-report/SKILL.md",
-    "source_version": "c86d619",
+    "id": "create-verification-skill",
+    "file": "references/adapted/create-verification-skill.md",
+    "original_skill": "create-verification-skill",
+    "source": "pstack",
+    "source_path": "skills/create-verification-skill/SKILL.md",
+    "source_version": "0.15.5",
     "used_by": [
-      "explain"
+      "create"
     ]
   },
   {
-    "id": "autoreview",
-    "file": "references/adapted/autoreview.md",
-    "original_skill": "autoreview",
-    "source": "agent-guards",
-    "source_path": "skills/autoreview/SKILL.md",
-    "source_version": "c86d619",
+    "id": "maintain-verification-skill",
+    "file": "references/adapted/maintain-verification-skill.md",
+    "original_skill": "maintain-verification-skill",
+    "source": "pstack",
+    "source_path": "skills/maintain-verification-skill/SKILL.md",
+    "source_version": "0.15.5",
     "used_by": [
-      "ready"
+      "maintain"
     ]
   }
 ]

@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "understando evidence store (verify.json)",
+  "description": "The invariants, claims, checks, controls, results and code refs of one verify skill. Code refs are anchors (scripts/coderef.py). The strengths are derived (scripts/strength.py), never stored by hand.",
+  "type": "object",
+  "required": ["schema", "repo", "app", "head", "features", "invariants", "claims", "checks", "controls", "mutation"],
+  "properties": {
+    "schema": {
+      "enum": ["understando.verify/1"]
+    },
+    "repo": {
+      "type": "string",
+      "description": "owner/name, or the repo folder name"
+    },
+    "app": {
+      "type": "string",
+      "description": "the app of the verify skill: .agents/skills/verify-<app>/"
+    },
+    "head": {
+      "type": "string",
+      "description": "the commit where the evidence holds"
+    },
+    "base": {
+      "type": "string",
+      "description": "optional: the commit before the work, for the diff marks of the export"
+    },
+    "skill": {
+      "type": "string",
+      "description": "the repo path of the verify skill folder"
+    },
+    "ready": {
+      "type": "object",
+      "required": ["branch", "head"],
+      "description": "the branch that understando writes: the verify skill and new checks",
+      "properties": {"branch": {"type": "string"}, "head": {"type": "string"}}
+    },
+    "setup": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/command"},
+      "description": "commands that run in each scratch copy before a check"
+    },
+    "updated_at": {
+      "type": "string"
+    },
+    "features": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/feature"}
+    },
+    "invariants": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/invariant"}
+    },
+    "claims": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/claim"}
+    },
+    "checks": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/check"}
+    },
+    "controls": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/control"}
+    },
+    "mutation": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/mutation"}
+    },
+    "proved": {
+      "type": "object",
+      "description": "create --prove: the last end-to-end proof of the verify skill"
+    },
+    "maintained": {
+      "type": "object",
+      "description": "maintain: the last upkeep pass"
+    }
+  },
+  "$defs": {
+    "ref": {
+      "type": "object",
+      "required": ["path"],
+      "properties": {"path": {"type": "string"}, "symbol": {"type": "string"}, "part": {"enum": ["whole", "signature", "body"]}, "match": {"type": "string"}, "context": {"type": ["integer", "array"]}, "start": {"type": "integer"}, "end": {"type": "integer"}, "note": {"type": "string"}}
+    },
+    "command": {
+      "type": "object",
+      "required": ["argv"],
+      "properties": {"argv": {"type": "array", "items": {"type": "string"}, "minItems": 1}, "cwd": {"type": "string"}, "timeout_s": {"type": "number"}, "red_exits": {"type": "array", "items": {"type": "integer"}}, "env": {"type": "object"}}
+    },
+    "result": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {"status": {"enum": ["green", "red", "error", "skipped"]}, "exit": {"type": ["integer", "null"]}, "seconds": {"type": "number"}, "matched": {"type": ["boolean", "null"]}, "score": {"type": ["number", "null"]}, "output_tail": {"type": "string"}, "diff": {"type": "string"}, "note": {"type": "string"}, "ran_at": {"type": "string"}, "head": {"type": "string"}, "recorded": {"type": "boolean"}, "evidence": {"type": "array", "items": {"type": "string"}}}
+    },
+    "feature": {
+      "type": "object",
+      "required": ["id", "name", "surface"],
+      "properties": {"id": {"type": "string"}, "name": {"type": "string"}, "surface": {"enum": ["frontend", "backend", "llm", "other"]}, "file": {"type": "string", "description": "features/<id>.md in the verify skill"}, "paths": {"type": "array", "items": {"type": "string"}, "description": "the source paths of the feature"}, "drive": {"type": "string", "description": "the check that drives the feature end to end (create)"}}
+    },
+    "invariant": {
+      "type": "object",
+      "required": ["id", "text", "author", "status"],
+      "properties": {"id": {"type": "string"}, "feature": {"type": "string"}, "text": {"type": "string"}, "author": {"enum": ["user", "agent"]}, "status": {"enum": ["accepted", "proposed", "rejected", "deferred"]}, "shape": {"enum": ["rule", "process", "wiring", "input-space", "flow"]}, "risky": {"type": "boolean"}, "candidate": {"type": "string"}, "reason": {"type": "string"}, "evidence": {"type": "array", "items": {"type": "string"}}, "examples": {"type": "array", "items": {"type": "object"}}, "possible_bug": {"type": "array", "items": {"type": "object"}}, "code": {"type": "array", "items": {"$ref": "#/$defs/ref"}}, "at": {"type": "string"}}
+    },
+    "claim": {
+      "type": "object",
+      "required": ["id", "text", "checks"],
+      "properties": {"id": {"type": "string"}, "feature": {"type": "string"}, "text": {"type": "string"}, "name": {"type": "string"}, "invariants": {"type": "array", "items": {"type": "string"}}, "risky": {"type": "boolean"}, "checks": {"type": "array", "items": {"type": "string"}}, "parts": {"type": "array", "items": {"type": "object", "required": ["id", "text", "checks"], "properties": {"id": {"type": "string"}, "text": {"type": "string"}, "checks": {"type": "array", "items": {"type": "string"}}, "invariants": {"type": "array", "items": {"type": "string"}}, "formal_key": {"type": "string"}}}}, "code": {"type": "array", "items": {"$ref": "#/$defs/ref"}}, "formal_key": {"type": "string"}, "plan": {"type": "object", "description": "build: the check kind that the bar asks for", "properties": {"kind": {"type": "string"}, "why": {"type": "string"}}}}
+    },
+    "check": {
+      "type": "object",
+      "required": ["id", "kind"],
+      "properties": {"id": {"type": "string"}, "feature": {"type": "string"}, "name": {"type": "string"}, "kind": {"enum": ["e2e", "integration", "eval", "property", "fuzz", "type", "contract", "static", "tla", "lean"]}, "ladder": {"type": "integer"}, "command": {"$ref": "#/$defs/command"}, "at": {"type": "string", "description": "the commit where the check runs (the ready head), else head"}, "code": {"type": "array", "items": {"$ref": "#/$defs/ref"}, "description": "the test or spec itself"}, "evidence": {"type": "object", "description": "frontend: the files that a run must leave, for example *.webm and *.png", "properties": {"require": {"type": "array", "items": {"type": "string"}}}}, "eval": {"type": "object", "description": "llm: the score of the run and the frozen judge or labels", "properties": {"score": {"type": "string", "description": "a regex with one group: the score in the output"}, "better": {"enum": ["higher", "lower"]}, "frozen": {"type": "string"}}}, "cc_id": {"type": "string", "description": "the @cc contract that states the invariant"}, "red_first": {"$ref": "#/$defs/result"}, "baseline": {"$ref": "#/$defs/result"}, "recorded": {"type": "object"}, "formal": {"type": "object"}, "formal_record": {"type": "object"}, "property": {"type": "string"}, "state": {"type": "string"}}
+    },
+    "control": {
+      "type": "object",
+      "required": ["id", "check", "kind", "edits", "expect"],
+      "properties": {"id": {"type": "string"}, "check": {"type": "string"}, "kind": {"enum": ["planted", "stub", "mutant", "degraded"]}, "description": {"type": "string"}, "edits": {"type": "array", "items": {"type": "object", "required": ["op", "path"]}}, "expect": {"type": "object", "properties": {"status": {"enum": ["red"]}, "pattern": {"type": "string"}, "worse": {"type": "boolean"}}}, "sidecar": {"type": "string"}, "result": {"$ref": "#/$defs/result"}}
+    },
+    "mutation": {
+      "type": "object",
+      "required": ["id", "tool", "paths", "summary"],
+      "properties": {"id": {"type": "string"}, "feature": {"type": "string"}, "tool": {"enum": ["mutmut", "cosmic-ray"]}, "paths": {"type": "array", "items": {"type": "string"}}, "lines": {"type": "object"}, "at": {"type": "string"}, "ran_at": {"type": "string"}, "summary": {"type": "object"}, "mutants": {"type": "array", "items": {"type": "object"}}, "tests": {"type": "array", "items": {"type": "string"}}, "matrix": {"type": "object", "description": "mutant id -> test id -> killed | survived"}}
+    }
+  }
+}

@@ -24,8 +24,9 @@ Derived files:
 - `references/adapted/principles/guard-the-context-window.md`
 - `references/adapted/principles/never-block-on-the-human.md`
 - `references/adapted/feature-playbook.md`
-- `references/adapted/pr-verification.md`
-- `references/adapted/unslop-core.md`
+- `references/adapted/create-verification-skill.md` (skills/create-verification-skill)
+- `references/adapted/maintain-verification-skill.md` (skills/maintain-verification-skill)
+- the verify skill shape of `scripts/create.py` and `references/verify-skill.md` (the sections and the feature-map entry contract of create-verification-skill)
 
 ```
 MIT License
@@ -60,10 +61,6 @@ Derived files:
 - `references/adapted/grilling.md`
 - `references/adapted/writing-for-agents.md`
 - `references/adapted/tdd-red-first.md`
-- `references/adapted/to-spec.md`
-- `references/adapted/glossary-format.md`
-- `references/adapted/code-review.md`
-- `references/adapted/handoff.md`
 
 ```
 MIT License
@@ -95,13 +92,9 @@ Copyright (c) 2025 Matthew Lam. Commit c86d619. Source: https://github.com/mingh
 
 Derived files:
 
-- `references/adapted/teach.md` (skills/teach)
 - `references/adapted/concisely.md` (skills/concisely)
-- `references/adapted/find-bugs.md` (skills/find-bugs), and the finding format of `scripts/findings.py`
-- `references/adapted/explain-report.md` (skills/explain-report: the content rules only)
-- `references/adapted/autoreview.md` (skills/autoreview, which agent-guards vendors from openclaw/agent-skills at commit 2c90aa80 with local changes)
-- The tier-1 proof standards in `references/controls.md` and `scripts/userpath.py` (skills/create-verification-skill and skills/maintain-verification-skill)
-- The "After a miss" rule in `references/working-rules.md` (skills/learn-from-mistake)
+- `references/adapted/find-bugs.md` (skills/find-bugs), and the finding format of `scripts/discover.py`
+- The tier-1 proof standards in `references/controls.md` (skills/create-verification-skill and skills/maintain-verification-skill)
 
 ```
 MIT License

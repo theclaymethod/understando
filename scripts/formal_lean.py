@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -48,6 +49,13 @@ TAIL = 40
 DECL = re.compile(r"^(?:@\[[^\]]*\]\s*)?(?:private\s+|protected\s+|noncomputable\s+)*"
                   r"(theorem|lemma|def|abbrev|instance|structure|inductive|axiom|example|namespace|end|section|open)\b")
 
+
+
+def _rerun_json(obj, **kw) -> str:
+    """The JSON result, with the call that made it (formalize --recheck runs it again)."""
+    if isinstance(obj, dict):
+        obj = {**obj, "rerun": {"script": Path(__file__).name, "args": sys.argv[1:], "cwd": os.getcwd()}}
+    return json.dumps(obj, **kw)
 
 def lake(project: Path, *args: str, timeout: int = 1800, stdin: str | None = None) -> tuple[int, str, float]:
     start = time.monotonic()
@@ -117,7 +125,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     if code != 0:
         record["status"] = "red"
         record["why"] = "lake build failed"
-        print(json.dumps(record, indent=2))
+        print(_rerun_json(record, indent=2))
         return 1
     found, raw = axioms(project, args.imports, args.theorem)
     bad = forbidden(project)
@@ -140,7 +148,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         record["why"] = "sorry, admit, a new axiom, or an axiom outside the allowed three"
         record["axioms_output"] = raw[-2000:]
     record["tree_sha256"] = sha("".join(f"{k} {v}\n" for k, v in sorted(dict(record["files"]).items())).encode())
-    print(json.dumps(record, indent=2))
+    print(_rerun_json(record, indent=2))
     return 0 if clean else 1
 
 
@@ -168,7 +176,7 @@ def cmd_control(args: argparse.Namespace) -> int:
         try:
             edit, after = plant(args, text)
         except coderef.AnchorError as exc:
-            print(json.dumps({"status": "error", "note": f"ANCHOR ERROR: {exc}"}))
+            print(_rerun_json({"status": "error", "note": f"ANCHOR ERROR: {exc}"}))
             return 2
         target.write_text(after, encoding="utf-8")
         code, out, seconds = lake(tmp, "build")
@@ -176,7 +184,7 @@ def cmd_control(args: argparse.Namespace) -> int:
         shutil.rmtree(tmp.parent, ignore_errors=True)
     status = "green" if code == 0 else "red"
     matched = re.search(args.pattern, out) is not None if (status == "red" and args.pattern) else None
-    print(json.dumps({"status": status, "exit": code, "seconds": seconds, "matched": matched,
+    print(_rerun_json({"status": status, "exit": code, "seconds": seconds, "matched": matched,
                       "control": {"file": args.file, "edit": edit},
                       "output_tail": "\n".join(out.strip().splitlines()[-TAIL:])}, indent=2))
     if status == "red" and matched is not False:
@@ -195,11 +203,11 @@ def cmd_vectors(args: argparse.Namespace) -> int:
     path = Path(args.out)
     if args.check:
         same = path.exists() and path.read_text(encoding="utf-8") == res.stdout
-        print(json.dumps({"status": "green" if same else "red", "vectors": str(path),
+        print(_rerun_json({"status": "green" if same else "red", "vectors": str(path),
                           "sha256": sha(res.stdout.encode()), "lines": res.stdout.count("\n")}))
         return 0 if same else 1
     path.write_text(res.stdout, encoding="utf-8")
-    print(json.dumps({"status": "green", "vectors": str(path), "sha256": sha(res.stdout.encode()),
+    print(_rerun_json({"status": "green", "vectors": str(path), "sha256": sha(res.stdout.encode()),
                       "lines": res.stdout.count("\n")}))
     return 0
 
@@ -207,7 +215,7 @@ def cmd_vectors(args: argparse.Namespace) -> int:
 def cmd_attempt(args: argparse.Namespace) -> int:
     project = Path(args.project).resolve()
     code, out, seconds = lake(project, "env", "lean", args.file)
-    print(json.dumps({"status": "green" if code == 0 else "red", "exit": code, "seconds": seconds,
+    print(_rerun_json({"status": "green" if code == 0 else "red", "exit": code, "seconds": seconds,
                       "file": args.file, "output_tail": "\n".join(out.strip().splitlines()[-TAIL:])}, indent=2))
     return 0 if code == 0 else 1
 

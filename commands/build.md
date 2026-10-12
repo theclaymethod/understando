@@ -1,22 +1,20 @@
 # build
 
-The verifier-first playbook for new work. Start it only on an explicit request from the user. Run `understando build` at any time: it prints each step and whether its completion criterion holds. For the general feature workflow, use Poteto Mode's Feature playbook or the tdd skill when `understando routes` shows them, else [../references/adapted/feature-playbook.md](../references/adapted/feature-playbook.md) and [../references/adapted/tdd-red-first.md](../references/adapted/tdd-red-first.md).
+Verifier-driven development for new work on a feature. Start it only on an explicit request from the user. Run `understando build --feature F` at any time: it prints each step and whether its criterion holds. For the general loop, use the tdd skill when it is installed, else [../references/adapted/tdd-red-first.md](../references/adapted/tdd-red-first.md) and [../references/adapted/feature-playbook.md](../references/adapted/feature-playbook.md).
 
-Each stop of this playbook ends with one question to the user. Ask it as [Asking the user](../references/working-rules.md#asking-the-user) tells you: the situation, a Next line, and numbered options.
+The checks run at a commit in a scratch copy of the repo: commit the check, then the code. Each run shows its command and runs only with `--yes`, after the user's yes.
 
 ## Steps
 
-1. **discover.** Find the invariants with the user ([discover.md](discover.md)).
-   - **Done when** `understando discover status` prints `DONE`.
-2. **The contract.** Write each confirmed invariant as a `@cc` contract (the code-contracts skill, or by hand). Then run `understando build claim --invariant I01 --cc-id <id> [--tier N] [--promise P1]`. It refuses an unconfirmed invariant.
-   - **Done when** each claim has a `cc_id` and a confirmed invariant.
-3. **The verifier, red first.** Write the verifier at the strongest practical tier. Run `understando build verifier --claim C01 --spec <file>`, then `understando build red-first --verifier V01 --at <stub commit>`.
-   - **Done when** each claim has a verifier that went red before the code existed.
-4. **The code.** Write the code until each verifier is green at the head.
-   - **Done when** each verifier has a green baseline.
-5. **probe.** Run `understando probe`.
-   - **Done when** each verifier with a command is `proven`.
-6. **The gates.** Run `understando ready`.
-   - **Done when** the four gates pass.
-7. **explain.** Run `understando explain`.
-   - **Done when** the explainer exists for the head.
+1. **Invariant.** The user states it: [discover.md](discover.md).
+   - **Done when** the feature has an invariant with `author: user`.
+2. **Pick the check.** Run `understando build claim --invariant I1 [--risky]`. It writes the claim and names the strongest practical check on the ladder for the feature's bar: e2e < property < types/contracts < TLA+ < Lean with conformance ([../references/evidence-bars.md](../references/evidence-bars.md)). A risky backend invariant goes to `formalize`.
+   - **Done when** each claim has a plan.
+3. **Write the check.** Write the test, the contract or the spec. Then `understando build check --claim C1 --kind KIND --command "..." [--code PATH::SYMBOL] [--cc-id ID]`. For frontend, `--evidence '*.webm,*.png'`; for llm, `--score RE --frozen JUDGE`.
+   - **Done when** each claim has a check with a command.
+4. **Prove that it fails.** `understando build red --check V1` with one of: `--at HEAD` (the check comes before the code), `--stub PATH@REF` (the file as it was before the feature), or `--plant EDIT_JSON` (a planted bug, [../references/controls.md](../references/controls.md)). A stub or a planted bug becomes a control of the check.
+   - **Done when** each check went red. A check that stays green cannot prove the code: make it test the behaviour that the code must add.
+5. **Write the code.** Write the code until the check passes, commit it, then `understando build green --check V1`.
+   - **Done when** each check is green at the head.
+6. **Probe.** `understando probe --feature F`, and `understando probe mutate --feature F` for the riskiest code.
+   - **Done when** each check is proven, each claim meets its bar, and `build --feature F` prints `DONE`.

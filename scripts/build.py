@@ -1,156 +1,233 @@
-"""understando build: the verifier-first playbook for new work (commands/build.md).
+"""understando build: verifier-driven development for one feature. Each step has a completion criterion.
 
-    understando build [status]                                  each step and its completion state
-    understando build claim --invariant I01 [--cc-id ID] [--tier N] [--promise P1]
-    understando build verifier --claim C01 --spec FILE          add a verifier and its control
-    understando build red-first --verifier V01 --at REF         run it before the code exists: it must go red
+    understando build [--feature F]                          the steps and whether each one is done
+    understando build claim --invariant I1 [--risky] [--text T]   step 2: the claim, and the check the bar asks for
+    understando build check --claim C1 --kind KIND --command "ARGV" [--code PATH::SYMBOL] [--name N]
+                            [--evidence GLOB,GLOB] [--score RE --frozen JUDGE] [--cc-id ID]   step 3
+    understando build red --check V1 (--at REF | --stub PATH@REF | --plant EDIT_JSON) [--yes]  step 4
+    understando build green --check V1 [--yes]               step 5
+    then `understando probe --feature F`                     step 6
 
-The steps that are unique to understando: 1 discover, 2 the @cc contract, 3 the verifier,
-proven red before the code exists, 4 the code until green, 5 probe, 6 the ready gates, 7 explain.
-For the general feature workflow, route to Poteto Mode's Feature playbook or tdd when present,
-else to references/adapted/feature-playbook.md and tdd-red-first.md. `claim` and `verifier`
-refuse an invariant that the user has not confirmed, except under full autonomy, where the
-claim stays at Backed.
+1. invariant: the user stated it (discover). Done when the feature has an accepted invariant.
+2. pick: the strongest practical check on the ladder (e2e < property < types/contracts < TLA+ <
+   Lean with conformance), from the shape of the invariant and the bar of the feature's surface
+   (references/evidence-bars.md). Done when each claim has a plan.
+3. write the check. Done when each claim has a check with a command.
+4. prove that it fails: on the current code (the check comes before the code), on a stub, or on a
+   planted bug. A planted bug or a stub becomes a control of the check, so probe runs it again.
+   Done when each check went red.
+5. write the code until the check passes. Done when each check is green at the head.
+6. probe. Done when each check is proven (strength.py).
 
---spec holds {"verifier": {"kind", "description", "command": {"argv"}, "test"?, "ladder"?},
-"control": {"description", "edits", "expect"}}.
+The checks run at a commit in a scratch copy: commit the check and the code first. Each run shows
+its command and runs only with --yes.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
+import shlex
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
-import ctx as context  # noqa: E402
-import discover  # noqa: E402
-import journal  # noqa: E402
 import ops  # noqa: E402
+import probe  # noqa: E402
 import run_control  # noqa: E402
-import tm  # noqa: E402
-import verdicts  # noqa: E402
+import store  # noqa: E402
+import strength  # noqa: E402
 
-STEPS = [
-    ("discover", "Run `understando discover` until every candidate has a decision."),
-    ("contract", "Write each confirmed invariant as an @cc contract, then `understando build claim --invariant I01 --cc-id ID`."),
-    ("verifier", "Write the verifier at the strongest practical tier, then `build verifier` and `build red-first`: it goes red before the code exists."),
-    ("code", "Write the code until each verifier is green at the head."),
-    ("probe", "Run `understando probe`: each verifier goes red on a planted bug."),
-    ("gates", "Run `understando ready`: all four gates pass."),
-    ("explain", "Run `understando explain`."),
-]
+SHAPE_KIND = {"rule": "lean", "process": "tla", "wiring": "type", "input-space": "property", "flow": "e2e"}
 
 
-def status(c: context.Ctx) -> list[dict]:
-    data = c.data() or {"claims": [], "verifiers": [], "controls": []}
-    claims, vs = data["claims"], data["verifiers"]
-    by_claim = {cl["id"]: [v for v in vs if cl["id"] in v["claims"]] for cl in claims}
-    d = discover.status(c) if c.run else {"done": False}
-    ready = json.loads((c.run / "ready.json").read_text()) if c.run and (c.run / "ready.json").is_file() else {}
-    done = {
-        "discover": d.get("done", False),
-        "contract": bool(claims) and all(cl.get("cc_id") and (cl.get("stated") or ops.confirmed_invariant(data, cl.get("invariant"))) for cl in claims),
-        "verifier": bool(claims) and all(any((v.get("red_first") or {}).get("status") == "red" for v in by_claim[cl["id"]]) for cl in claims),
-        "code": bool(vs) and all((v.get("baseline") or {}).get("status") == "green" for v in vs if "command" in v),
-        "probe": bool(vs) and all(v.get("state") == "proven" for v in vs if "command" in v),
-        "gates": bool(ready.get("pass")) and ready.get("head") == data.get("head"),
-        "explain": bool(c.run) and (c.run / "explainer.mdx").is_file(),
-    }
-    return [{"step": i, "name": n, "done": done[n], "how": how} for i, (n, how) in enumerate(STEPS, 1)]
+def plan(data: dict, claim: dict) -> dict:
+    """The check kind for a claim: the surface bar first, then the shape of its invariant."""
+    feat = store.find(data, "features", claim.get("feature")) or {}
+    surface = feat.get("surface", "other")
+    invs = [store.find(data, "invariants", i) or {} for i in claim.get("invariants", [])]
+    shape = next((i.get("shape") for i in invs if i.get("shape")), "input-space")
+    risky = claim.get("risky") or any(i.get("risky") for i in invs)
+    if surface == "frontend":
+        return {"kind": "e2e", "why": "frontend: a real-browser e2e of the user path, with a video and screenshots"}
+    if surface == "llm":
+        return {"kind": "eval", "why": "llm: a recorded eval with a frozen judge or labels, and a degraded variant that must score worse"}
+    if surface == "backend" and risky:
+        kind = "tla" if shape == "process" else "lean"
+        return {"kind": kind, "why": f"backend, risky {shape}: {'TLA+' if kind == 'tla' else 'Lean'} with conformance against the real code (formalize)"}
+    if surface == "backend":
+        kind = {"wiring": "type", "flow": "property"}.get(shape, "property")
+        return {"kind": kind, "why": f"backend {shape}: a property test, types, a @cc contract or an import rule"}
+    return {"kind": SHAPE_KIND.get(shape, "e2e"), "why": f"other: the strongest practical check for a {shape}"}
 
 
-def add_claim(c: context.Ctx, inv_id: str, cc_id: str | None, tier: int | None, promise: str | None) -> str:
-    data = c.need_map()
-    inv = ops.confirmed_invariant(data, inv_id)
-    if not inv and ops.autonomy():
-        inv = next((i for i in data.get("invariants", []) if i["id"] == inv_id and i["author"] == "agent"), None)
-    if not inv:
-        tm.fail(f"refuse: invariant {inv_id} has no user-confirmed row (author user, accepted). Run `understando discover` first.", 1)
-    cid = ops.next_id(data, "C")
-    data["claims"].append({"id": cid, "cc_id": cc_id, "text": inv["text"], "stated": False, "invariant": inv_id,
-                           "source": f"understando build, from invariant {inv_id}", "tier_target": tier or inv.get("tier", 1),
-                           "plain": {"what": inv["text"], "proof": "No check yet. build writes the verifier next."}})
-    if promise:
-        p = next((p for p in data.get("promises", []) if p["id"] == promise), None)
-        if not p:
-            tm.fail(f"build: no promise {promise}", 2)
-        p["claims"].append(cid)
-    tm.save(data, c.map)
-    return cid
+def steps(data: dict, feature: str | None) -> list[dict]:
+    claims = [cl for cl in data["claims"] if not feature or cl.get("feature") == feature]
+    invs = [i for i in data["invariants"] if not feature or i.get("feature") == feature]
+    checks = [v for v in data["checks"] if v["id"] in {x for cl in claims for x in cl["checks"]}]
+    rep = strength.apply(data)
+    proven = {x["id"] for x in data["checks"] if x["state"] == "proven"}
+    bar = {x["id"]: x for x in rep["claims"]}
+    return [
+        {"step": "invariant", "done": any(i["status"] == "accepted" for i in invs),
+         "how": "understando discover --feature F, then discover answer (the user states each invariant)"},
+        {"step": "pick", "done": bool(claims) and all(cl.get("plan") for cl in claims),
+         "how": "understando build claim --invariant I1 (it names the check that the bar asks for)"},
+        {"step": "check", "done": bool(claims) and all(cl["checks"] for cl in claims),
+         "how": "write the check, then understando build check --claim C1 --kind KIND --command \"...\""},
+        {"step": "red", "done": bool(checks) and all((v.get("red_first") or {}).get("status") == "red" for v in checks),
+         "how": "understando build red --check V1 --at HEAD | --stub PATH@REF | --plant EDIT_JSON"},
+        {"step": "green", "done": bool(checks) and all((v.get("baseline") or {}).get("status") == "green" for v in checks),
+         "how": "write the code, commit it, then understando build green --check V1"},
+        {"step": "probe", "done": bool(checks) and all(v["id"] in proven for v in checks) and all(bar[cl["id"]]["bar_met"] for cl in claims),
+         "how": "understando probe --feature F (each check proven, and each claim at its bar)"},
+    ]
 
 
-def add_verifier(c: context.Ctx, claim_id: str, spec_path: str) -> str:
-    data = c.need_map()
-    claim = next((x for x in data["claims"] if x["id"] == claim_id), None)
-    if not claim:
-        tm.fail(f"build: no claim {claim_id}", 2)
-    refusal = ops.intent_ok(data, claim)
-    if refusal:
-        tm.fail(refusal, 1)
-    spec = json.loads(Path(spec_path).read_text())
-    vid, kid = ops.next_id(data, "V"), ops.next_id(data, "K")
-    v = {"id": vid, "claims": [claim_id], "tier": "fact", "independence": {"by": "tool", "tool": spec["verifier"]["command"]["argv"][0]},
-         "cost": {"usd": 0}, "provenance": "Written by understando build, verifier first.", **spec["verifier"]}
-    data["verifiers"].append(v)
-    data["controls"].append({"id": kid, "verifier": vid, "recipe": spec["control"].get("recipe", "plant-violation"),
-                             "description": spec["control"]["description"], "edits": spec["control"]["edits"],
-                             "expect": spec["control"]["expect"]})
-    tm.save(data, c.map)
-    return vid
+def add_claim(c: store.Ctx, data: dict, inv_id: str, risky: bool, text: str | None) -> dict:
+    inv = store.need(data, "invariants", inv_id)
+    if inv["status"] in ("rejected", "deferred"):
+        store.fail(f"build claim: {inv_id} is {inv['status']}", 2)
+    cl = next((x for x in data["claims"] if x.get("invariants") == [inv_id]), None)
+    if not cl:
+        cl = {"id": store.next_id(data, "claims"), "text": text or inv["text"], "invariants": [inv_id], "checks": [],
+              **({"feature": inv["feature"]} if inv.get("feature") else {}), **({"code": inv["code"]} if inv.get("code") else {})}
+        data["claims"].append(cl)
+    if risky:
+        cl["risky"] = True
+    if text:
+        cl["text"] = text
+    import ste
+    try:
+        ste.require([cl["text"]], f"build claim {cl['id']}")
+    except ste.SteMissing as exc:
+        store.fail(str(exc), 1)
+    except ValueError as exc:
+        store.fail(str(exc), 2)
+    cl["plan"] = plan(data, cl)
+    return cl
 
 
-def red_first(c: context.Ctx, vid: str, ref: str) -> dict:
-    data, repo = c.need_map(), c.need_repo()
-    v = next((x for x in data["verifiers"] if x["id"] == vid), None)
-    if not v or "command" not in v:
-        tm.fail(f"build: no verifier {vid} with a command", 2)
-    claim = next(x for x in data["claims"] if x["id"] in v["claims"])
-    refusal = ops.intent_ok(data, claim)
-    if refusal:
-        tm.fail(refusal, 1)
-    commit = ops.git(repo, "rev-parse", ref)
-    with ops.scratch_clone(repo) as (clone, wt):
-        with run_control.Worktree(clone, commit, wt, "red-first") as root:
-            run_control.prepare(root, data)
-            code, output, _ = run_control.run_command(root, v["command"], None)
-    status = run_control.classify(code, v["command"])
-    v["red_first"] = {"status": status, "at": commit, "exit": code, "output_tail": run_control.tail(output), "ran_at": tm.now()}
-    tm.save(data, c.map)
-    return v["red_first"]
+def add_check(data: dict, args: argparse.Namespace) -> dict:
+    cl = store.need(data, "claims", args.claim)
+    v = {"id": store.next_id(data, "checks"), "kind": args.kind, "name": args.name or f"{args.kind} check of {cl['id']}",
+         **({"feature": cl["feature"]} if cl.get("feature") else {})}
+    if args.command:
+        v["command"] = {"argv": shlex.split(args.command), **({"cwd": args.cwd} if args.cwd else {})}
+    if args.code:
+        path, _, sym = args.code.partition("::")
+        v["code"] = [{"path": path, **({"symbol": sym} if sym else {})}]
+    if args.evidence:
+        v["evidence"] = {"require": [g for g in args.evidence.split(",") if g]}
+    if args.score or args.frozen:
+        v["eval"] = {**({"score": args.score} if args.score else {}), **({"frozen": args.frozen} if args.frozen else {}),
+                     "better": args.better}
+    if args.cc_id:
+        v["cc_id"] = args.cc_id
+    data["checks"].append(v)
+    cl["checks"].append(v["id"])
+    want = (cl.get("plan") or {}).get("kind")
+    if want and store.LADDER.get(args.kind, 0) < store.LADDER.get(want, 0):
+        print(f"build: {v['id']} is a {args.kind} check; the bar of {cl['id']} asks for {want} ({cl['plan']['why']}). "
+              "It counts, but the claim stays below its bar until a stronger check is proven.")
+    return v
 
 
-def main(c: context.Ctx, argv: list[str]) -> int:
-    import argparse
-    ap = argparse.ArgumentParser(prog="understando build", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("action", nargs="?", default="status", choices=["status", "claim", "verifier", "red-first"])
-    ap.add_argument("--invariant")
-    ap.add_argument("--cc-id")
-    ap.add_argument("--tier", type=int)
-    ap.add_argument("--promise")
-    ap.add_argument("--claim")
-    ap.add_argument("--spec")
-    ap.add_argument("--verifier")
-    ap.add_argument("--at")
-    args = ap.parse_args(argv)
-    if args.action == "claim":
-        cid = add_claim(c, args.invariant, args.cc_id, args.tier, args.promise)
-        journal.append(c.journal, "decision", f"build: claim {cid} from invariant {args.invariant}", c.repo, claims=[cid])
-        context.emit(c, {"claim": cid}, f"build: claim {cid} states invariant {args.invariant}")
-    elif args.action == "verifier":
-        vid = add_verifier(c, args.claim, args.spec)
-        journal.append(c.journal, "verifier-choice", f"build: verifier {vid} for {args.claim}", c.repo, claims=[args.claim])
-        context.emit(c, {"verifier": vid}, f"build: verifier {vid} for {args.claim}. Next: understando build red-first --verifier {vid} --at <stub commit>")
-    elif args.action == "red-first":
-        r = red_first(c, args.verifier, args.at)
-        ok = r["status"] == "red"
-        context.emit(c, r, f"build: {args.verifier} is {r['status']} at {r['at'][:10]}. " +
-                     ("Good: it fails before the code exists." if ok else "It must go red before the code exists. Fix the verifier or the stub."))
-        return 0 if ok else 1
+def red(c: store.Ctx, data: dict, v: dict, at: str | None, stub: str | None, plant: str | None) -> bool:
+    """Step 4: the check must go red on the current code, a stub or a planted bug."""
+    repo = c.need_repo()
+    if "command" not in v:
+        store.fail(f"build red: {v['id']} has no command", 2)
+    if not store.confirm(c, f"build red {v['id']}", [s["argv"] for s in data.get("setup", [])] + [v["command"]["argv"]]):
+        return False
+    if plant or stub:
+        if stub:
+            path, _, ref = stub.partition("@")
+            edit = {"op": "restore-file", "path": path, "at": store.git(repo, "rev-parse", ref or "HEAD")}
+            kind, what = "stub", f"The code of {path} as it was at {ref}: the stub without the feature."
+        else:
+            edit = json.loads(plant)
+            kind, what = "planted", "A planted bug from build red."
+        k = {"id": store.next_id(data, "controls"), "check": v["id"], "kind": kind, "description": what,
+             "edits": [edit], "expect": {"status": "red"}}
+        data["controls"].append(k)
+        with ops.scratch_clone(repo) as (clone, wt):
+            run_control.run_one(data, k, clone, wt)
+        v["red_first"] = {**k["result"], "note": f"control {k['id']} ({kind})"}
     else:
-        rows = status(c)
-        text = "\n".join(f"[{'x' if r['done'] else ' '}] {r['step']} {r['name']}: {r['how']}" for r in rows)
+        commit = store.git(repo, "rev-parse", at or "HEAD")
+        with ops.scratch_clone(repo) as (clone, wt):
+            with run_control.Worktree(clone, commit, wt, "red") as root:
+                run_control.prepare(root, data)
+                code, out, seconds = run_control.run_command(root, v["command"])
+        v["red_first"] = {"status": run_control.classify(code, v["command"]), "exit": code, "seconds": seconds,
+                          "output_tail": run_control.tail(run_control.scrub(out, root)), "ran_at": store.now(), "head": commit,
+                          "note": f"the check at {commit[:10]}, before the code"}
+    st = v["red_first"]["status"]
+    print(f"build red {v['id']}: {st}" + ("" if st == "red" else ". The check did not fail, so it cannot prove the code yet. "
+                                          "Make it fail first: test the behaviour that the code must add."))
+    return True
+
+
+def main(c: store.Ctx, argv: list[str]) -> int:
+    ap = argparse.ArgumentParser(prog="understando build", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("action", nargs="?", default="status", choices=["status", "claim", "check", "red", "green"])
+    ap.add_argument("--feature")
+    ap.add_argument("--invariant")
+    ap.add_argument("--risky", action="store_true")
+    ap.add_argument("--text")
+    ap.add_argument("--claim")
+    ap.add_argument("--kind", choices=sorted(store.LADDER))
+    ap.add_argument("--command")
+    ap.add_argument("--cwd")
+    ap.add_argument("--code", help="PATH::SYMBOL of the test or spec")
+    ap.add_argument("--name")
+    ap.add_argument("--evidence", help="frontend: the files a run must leave, for example '*.webm,*.png'")
+    ap.add_argument("--score", help="llm: a regex with one group, the score in the output")
+    ap.add_argument("--frozen", help="llm: the frozen judge or the labels file")
+    ap.add_argument("--better", choices=["higher", "lower"], default="higher")
+    ap.add_argument("--cc-id", help="the @cc contract that states the invariant")
+    ap.add_argument("--check")
+    ap.add_argument("--at")
+    ap.add_argument("--stub", help="PATH@REF: the file as it was at REF")
+    ap.add_argument("--plant", help="a control edit as JSON (references/controls.md)")
+    args = ap.parse_args(argv)
+    data = c.need_data()
+    if args.action == "status":
+        rows = steps(data, args.feature)
         nxt = next((r for r in rows if not r["done"]), None)
-        context.emit(c, {"steps": rows}, text + (f"\nnext: step {nxt['step']} {nxt['name']}" if nxt else "\nall steps done"))
-    return 0
+        text = "\n".join(f"  [{'x' if r['done'] else ' '}] {n}. {r['step']}" + ("" if r["done"] else f": {r['how']}") for n, r in enumerate(rows, 1))
+        store.emit(c, {"steps": rows, "next": nxt and nxt["step"]}, f"build{' ' + args.feature if args.feature else ''}:\n{text}"
+                   + ("\nDONE: every step holds." if not nxt else f"\nnext: {nxt['step']}"))
+        return 0
+    if args.action == "claim":
+        if not args.invariant:
+            store.fail("build claim: pass --invariant I1", 2)
+        cl = add_claim(c, data, args.invariant, args.risky, args.text)
+        c.save(data)
+        inv = store.find(data, "invariants", args.invariant)
+        note = "" if inv["author"] == "user" else " The invariant is agent-picked: the claim stays Backed until the user accepts it."
+        store.emit(c, cl, f"claim {cl['id']}: {cl['text']}\nplan: a {cl['plan']['kind']} check. {cl['plan']['why']}.{note}")
+        return 0
+    if args.action == "check":
+        if not (args.claim and args.kind):
+            store.fail("build check: pass --claim and --kind", 2)
+        v = add_check(data, args)
+        c.save(data)
+        store.emit(c, v, f"check {v['id']} for {args.claim}: {v['name']}. Next: understando build red --check {v['id']}")
+        return 0
+    v = store.need(data, "checks", args.check)
+    repo = c.need_repo()
+    data["head"] = store.git(repo, "rev-parse", "HEAD")
+    if args.action == "red":
+        if not red(c, data, v, args.at, args.stub, args.plant):
+            return 0
+        c.save(data)
+        return 0 if v["red_first"]["status"] == "red" else 1
+    if not probe.run(c, data, {v["id"]}, set(), what=f"build green {v['id']}"):
+        return 0
+    c.save(data)
+    st = v["baseline"]["status"]
+    print(f"build green {v['id']}: {st}" + ("" if st == "green" else ": write the code until the check passes, commit it, and run this again."))
+    return 0 if st == "green" else 1

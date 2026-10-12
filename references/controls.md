@@ -1,8 +1,17 @@
 # Control catalogue
 
-A control plants one defect that a verifier must see. Write at least one control per verifier that has a command. Pick the **obvious** control: the defect that the verifier's name says it catches. A verifier that stays green on its obvious control gets the loud `cannot-fail` flag.
+A control plants one defect that a verifier must see. Write at least one control for each verifier. Pick the **obvious** control: the defect that the verifier's name says it catches. A verifier that stays green on its obvious control gets the loud `cannot-fail` flag, and it does not count.
 
-An eval control is a degraded variant, and a frontend control is a broken-UI run. [evidence-bars.md](evidence-bars.md) tells which control each surface needs.
+## Kinds
+
+| Kind | What it plants | Who writes it |
+|---|---|---|
+| `planted` | One edit from the recipes below. | You, in a spec (`create`), with `build red --plant`, or a formal record |
+| `stub` | The file as it was before the feature (`restore-file` at a commit). | `build red --stub PATH@REF` |
+| `mutant` | Each mutant of a tool, on a function or on the riskiest changed lines. | `probe mutate` (mutmut, cosmic-ray) |
+| `degraded` | A worse variant of an eval (a weaker prompt, a model, a corrupted label). It must score worse (`eval.score`, `eval.better`). | You |
+
+[evidence-bars.md](evidence-bars.md) tells which control each surface needs.
 
 ## Recipes
 
@@ -32,7 +41,7 @@ Write an anchor op. It names its place with `path`, `symbol` (a dotted name at t
 | `append` | `path`, `text` | Adds `text` at the end of the file. |
 | `corrupt-byte` | `path`, `offset` (default: the middle), or an anchor | XORs one byte with 0x01: the first byte of the target, or the byte at `offset`. |
 | `delete-file` | `path` | Removes the file. |
-| `restore-file` | `path`, `at` | Puts back the file as it was at the commit `at`. A new test of a fix on the ready branch uses it: the test must go red on the code before the fix. |
+| `restore-file` | `path`, `at` | Puts back the file as it was at the commit `at`: a stub. A new check must go red on the code before the feature. |
 
 ## Expected red
 
@@ -49,8 +58,10 @@ An e2e verifier proves a behaviour only when it drives the app as a user does. T
 - **Observe what a dry-run skips.** A dry-run or a test mode can still touch the network or a git ref. Observe the files, the network and the refs. Do not trust the name of the mode.
 - **Cleanup keeps the evidence.** Remove the instances and the scratch state that the run made, never the proof. Check that the evidence is still at its named place after the cleanup.
 
-probe enforces the first rule. It reads the test files of each `e2e` verifier at its commit (`scripts/userpath.py`). A test that starts no process, calls no endpoint and drives no UI only calls internal functions. probe then prints `FLAG NOT-USER-PATH`, records `user_path: {result: internal-only, claimed_kind: e2e}` and lowers the kind to `integration`. The rung stays 1, so the verdict does not change, but the label is honest. A command with no test file to read (a shell script, an npm script) gets `unknown` and no flag.
+## Mutants
+
+A mutant is a control that a tool plants (`understando probe mutate`, [../commands/probe.md](../commands/probe.md)). A killed mutant made a test fail; a survivor is a change in the code that no test sees. The kill matrix records, for each mutant, which covering test killed it, each test run alone. Before a survivor counts, the equivalent-mutant filters run: the same bytecode as the original (trivial compiler equivalence, docstrings removed), the same syntax tree (a docstring or the layout), or a change only in the text of an error, log or print message. Each survivor needs a test that kills it, or a reason that the user accepts.
 
 ## Expensive evidence
 
-Record evals, paid e2e runs and model reviews as `recorded` verifiers with their provenance. Run them again only after a cost projection and a clear yes from the user.
+Record evals and paid e2e runs as checks with `recorded` evidence and its provenance. Run them again only after a cost projection and a clear yes from the user.

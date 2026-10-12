@@ -1,22 +1,33 @@
-"""understando formalize --sidecar FILE: bring a formal sidecar into the trust map, both ways.
+"""understando formalize --sidecar FILE: bring a formal sidecar into the evidence store, both ways.
+understando formalize --recheck RECORD: run a record's check, conformance run and controls again.
 
-1. Each proposed claim of the sidecar that the map does not hold becomes a claim (stated: false,
-   source "... (formal FC1)"). The agent then writes its plain text and its promise.
-2. Each record takes the user's decisions from the map: when every invariant item of the record
-   is author user and accepted, with no possible bug, `invariant` becomes {author: user, ref:
-   the journal rows, status: confirmed}. Then formal_record.rate() rates the record again. A
-   record whose only gap is a confirmed invariant that the code disagrees with stays
-   "Formal (pending)" until the fix lands and the check runs again against the user's wording.
-3. Each record becomes a trust-map verifier with the same id: kind, ladder, a `formal` block
-   (tool, artifact, conformance link), recorded evidence, `formal_record` (the sidecar fields),
-   and its controls with their recorded results. The record's verdict gates the claim: only
-   "Formal" lets the verifier prove a claim at rung 4 or 5.
+Sync:
+1. Proposed claims. Each proposed claim of the sidecar (FC1, ...) maps to a claim or a part of the
+   store by a stable key, never by its text: the `claim` that an earlier sync wrote into the
+   sidecar, else the claim or part whose `formal_key` is the key. Only a key with no claim becomes
+   a new claim. Sync writes the key on both sides.
+2. Each record takes the user's decisions from the store: when each invariant item of the record
+   is author user and accepted, `invariant` becomes {author: user, ref, status: confirmed}. Then
+   formal_record.rate() rates the record again. An agent-picked invariant is never Formal.
+3. Checks. A record with `properties` (one for each TLA+ invariant or property, or Lean theorem
+   group) becomes one check for each property, each with its own controls and the claim of its
+   part. Else the record is one check with the record ID.
+4. IDs and names stay. A check keeps its ID, its name and its claim links on each sync. A control
+   of the record keeps its ID; when a control of another check holds that ID, the control gets a
+   fresh ID, and the sidecar records it (`map_id`).
+5. Sync is idempotent: a second run with the same sidecar gives the same store.
+
+Recheck: the record's helper calls (each result keeps its `rerun`) run again in the repo, with
+the stamp-time repo path replaced by the repo of this run. Then the drift block is stamped again
+at the repo HEAD, the record is rated again, the sidecar is written, and sync runs.
 """
 
 from __future__ import annotations
 
+import copy
 import json
 import re
+import string
 import subprocess
 import sys
 from pathlib import Path
@@ -24,146 +35,292 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 import coderef  # noqa: E402
-import ctx as context  # noqa: E402
 import formal_record  # noqa: E402
-import journal  # noqa: E402
-import ops  # noqa: E402
-import tm  # noqa: E402
-import verdicts  # noqa: E402
+import store  # noqa: E402
 
 KEEP = ("ladder_tier", "conformance", "route", "invariant", "witness", "drift", "formal", "blocker_open", "card", "witness_test")
+OWNED = ("kind", "ladder", "description", "recorded", "formal_record", "formal", "property", "feature")
+HERE = Path(__file__).resolve().parent
+
+
+class Refused(Exception):
+    pass
 
 
 def tail(text: str | None, n: int = 12) -> str:
     return "\n".join((text or "").splitlines()[-n:])
 
 
-def sync(c: context.Ctx, path: str) -> dict:
-    data = c.need_map()
-    side_path = Path(path).resolve()
-    side = json.loads(side_path.read_text(encoding="utf-8"))
-    rows = journal.read(c.journal)
-    invs = {i["id"]: i for i in data.get("invariants", [])}
-    report = []
+def holders(data: dict) -> dict[str, tuple[dict, dict | None]]:
+    """Each claim ID and part ID of the store: (the claim, the part or None)."""
+    out: dict[str, tuple[dict, dict | None]] = {}
+    for c in data["claims"]:
+        out.setdefault(c["id"], (c, None))
+        for p in c.get("parts", []):
+            out.setdefault(p["id"], (c, p))
+    return out
 
+
+def resolve_proposed(data: dict, side: dict, report: list[str]) -> dict[str, str]:
     idmap: dict[str, str] = {}
+    hold = holders(data)
+    keyed = {}
+    for c in data["claims"]:
+        if c.get("formal_key"):
+            keyed.setdefault(c["formal_key"], c["id"])
+        for p in c.get("parts", []):
+            if p.get("formal_key"):
+                keyed.setdefault(p["formal_key"], p["id"])
     for pc in side.get("proposed_claims", []):
-        tag = f"(formal {pc['id']})"
-        found = next((x for x in data["claims"] if x["source"].endswith(tag) or x["text"] == pc["text"]), None)
-        if found:
-            idmap[pc["id"]] = found["id"]
-            continue
-        cid = ops.next_id(data, "C")
-        data["claims"].append({"id": cid, "cc_id": None, "text": pc["text"], "stated": False,
-                               "source": f"{pc['source']} {tag}", "layer": "Formal pilot",
-                               "plain": {"what": pc["text"], "proof": "A formal record checks it."}})
-        idmap[pc["id"]] = cid
-        report.append(f"claim {cid} from {pc['id']}: {pc['text']}")
-
-    for rec in side.get("verifiers", []):
-        items = (rec.get("invariant") or {}).get("items", [])
-        ids = [it["id"] for it in items]
-        confirmed = [i for i in ids if invs.get(i, {}).get("author") == "user" and invs[i].get("status") == "accepted"]
-        for i in confirmed:
-            if invs[i].get("possible_bug"):
-                fixed = fix_landed(c, data, rec, invs[i])
-                if fixed:
-                    invs[i]["possible_bug_fixed"] = {**fixed, "bugs": invs[i].pop("possible_bug")}
-                    report.append(f"{i}: the possible bug is fixed at {fixed['commit'][:10]} ({fixed['why']})")
-        bugs = [i for i in confirmed if invs[i].get("possible_bug")]
-        if ids and len(confirmed) == len(ids) and not bugs:
-            refs = [f"journal {r['ts']}" for r in rows if r.get("kind") == "invariant" and r.get("author") == "user" and r.get("invariant") in ids]
-            rec["invariant"].update(author="user", ref="; ".join(refs) or "trust-map invariants " + ", ".join(ids), status="confirmed")
-        else:
-            rec["invariant"].update(author="agent", ref=None, status="proposed")
-        if bugs:
-            route = invs[bugs[0]].get("route")
-            if route:
-                rec["route"] = route
-                rec["route_reason"] = (f"The user confirmed {bugs[0]}, and the code at the head does not obey it: "
-                                       f"{invs[bugs[0]]['possible_bug'][0].get('where', 'see the invariant')}.")
-        rated = formal_record.rate(rec)
-        if bugs and rated["verdict"].startswith("Formal"):
-            fix = invs[bugs[0]].get("fix_branch", "the fix branch")
-            rated = {"verdict": "Formal (pending)",
-                     "missing": [f"{i}: the code disagrees with the confirmed invariant; fix pending on {fix}, then run the check again against the user's {i}"
-                                 for i in bugs] + [f"{i}: not confirmed by the user" for i in ids if i not in confirmed]}
-        rec["formal"] = rated
-        report.append(f"{rec['id']}: {rated['verdict']}" + (f" ({'; '.join(rated['missing'])})" if rated["missing"] else ""))
-        add_verifier(data, rec, idmap, side_path)
-
-    side_path.write_text(json.dumps(side, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    import onto
-    onto.reconcile(data)  # shape 2: each new claim lists its checks
-    verdicts.apply(data)
-    errors = tm.validate(data, promises=False)
-    if errors:
-        tm.fail("formalize --sidecar: the map is invalid:\n" + "\n".join(errors), 1)
-    tm.save(data, c.map)
-    return {"report": report, "claims": idmap}
+        key = pc["id"]
+        target = (pc.get("claim") if pc.get("claim") in hold else None) or keyed.get(key)
+        if not target:
+            target = store.next_id(data, "claims")
+            data["claims"].append({"id": target, "text": pc["text"], "checks": [], "formal_key": key,
+                                   **({"feature": pc["feature"]} if pc.get("feature") else {})})
+            hold = holders(data)
+            report.append(f"new claim {target} for the proposed claim {key}")
+        claim, part = hold[target]
+        (part if part is not None else claim)["formal_key"] = key
+        pc["claim"] = target
+        idmap[key] = target
+    return idmap
 
 
-def fix_landed(c: context.Ctx, data: dict, rec: dict, inv: dict) -> dict | None:
-    """A possible bug of a confirmed invariant is fixed when the record was checked again at a
-    commit whose code differs from the commit that showed the bug, the model check and the
-    conformance run are green there, and no blocker is open. Else None."""
-    drift = rec.get("drift") or {}
-    commit = drift.get("commit")
-    seen_at = next((b.get("at_commit") for b in inv.get("possible_bug", []) if b.get("at_commit")), None) or data["head"]
-    if not (c.repo and commit) or commit == seen_at or rec.get("blocker_open"):
-        return None
-    if (rec.get("check") or {}).get("status") != "green" or ((rec.get("conformance") or {}).get("result") or {}).get("status") != "green":
-        return None
-    changed = []
-    for f in drift.get("code_files", []):
-        before = subprocess.run(["git", "-C", str(c.repo), "rev-parse", f"{seen_at}:{f['path']}"], capture_output=True, text=True).stdout.strip()
-        if before and before != f.get("blob"):
-            changed.append(f["path"])
-    if not changed:
-        return None
-    return {"commit": commit, "record": rec["id"], "at": tm.now(),
-            "why": f"record {rec['id']} is green at {commit[:10]}, and {', '.join(changed)} changed after {seen_at[:10]}"}
+def judge(rec: dict, ids: list[str], data: dict) -> tuple[dict, dict]:
+    """The invariant block and the rating of a record (or of one property of it)."""
+    invs = {i["id"]: i for i in data["invariants"]}
+    confirmed = [i for i in ids if invs.get(i, {}).get("author") == "user" and invs[i].get("status") == "accepted"]
+    inv = dict(rec.get("invariant") or {})
+    if ids and len(confirmed) == len(ids):
+        inv.update(author="user", ref="store invariants " + ", ".join(ids), status="confirmed")
+    elif ids or inv.get("author") != "user":
+        inv.update(author="agent", ref=None, status="proposed")
+    return inv, formal_record.rate({**rec, "invariant": inv})
 
 
-def add_verifier(data: dict, rec: dict, idmap: dict[str, str], side_path: Path) -> None:
-    claims = [idmap.get(x, x) for x in rec.get("claims", [])]
-    claims = [x for x in claims if any(c["id"] == x for c in data["claims"])]
-    models = [m["path"] for m in (rec.get("drift") or {}).get("model_files", [])]
-    conf = rec.get("conformance") or {}
-    status = "pass" if (conf.get("result") or {}).get("status") == "green" else "fail"
-    argv = " ".join((conf.get("result") or {}).get("argv", []))
-    v = {"id": rec["id"], "kind": "lean" if rec["kind"] == "lean" else ("tla" if rec["kind"] == "tla" else "property"),
-         "ladder": rec["ladder_tier"], "claims": claims, "tier": "fact", "description": rec["description"],
-         "recorded": {"source": f"formal sidecar {side_path.name}, record {rec['id']}",
-                      "result": f"check {(rec.get('check') or {}).get('status')}; conformance {(conf.get('result') or {}).get('status')}; record verdict {rec['formal']['verdict']}"},
-         "independence": rec.get("independence") or {"by": "tool", "tool": rec["kind"]},
-         "cost": rec.get("cost") or {"usd": 0}, "provenance": f"understando formalize; the record is in {side_path}.",
-         "formal_record": {**{k: rec[k] for k in KEEP if k in rec},
-                           "controls": [{"id": k["id"], "target": k["target"], "status": k["result"].get("status")} for k in rec.get("controls", [])],
-                           "sidecar": str(side_path)}}
-    if v["independence"].get("by") != "tool":
-        v["independence"] = {"by": "tool", "tool": rec["kind"]}
-    if rec["ladder_tier"] >= 4:
-        v["formal"] = {"tool": "lean" if rec["kind"] == "lean" else "tla", "artifact": models[0] if models else "unknown",
-                       "conformance": {"status": status, "source": argv or "the conformance run of the record"}}
-    data["verifiers"] = [x for x in data["verifiers"] if x["id"] != v["id"]] + [v]
-    data["controls"] = [k for k in data["controls"] if k["verifier"] != v["id"]]
-    for k in rec.get("controls", []):
-        r = k["result"]
-        ctl = r.get("control") or {}
-        where = ctl.get("file") or (models[0] if models else "model")
-        if r.get("edits"):
-            edits = r["edits"]
-        elif ctl.get("edit"):
-            edits = [{**ctl["edit"], "path": where}]
-        else:  # a record from before anchor controls: the typed find and replace
-            edits = [{"op": "replace", "path": where, "find": ctl.get("find", ""), "replace": ctl.get("replace", "")}]
-        edits = [e for e in edits if e.get("find") or e["op"] in coderef.ANCHOR_OPS] or [{"op": "append", "path": models[0] if models else "model", "text": "(recorded control)"}]
-        red = r.get("status") == "red"
-        data["controls"].append({
-            "id": k["id"], "verifier": v["id"], "recipe": "plant-violation",
-            "description": f"A planted {'wrong model' if k['target'] == 'model' else 'wrong function'} from the formal pilot.",
+def taken(data: dict) -> set[str]:
+    return {x["id"] for s in ("claims", "checks", "controls", "invariants") for x in data.get(s, [])}
+
+
+def fresh_id(data: dict, base: str, also: set[str]) -> str:
+    """A new ID near `base`: K2a -> K2b (the next free letter), else base-2, base-3, ..."""
+    used = taken(data) | also
+    stem = base[:-1] if re.search(r"\d[a-z]$", base) else base
+    for ch in string.ascii_lowercase:
+        if f"{stem}{ch}" not in used:
+            return f"{stem}{ch}"
+    n = 2
+    while f"{base}-{n}" in used:
+        n += 1
+    return f"{base}-{n}"
+
+
+def store_control(rec: dict, k: dict, vid: str, models: list[str], before: dict | None = None) -> dict:
+    r = k["result"]
+    ctl = r.get("control") or {}
+    where = ctl.get("file") or (models[0] if models else "model")
+    edits = r.get("edits") or ([{**ctl["edit"], "path": where}] if ctl.get("edit") else [])
+    edits = [e for e in edits if e.get("find") or e.get("op") in coderef.ANCHOR_OPS] or \
+        [{"op": "append", "path": models[0] if models else "model", "text": "(recorded control)"}]
+    red = r.get("status") == "red"
+    return {"id": k["map_id"], "check": vid, "kind": "planted", "sidecar": rec["id"],
+            "description": f"A planted {'wrong model' if k['target'] == 'model' else 'wrong function'} from formalize.",
             "edits": edits, "expect": {"status": "red"},
             "result": {"status": "red" if red else ("green" if r.get("status") == "green" else "error"), "exit": r.get("exit"),
                        "matched": True if red else None, "recorded": True,
-                       "output_tail": re.sub(r"/Users/[^/\s]+", "~", tail(r.get("output_tail"))), "ran_at": tm.now()}})
+                       "output_tail": re.sub(r"/Users/[^/\s]+", "~", tail(r.get("output_tail"))),
+                       "ran_at": r.get("ran_at") or ((before or {}).get("result") or {}).get("ran_at") or store.now()}}
+
+
+def base_check(rec: dict, side_path: Path, models: list[str], feature: str | None) -> dict:
+    conf = (rec.get("conformance") or {}).get("result") or {}
+    v = {"kind": rec["kind"] if rec["kind"] in ("lean", "tla") else "property", "ladder": rec["ladder_tier"],
+         "description": rec["description"],
+         "recorded": {"source": f"formal sidecar {side_path.name}, record {rec['id']}",
+                      "result": f"check {(rec.get('check') or {}).get('status')}; conformance {conf.get('status')}"},
+         "formal_record": {**{k: copy.deepcopy(rec[k]) for k in KEEP if k in rec}, "sidecar": str(side_path)},
+         **({"feature": feature} if feature else {})}
+    if rec["ladder_tier"] >= 4:
+        v["formal"] = {"tool": "lean" if rec["kind"] == "lean" else "tla", "artifact": models[0] if models else "unknown",
+                       "conformance": {"status": "pass" if conf.get("status") == "green" else "fail",
+                                       "source": " ".join(conf.get("argv") or []) or "the conformance run of the record"}}
+    return v
+
+
+def put_check(data: dict, v: dict, target: str | None) -> None:
+    i = next((n for n, x in enumerate(data["checks"]) if x["id"] == v["id"]), None)
+    if i is None:
+        data["checks"].append(v)
+    else:
+        data["checks"][i] = v
+    if not target:
+        return
+    claim, part = holders(data)[target]
+    if v["id"] not in claim["checks"]:
+        claim["checks"].append(v["id"])
+    if part is not None and v["id"] not in part["checks"]:
+        part["checks"].append(v["id"])
+
+
+def add_record(data: dict, rec: dict, idmap: dict[str, str], side_path: Path, report: list[str], used: set[str]) -> list[str]:
+    ids = [it["id"] for it in (rec.get("invariant") or {}).get("items", [])]
+    targets = [idmap.get(x, x) for x in rec.get("claims", [])]
+    hold = holders(data)
+    ids = ids or sorted({i for t in targets if t in hold for i in (hold[t][1] or hold[t][0]).get("invariants", [])})
+    inv, rated = judge(rec, ids, data)
+    rec["invariant"], rec["formal"] = inv, rated
+    models = [m["path"] for m in (rec.get("drift") or {}).get("model_files", [])]
+    props = rec.get("properties") or []
+    for p in props:
+        p.setdefault("controls", [])
+        if not p.get("check"):
+            p["check"] = fresh_id(data, f"{rec['id']}a", used | {q["check"] for q in props if q.get("check")})
+    mine = {rec["id"]} | {p["check"] for p in props}
+    by_id = {k["id"]: k for k in data["controls"]}
+    for k in rec.get("controls", []):
+        mid = k.get("map_id") or k["id"]
+        other = by_id.get(mid)
+        if mid in used or (other and other["check"] not in mine and other.get("sidecar") != rec["id"]):
+            mid = fresh_id(data, k["id"], used)
+            report.append(f"{rec['id']}: the control {k['id']} is {mid} in the store, because another check holds {k['id']}")
+        k["map_id"] = mid
+        used.add(mid)
+    owner = {}
+    for p in props:
+        for kid in p["controls"]:
+            owner[kid] = p
+    for k in rec.get("controls", []):
+        p = owner.get(k["id"]) or next((x for x in props if x["name"] == (k.get("property") or (k["result"].get("control") or {}).get("name"))), None)
+        if props and not p:
+            raise Refused(f"the record {rec['id']} has a control {k['id']} that names no property; its properties are "
+                          f"{', '.join(x['name'] for x in props)}. Build the record again with --control ...:PROPERTY.")
+        if p:
+            owner[k["id"]] = p
+            if k["id"] not in p["controls"]:
+                p["controls"].append(k["id"])
+    feature = next((hold[t][0].get("feature") for t in targets if t in hold), None)
+    base = base_check(rec, side_path, models, feature)
+    old = {v["id"]: v for v in data["checks"] if v["id"] in mine or (v.get("formal_record") or {}).get("sidecar") and
+           (v.get("recorded") or {}).get("source", "").endswith(f"record {rec['id']}")}
+    out = []
+    groups = [(p["check"], [idmap.get(p["part"], p["part"])], [k for k in rec.get("controls", []) if owner.get(k["id"]) is p], p)
+              for p in props] or [(rec["id"], targets, rec.get("controls", []), None)]
+    for vid, tgts, ctls, p in groups:
+        v = {k: x for k, x in (old.get(vid) or {}).items() if k not in OWNED}
+        v.update(copy.deepcopy(base))
+        v["id"] = vid
+        sub_rec = {**rec, "controls": ctls} if p else rec
+        _, prated = judge(sub_rec, ids, data)
+        v["formal_record"]["formal"] = prated
+        v["formal_record"]["controls"] = [{"id": k["map_id"], "target": k["target"], "status": k["result"].get("status")} for k in ctls]
+        v["recorded"]["result"] += f"; record verdict {prated['verdict']}"
+        if p:
+            v["property"] = p["name"]
+            v.setdefault("name", p.get("check_name") or p["name"])
+        v.setdefault("name", rec["description"][:60])
+        for t in tgts:
+            if t not in holders(data):
+                raise Refused(f"the record {rec['id']} names the claim or part {t}, and the store has no such claim")
+        put_check(data, v, tgts[0] if tgts else None)
+        for t in tgts[1:]:
+            put_check(data, v, t)
+        out.append(vid)
+    gone = set(old) - set(out)
+    if gone:
+        data["checks"] = [x for x in data["checks"] if x["id"] not in gone]
+        report.append(f"{rec['id']}: {', '.join(sorted(gone))} replaced by {', '.join(out)}")
+    rec_mids = {k["map_id"] for k in rec.get("controls", [])}
+    befores = {k["id"]: k for k in data["controls"] if k["id"] in rec_mids}
+    data["controls"] = [k for k in data["controls"] if k["id"] not in rec_mids and k.get("sidecar") != rec["id"] and k["check"] not in gone]
+    for k in rec.get("controls", []):
+        data["controls"].append(store_control(rec, k, owner[k["id"]]["check"] if props else rec["id"], models, befores.get(k["map_id"])))
+    report.append(f"{rec['id']}: {rated['verdict']}" + (f" ({'; '.join(rated['missing'])})" if rated["missing"] else "")
+                  + (f"; {len(out)} checks, one for each property" if props else ""))
+    return out
+
+
+def sync(c: store.Ctx, path: str) -> dict:
+    data = c.need_data()
+    before = json.dumps(data, sort_keys=True)
+    side_path = Path(path).resolve()
+    side = json.loads(side_path.read_text(encoding="utf-8"))
+    report: list[str] = []
+    checks: list[str] = []
+    try:
+        idmap = resolve_proposed(data, side, report)
+        used: set[str] = set()
+        for rec in side.get("verifiers", []):
+            checks += add_record(data, rec, idmap, side_path, report, used)
+    except Refused as exc:
+        store.fail(f"formalize --sidecar: refuse: {exc}", 1)
+    ids = {v["id"] for v in data["checks"]}
+    for cl in data["claims"]:
+        cl["checks"] = [x for x in cl["checks"] if x in ids]
+        for p in cl.get("parts", []):
+            p["checks"] = [x for x in p["checks"] if x in ids]
+    side_path.write_text(json.dumps(side, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    import strength
+    strength.apply(data)
+    changed = before != json.dumps(data, sort_keys=True)
+    c.save(data)
+    return {"report": report, "claims": idmap, "checks": checks, "changed": changed}
+
+
+# ---- recheck -----------------------------------------------------------------------------------
+
+def rerun(result: dict, old_root: str | None, new_root: Path) -> dict:
+    """Run a helper call again. The stamp-time repo path becomes the repo of this run."""
+    call = result.get("rerun")
+    if not call:
+        raise Refused("the result has no `rerun` call (it is older than recheck); run the helper again by hand")
+    swap = (lambda x: x.replace(old_root, str(new_root))) if old_root else (lambda x: x)
+    argv = [sys.executable, str(HERE / call["script"]), *[swap(a) for a in call["args"]]]
+    cwd = swap(call.get("cwd") or str(new_root))
+    out = subprocess.run(argv, cwd=cwd if Path(cwd).is_dir() else str(new_root), capture_output=True, text=True, timeout=3600)
+    try:
+        return formal_record.trim(json.loads(out.stdout))
+    except json.JSONDecodeError:
+        return {"status": "error", "exit": out.returncode, "output_tail": tail(out.stdout + out.stderr), "rerun": call}
+
+
+def commands(rec: dict) -> list[list[str]]:
+    rows = [rec.get("check") or {}, (rec.get("conformance") or {}).get("result") or {}] + [k["result"] for k in rec.get("controls", [])]
+    return [[call["script"], *call["args"]] for call in (r.get("rerun") for r in rows) if call]
+
+
+def recheck(c: store.Ctx, rid: str, sidecar: str | None) -> int:
+    repo = c.need_repo()
+    side_path = Path(sidecar).resolve() if sidecar else c.run / "formal" / "verifiers.json"
+    if not side_path.is_file():
+        store.fail(f"formalize --recheck: no sidecar at {side_path}", 2)
+    side = json.loads(side_path.read_text(encoding="utf-8"))
+    rec = next((r for r in side.get("verifiers", []) if r["id"] == rid), None)
+    if not rec:
+        store.fail(f"formalize --recheck: the sidecar has no record {rid}", 2)
+    if not store.confirm(c, f"formalize --recheck {rid}", commands(rec), str(repo)):
+        return 0
+    old_root = (rec.get("drift") or {}).get("root")
+    lines = []
+    try:
+        rec["check"] = rerun(rec.get("check") or {}, old_root, repo)
+        lines.append(f"check: {rec['check'].get('status')}")
+        conf = rec.setdefault("conformance", {})
+        conf["result"] = rerun(conf.get("result") or {}, old_root, repo)
+        lines.append(f"conformance: {conf['result'].get('status')}")
+        for k in rec.get("controls", []):
+            k["result"] = rerun(k["result"], old_root, repo)
+            lines.append(f"control {k['id']} ({k['target']}): {k['result'].get('status')}")
+    except Refused as exc:
+        store.fail(f"formalize --recheck: refuse: {exc}", 1)
+    d = rec.get("drift") or {}
+    rec["drift"] = formal_record.stamp_of(repo, [f["path"] for f in d.get("code_files", [])], [f["path"] for f in d.get("model_files", [])])
+    rec["formal"] = formal_record.rate(rec)
+    rec["rechecked_at"] = store.now()
+    side_path.write_text(json.dumps(side, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    lines.append(f"{rid}: {rec['formal']['verdict']} at {rec['drift']['commit'][:10]}" + (f" ({'; '.join(rec['formal']['missing'])})" if rec["formal"]["missing"] else ""))
+    if c.store and c.store.is_file():
+        out = sync(c, str(side_path))
+        lines += out["report"]
+    store.emit(c, {"record": rid, "formal": rec["formal"], "lines": lines}, "\n".join(lines))
+    return 0 if rec["formal"]["verdict"] == "Formal" else 1

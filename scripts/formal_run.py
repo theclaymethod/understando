@@ -43,6 +43,13 @@ SKIP = shutil.ignore_patterns(".git", ".venv", ".lake", "node_modules", "__pycac
                               ".ruff_cache", "*.pyc")
 
 
+
+def _rerun_json(obj, **kw) -> str:
+    """The JSON result, with the call that made it (formalize --recheck runs it again)."""
+    if isinstance(obj, dict):
+        obj = {**obj, "rerun": {"script": Path(__file__).name, "args": sys.argv[1:], "cwd": os.getcwd()}}
+    return json.dumps(obj, **kw)
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--cwd", required=True)
@@ -76,7 +83,7 @@ def main() -> int:
                 try:
                     apply_edit(copy, edit)
                 except (coderef.AnchorError, ValueError, KeyError, OSError) as exc:
-                    print(json.dumps({"status": "error", "note": f"ANCHOR ERROR: {exc}", "edit": edit}, indent=2))
+                    print(_rerun_json({"status": "error", "note": f"ANCHOR ERROR: {exc}", "edit": edit}, indent=2))
                     return 2
             run_dir = copy / cwd.relative_to(root)
         else:
@@ -101,7 +108,7 @@ def main() -> int:
         "argv": args.argv, "edits": edits,
         "output_tail": "\n".join(text.rstrip().replace(str(Path.home()), "~").splitlines()[-TAIL:]),
     }
-    print(json.dumps(result, indent=2))
+    print(_rerun_json(result, indent=2))
     if args.expect:
         return 0 if status == args.expect else 1
     return {"green": 0, "red": 1}.get(status, 2)

@@ -1,11 +1,11 @@
-"""The asd-ste100 gate: run the STE lint of the installed skill on text that a reviewer reads.
+"""The asd-ste100 gate: run the STE lint of the installed skill on the written claim text.
 
 asd-ste100 is required. understando has no adapted copy of it, and `understando setup` installs it.
 The agent applies the skill while it writes (SKILL.md, "Rules for every verb"). This module is the
 mechanical half: it runs `python3 -I <asd-ste100>/scripts/ste-lint.py --json` on the text and
 returns each hard violation (a semicolon, a long sentence, a rotating synonym, a marketing word,
-a soft phrasal verb, a frozen action noun). A hard violation fails the prompt render, the map
-check of claims and names, the PR section and the README of publish.
+a soft phrasal verb, a frozen action noun). A hard violation fails the written claim and
+invariant text (discover answer, build claim).
 
     python3 scripts/ste.py FILE...      lint each file; exit 1 on a hard violation or a missing lint
 """
@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 
 SKILL = "asd-ste100"
-MISSING = ("the STE lint (asd-ste100) is not installed. It is required for the text that a reviewer reads. "
+MISSING = ("the STE lint (asd-ste100) is not installed. It is required for the written claim text. "
            "Run `understando setup` to install it.")
 
 
@@ -32,8 +32,8 @@ class SteMissing(RuntimeError):
 
 
 def lint_path() -> Path | None:
-    import routes
-    found = routes.find_skill(SKILL)
+    import toolprobe
+    found = toolprobe.find_skill(SKILL)
     p = found / "scripts" / "ste-lint.py" if found else None
     return p if p and p.is_file() else None
 
@@ -75,48 +75,15 @@ def require(texts: list[str], what: str) -> None:
         raise ValueError(f"{what}: the text is not strict STE (asd-ste100): " + "; ".join(bad))
 
 
-def map_texts(data: dict) -> list[str]:
-    """The prose that a map holds: claim statements, plain text, names, promises and glossary."""
-    out: list[str] = []
-
-    def add(x):
-        if isinstance(x, str) and x.strip():
-            out.append(x.strip())
-        elif isinstance(x, dict):
-            for v in x.values():
-                add(v)
-        elif isinstance(x, list):
-            for v in x:
-                add(v)
-
-    for c in data.get("claims", []):
-        for k in ("text", "name"):
-            add(c.get(k))
-        for k in ("what", "proof", "warning"):
-            add((c.get("plain") or {}).get(k))
-        add([p.get("text") if isinstance(p, dict) else p for p in c.get("parts", [])])
-    for p in data.get("promises", []):
-        for k in ("label", "sentence", "reviewer_action", "name"):
-            add(p.get(k))
-    for v in data.get("verifiers", []):
-        add(v.get("name"))
-        add(v.get("description"))
-    for i in data.get("invariants", []):
-        add(i.get("text"))
-    add([g.get("meaning") for g in data.get("glossary", [])])
-    for k in data.get("controls", []):
-        add(k.get("name"))
-        add(k.get("description"))
-    add(data.get("verdict_intros"))
-    return out
-
-
-def map_problems(data: dict) -> list[str]:
-    """One finding for each map text that has a hard STE violation (claims, plain text, names, promises)."""
+def store_problems(data: dict, sections: tuple[str, ...] = ("invariants", "claims")) -> list[str]:
+    """One finding for each hard STE violation in the written text of the store: the invariant and
+    claim statements and their names."""
     problems = []
-    for t in map_texts(data):
-        for b in hard_violations(prose(t)):
-            problems.append(f"not strict STE: {b}")
+    for section in sections:
+        for item in data.get(section, []):
+            for key in ("text", "name"):
+                if item.get(key):
+                    problems += [f"{section[:-1]} {item['id']}: not strict STE: {b}" for b in hard_violations(prose(item[key]))]
     return problems
 
 

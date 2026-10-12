@@ -6,7 +6,9 @@
 #                                               a trace, trace replay green, code control red);
 #   - split_evenly (buggy) + proof attempt   -> must end Not formal, route code-first, with a
 #                                               witness test that fails on the bug and passes on the fix.
-# Then the drift gate goes red when the mapped code changes.
+# Then the records go into an evidence store (formalize --sidecar), the claims are Formal, a second
+# sync changes nothing, the drift gate goes red when the mapped code changes, and
+# formalize --recheck runs the record again at the new code and stamps it again.
 #
 #   tests/formal/e2e.sh          KEEP=1 tests/formal/e2e.sh keeps the work dir
 #
@@ -27,7 +29,7 @@ trap cleanup EXIT
 
 step() { printf '\n== %s\n' "$*"; }
 g() { git -C "$REPO" -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false "$@"; }
-field() { python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(eval(sys.argv[2], {}, {'d': d}))" "$@"; }
+field() { python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(eval(sys.argv[2], {'d': d}))" "$@"; }
 expect() { [ "$2" = "$3" ] || { echo "FAIL: $1: expected '$3', got '$2'"; exit 1; }; echo "ok: $1 = $2"; }
 
 step "build the fixture repo"
@@ -102,7 +104,8 @@ expect "retry code control" "$(field "$OUT/r.k2.json" "d['status']")" red
 python3 "$S/formal_record.py" build --out "$OUT/F02.json" --id F02 --kind tla --tier 4 --claim C2 \
   --description "retry makes at most MaxTries calls, none after ok or fatal, and returns." \
   --check "$OUT/r.check.json" --conformance "$OUT/r.conf.json" \
-  --control model:K03:"$OUT/r.k1.json" --control code:K04:"$OUT/r.k2.json" \
+  --control model:K03:"$OUT/r.k1.json":NoCallAfterStop --control code:K04:"$OUT/r.k2.json":NoCallAfterStop \
+  --property "NoCallAfterStop=C2=the stop rule" \
   --card "$FIX/cards/retry.card.json" --checks7 "$FIX/cards/retry.checks7.json" \
   --invariant-author user --invariant-ref fixture:formal/tla/Retry.tla >/dev/null
 python3 "$S/formal_record.py" stamp --record "$OUT/F02.json" --repo "$REPO" --code mini/retry.py \
@@ -140,7 +143,7 @@ python3 "$S/formal_record.py" build --out "$OUT/F03.json" --id F03 --kind lean -
 step "verdicts"
 SIDE="$OUT/formal/verifiers.json"
 for r in F01 F02 F03; do
-  python3 "$S/formal_record.py" add --sidecar "$SIDE" --record "$OUT/$r.json" --repo fixture --pr 1 --head "$(g rev-parse HEAD)" >/dev/null
+  python3 "$S/formal_record.py" add --sidecar "$SIDE" --record "$OUT/$r.json" --repo fixture --app fixture --head "$(g rev-parse HEAD)" >/dev/null
 done
 expect "F01 withdraw" "$(field "$OUT/F01.json" "d['formal']['verdict']")" Formal
 expect "F02 retry" "$(field "$OUT/F02.json" "d['formal']['verdict']")" Formal
@@ -156,6 +159,36 @@ PY
 python3 "$S/formal_record.py" verdict --record "$OUT/F01p.json" >/dev/null || true
 expect "F01 proposed" "$(field "$OUT/F01p.json" "d['formal']['verdict']")" "Formal (pending user confirmation)"
 
+step "formalize --sidecar: the records go into the evidence store"
+RUN="$UNDERSTANDO_RUNS/fixture/fixture"; mkdir -p "$RUN"
+python3 - "$S" "$RUN/verify.json" "$(g rev-parse HEAD)" <<'PY'
+import sys
+sys.path.insert(0, sys.argv[1])
+import store
+d = store.new("fixture/mini", "fixture", sys.argv[3])
+d["features"] = [{"id": "money", "name": "Money rules", "surface": "backend", "paths": ["mini/"]}]
+for n, text in ((1, "A withdrawal never overdraws."), (2, "The retry loop stops after ok or fatal, within MaxTries calls."),
+                (3, "The parts of a split sum to the total.")):
+    d["invariants"].append({"id": f"I{n}", "feature": "money", "text": text, "author": "user", "status": "accepted", "risky": True})
+    d["claims"].append({"id": f"C{n}", "feature": "money", "text": text, "invariants": [f"I{n}"], "checks": []})
+store.save(d, sys.argv[2])
+PY
+U="$ROOT/bin/understando --run $RUN --repo $REPO"
+$U formalize --sidecar "$SIDE" > "$OUT/sync1.txt"
+cat "$OUT/sync1.txt"
+grep -q "3 formal checks" "$OUT/sync1.txt" || { echo "FAIL: sync"; exit 1; }
+expect "one check for each property, with its controls" "$(field "$RUN/verify.json" "[(v['id'], v.get('property'), v['name']) for v in d['checks'] if v['id'].startswith('F02')]")" "[('F02a', 'NoCallAfterStop', 'the stop rule')]"
+expect "the controls of the property" "$(field "$RUN/verify.json" "sorted(k['id'] for k in d['controls'] if k['check'] == 'F02a')")" "['K03', 'K04']"
+python3 "$S/strength.py" "$RUN/verify.json" > "$OUT/strength.txt"
+cat "$OUT/strength.txt"
+grep -q "^C1   Formal  tier 5  meets its bar" "$OUT/strength.txt" || { echo "FAIL: C1 is not Formal"; exit 1; }
+grep -q "^C2   Formal  tier 4  meets its bar" "$OUT/strength.txt" || { echo "FAIL: C2 is not Formal"; exit 1; }
+grep -q "^C3   Backed" "$OUT/strength.txt" || { echo "FAIL: C3 is not Backed"; exit 1; }
+sleep 1  # a new timestamp would show as a change
+$U formalize --sidecar "$SIDE" > "$OUT/sync2.txt"
+grep -q "the store is the same" "$OUT/sync2.txt" || { cat "$OUT/sync2.txt"; echo "FAIL: the second sync changed the store"; exit 1; }
+echo "ok: a second sync changes nothing"
+
 step "drift gate"
 python3 "$S/formal_record.py" drift --record "$OUT/F01.json" --repo "$REPO" > "$OUT/d1.json"
 expect "drift at the stamp" "$(field "$OUT/d1.json" "d['status']")" green
@@ -163,6 +196,17 @@ sed -i.bak 's/amount <= 0/amount < 0/' "$REPO/mini/wallet.py" && rm "$REPO/mini/
 g commit -q -am "change the guard"
 python3 "$S/formal_record.py" drift --record "$OUT/F01.json" --repo "$REPO" > "$OUT/d2.json" || true
 expect "drift after a code change" "$(field "$OUT/d2.json" "d['status']")" red
+
+step "formalize --recheck F01: the check, the conformance run and the controls again, at the new code"
+$U formalize --recheck F01 --sidecar "$SIDE" > "$OUT/recheck-ask.txt"
+grep -q "formal_lean.py check" "$OUT/recheck-ask.txt" || { cat "$OUT/recheck-ask.txt"; echo "FAIL: recheck did not show its commands"; exit 1; }
+$U --yes formalize --recheck F01 --sidecar "$SIDE" > "$OUT/recheck.txt"
+cat "$OUT/recheck.txt"
+grep -q "^F01: Formal at $(g rev-parse HEAD | cut -c1-10)" "$OUT/recheck.txt" || { echo "FAIL: recheck"; exit 1; }
+expect "the record is stamped at the new head" "$(field "$SIDE" "next(v['drift']['commit'] for v in d['verifiers'] if v['id'] == 'F01')")" "$(g rev-parse HEAD)"
+field "$SIDE" "__import__('json').dumps(next(v for v in d['verifiers'] if v['id'] == 'F01'))" > "$OUT/F01.after.json"
+python3 "$S/formal_record.py" drift --record "$OUT/F01.after.json" --repo "$REPO" > "$OUT/d3.json"
+expect "drift after recheck" "$(field "$OUT/d3.json" "d['status']")" green
 
 step "summary"
 python3 - "$SIDE" <<'PY'

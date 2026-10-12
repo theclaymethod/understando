@@ -7,7 +7,7 @@ original-skill: find-bugs
 -->
 # The finding format
 
-Each bug that understando reports uses one format. discover uses it for an answer that the code does not obey. formalize uses it for a code-first route, and close and the review use it for their findings. `scripts/findings.py` writes it.
+Each bug that understando reports uses one format. discover uses it for an answer that the code does not obey. formalize uses it for a code-first route. `scripts/discover.py` writes it.
 
 ```text
 P1 — [Small fix, 95% finding confidence, 90% fix confidence] <one line>

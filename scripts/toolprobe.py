@@ -145,3 +145,48 @@ def cc_check() -> tuple[str | None, str]:
     val = f"npx {CC_PKG}" if ok else None
     _store("cc-check", val)
     return val, ""
+
+
+def tla2tools_jar() -> str | None:
+    """$UNDERSTANDO_TLA2TOOLS, $TLA2TOOLS_JAR, then ~/.understando/tools/tla2tools.jar."""
+    for c in (os.environ.get("UNDERSTANDO_TLA2TOOLS"), os.environ.get("TLA2TOOLS_JAR"),
+              str(_home() / "tools" / "tla2tools.jar"), str(Path.home() / ".understando" / "tools" / "tla2tools.jar")):
+        if c and Path(c).is_file():
+            return c
+    return None
+
+
+def mutation_venv() -> Path | None:
+    """The venv with mutmut, cosmic-ray and pytest: $UNDERSTANDO_MUTATION_VENV, else
+    ~/.understando/tools/mutation (`understando setup --mutation` makes it)."""
+    for c in (os.environ.get("UNDERSTANDO_MUTATION_VENV"), str(_home() / "tools" / "mutation"),
+              str(Path.home() / ".understando" / "tools" / "mutation")):
+        if c and (Path(c) / "bin" / "python").exists():
+            return Path(c)
+    return None
+
+
+def tool_status() -> dict:
+    """Which formal, contract and mutation tools are on this machine."""
+    venv = mutation_venv()
+    cc, _ = cc_check()
+    return {"lake": shutil.which("lake"), "java": java_bin(), "tla2tools": tla2tools_jar(), "cc-check": cc,
+            "mutmut": str(venv / "bin" / "mutmut") if venv and (venv / "bin" / "mutmut").exists() else None,
+            "cosmic-ray": str(venv / "bin" / "cosmic-ray") if venv and (venv / "bin" / "cosmic-ray").exists() else None}
+
+
+SKILL_HOMES = [".agents/skills", ".claude/skills", ".claude/skills/pstack/skills", ".codex/skills", ".cursor/skills"]
+
+
+def find_skill(name: str) -> Path | None:
+    """An installed skill: <home>/<skills folder>/<name>/SKILL.md, also inside a plugin cache."""
+    base = Path(os.environ.get("UNDERSTANDO_SKILLS_HOME") or Path.home())
+    for h in SKILL_HOMES:
+        p = base / h / name
+        if (p / "SKILL.md").is_file():
+            return p
+    cache = base / ".claude" / "plugins" / "cache"
+    if cache.is_dir():
+        for p in sorted(cache.glob(f"*/*/*/skills/{name}/SKILL.md")) + sorted(cache.glob(f"*/*/*/skills/*/{name}/SKILL.md")):
+            return p.parent
+    return None

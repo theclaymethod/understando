@@ -1,470 +1,269 @@
 #!/usr/bin/env bash
-# End-to-end test: run understando map, controls, verdicts, rerun and explain on the fixture repo,
-# then assert the exact verdicts in tests/fixture/expected.json. Then tests/mode-e2e.sh drives the
-# understando CLI: the mode, the menu, discover, close, trim, ready, explain, routes and doctor.
+# The end-to-end test of the kept loop, on the fixture repo (tests/fixture):
+#   create    generates verify-wallet with a feature map, proves one feature end to end (the drive,
+#             the evidence kept after cleanup, the control fails), and its Verifier section names
+#             the bar and the verifiers;
+#   discover  records the user's invariant (and a possible bug from an example answer);
+#   build     drafts a check that fails on a planted bug, then passes on the code;
+#   probe     a planted control goes red; a check that cannot fail is flagged;
+#   mutate    mutmut reports killed, survived and filtered mutants with a kill matrix; cosmic-ray
+#             runs on the riskiest changed lines;
+#   snippet   resolves a code ref and gives its permalink;
+#   export    writes verify-data.json and refs.resolved.json for visual-explainer;
+#   maintain  flags the drive whose control no longer fails after a code change.
+# Then tests/formal/e2e.sh: Lean and TLA+ to Formal, the sync into the store, and recheck.
 #
-#   tests/e2e.sh            KEEP=1 tests/e2e.sh keeps the work dir
+#   tests/e2e.sh            KEEP=1 tests/e2e.sh keeps the work dir; SKIP_FORMAL=1 skips the formal e2e
 #
-# The map step here is the deterministic half: tests/fixture/inventory.json stands in for the
-# claims and verifiers that an agent reads from tests/fixture/PR.md, and scan.py adds the rest.
-# No model call. No network, when the npm cache holds cc-check (scripts/setup.sh puts it there).
+# No model call, no network. The mutation venv (`understando setup --mutation`) must exist.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FIX="$ROOT/tests/fixture"
-S="$ROOT/scripts"
-# The isolation comes first: the guard, the test root, and a test UNDERSTANDO_HOME and UNDERSTANDO_RUNS.
 . "$ROOT/tests/isolate.sh" e2e
 isolate_snapshot "$UNDERSTANDO_TEST_ROOT/real-before.sha256"
+# The mutation venv lives in the real store; the tests run its programs, they never write there.
+export UNDERSTANDO_MUTATION_VENV="${UNDERSTANDO_MUTATION_VENV:-$ISOLATE_REAL_STORE/tools/mutation}"
 WORK="$(mktemp -d "$UNDERSTANDO_TEST_ROOT/understando-e2e.XXXXXX")"
-REPO="$WORK/repo"
-MAP="$WORK/trust-map.json"
-export E2E_TELEMETRY_DISABLED=1 DO_NOT_TRACK=1
-# The visual-explainer runtime: ve_runtime in ~/.understando/config.toml (UNDERSTANDO_VE_RUNTIME overrides it).
-# Read it before the fake homes below; explain.py and the later steps get it through the variable.
-# config.py only reads, so it may read the real config.toml in a test run.
-UNDERSTANDO_VE_RUNTIME="${UNDERSTANDO_VE_RUNTIME:-$(UNDERSTANDO_HOME="$ISOLATE_REAL_STORE" python3 "$S/config.py" ve-runtime || true)}"
-[ -n "$UNDERSTANDO_VE_RUNTIME" ] && export UNDERSTANDO_VE_RUNTIME || unset UNDERSTANDO_VE_RUNTIME
-JAVA_FOUND="$(python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import ctx; print(ctx.java_bin() or "")' "$S")"
-# The mode state of the user's own session must not leak into the fixture run.
-export UNDERSTANDO_HOME="$WORK/uhome0"
+REPO="$WORK/wallet"
+OUT="$WORK/out"; mkdir -p "$OUT"
 cleanup() { if [ "${KEEP:-0}" = 1 ]; then echo "kept $WORK"; else rm -rf "$WORK"; fi; isolate_cleanup; }
 trap cleanup EXIT
 
+U() { "$ROOT/bin/understando" --repo "$REPO" "$@"; }
 step() { printf '\n== %s\n' "$*"; }
+fail() { echo "FAIL: $*"; exit 1; }
+has() { grep -qF -- "$2" "$1" || { echo "--- $1"; cat "$1"; fail "$1 lacks: $2"; }; }
+lacks() { if grep -qF -- "$2" "$1"; then echo "--- $1"; cat "$1"; fail "$1 has: $2"; fi; }
+field() { python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(eval(sys.argv[2], {'d': d}))" "$@"; }
+expect() { [ "$2" = "$3" ] || fail "$1: expected '$3', got '$2'"; echo "ok: $1 = $2"; }
 g() { git -C "$REPO" -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false "$@"; }
 
-step "isolation: the guard refuses a planted write, a read of the real data, and review with a fake gh (tests/isolate-e2e.sh)"
+step "isolation: the guard refuses a planted write and a read of the real data (tests/isolate-e2e.sh)"
 WORK="$WORK" bash "$ROOT/tests/isolate-e2e.sh"
 
-step "build the fixture repo: base commit, then the PR commit"
-mkdir -p "$REPO"
-cp -R "$FIX/base/." "$REPO/"
-g init -q -b main
+step "the fixture repo: a base commit, then the work"
+mkdir -p "$REPO" && cp -R "$FIX/base/." "$REPO/"
+g init -q -b main && g remote add origin https://github.com/fixture/wallet.git
 g add -A && g commit -q -m "base"
 BASE="$(g rev-parse HEAD)"
-cp -R "$FIX/head/." "$REPO/"
-g add -A && g commit -q -m "Refuse overdrafts in the wallet"
+cp -R "$FIX/head/." "$REPO/" && g add -A && g commit -q -m "Refuse overdrafts in the wallet"
 HEAD="$(g rev-parse HEAD)"
-sed -e "s/BASE_SHA/$BASE/" -e "s/HEAD_SHA/$HEAD/" "$FIX/inventory.json" > "$MAP"
-BEFORE_STATUS="$(g status --porcelain)"
-BEFORE_TREES="$(g worktree list | wc -l | tr -d ' ')"
+RUN="$UNDERSTANDO_RUNS/wallet/wallet"
+STATUS_BEFORE="$(g status --porcelain)"
 
-step "map: scan the PR, add contract claims and Gap candidates, validate"
-python3 "$S/scan.py" --repo "$REPO" --base "$BASE" --head "$HEAD" --src-prefix wallet/ --test-prefix tests/ --add "$MAP"
-python3 - "$MAP" "$FIX/plain.json" <<'PY'
-# The map step writes plain text for each claim. scan.py adds claims without it, so the
-# fixture holds the agent's plain text for those claims.
-import json, sys
-data, plain = json.load(open(sys.argv[1])), json.load(open(sys.argv[2]))
-for claim in data["claims"]:
-    if "plain" not in claim and claim["id"] in plain:
-        claim["plain"] = plain[claim["id"]]
-json.dump(data, open(sys.argv[1], "w"), indent=2)
-PY
-python3 - "$MAP" "$FIX/promises.json" "$FIX/names.json" <<'PY'
-# The map step writes three to six promises after the scan, so each claim, also each added one,
-# belongs to exactly one promise. The agent also writes the plain name of each added claim.
-import json, sys
-data = json.load(open(sys.argv[1]))
-data["promises"] = json.load(open(sys.argv[2]))
-for claim in data["claims"]:
-    claim.setdefault("name", json.load(open(sys.argv[3])).get(claim["id"]))
-json.dump(data, open(sys.argv[1], "w"), indent=2)
-PY
-python3 "$S/mechanical.py" --map "$MAP" --repo "$REPO"
-# The old shape (each verifier lists its claims) stays readable for one release: keep a copy.
-cp "$MAP" "$WORK/old-shape.json"
+# ------------------------------------------------------------------------------------------ create
+step "create: the interview finds the CLI and the repo's own test command"
+U create > "$OUT/interview.txt"
+has "$OUT/interview.txt" "cli (wallet/__main__.py)"
+has "$OUT/interview.txt" '`python3 -m unittest discover -s tests -t .` (AGENTS.md:'
+has "$OUT/interview.txt" "verify skills already here: none"
 
-step "map: the fixture migrates to the new shape (promise -> claim -> check)"
-python3 "$S/onto.py" upgrade "$MAP"
-python3 - "$MAP" <<'PY'
-import json, sys
-data = json.load(open(sys.argv[1]))
-assert data["schema_version"] == 2, data["schema_version"]
-checks = {c["id"]: c["checks"] for c in data["claims"]}
-assert checks["C01"] == ["V01", "V03"] and checks["C02"] == ["V02"], checks
-none = {v["id"]: v for v in data["verifiers"] if v["kind"] == "none"}
-gap = [c for c in data["claims"] if not any(v["id"] in c["checks"] for v in data["verifiers"] if v["kind"] != "none")]
-assert sorted(c["id"] for c in gap) == ["C03", "C04"], [c["id"] for c in gap]
-assert all(len(c["checks"]) == 1 and c["checks"][0] in none for c in gap), "a claim with no tool check lists one check of kind none"
-assert all(sorted(v["claims"]) == sorted(c["id"] for c in data["claims"] if v["id"] in c["checks"]) for v in data["verifiers"]), "the verifier lists mirror the claim lists"
-print(f"the fixture is in shape 2: {len(data['claims'])} claims list their checks; {len(none)} claims with no tool check list a check of kind none")
-PY
-python3 "$S/validate.py" "$MAP"
+step "create --spec: it shows what it writes, and writes nothing without --yes"
+U create --spec "$FIX/create.spec.json" > "$OUT/create-ask.txt"
+has "$OUT/create-ask.txt" ".agents/skills/verify-wallet/features/withdraw.md"
+has "$OUT/create-ask.txt" "Repeat the same command with --yes"
+[ -z "$(g branch --list understando/verify-wallet)" ] || fail "create wrote a branch without --yes"
 
-step "validate: an orphan check and a claim with no checks fail"
-python3 - "$MAP" "$WORK/orphan.json" "$WORK/no-checks.json" <<'PY'
-import json, sys
-data = json.load(open(sys.argv[1]))
-orphan = json.loads(json.dumps(data))
-orphan["verifiers"].append({**orphan["verifiers"][0], "id": "V99", "claims": ["C01"]})
-empty = json.loads(json.dumps(data))
-next(c for c in empty["claims"] if c["id"] == "C07")["checks"] = []
-json.dump(orphan, open(sys.argv[2], "w")); json.dump(empty, open(sys.argv[3], "w"))
-PY
-if python3 "$S/validate.py" "$WORK/orphan.json" > "$WORK/orphan.out"; then echo "FAIL: an orphan check passed"; exit 1; fi
-grep -q "check V99: no claim lists it" "$WORK/orphan.out"
-if python3 "$S/validate.py" "$WORK/no-checks.json" > "$WORK/no-checks.out"; then echo "FAIL: a claim with no checks passed"; exit 1; fi
-grep -q "claim C07: has no checks" "$WORK/no-checks.out"
-echo "validate refuses a check that no claim lists and a claim with no checks"
-
-step "validate: a claim in two promises, or in none, fails"
-python3 - "$MAP" "$WORK/two-promises.json" "$WORK/no-promise.json" <<'PY'
-import json, sys
-data = json.load(open(sys.argv[1]))
-two = json.loads(json.dumps(data)); two["promises"][1]["claims"].append("C01")
-none = json.loads(json.dumps(data)); none["promises"][0]["claims"].remove("C02")
-json.dump(two, open(sys.argv[2], "w")); json.dump(none, open(sys.argv[3], "w"))
-PY
-if python3 "$S/validate.py" "$WORK/two-promises.json" > "$WORK/two.out"; then echo "FAIL: a claim in two promises passed"; exit 1; fi
-grep -q "claim C01: in 2 promises" "$WORK/two.out"
-if python3 "$S/validate.py" "$WORK/no-promise.json" > "$WORK/none.out"; then echo "FAIL: a claim in no promise passed"; exit 1; fi
-grep -q "claim C02: in no promise" "$WORK/none.out"
-echo "validate refuses a claim in two promises and a claim in none"
-
-step "validate: a claim, a plain text or a name that is not strict STE (asd-ste100) fails"
-python3 - "$MAP" "$WORK/not-ste.json" "$WORK/not-ste-name.json" <<'PY'
-import json, sys
-data = json.load(open(sys.argv[1]))
-claim = json.loads(json.dumps(data)); claim["claims"][0]["text"] += "; the rule also holds when the balance is zero"
-name = json.loads(json.dumps(data)); name["claims"][1]["plain"]["what"] = "A seamless and robust refusal of overdrafts."
-json.dump(claim, open(sys.argv[2], "w")); json.dump(name, open(sys.argv[3], "w"))
-PY
-python3 "$S/validate.py" "$MAP" > /dev/null
-if python3 "$S/validate.py" "$WORK/not-ste.json" > "$WORK/not-ste.out"; then echo "FAIL: a claim with a semicolon passed"; exit 1; fi
-grep -q "not strict STE: semicolon" "$WORK/not-ste.out"
-if python3 "$S/validate.py" "$WORK/not-ste-name.json" > "$WORK/not-ste-name.out"; then echo "FAIL: a plain text with a marketing word passed"; exit 1; fi
-grep -q "not strict STE: marketing-adjective" "$WORK/not-ste-name.out"
-echo "validate refuses a claim with a semicolon and a plain text with a marketing word"
-
-step "controls: baseline at the head, then one scratch worktree per control"
-python3 "$S/run_control.py" --map "$MAP" --repo "$REPO" --baseline --scratch "$WORK/scratch"
-python3 "$S/run_control.py" --map "$MAP" --repo "$REPO" --all --scratch "$WORK/scratch"
-
-step "verdicts"
-python3 "$S/verdicts.py" "$MAP"
-python3 "$S/verdicts.py" "$MAP" --check
-python3 "$S/validate.py" "$MAP"
-
-step "rerun: diff the map against a copy of itself"
-cp "$MAP" "$WORK/previous.json"
-python3 "$S/rerun.py" "$WORK/previous.json" "$MAP" --fail-on-drop | tee "$WORK/rerun.md"
-grep -q "No verdict, state or control result changed." "$WORK/rerun.md"
-
-step "example: the worked examples come from a control run and the fixture's own test at the head, with provenance"
-python3 "$S/example.py" --spec "$FIX/examples.spec.json" --map "$MAP" --repo "$REPO" --out "$WORK/examples.json"
-python3 - "$WORK/examples.json" "$MAP" <<'PY'
-# Each value comes from a run of the fixture's test (the capture of wallet.core.withdraw), never
-# from the spec: without the guard the test fails, the head refuses the overdraft. Each step names its pointers.
-import json, sys
-body, data = json.load(open(sys.argv[1])), json.load(open(sys.argv[2]))
-assert body["head"] == data["head"], body["head"]
-ex = {e["id"]: e for e in body["examples"]}
-assert set(ex) == {"overdraft-before-after", "one-withdrawal"}, set(ex)
-src = ex["overdraft-before-after"]["sources"]
-assert (src["control"]["kind"], src["control"]["ids"], src["after"]["commit"]) == ("controls", ["K01"], data["head"]), src
-for e in body["examples"]:
-    for name, s in e["sources"].items():
-        assert s["sha256"].startswith("sha256:") and (s["kind"] == "controls" or s["argv"][:3] == ["python3", "-m", "unittest"]), s
-    for st in e["steps"]:
-        assert st["provenance"] and all(":/" in p for p in st["provenance"]), st
-        assert all(v["from"].split(":")[0] in e["sources"] for v in st["in"] + st["decision"] + st["out"]), st
-before, after = ex["overdraft-before-after"]["steps"]
-assert before["decision"][0]["value"] == "red" and "OverdraftError not raised" in before["out"][0]["value"], before
-assert "raise OverdraftError" in before["diff"]["patch"] and before["diff"]["path"] == "wallet/core.py", before["diff"]
-assert after["in"][0]["value"] == {"balance": 10, "amount": 11}, after["in"]
-assert after["decision"][0]["value"] == {"raised": "OverdraftError: 11 is above the balance"}, after["decision"]
-assert after["code"] == {"path": "wallet/core.py", "symbol": "withdraw"}
-pay = ex["one-withdrawal"]["steps"][1]
-assert pay["out"][0]["value"] == {"new balance": 7} and pay["station"] == "pay", pay
-print("the examples hold real values from the control run and the head run, each with its source pointers")
-PY
-# A spec value must be a pointer into a source, and an assert that the real value breaks fails.
-python3 - "$FIX/examples.spec.json" "$WORK" <<'PY'
-import json, pathlib, sys
-spec, work = json.load(open(sys.argv[1])), pathlib.Path(sys.argv[2])
-typed = json.loads(json.dumps(spec)); typed["examples"][0]["steps"][0]["out"] = {"result": {"literal": -1}}
-(work / "spec-typed.json").write_text(json.dumps(typed))
-wrong = json.loads(json.dumps(spec)); wrong["examples"][1]["steps"][1]["assert"] = [{"value": {"from": "/run/withdraw", "where": {"/args/1": 3}, "at": 0, "fields": {"r": "/result"}}, "equals": {"r": 8}}]
-(work / "spec-wrong.json").write_text(json.dumps(wrong))
-PY
-for case in "typed:the spec holds no value" "wrong:the reason assumes"; do
-  name="${case%%:*}"; want="${case#*:}"
-  if python3 "$S/example.py" --spec "$WORK/spec-$name.json" --map "$MAP" --repo "$REPO" --out "$WORK/ex-$name.json" > "$WORK/ex-$name.txt" 2>&1; then
-    echo "FAIL: example.py accepted the $name spec"; exit 1
-  fi
-  grep -q "$want" "$WORK/ex-$name.txt" || { echo "FAIL: the $name spec failed for another reason:"; cat "$WORK/ex-$name.txt"; exit 1; }
+step "create --spec --yes: the skill on the branch understando/verify-wallet, never in the user's commits"
+U --yes create --spec "$FIX/create.spec.json" > "$OUT/create.txt"
+has "$OUT/create.txt" "on understando/verify-wallet at"
+TIP="$(g rev-parse understando/verify-wallet)"
+[ "$(g rev-parse main)" = "$HEAD" ] || fail "create moved main"
+[ "$(g status --porcelain)" = "$STATUS_BEFORE" ] || fail "create changed the checkout"
+g ls-tree -r --name-only "$TIP" -- .agents .claude | sort > "$OUT/tree.txt"
+cat "$OUT/tree.txt"
+for f in .agents/skills/verify-wallet/SKILL.md .agents/skills/verify-wallet/helpers/verify \
+         .agents/skills/verify-wallet/features/README.md .agents/skills/verify-wallet/features/withdraw.md .claude/skills/verify-wallet; do
+  has "$OUT/tree.txt" "$f"
 done
-echo "example.py refuses a value that the spec types, and a real value that breaks an assert"
+expect "the .claude link is relative" "$(g cat-file -p "$TIP:.claude/skills/verify-wallet")" "../../.agents/skills/verify-wallet"
+g show "$TIP:.agents/skills/verify-wallet/features/withdraw.md" > "$OUT/withdraw-1.md"
+has "$OUT/withdraw-1.md" "## Verifier"
+has "$OUT/withdraw-1.md" "**Surface:** backend."
+has "$OUT/withdraw-1.md" "**Code Contracts:**"
 
-step "explain: the agent's MDX through the visual-explainer pipeline: refs, the pre-rendered HTML, the PR section"
-# The explain step writes explainer.mdx next to the map (the narrative and the data components).
-cp "$FIX/explainer.mdx" "$WORK/explainer.mdx"
-EXTRA="$FIX/explain.json"
-# The pinned runtime (above); without one, the repo behind the visual-explainer skill link.
-if [ -n "${UNDERSTANDO_VE_RUNTIME:-}" ]; then
-  VE="$UNDERSTANDO_VE_RUNTIME"
-else
-  VE="$(dirname "$(readlink -f "$HOME/.claude/skills/visual-explainer/SKILL.md" 2>/dev/null || echo "$HOME/.claude/skills/visual-explainer/SKILL.md")")"
-fi
-export UNDERSTANDO_VE_RUNTIME="$VE"
-python3 "$S/explain.py" --map "$MAP" --repo "$REPO" --out "$WORK/explain" --extra "$EXTRA"
-test -s "$WORK/explain/explainer.html"
+step "create --check: the shape of the skill holds"
+U create --check > "$OUT/check.txt"
+has "$OUT/check.txt" "the shape holds."
 
-step "explain: the export refuses an ID in the prose, an undefined term, a one-mode diagram, a weak promise without an action, and pasted code"
-python3 - "$FIX" "$MAP" "$WORK" <<'PY'
-import json, pathlib, sys
-fix, data, work = pathlib.Path(sys.argv[1]), json.load(open(sys.argv[2])), pathlib.Path(sys.argv[3])
-mdx, extra = (fix / "explainer.mdx").read_text(), json.loads((fix / "explain.json").read_text())
-story = "A planted bug proves the overdraft rule."
-cases = {
-    "leak": (mdx.replace(story, "Claim C01 is Proven, and `withdraw` checks it."), extra, data),
-    "term": (mdx.replace(story, "The ZQX ledger lets a withdrawal take the balance below zero."), extra, data),
-    "mode": (mdx, {**extra, "diagrams": {**extra["diagrams"], "loop": {k: v for k, v in extra["diagrams"]["loop"].items() if k != "detailed"}}}, data),
-    "action": (mdx, extra, {**data, "promises": [{k: v for k, v in p.items() if k != "reviewer_action"} if p["id"] == "P4" else p for p in data["promises"]]}),
-    "pasted": (mdx.replace("Next: [see how one withdrawal runs](#ch-2).", "```python\nclass OverdraftError(ValueError):\n    pass\n```\n\nNext: [see how one withdrawal runs](#ch-2)."), extra, data),
-}
-examples = json.loads((work / "examples.json").read_text())
-# A how-it-works level with no worked example, and an example step with no provenance.
-cases["example"] = (mdx.replace('<WorkedExample refs={refs} id="one-withdrawal" explain={explain} />', ""), extra, data)
-cases["provenance"] = (mdx, extra, data)
-for name, (m, e, d) in cases.items():
-    out = work / f"bad-{name}"
-    out.mkdir(exist_ok=True)
-    (out / "explainer.mdx").write_text(m)
-    (out / "explain.json").write_text(json.dumps(e))
-    (out / "trust-map.json").write_text(json.dumps(d))
-    ex = json.loads(json.dumps(examples))
-    if name == "provenance":
-        ex["examples"][1]["steps"][0]["provenance"] = []
-    (out / "examples.json").write_text(json.dumps(ex))
-PY
-for case in "leak:the ID C01 is in the narrative prose" "term:does not define: ZQX" "mode:has no detailed mode" "action:needs a reviewer_action" "pasted:pasted code from wallet/core.py" "example:ch-2: a how-it-works level has no worked example" "provenance:step 1: no provenance"; do
-  name="${case%%:*}"; want="${case#*:}"; B="$WORK/bad-$name"
-  if python3 "$S/explain.py" --map "$B/trust-map.json" --repo "$REPO" --out "$B" --extra "$B/explain.json" > "$B/out.txt" 2>&1; then
-    echo "FAIL: the export accepted the $name case"; exit 1
-  fi
-  grep -q "$want" "$B/out.txt" || { echo "FAIL: the $name case failed for another reason:"; cat "$B/out.txt"; exit 1; }
-done
-echo "the export refuses a visible ID, an undefined term, a one-mode diagram, a weak promise without an action, pasted code, a how-it-works level with no example and an example step with no provenance"
+step "create --prove withdraw: launch, doctor, drive, cleanup; the evidence survives; the control fails the drive"
+U create --prove withdraw > "$OUT/prove-ask.txt"
+has "$OUT/prove-ask.txt" "helpers/verify drive withdraw"
+U --yes create --prove withdraw > "$OUT/prove.txt"
+cat "$OUT/prove.txt"
+has "$OUT/prove.txt" "prove withdraw: cleanup: ok"
+has "$OUT/prove.txt" "evidence after cleanup: 2 files"
+has "$OUT/prove.txt" "control K1 on V1: red"
+has "$OUT/prove.txt" "PASS: the skill ran end to end"
+EV="$(field "$RUN/verify.json" "d['proved']['evidence'][0]")"
+test -s "$EV" || fail "the evidence $EV is gone"
+has "$EV" "python3 -m wallet withdraw"
 
-python3 - "$MAP" "$WORK/explain" <<'PY'
-# The refs, the stamp and the pre-render: each claim has one block, and the page names its map.
-import hashlib, html as h, json, pathlib, re, sys
-data = json.load(open(sys.argv[1]))
-out = pathlib.Path(sys.argv[2])
-refs = json.loads((out / "refs.resolved.json").read_text())
-assert refs["schema"] == 2 and refs["head"] == data["head"], refs.get("head")
-assert all(k["id"] in refs["controls"] for k in data["controls"]), "a control has no patch"
-# Each excerpt has the diff status of its lines, from git diff base..head.
-withdraw = next(r for r in refs["refs"] if r["ref"] == {"path": "wallet/core.py", "symbol": "withdraw"})
-assert withdraw["changes"] == {"added": [9, 10, 11, 12, 13, 14], "modified": [], "removed": []}, withdraw.get("changes")
-html = (out / "explainer.html").read_text()
-assert f'<meta name="ve-trust-map-head" content="{data["head"]}">' in html, "no head stamp"
-# The worked examples render their real values, and each step its source pointers.
-assert [e["id"] for e in refs["examples"]] == ["overdraft-before-after", "one-withdrawal"], refs.get("examples")
-assert 'data-ve-example="overdraft-before-after"' in html and 'data-ve-example="one-withdrawal"' in html, "no worked example"
-assert "OverdraftError: 11 is above the balance" in html and "OverdraftError not raised" in html, "the example lacks its real values"
-assert html.count("<ul class=\"ve-example-provenance\" data-ve-provenance") == sum(len(e["steps"]) for e in refs["examples"]), "a step has no provenance list"
-assert f'<meta name="ve-trust-map-sha256" content="{hashlib.sha256((out / "trust-map.json").read_bytes()).hexdigest()}">' in html, "no map hash stamp"
-root = html.split('<div id="root">', 1)[1]
-text = h.unescape(re.sub(r"<[^>]+>", "", root))
-for c in data["claims"]:
-    n = root.count(f'id="claim-{c["id"].lower()}"')
-    if n != 1:
-        sys.exit(f"FAIL: {c['id']} has {n} claim blocks in the pre-render")
-for p in data["promises"]:
-    assert " ".join(p["sentence"].split()[:4]) in text, f"the pre-render lacks the promise {p['id']}"
-print(f"refs at the head, the map stamped, and each of the {len(data['claims'])} claims in one pre-rendered block")
-PY
-# The rendered page: default themes only, and the level rules in a real browser.
-node - "$VE" "$WORK/explain/explainer.html" "$MAP" <<'JS'
-const path = require('node:path');
-const fs = require('node:fs');
-const [ve, html, mapPath] = process.argv.slice(2);
-const data = JSON.parse(fs.readFileSync(mapPath, 'utf8'));
-const { chromium } = require(require.resolve('playwright', { paths: [ve] }));
-const fail = (message) => { console.error('FAIL: ' + message); process.exit(1); };
-const ids = [...data.claims, ...data.verifiers, ...data.controls].map((x) => x.id);
-const url = 'file://' + path.resolve(html);
-(async () => {
-  const browser = await chromium.launch({ headless: true });
-  try {
-    // Without JavaScript: the text, the merge verdict, the promises and the claim text show, and a deep link opens its claim.
-    const off = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 1280, height: 900 } });
-    const still = await off.newPage();
-    await still.goto(url + '#claim-c02', { waitUntil: 'load' });
-    const text = await still.innerText('main');
-    for (const want of ['things to review', data.promises[0].label, data.claims[0].name ?? data.claims[0].plain.what.split('`')[0].trim()]) if (!text.toLowerCase().includes(want.toLowerCase())) fail(`without JavaScript the page lacks "${want}"`);
-    if (!(await still.$eval('#claim-c02 .ve-disclosure-body', (b) => b.getBoundingClientRect().height > 0))) fail('without JavaScript the deep link does not show claim C02');
-    await off.close();
-    console.log('without JavaScript the page shows the merge verdict, the promises and the claims, and a deep link shows its claim');
+# ---------------------------------------------------------------------------------------- discover
+step "discover: candidates and edge-case questions for the withdraw feature"
+U discover --feature withdraw > "$OUT/discover.txt"
+U --json discover questions > "$OUT/questions.json"
+GUARD="$(field "$OUT/questions.json" "next(r['id'] for r in d['open'] if 'raises OverdraftError' in r['text'])")"
+RESULT="$(field "$OUT/questions.json" "next(r['id'] for r in d['open'] if 'returns balance - amount' in r['text'])")"
+field "$OUT/questions.json" "'\n'.join(q for r in d['open'] if r['id'] == '$GUARD' for q in r['questions'])"
+sed -e "s/\"GUARD\"/\"$GUARD\"/" -e "s/\"RESULT\"/\"$RESULT\"/" "$FIX/answers.json" > "$OUT/answers.json"
 
-    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
-    await page.goto(url, { waitUntil: 'load' });
-    await page.waitForSelector('main.ve-shell');
-    await page.waitForTimeout(300);
-    if (errors.length) fail(`the page logs errors (hydration): ${errors.join(' | ').slice(0, 400)}`);
-    const got = await page.evaluate(() => ({
-      styles: document.querySelectorAll('#root style').length,
-      presets: [...new Set([...document.querySelectorAll('[data-ve-preset]')].map((e) => e.dataset.vePreset))],
-      levels: [...document.querySelectorAll('main section.ve-section[id]')].map((s) => s.id).join(','),
-    }));
-    if (got.styles || got.presets.join() !== 'iso') fail(`the explainer has ${got.styles} page <style> elements and presets [${got.presets}]; want 0 and [iso]`);
-    if (got.levels !== 'ch-0,ch-1,ch-2,ch-3,ch-4,ch-5,ch-6,ch-7,ch-8') fail(`the chapter ids are ${got.levels}`);
-    // The old level anchors still land: each is an alias in the chapter that holds its level.
-    for (const old of ['story', 'why', 'loop', 'changed', 'unclaimed', 'verifiers', 'promises', 'tradeoffs', 'exercises', 'glossary']) {
-      if (!(await page.$(`section.ve-section > #${old}`))) fail(`the old anchor #${old} has no target`);
-    }
-    console.log('the page hydrates with no error, has no page <style>, uses only the iso preset, has the chapter ids and keeps the old anchors');
+step "discover answer: the user's invariant, an agent-picked one, and a possible bug from an example"
+U discover answer --answers "$OUT/answers.json" > "$OUT/answer.txt"
+cat "$OUT/answer.txt"
+has "$OUT/answer.txt" "as I1 (accepted, author user"
+has "$OUT/answer.txt" "as I2 (proposed, author agent"
+has "$OUT/answer.txt" "P2 — [Small fix, 90% finding confidence, 85% fix confidence] The wallet refuses an amount above the balance."
+has "$OUT/answer.txt" "Expected: raises ValueError. Actual: 15."
+has "$OUT/answer.txt" "DONE: every candidate has a decision."
+expect "I1 author" "$(field "$RUN/verify.json" "next(i['author'] for i in d['invariants'] if i['id'] == 'I1')")" user
 
-    // Read as one page from here: every chapter shows, so each figure can be measured.
-    await page.evaluate(() => localStorage.setItem('ve-read-mode:' + location.pathname, 'one'));
-    await page.reload({ waitUntil: 'load' });
-    await page.waitForSelector('main[data-ve-paged="one"]');
-    // Each architecture diagram renders both modes; the mode is shared and remembered.
-    const codeLike = /`|\b[a-z][a-z0-9]*_[a-z0-9_]+\b|\b[A-Z][a-z0-9]+[A-Z][A-Za-z0-9]*\b|\b[a-z]+[A-Z][A-Za-z0-9]*\b|\b[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]+\b|\w\(\)/;
-    const diagrams = page.locator('[data-ve-diagram-modes]');
-    const count = await diagrams.count();
-    if (count < 2) fail(`want the story and loop diagrams in two modes, found ${count}`);
-    const labels = async () => page.$$eval('[data-ve-diagram-modes] [data-ve-variant="desktop"] svg text', (t) => t.map((x) => x.textContent).join(' | '));
-    const simple = await labels();
-    if (codeLike.test(simple)) fail(`the Simple mode shows a code name: ${simple.match(codeLike)[0]}`);
-    await diagrams.first().getByLabel('Detailed').check();
-    const modes = await page.$$eval('[data-ve-diagram-modes]', (d) => d.map((x) => x.dataset.veMode));
-    if (modes.some((m) => m !== 'detailed')) fail(`one switch must set every diagram: ${modes}`);
-    const detailed = await labels();
-    if (detailed === simple || !codeLike.test(detailed)) fail('the Detailed mode must name real code');
-    console.log(`${count} diagrams render a Simple and a Detailed mode`);
+# ------------------------------------------------------------------------------------------- build
+step "build claim: the bar of a backend feature asks for a property test, types, a contract or an import rule"
+U build claim --invariant I1 > "$OUT/claim.txt"
+has "$OUT/claim.txt" "backend rule: a property test, types, a @cc contract or an import rule"
+CL="$(field "$RUN/verify.json" "next(c['id'] for c in d['claims'] if c.get('invariants') == ['I1'])")"
 
-    // The glossary is a level of its own, in the rail; a term in the text shows its definition.
-    const terms = await page.$$eval('[data-ve-glossary] dt', (t) => t.map((x) => x.textContent));
-    for (const want of ['Overdraft', 'Balance', 'Proven', 'PR']) if (!terms.includes(want)) fail(`the glossary has no ${want}: ${terms}`);
-    if (!(await page.$('.ve-chapter-list a[href="#verdict-glossary"]')) && !(await page.$('.ve-chapter-list a[href="#ch-8"]'))) fail('the rail has no way to the glossary');
-    const term = page.locator('#ch-0 .ve-term').first();
-    await term.focus();
-    if (!(await term.locator('[role="tooltip"]').isVisible())) fail('a focused term shows no definition');
-    console.log(`the glossary holds ${terms.length} terms and is in the rail; a focused term shows its definition`);
+step "build check: the @cc contract and the test that checks it"
+U build check --claim "$CL" --kind contract --cc-id no-overdraft --name "the overdraft refusal test" \
+  --command "python3 -m unittest tests.test_core.OverdraftTest" --code "tests/test_core.py::OverdraftTest" > "$OUT/bcheck.txt"
+V="$(field "$RUN/verify.json" "d['checks'][-1]['id']")"
+U build > "$OUT/status1.txt"
+has "$OUT/status1.txt" "[x] 1. invariant"
+has "$OUT/status1.txt" "[ ] 4. red"
 
-    // The merge state: #merge, in the start chapter, inside the first screen, each item a link to its checklist item.
-    const verdict = await page.evaluate(() => {
-      const line = document.querySelector('#merge [data-merge-verdict]');
-      return line && { form: line.dataset.mergeVerdict, top: line.getBoundingClientRect().top, first: Boolean(line.closest('#ch-0')),
-        links: [...document.querySelectorAll('[data-merge-items] a')].map((a) => a.getAttribute('href')) };
-    });
-    const targets = [...data.promises.map((p) => '#promise-' + p.id.toLowerCase()), '#review-story-ready', '#review-unclaimed'];
-    if (!verdict || !verdict.first || verdict.top > 900) fail(`the merge state is not in the first screen: ${JSON.stringify(verdict)}`);
-    if (verdict.form !== 'ready' && (!verdict.links.length || verdict.links.some((h) => !targets.includes(h) && !h.startsWith('#claim-')))) fail(`a merge item does not link to a promise: ${verdict.links}`);
-    console.log(`the merge verdict (${verdict.form}) is first in the first screen and links to ${verdict.links.length} targets`);
+step "build red: the check must fail on a planted bug (the guard deleted)"
+PLANT='{"op":"delete-line","path":"wallet/core.py","symbol":"withdraw","match":"if amount > balance:"}'
+U build red --check "$V" --plant "$PLANT" > "$OUT/red-ask.txt"
+has "$OUT/red-ask.txt" "python3 -m unittest tests.test_core.OverdraftTest"
+U --yes build red --check "$V" --plant "$PLANT" > "$OUT/red.txt"
+has "$OUT/red.txt" "build red $V: red"
 
-    // Reader copy: no "red" or "green" outside code, and no ID in the prose of the narrative and the verify level.
-    const prose = await page.evaluate(() => {
-      const skip = 'pre, code, [data-ve-code-block], [data-ve-data-table], .ve-terminal, details:not([open]) > .ve-disclosure-body, .ve-disclosure-meta, [role="tooltip"], [data-ve-glossary]';
-      const text = (root) => { const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); const out = [];
-        for (let n = w.nextNode(); n; n = w.nextNode()) if (!n.parentElement.closest(skip)) out.push(n.textContent); return out.join(' '); };
-      return { all: text(document.querySelector('main')), levels: ['ch-0', 'ch-1', 'ch-2', 'ch-3', 'ch-4', 'ch-8'].map((id) => [id, text(document.getElementById(id))]),
-        first: document.querySelector('#ch-4 [data-ve-trust="verifiers"] > *')?.textContent };
-    });
-    const colour = prose.all.match(/\b(red|green)\b/i);
-    if (colour) fail(`reader copy says "${colour[0]}": ${prose.all.slice(Math.max(0, colour.index - 60), colour.index + 40)}`);
-    for (const [id, text] of prose.levels) {
-      const leak = ids.find((x) => new RegExp(`(^|[^\\w-])${x}([^\\w-]|$)`).test(text));
-      if (leak) fail(`level ${id} shows the ID ${leak} in its prose`);
-    }
-    if (!/\d+ of \d+ checks caught their planted bug/.test(prose.first ?? '')) fail(`the verify level does not open with its result: ${prose.first}`);
-    console.log('reader copy has no red or green, the prose shows no ID, and the verify level opens with its result');
+step "build green: the check passes on the code"
+U --yes build green --check "$V" > "$OUT/green.txt"
+has "$OUT/green.txt" "build green $V: green"
+U build --feature withdraw > "$OUT/status2.txt"
+has "$OUT/status2.txt" "DONE: every step holds."
 
-    // Keyboard: the first tab stop is the skip link.
-    await page.goto(url, { waitUntil: 'load' });
-    await page.waitForSelector('main.ve-shell');
-    await page.keyboard.press('Tab');
-    if ((await page.evaluate(() => document.activeElement?.textContent)) !== 'Skip to content') fail('the first tab stop is not the skip link');
-    console.log('the first tab stop is the skip link');
+# ------------------------------------------------------------------------------------------- probe
+step "probe: a check that cannot fail, next to the good one"
+U build check --claim "$CL" --kind property --name "the int type test" --command "python3 -m unittest tests.test_core.BalanceTest" > /dev/null
+WEAK="$(field "$RUN/verify.json" "d['checks'][-1]['id']")"
+U --yes build red --check "$WEAK" --plant "$PLANT" > "$OUT/red-weak.txt" || true
+has "$OUT/red-weak.txt" "The check did not fail"
+U --yes probe --feature withdraw > "$OUT/probe.txt"
+cat "$OUT/probe.txt"
+has "$OUT/probe.txt" "on $V: red"
+has "$OUT/probe.txt" "FLAG CANNOT-FAIL: $WEAK stayed green on each control"
+has "$OUT/probe.txt" "$CL   Proven  tier 3  meets its bar"
 
-    // No diagram is wider than its column.
-    const wide = await page.$$eval('[data-ve-variant="desktop"]', (vs) => vs.filter((v) => v.offsetParent).map((v) => [v.scrollWidth, v.clientWidth]).filter(([s, c]) => s > c + 1));
-    if (wide.length) fail(`a diagram overflows its column: ${JSON.stringify(wide)}`);
-    console.log('no diagram overflows its column');
+step "probe mutate (mutmut): killed, survived and filtered mutants, with the kill matrix"
+U --yes probe mutate --feature withdraw --paths wallet/core.py > "$OUT/mutmut.txt"
+cat "$OUT/mutmut.txt"
+M1="$(field "$RUN/verify.json" "d['mutation'][-1]['id']")"
+SUM="$RUN/verify.json"
+[ "$(field "$SUM" "d['mutation'][-1]['summary'].get('killed', 0) >= 1")" = True ] || fail "no killed mutant"
+[ "$(field "$SUM" "d['mutation'][-1]['summary'].get('survived', 0) >= 1")" = True ] || fail "no survived mutant"
+expect "the message mutant is filtered" "$(field "$SUM" "[m['filter'] for m in d['mutation'][-1]['mutants'] if m.get('filter')]")" "['message-text']"
+expect "the boundary mutant survives" "$(field "$SUM" "[m['line'] for m in d['mutation'][-1]['mutants'] if m['status'] == 'survived' and not m.get('filter')]")" "[13]"
+expect "the kill matrix names the exact test" "$(field "$SUM" "sorted({t for row in d['mutation'][-1]['matrix'].values() for t, x in row.items() if x == 'killed'})")" \
+  "['tests/test_core.py::ExactTest::test_withdraw_debits_the_amount']"
+has "$OUT/mutmut.txt" "SURVIVED"
 
-    // A deep link into a closed claim shows its chapter, opens it and each block around it, and puts its headline in view.
-    await page.goto(url + '#claim-c01', { waitUntil: 'load' });
-    await page.waitForFunction(() => { const c = document.getElementById('claim-c01'); return c && c.open && !c.closest('section').hidden && [...document.querySelectorAll('details')].filter((d) => d.contains(c)).every((d) => d.open); });
-    await page.waitForTimeout(400);
-    const top = await page.$eval('#claim-c01', (c) => c.getBoundingClientRect().top);
-    if (top < 0 || top > 200) fail(`the deep link to claim C01 puts its headline at ${top}px`);
-    await page.click('#promise-p4 > summary .ve-disclosure-label');
-    await page.waitForFunction(() => location.hash === '#promise-p4');
-    await page.reload({ waitUntil: 'load' });
-    await page.waitForFunction(() => document.getElementById('promise-p4')?.open);
-    console.log(`a deep link opens claim C01 with its headline at ${Math.round(top)}px; an open block writes its link and stays open on reload`);
+step "probe mutate (cosmic-ray): the riskiest changed lines, per-test coverage, the kill matrix"
+U --yes probe mutate --tool cosmic-ray --feature withdraw --paths wallet/core.py --base "$BASE" > "$OUT/cr.txt"
+cat "$OUT/cr.txt"
+expect "the targeted lines" "$(field "$SUM" "d['mutation'][-1]['lines']")" "{'wallet/core.py': [13, 14]}"
+[ "$(field "$SUM" "d['mutation'][-1]['summary'].get('killed', 0) >= 1 and d['mutation'][-1]['summary'].get('survived', 0) >= 1")" = True ] \
+  || fail "cosmic-ray: no killed and survived mutants"
+expect "only covering tests ran" "$(field "$SUM" "all(set(r) <= set(m['tests']) for m in d['mutation'][-1]['mutants'] for r in [d['mutation'][-1]['matrix'].get(m['id'], {})])")" True
+lacks "$OUT/cr.txt" "test_cli"
 
-    // What changed: the low-risk file that the fixture adds without a claim is one line of its chapter, and a file that a claim protects shows with its claim.
-    await page.goto(url + '#ch-3', { waitUntil: 'load' });
-    await page.waitForFunction(() => !document.getElementById('ch-3').hidden);
-    const report = await page.$eval('[data-ve-change-chapter="report"] [data-ve-quiet-files]', (s) => s.innerText);
-    if (!/^Its file is low risk\./.test(report)) fail(`the chapter of bin/report.py does not say that its file is low risk: ${report}`);
-    const fees = await page.$eval('[data-ve-spine-file="wallet/fees.py"]', (s) => s.innerText);
-    if (!/Protected by 1 claim/.test(fees)) fail(`wallet/fees.py does not show the claim that protects it: ${fees}`);
-    const spine = await page.$eval('#ch-3', (s) => s.innerText);
-    if (!/changed files? ha(s|ve) no claim/.test(spine)) fail('what changed has no summary line of the unclaimed files');
-    console.log('what changed says that bin/report.py is low risk, shows wallet/fees.py with its claim, and the summary');
-  } finally {
-    await browser.close();
-  }
-})();
-JS
-LINT="$(find "$HOME/.claude/skills/asd-ste100/scripts" "$HOME/.agents/skills/asd-ste100/scripts" -name ste-lint.py 2>/dev/null | head -1)"
-python3 -I "$LINT" "$WORK/explain/pr-section.md" | tail -2
+# ------------------------------------------------------------------------------------ the explainer
+step "create --verifier: the Verifier section names the bar and the verifiers that meet it"
+U --yes create --verifier > "$OUT/verifier.txt"
+g show "understando/verify-wallet:.agents/skills/verify-wallet/features/withdraw.md" > "$OUT/withdraw-2.md"
+has "$OUT/withdraw-2.md" "- **Verifiers that meet the bar:**"
+has "$OUT/withdraw-2.md" "\`$V\` the overdraft refusal test (contract, rung 3)"
+has "$OUT/withdraw-2.md" "- **Verifiers that do not count:**"
+has "$OUT/withdraw-2.md" "It is **cannot-fail**: it does not count."
+has "$OUT/withdraw-2.md" "\`I2\` (agent-picked, not accepted by the user yet)"
+cp "$OUT/withdraw-2.md" "$WORK/feature-sample.md"
 
-step "assert: exact verdicts, verifier states, loud flags, and a clean repo"
-python3 - "$MAP" "$FIX/expected.json" <<'PY'
+step "snippet: a code ref at the head, with its permalink"
+U snippet wallet/core.py::withdraw --match "if amount > balance:" > "$OUT/snippet.txt"
+has "$OUT/snippet.txt" "wallet/core.py:13-13 at ${HEAD:0:10}"
+has "$OUT/snippet.txt" "https://github.com/fixture/wallet/blob/$HEAD/wallet/core.py#L13"
+U snippet .agents/skills/verify-wallet/helpers/verify --lines 1-2 > "$OUT/snippet-ready.txt"
+has "$OUT/snippet-ready.txt" "(on the understando branch)"
+
+step "export: the data and refs.resolved.json for visual-explainer"
+U export --base "$BASE" > "$OUT/export.txt"
+X="$RUN/export"
+expect "claim strength" "$(field "$X/verify-data.json" "next(c['strength'] for c in d['claims'] if c['id'] == '$CL')")" Proven
+expect "invariant authors" "$(field "$X/verify-data.json" "sorted((i['id'], i['author']) for i in d['invariants'] if i['status'] != 'deferred')")" "[('I1', 'user'), ('I2', 'agent')]"
+expect "the ref of the check has diff marks" "$(field "$X/refs.resolved.json" "next(r['changes']['added'] != [] for r in d['refs'] if r['path'] == 'tests/test_core.py')")" True
+expect "a permalink at the head" "$(field "$X/refs.resolved.json" "all(r['permalink'].startswith('https://github.com/fixture/wallet/blob/') for r in d['refs'])")" True
+expect "the control patch" "$(field "$X/refs.resolved.json" "'-    if amount > balance:' in d['controls']['K1'][0]['patch']")" True
+expect "the mutation runs" "$(field "$X/verify-data.json" "[m['tool'] for m in d['mutation']]")" "['mutmut', 'cosmic-ray']"
+
+step "export: the no-hand-copy guard refuses pasted code"
+cp "$RUN/verify.json" "$OUT/verify.keep.json"
+python3 - "$RUN/verify.json" <<'PY'
 import json, sys
-got, want = json.load(open(sys.argv[1])), json.load(open(sys.argv[2]))
-verdicts = {c["id"]: c["verdict"] for c in got["claims"]}
-states = {v["id"]: v["state"] for v in got["verifiers"] if v["kind"] != "none"}
-loud = sorted([f["flag"], f["subject"]] for f in got["flags"] if f.get("loud"))
-print(f"{'claim':<6}{'expected':<10}{'actual':<10}text")
-for cid in sorted(set(verdicts) | set(want["verdicts"])):
-    text = next((c["text"] for c in got["claims"] if c["id"] == cid), "")
-    print(f"{cid:<6}{want['verdicts'].get(cid, '-'):<10}{verdicts.get(cid, '-'):<10}{text}")
-print("loud flags:", loud)
-problems = []
-if verdicts != want["verdicts"]: problems.append("verdicts differ")
-if states != want["states"]: problems.append(f"states differ: {states}")
-if loud != sorted(want["loud_flags"]): problems.append("loud flags differ")
-if got["summary"] != want["summary"]: problems.append(f"summary differs: {got['summary']}")
-gap = next(c for c in got["claims"] if c["id"] == "C03")
-if gap["code"][0]["path"] != "wallet/fees.py": problems.append("the Gap is not wallet/fees.py")
-if problems:
-    sys.exit("FAIL: " + "; ".join(problems))
-print("verdicts match expected.json")
+d = json.load(open(sys.argv[1]))
+d["claims"][0]["text"] = "if amount > balance:\n        raise OverdraftError(f\"{amount} is above the balance\")"
+json.dump(d, open(sys.argv[1], "w"), indent=2)
 PY
-test "$(g status --porcelain)" = "$BEFORE_STATUS" || { echo "FAIL: the fixture checkout changed"; exit 1; }
-test "$(g worktree list | wc -l | tr -d ' ')" = "$BEFORE_TREES" || { echo "FAIL: a scratch worktree is left"; exit 1; }
-test -z "$(ls -A "$WORK/scratch")" || { echo "FAIL: scratch dir is not empty"; exit 1; }
-step "onto: the grouping lint, plain names, coverage, close --add-claim and the old shape (tests/onto-e2e.sh)"
-WORK="$WORK" REPO="$REPO" MAP="$MAP" HEAD="$HEAD" FIX="$FIX" bash "$ROOT/tests/onto-e2e.sh"
-step "refs: symbol anchors, snippet, permalinks, anchor controls, the guard and drift (tests/refs-e2e.sh)"
-WORK="$WORK" REPO="$REPO" MAP="$MAP" HEAD="$HEAD" FIX="$FIX" bash "$ROOT/tests/refs-e2e.sh"
-step "mode: the CLI verbs, the gates and the ledger (tests/mode-e2e.sh)"
-WORK="$WORK" REPO="$REPO" MAP="$MAP" HEAD="$HEAD" FIX="$FIX" bash "$ROOT/tests/mode-e2e.sh"
+if U export > "$OUT/export-paste.txt" 2>&1; then fail "export took pasted code"; fi
+has "$OUT/export-paste.txt" "pasted code from wallet/core.py:13"
+cp "$OUT/verify.keep.json" "$RUN/verify.json"
 
-step "store: the runs root, the run-state guard, publish, the review cache, doctor and java (tests/store-e2e.sh)"
-WORK="$WORK" REPO="$REPO" MAP="$MAP" HEAD="$HEAD" FIX="$FIX" bash "$ROOT/tests/store-e2e.sh"
+# ---------------------------------------------------------------------------------------- maintain
+step "maintain: a second guard in the CLI; the drive's control no longer fails"
+U --yes maintain > "$OUT/maintain-clean.txt"
+has "$OUT/maintain-clean.txt" "maintain: clean"
+cp "$FIX/later/wallet/cli.py" "$REPO/wallet/cli.py" && g commit -q -am "Refuse an overdraft in the CLI too"
+U maintain > "$OUT/maintain-ask.txt"
+has "$OUT/maintain-ask.txt" "bash .agents/skills/verify-wallet/helpers/verify prove withdraw"
+U --yes maintain > "$OUT/maintain.txt"
+cat "$OUT/maintain.txt"
+has "$OUT/maintain.txt" "maintain: changed"
+has "$OUT/maintain.txt" "FLAG STALE: V1 (the drive of withdraw money): its control K1 no longer makes it fail."
+lacks "$OUT/maintain.txt" "FLAG STALE: $V"
+test -f "$RUN/maintain/withdraw.md" || fail "maintain wrote no source brief"
 
-if command -v lake >/dev/null && [ -n "$JAVA_FOUND" ] && [ -f "${UNDERSTANDO_TLA2TOOLS:-$HOME/.understando/tools/tla2tools.jar}" ]; then
-  step "formal: the formalize sub-skills (tests/formal/e2e.sh)"
-  bash "$ROOT/tests/formal/e2e.sh" | tail -5
-else
-  step "formal: skipped, because lake, java or tla2tools.jar is missing (tests/formal/e2e.sh needs them)"
+step "doctor"
+U doctor > "$OUT/doctor.txt" || true
+lacks "$OUT/doctor.txt" "Traceback"
+lacks "$OUT/doctor.txt" "the store is invalid"
+
+step "the user's checkout and branches"
+[ "$(g rev-parse understando/verify-wallet)" != "$TIP" ] || fail "create --verifier did not move the branch"
+g merge-base --is-ancestor "$TIP" understando/verify-wallet || fail "the branch was rewritten"
+[ "$(g worktree list | wc -l | tr -d ' ')" = 1 ] || fail "a scratch worktree is left in the repo"
+
+step "create on a repo with a verify skill from create-verification-skill: extend it, never a second skill"
+R2="$WORK/wallet2"
+git clone -q "$REPO" "$R2" && cp -R "$FIX/pstack/." "$R2/"
+git -C "$R2" add -A && git -C "$R2" -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false commit -q -m "a pstack verify skill"
+"$ROOT/bin/understando" --repo "$R2" --run "$WORK/run2" --yes create --spec "$FIX/create.spec.json" > "$OUT/extend.txt"
+has "$OUT/extend.txt" "create: extended .cursor/skills/verify-wallet"
+git -C "$R2" ls-tree -r --name-only understando/verify-wallet -- .agents .claude .cursor > "$OUT/tree2.txt"
+lacks "$OUT/tree2.txt" ".agents/skills/verify-wallet"
+has "$OUT/tree2.txt" ".cursor/skills/verify-wallet/helpers/verify"
+git -C "$R2" show "understando/verify-wallet:.cursor/skills/verify-wallet/features/withdraw.md" > "$OUT/withdraw-ext.md"
+has "$OUT/withdraw-ext.md" "(written by hand: understando keeps this line)"
+has "$OUT/withdraw-ext.md" "## Verifier"
+"$ROOT/bin/understando" --repo "$R2" --run "$WORK/run2" create --check > "$OUT/check2.txt"
+has "$OUT/check2.txt" "the shape holds."
+
+if [ "${SKIP_FORMAL:-0}" != 1 ]; then
+  step "formal: Lean and TLA+ to Formal, the sync into the store, recheck (tests/formal/e2e.sh)"
+  bash "$ROOT/tests/formal/e2e.sh"
 fi
 
-step "isolation: the real run files have the same sha256 as before the suite"
 isolate_compare "$UNDERSTANDO_TEST_ROOT/real-before.sha256"
-
 echo
-echo "PASS: understando e2e on the fixture"
+echo "PASS: understando e2e"

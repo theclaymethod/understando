@@ -4,14 +4,15 @@
     python3 scripts/formal_record.py build  --out R.json --id F01 --kind lean|tla|property --tier 2|4|5
                                             --claim C01 [--claim ...] --description TEXT
                                             --check CHECK.json --conformance RUN.json
-                                            [--control model:K01:CTRL.json] [--control code:K02:RUN.json]
+                                            [--control model:K01:CTRL.json[:PROP]] [--control code:K02:RUN.json[:PROP]]
+                                            [--property PROP=C01[=CHECK NAME] ...]
                                             [--card CARD.json] [--checks7 CHECKS.json]
                                             [--route none|code-first|model-first|harness-first|theorem-first]
                                             [--witness W.json] [--witness-test RUN.json]
     python3 scripts/formal_record.py stamp  --record R.json --repo DIR --code PATH... --model PATH...
     python3 scripts/formal_record.py drift  --record R.json --repo DIR
     python3 scripts/formal_record.py verdict --record R.json
-    python3 scripts/formal_record.py add    --sidecar S.json --record R.json --repo NAME --pr N --head SHA
+    python3 scripts/formal_record.py add    --sidecar S.json --record R.json --repo NAME --head SHA [--app APP]
 
 Inputs are the JSON results that formal_lean.py, formal_tlc.py and formal_run.py print.
 
@@ -25,12 +26,15 @@ Formal holds only when all of these hold (`verdict` lists each one that is missi
     code control (a planted wrong function) is red too; and no control is green or error;
   - the drift block is stamped;
   - the invariant is user-confirmed: `invariant.author` is "user" and `invariant.ref` names the
-    journal row (kind: invariant, author: user) from `discover`. When only this one is missing, the
+    invariant that the user accepted in `discover`. When only this one is missing, the
     verdict is "Formal (pending user confirmation)": an agent-proposed invariant is never Formal.
 
 Field names of a record: id, kind, ladder_tier, claims, description, card, check, conformance
-{result, checks}, controls [{id, target, result}], route, blocker_open, invariant {author, ref, status, items}, witness, witness_test, drift {commit,
-code_files [{path, blob}], model_files [{path, sha256}]}, formal {verdict, missing}. Standard
+{result, checks}, controls [{id, target, result, property?, map_id?}], properties [{name, part,
+check_name?, check?, controls}], route, blocker_open, invariant {author, ref, status, items}, witness, witness_test, drift {commit,
+code_files [{path, blob}], model_files [{path, sha256}], root}, formal {verdict, missing}. Each
+result keeps `rerun`: the helper call that made it, so `understando formalize --recheck` can run
+it again. Standard
 library only.
 """
 
@@ -63,7 +67,7 @@ def trim(result: dict) -> dict:
     """Keep a result small: the status, the counts, the hashes, the violation and its trace."""
     keep = ("status", "exit", "seconds", "matched", "violation", "trace", "generated", "distinct", "spec",
             "spec_sha256", "cfg", "cfg_sha256", "deadlock_checked", "theorems", "forbidden",
-            "tree_sha256", "files", "why", "control", "argv", "edits", "output_tail")
+            "tree_sha256", "files", "why", "control", "argv", "edits", "output_tail", "rerun")
     out = {k: result[k] for k in keep if k in result}
     if isinstance(out.get("output_tail"), str):
         out["output_tail"] = re.sub(r"/(?:private/)?var/folders/\S+?/T/", "<tmp>/", out["output_tail"].replace(str(Path.home()), "~"))
@@ -73,8 +77,16 @@ def trim(result: dict) -> dict:
 def cmd_build(args: argparse.Namespace) -> int:
     controls = []
     for spec in args.control:
-        target, cid, path = spec.split(":", 2)
-        controls.append({"id": cid, "target": target, "result": trim(load(path))})
+        target, cid, path, *prop = spec.split(":", 3)
+        controls.append({"id": cid, "target": target, "result": trim(load(path)), **({"property": prop[0]} if prop else {})})
+    properties = []
+    for spec in args.property:
+        name, _, rest = spec.partition("=")
+        part, _, check_name = rest.partition("=")
+        if not (name and part):
+            raise SystemExit(f"--property {spec}: write NAME=PART or NAME=PART=CHECK NAME")
+        properties.append({"name": name, "part": part, **({"check_name": check_name} if check_name else {}),
+                           "controls": [k["id"] for k in controls if k.get("property") == name]})
     record = {
         "id": args.id,
         "kind": args.kind,
@@ -98,6 +110,8 @@ def cmd_build(args: argparse.Namespace) -> int:
         "independence": {"by": "tool", "tool": {"lean": "lean", "tla": "tlc", "property": "property"}[args.kind]},
         "cost": {"usd": 0},
     }
+    if properties:
+        record["properties"] = properties
     record["formal"] = rate(record)
     save(args.out, record)
     print(json.dumps(record["formal"]))
@@ -141,7 +155,7 @@ def rate(r: dict) -> dict:
     inv = r.get("invariant") or {}
     if inv.get("author") != "user" or not inv.get("ref"):
         return {"verdict": "Formal (pending user confirmation)",
-                "missing": ["no user-confirmed invariant (a journal row with kind: invariant and author: user)"]}
+                "missing": ["no user-confirmed invariant (an invariant that the user accepted in discover)"]}
     return {"verdict": "Formal", "missing": []}
 
 
@@ -157,6 +171,7 @@ def blob(repo: Path, path: str) -> str:
 def stamp_of(repo: Path, code: list[str], model: list[str]) -> dict:
     return {
         "commit": git(repo, "rev-parse", "HEAD"),
+        "root": str(repo),
         "code_files": [{"path": p, "blob": blob(repo, p)} for p in code],
         "model_files": [{"path": p, "sha256": "sha256:" + hashlib.sha256((repo / p).read_bytes()).hexdigest()}
                         for p in model],
@@ -197,19 +212,41 @@ def cmd_verdict(args: argparse.Namespace) -> int:
 
 def cmd_add(args: argparse.Namespace) -> int:
     path = Path(args.sidecar)
-    side = load(str(path)) if path.exists() else {"schema": SIDE_SCHEMA, "repo": args.repo, "pr": args.pr,
+    side = load(str(path)) if path.exists() else {"schema": SIDE_SCHEMA, "repo": args.repo, "app": args.app,
                                                  "head": args.head, "verifiers": []}
     record = load(args.record)
+    keep_keys(side, record)
+    links = {c["id"]: c["claim"] for c in side.get("proposed_claims", []) if c.get("claim")}
     if args.proposed_claims:
         new = load(args.proposed_claims)
         keep = [c for c in side.get("proposed_claims", []) if c["id"] not in {n["id"] for n in new}]
-        side["proposed_claims"] = sorted(keep + new, key=lambda c: c["id"])
+        side["proposed_claims"] = sorted(keep + [{**n, **({"claim": links[n["id"]]} if n["id"] in links and "claim" not in n else {})}
+                                                 for n in new], key=lambda c: c["id"])
     side["verifiers"] = [v for v in side["verifiers"] if v["id"] != record["id"]] + [record]
     side["verifiers"].sort(key=lambda v: v["id"])
     path.parent.mkdir(parents=True, exist_ok=True)
     save(path, side)
     print(json.dumps({"sidecar": str(path), "verifiers": [v["id"] for v in side["verifiers"]]}))
     return 0
+
+
+def keep_keys(side: dict, record: dict) -> None:
+    """The keys that formalize --sidecar wrote stay when a record is added again: the properties
+    with their check IDs and parts, and the map ID of each control."""
+    old = next((v for v in side["verifiers"] if v["id"] == record["id"]), None)
+    if not old:
+        return
+    if old.get("properties") and not record.get("properties"):
+        record["properties"] = old["properties"]
+    elif old.get("properties"):
+        checks = {p["name"]: p.get("check") for p in old["properties"]}
+        for p in record["properties"]:
+            if checks.get(p["name"]) and not p.get("check"):
+                p["check"] = checks[p["name"]]
+    mids = {k["id"]: k["map_id"] for k in old.get("controls", []) if k.get("map_id")}
+    for k in record.get("controls", []):
+        if k["id"] in mids and not k.get("map_id"):
+            k["map_id"] = mids[k["id"]]
 
 
 def main() -> int:
@@ -224,13 +261,16 @@ def main() -> int:
     p.add_argument("--description", required=True)
     p.add_argument("--check", required=True)
     p.add_argument("--conformance", required=True)
-    p.add_argument("--control", action="append", default=[])
+    p.add_argument("--control", action="append", default=[], metavar="TARGET:ID:RESULT.json[:PROPERTY]",
+                   help="a control result (target model or code); PROPERTY is the property that it breaks")
+    p.add_argument("--property", action="append", default=[], metavar="NAME=PART[=CHECK NAME]",
+                   help="one check for each property (a TLA+ invariant or property, or a Lean theorem group), under the claim or part that states it")
     p.add_argument("--card")
     p.add_argument("--checks7")
     p.add_argument("--route", default="none")
     p.add_argument("--invariant-author", choices=["user", "agent"], default="agent",
-                   help="who stated the invariant: user (a confirmed journal row) or agent (proposed)")
-    p.add_argument("--invariant-ref", help="the journal row id of the user-confirmed invariant")
+                   help="who stated the invariant: user (an accepted invariant from discover) or agent (proposed)")
+    p.add_argument("--invariant-ref", help="the id of the user-accepted invariant (discover)")
     p.add_argument("--invariants", help="JSON list: each invariant as {id, sentence, checked_by, "
                    "questions [{ask, code_today, where, looks}]}, for the interview with the user")
     p.add_argument("--blocker-open", action="store_true",
@@ -251,9 +291,9 @@ def main() -> int:
     p.add_argument("--sidecar", required=True)
     p.add_argument("--record", required=True)
     p.add_argument("--repo", required=True)
-    p.add_argument("--pr", type=int, required=True)
+    p.add_argument("--app")
     p.add_argument("--head", required=True)
-    p.add_argument("--proposed-claims", help="JSON list of {id, text, source} for claims the trust map lacks")
+    p.add_argument("--proposed-claims", help="JSON list of {id, text, source} for claims that the store lacks")
     args = ap.parse_args()
     return {"build": cmd_build, "stamp": cmd_stamp, "drift": cmd_drift, "verdict": cmd_verdict,
             "add": cmd_add}[args.cmd](args)

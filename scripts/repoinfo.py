@@ -1,15 +1,12 @@
-"""Facts about the reviewed repo that review and ci derive from git and gh alone.
+"""Facts about the repo from git alone: its root, its origin, its name and a worktree of a branch.
 
 The repo root is the main checkout of the cwd (also from a linked worktree). The repo name and
-owner/repo come from `git remote get-url origin`. The PR head comes from `gh pr view`. Standard
-library only.
+owner/repo come from `git remote get-url origin`. Standard library only.
 """
 
 from __future__ import annotations
 
-import json
 import re
-import shutil
 import subprocess
 from pathlib import Path
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
@@ -56,23 +53,6 @@ def repo_name(repo: Path) -> str:
     return repo.name
 
 
-def gh_pr(n: str, repo_slug: str | None, fields: str = "headRefOid,baseRefName,state,title") -> dict | None:
-    """`gh pr view N --json ...`, or None when gh is missing or fails. It only reads."""
-    if not shutil.which("gh"):
-        return None
-    argv = ["gh", "pr", "view", str(n), "--json", fields] + (["-R", repo_slug] if repo_slug else [])
-    try:
-        out = subprocess.run(argv, capture_output=True, text=True, timeout=30)
-    except subprocess.TimeoutExpired:
-        return None
-    if out.returncode != 0:
-        return None
-    try:
-        return json.loads(out.stdout)
-    except json.JSONDecodeError:
-        return None
-
-
 def worktree_of(repo: Path, branch: str) -> Path | None:
     """The worktree that has `branch` checked out, else None."""
     text = git(repo, "worktree", "list", "--porcelain", check=False)
@@ -88,10 +68,3 @@ def worktree_of(repo: Path, branch: str) -> Path | None:
 def rev(repo: Path, ref: str) -> str | None:
     out = subprocess.run(["git", "-C", str(repo), "rev-parse", "-q", "--verify", f"{ref}^{{commit}}"], capture_output=True, text=True)
     return out.stdout.strip() or None
-
-
-def slug_name(repo_field: str) -> str | None:
-    """The runs-folder name from a trust map's `repo` field ("Owner/name" or a path)."""
-    if not repo_field:
-        return None
-    return repo_field.rstrip("/").split("/")[-1].removesuffix(".git") or None

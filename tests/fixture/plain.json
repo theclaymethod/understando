@@ -1,6 +1,0 @@
-{
-  "C03": {
-    "what": "The new fee function adds one to each hundredth of the amount.",
-    "proof": "It is not proven. No test calls the fee function, and the PR text does not state it."
-  }
-}

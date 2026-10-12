@@ -1,47 +1,36 @@
-#!/usr/bin/env python3
-"""Run verifiers at the PR head, and run controls: one planted defect per scratch worktree.
+"""Run checks at their commit, and run controls: one planted bug for each scratch worktree.
 
-    python3 scripts/run_control.py --map trust-map.json --repo <git repo> --baseline
-    python3 scripts/run_control.py --map trust-map.json --repo <git repo> --control K01
-    python3 scripts/run_control.py --map trust-map.json --repo <git repo> --all
-
-Options:
-    --scratch DIR     parent of the scratch worktrees (default: a new temp dir)
-    --env-file FILE   bash file that a verifier with "env_file": true sources first
-    --only V01,V02    with --baseline: run only these verifiers
-
-For each control the script:
-  1. adds a detached scratch worktree of --repo at the trust map's `head`, or at the verifier's
-     `at` commit (a commit on the ready branch);
-  2. runs the trust map's `setup` commands in it, without the env file;
-  3. applies the control's edits, and refuses when an edit does not apply exactly. An anchor
-     edit (scripts/coderef.py) resolves here, at the commit; an anchor that matches 0 or more
-     than 1 places is an ANCHOR ERROR, and the script exits 1;
-  4. records the git diff of the worktree (result.diff: the real before and after that the
-     explainer shows), runs the verifier's command, and records green (exit 0), red (an exit in `red_exits`,
-     default [1], and the `expect.pattern` holds), or error (anything else);
+probe, build, create and maintain call this module. For each control it:
+  1. adds a detached scratch worktree of the private clone at the check's `at` commit, else at the
+     store `head`;
+  2. runs the store's `setup` commands in it;
+  3. applies the control's edits, and refuses an edit that does not apply exactly. An anchor edit
+     (scripts/coderef.py) resolves here, at the commit; an anchor that matches 0 or more than 1
+     places is an ANCHOR ERROR;
+  4. records the git diff of the worktree (result.diff), runs the check's command, and records
+     green (exit 0), red (an exit in `red_exits`, default [1], and `expect.pattern` holds), or
+     error (anything else). A degraded control of an eval also records the score;
   5. removes the worktree, also on failure.
 
-The script writes results into the trust map. It never edits the --repo checkout itself,
-and it never pushes. Git runs without the env file, so a missing HOME there does no harm.
+A check that names `evidence.require` runs with VERIFY_EVIDENCE_DIR set to a folder of the run;
+the files that it leaves there are the evidence of the run. Nothing here edits the user's
+checkout, and nothing pushes.
 """
 
 from __future__ import annotations
 
-import argparse
 import os
 import re
 import shutil
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 import coderef  # noqa: E402
-import tm  # noqa: E402
+import store  # noqa: E402
 
 TAIL_LINES = 40
 DIFF_LINES = 80
@@ -54,6 +43,11 @@ def git(repo: Path, *args: str) -> str:
     return out.stdout.strip()
 
 
+# maintain sets this: (ref, paths). Each worktree then takes those paths from ref, so the verify
+# skill of the understando branch runs against the current code.
+OVERLAY: list = [None]
+
+
 class Worktree:
     def __init__(self, repo: Path, head: str, parent: Path, name: str):
         self.repo, self.head = repo, head
@@ -61,6 +55,9 @@ class Worktree:
 
     def __enter__(self) -> Path:
         git(self.repo, "worktree", "add", "--detach", str(self.path), self.head)
+        if OVERLAY[0] and OVERLAY[0][0] != self.head:
+            ref, paths = OVERLAY[0]
+            git(self.path, "checkout", ref, "--", *paths)  # staged, so a control's diff leaves them out
         return self.path
 
     def __exit__(self, *exc) -> None:
@@ -111,30 +108,29 @@ def apply_edit(root: Path, edit: dict) -> None:
     raise ValueError(f"unknown op {op}")
 
 
-def run_command(root: Path, command: dict, env_file: str | None) -> tuple[int | None, str, float]:
+def run_command(root: Path, command: dict, env_file: str | None = None, extra_env: dict | None = None) -> tuple[int | None, str, float]:
     cwd = root / command.get("cwd", ".")
     argv = command["argv"]
-    # The env file is per verifier: probe sets `_env` (the key wrapper for a paid verifier that the
-    # user said yes to, else None). A verifier that needs no key runs with no env file.
-    env = command["_env"] if "_env" in command else (env_file if command.get("env_file") else None)
-    if env:
-        argv = ["bash", "-c", 'source "$0" && exec "$@"', env, *argv]
+    if env_file:
+        argv = ["bash", "-c", 'source "$0" && exec "$@"', env_file, *argv]
+    env = {**os.environ, **(command.get("env") or {}), **(extra_env or {})}
     start = time.monotonic()
     try:
-        out = subprocess.run(argv, cwd=cwd, capture_output=True, text=True,
+        out = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, env=env,
                              timeout=command.get("timeout_s", 900), stdin=subprocess.DEVNULL)
         code, output = out.returncode, out.stdout + out.stderr
     except subprocess.TimeoutExpired as exc:
         code = None
         output = (exc.stdout or b"").decode() if isinstance(exc.stdout, bytes) else (exc.stdout or "")
         output += "\n[understando] timeout"
-    seconds = round(time.monotonic() - start, 2)
-    return code, output, seconds
+    except OSError as exc:
+        code, output = None, f"[understando] the command did not start: {exc}"
+    return code, output, round(time.monotonic() - start, 2)
 
 
 def tail(text: str) -> str:
     text = text.replace(str(Path.home()), "~")
-    return tm.redact("\n".join(text.rstrip().splitlines()[-TAIL_LINES:]))
+    return store.redact("\n".join(text.rstrip().splitlines()[-TAIL_LINES:]))
 
 
 def classify(code: int | None, command: dict) -> str:
@@ -147,7 +143,7 @@ def classify(code: int | None, command: dict) -> str:
 
 def prepare(root: Path, data: dict) -> None:
     for step in data.get("setup", []):
-        code, output, _ = run_command(root, {**step, "env_file": False}, None)
+        code, output, _ = run_command(root, step)
         if code != 0:
             raise RuntimeError(f"setup {' '.join(step['argv'])} failed:\n{tail(output)}")
 
@@ -157,31 +153,44 @@ def scrub(text: str, root: Path) -> str:
 
 
 def commit_of(v: dict, data: dict) -> str:
-    """A verifier runs at its own `at` commit (a ready-branch commit), else at the PR head."""
+    """A check runs at its own `at` commit (the ready head), else at the store head."""
     return v.get("at") or data["head"]
 
 
-def run_baseline(data: dict, repo: Path, scratch: Path, env_file: str | None, only: set[str]) -> None:
-    targets = [v for v in data["verifiers"] if "command" in v and (not only or v["id"] in only)]
+def evidence_env(v: dict, evidence: Path | None, name: str) -> tuple[dict, Path | None]:
+    if not evidence or not (v.get("evidence") or {}).get("require"):
+        return {}, None
+    d = evidence / v["id"] / f"{name}-{store.stamp()}"
+    d.mkdir(parents=True, exist_ok=True)
+    return {"VERIFY_EVIDENCE_DIR": str(d)}, d
+
+
+def kept(d: Path | None) -> list[str]:
+    return sorted(str(p) for p in d.rglob("*") if p.is_file()) if d else []
+
+
+def run_baseline(data: dict, repo: Path, scratch: Path, only: set[str] | None = None, env_file: str | None = None,
+                 evidence: Path | None = None) -> None:
+    targets = [v for v in data["checks"] if "command" in v and (not only or v["id"] in only)]
     for commit in dict.fromkeys(commit_of(v, data) for v in targets):
         with Worktree(repo, commit, scratch, "baseline") as root:
             prepare(root, data)
             for v in (v for v in targets if commit_of(v, data) == commit):
-                code, output, seconds = run_command(root, v["command"], env_file)
-                v["baseline"] = {
-                    "status": classify(code, v["command"]), "exit": code, "seconds": seconds,
-                    "output_tail": tail(scrub(output, root)), "ran_at": tm.now(), "head": commit,
-                }
+                env, d = evidence_env(v, evidence, "baseline")
+                code, output, seconds = run_command(root, v["command"], env_file, env)
+                v["baseline"] = {"status": classify(code, v["command"]), "exit": code, "seconds": seconds,
+                                 "output_tail": tail(scrub(output, root)), "ran_at": store.now(), "head": commit,
+                                 **({"evidence": kept(d)} if d else {})}
                 print(f"baseline {v['id']}: {v['baseline']['status']} (exit {code}, {seconds}s)")
 
 
-def run_one(data: dict, control: dict, repo: Path, scratch: Path, env_file: str | None) -> None:
-    v = next(v for v in data["verifiers"] if v["id"] == control["verifier"])
+def run_one(data: dict, control: dict, repo: Path, scratch: Path, env_file: str | None = None, commit: str | None = None) -> None:
+    v = next(v for v in data["checks"] if v["id"] == control["check"])
     if "command" not in v:
         if not (control.get("result") or {}).get("recorded"):
-            control["result"] = {"status": "skipped", "note": "The verifier has no command.", "ran_at": tm.now()}
+            control["result"] = {"status": "skipped", "note": "The check has no command.", "ran_at": store.now()}
         return
-    commit = commit_of(v, data)
+    commit = commit or commit_of(v, data)
     with Worktree(repo, commit, scratch, control["id"].lower()) as root:
         try:
             prepare(root, data)
@@ -189,12 +198,12 @@ def run_one(data: dict, control: dict, repo: Path, scratch: Path, env_file: str 
                 apply_edit(root, edit)
         except coderef.AnchorError as exc:
             control["result"] = {"status": "error", "exit": None, "note": f"The anchor did not resolve once: {exc}",
-                                 "ran_at": tm.now(), "head": commit}
+                                 "ran_at": store.now(), "head": commit}
             print(f"ANCHOR ERROR: control {control['id']}: {exc}", file=sys.stderr)
             return
         except (ValueError, RuntimeError, OSError) as exc:
             control["result"] = {"status": "error", "exit": None, "note": f"The control did not apply: {exc}",
-                                 "ran_at": tm.now(), "head": commit}
+                                 "ran_at": store.now(), "head": commit}
             print(f"control {control['id']}: error ({exc})")
             return
         diff = subprocess.run(["git", "-C", str(root), "diff", "--no-color", "-U2"], capture_output=True, text=True).stdout
@@ -206,52 +215,11 @@ def run_one(data: dict, control: dict, repo: Path, scratch: Path, env_file: str 
         matched = re.search(pattern, output, re.M) is not None
     control["result"] = {
         "status": status, "exit": code, "seconds": seconds, "matched": matched,
-        "output_tail": tail(scrub(output, root)), "ran_at": tm.now(), "head": commit,
+        "output_tail": tail(scrub(output, root)), "ran_at": store.now(), "head": commit,
         **({"diff": "\n".join(diff.splitlines()[:DIFF_LINES]) + "\n"} if diff.strip() else {}),
     }
+    if control["kind"] == "degraded":
+        import strength
+        control["result"]["score"] = strength.score_of(v, {"output_tail": output})
     shown = status if matched is not False else "red, but the expected pattern is missing"
     print(f"control {control['id']} on {v['id']}: {shown} (exit {code}, {seconds}s)")
-
-
-def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--map", required=True)
-    ap.add_argument("--repo", required=True)
-    ap.add_argument("--scratch")
-    ap.add_argument("--env-file")
-    group = ap.add_mutually_exclusive_group(required=True)
-    group.add_argument("--baseline", action="store_true")
-    group.add_argument("--control")
-    group.add_argument("--all", action="store_true")
-    ap.add_argument("--only", default="")
-    args = ap.parse_args()
-
-    data = tm.load(args.map)
-    errors = tm.validate(data)
-    if errors:
-        tm.fail("invalid trust map:\n" + "\n".join(errors), 1)
-    repo = Path(args.repo).resolve()
-    git(repo, "cat-file", "-e", f"{data['head']}^{{commit}}")
-    scratch = Path(args.scratch) if args.scratch else Path(tempfile.mkdtemp(prefix="understando-"))
-    scratch.mkdir(parents=True, exist_ok=True)
-    env_file = str(Path(args.env_file).resolve()) if args.env_file else None
-
-    if args.baseline:
-        run_baseline(data, repo, scratch, env_file, {s for s in args.only.split(",") if s})
-        tm.save(data, args.map)
-        return 0
-    chosen = data["controls"] if args.all else [k for k in data["controls"] if k["id"] == args.control]
-    if not chosen:
-        tm.fail(f"no control {args.control}")
-    for control in chosen:
-        run_one(data, control, repo, scratch, env_file)
-        tm.save(data, args.map)
-    broken = [k["id"] for k in chosen if (k.get("result") or {}).get("note", "").startswith("The anchor did not resolve")]
-    if broken:
-        print(f"FAIL: the anchors of {', '.join(broken)} do not resolve once; fix them (understando snippet)", file=sys.stderr)
-        return 1
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

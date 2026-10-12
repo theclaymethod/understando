@@ -53,15 +53,22 @@ import coderef  # noqa: E402
 TAIL = 40
 
 
+
+def _rerun_json(obj, **kw) -> str:
+    """The JSON result, with the call that made it (formalize --recheck runs it again)."""
+    if isinstance(obj, dict):
+        obj = {**obj, "rerun": {"script": Path(__file__).name, "args": sys.argv[1:], "cwd": os.getcwd()}}
+    return json.dumps(obj, **kw)
+
 def java() -> str:
-    """The java that ctx.java_bin() finds ($UNDERSTANDO_JAVA, $JAVA_HOME, Homebrew's openjdk, PATH)."""
-    import ctx
-    return ctx.java_bin() or os.environ.get("UNDERSTANDO_JAVA") or "java"
+    """The java that toolprobe.java_bin() finds ($UNDERSTANDO_JAVA, $JAVA_HOME, Homebrew's openjdk, PATH)."""
+    import toolprobe
+    return toolprobe.java_bin() or os.environ.get("UNDERSTANDO_JAVA") or "java"
 
 
 def jar() -> str:
-    import ctx
-    return ctx.tla2tools_jar() or os.environ.get("UNDERSTANDO_TLA2TOOLS") or str(Path.home() / ".understando/tools/tla2tools.jar")
+    import toolprobe
+    return toolprobe.tla2tools_jar() or os.environ.get("UNDERSTANDO_TLA2TOOLS") or str(Path.home() / ".understando/tools/tla2tools.jar")
 
 
 def sha256(path: Path) -> str:
@@ -246,7 +253,7 @@ def read_dump(path: Path) -> list[dict[str, object]]:
 
 def cmd_check(args: argparse.Namespace) -> int:
     res = run(Path(args.spec), Path(args.cfg) if args.cfg else None, not args.no_deadlock_check)
-    print(json.dumps(res, indent=2))
+    print(_rerun_json(res, indent=2))
     return {"green": 0, "red": 1}.get(str(res["status"]), 2)
 
 
@@ -255,13 +262,13 @@ def cmd_dump(args: argparse.Namespace) -> int:
     try:
         res = run(Path(args.spec), Path(args.cfg), not args.no_deadlock_check, dump=tmp / "states")
         if res["status"] != "green":
-            print(json.dumps(res, indent=2))
+            print(_rerun_json(res, indent=2))
             return 2
         states = read_dump(tmp / "states.dump")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     Path(args.out).write_text(json.dumps(states, indent=1, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps({"status": "green", "states": len(states), "out": args.out,
+    print(_rerun_json({"status": "green", "states": len(states), "out": args.out,
                       "spec_sha256": res["spec_sha256"], "cfg_sha256": res["cfg_sha256"]}))
     return 0
 
@@ -299,7 +306,7 @@ def cmd_vectors(args: argparse.Namespace) -> int:
     try:
         res = run(Path(args.spec), Path(args.cfg), not args.no_deadlock_check, dump=tmp / "states")
         if res["status"] != "green":
-            print(json.dumps(res, indent=2))
+            print(_rerun_json(res, indent=2))
             return 2
         states = read_dump(tmp / "states.dump")
     finally:
@@ -316,10 +323,10 @@ def cmd_vectors(args: argparse.Namespace) -> int:
     out = Path(args.out)
     if args.check:
         same = out.exists() and out.read_text(encoding="utf-8") == text
-        print(json.dumps({"status": "green" if same else "red", "vectors": len(done), "out": args.out}))
+        print(_rerun_json({"status": "green" if same else "red", "vectors": len(done), "out": args.out}))
         return 0 if same else 1
     out.write_text(text, encoding="utf-8")
-    print(json.dumps({"status": "green", "states": len(states), "vectors": len(done), "out": args.out,
+    print(_rerun_json({"status": "green", "states": len(states), "vectors": len(done), "out": args.out,
                       "spec_sha256": res["spec_sha256"]}))
     return 0
 
@@ -350,7 +357,7 @@ def cmd_control(args: argparse.Namespace) -> int:
         try:
             edit, after = plant(args, spec.name, text)
         except coderef.AnchorError as exc:
-            print(json.dumps({"status": "error", "note": f"ANCHOR ERROR: {exc}"}))
+            print(_rerun_json({"status": "error", "note": f"ANCHOR ERROR: {exc}"}))
             return 2
         planted.write_text(after, encoding="utf-8")
         cfg = tmp / Path(args.cfg).name if args.cfg else None
@@ -361,7 +368,7 @@ def cmd_control(args: argparse.Namespace) -> int:
     if res["status"] == "red" and args.pattern:
         matched = re.search(args.pattern, str(res["output_tail"]) + json.dumps(res["violation"])) is not None
     res["control"] = {"edit": edit, "pattern": args.pattern, "matched": matched}
-    print(json.dumps(res, indent=2))
+    print(_rerun_json(res, indent=2))
     if res["status"] == "red" and matched is not False:
         return 0
     return 1 if res["status"] == "green" else 2

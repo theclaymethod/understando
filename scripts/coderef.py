@@ -21,9 +21,9 @@ A code ref is one of:
   context   lines around the match: N, or [before, after]. Default 0.
 
 A ref that resolves to 0 places, or to more than 1, raises AnchorError. Nothing writes resolved
-line numbers back into the data: explain.py writes them to <run>/refs.resolved.json, each with the
-commit where it resolved (ref_commit): the PR head for the PR's own code, the ready head for the
-code of a check that runs on the review branch.
+line numbers back into the data: export.py writes them to <run>/refs.resolved.json, each with the
+commit where it resolved (ref_commit): the store head for the code, the ready head for the code of
+a check that runs on the understando branch.
 
 Control edits use the same anchors. The anchor ops:
   delete-line         delete the target lines. In Python, the whole statement that starts on the
@@ -410,15 +410,14 @@ def resolve(repo: str | Path, head: str, ref: dict, cap: bool = True) -> Resolve
     return resolve_text(ref["path"], text, ref, cap)
 
 
-REVIEW_BRANCH = "on the review branch"
+READY_BRANCH = "on the understando branch"
 
 
 def ref_commit(repo: str | Path, data: dict, ref: dict, at: str | None = None) -> str:
-    """The commit where a code ref of a trust map resolves. The PR's own refs resolve at the map
-    head (the PR head). A check that runs at the ready tip is verification code on the review branch:
-    `at` is the commit of its verifier (`at`, which reverify_map sets), and its refs resolve there.
-    A ref whose file is absent at the map head resolves at the ready head of the map
-    (`ready: {branch, head}`), when the file is there. Else the map head, where it fails."""
+    """The commit where a code ref of the store resolves: `at` (the commit of the check that the ref
+    belongs to), else the store head. A ref whose file is absent at the head resolves at the ready
+    head (`ready: {branch, head}`, the understando branch with the verify skill and new checks),
+    when the file is there."""
     if at:
         return at
     ready = (data.get("ready") or {}).get("head")
@@ -428,7 +427,7 @@ def ref_commit(repo: str | Path, data: dict, ref: dict, at: str | None = None) -
 
 
 def resolve_for(repo: str | Path, data: dict, ref: dict, at: str | None = None, cap: bool = True) -> tuple[Resolved, str]:
-    """A code ref of a trust map, resolved at its commit (ref_commit): (the lines, the commit)."""
+    """A code ref of the store, resolved at its commit (ref_commit): (the lines, the commit)."""
     commit = ref_commit(repo, data, ref, at)
     return resolve(repo, commit, ref, cap), commit
 
@@ -445,14 +444,12 @@ def write_cache(run: str | Path, head: str, resolved: dict[str, Resolved]) -> Pa
     return dest
 
 
-def walk_refs(data: dict, extra: dict | None = None):
-    """(where, ref) for each code ref in a trust map and an explain.json."""
-    for c in data.get("claims", []):
-        for i, ref in enumerate(c.get("code", [])):
-            yield f"claim {c['id']} code[{i}]", ref
-    for i, step in enumerate(((extra or {}).get("loop") or {}).get("steps") or [], 1):
-        for j, ref in enumerate(step.get("code", [])):
-            yield f"explain loop step {i} code[{j}]", ref
+def walk_refs(data: dict):
+    """(where, ref, at) for each code ref of the store: the claims, the invariants and the checks."""
+    for section in ("claims", "invariants", "checks"):
+        for item in data.get(section, []):
+            for i, ref in enumerate(item.get("code", [])):
+                yield f"{section[:-1]} {item['id']} code[{i}]", ref, item.get("at") if section == "checks" else None
 
 
 def walk_edits(data: dict):
@@ -725,20 +722,15 @@ def pasted(repo: str | Path, head: str, inputs: list[tuple[str, str]]) -> list[s
     return found
 
 
-def guard_inputs(data: dict, extra: dict | None, mdx: list[Path]) -> list[tuple[str, str]]:
-    """The text that a person or a model writes: explain.json, the plain and text fields of the
-    trust map (the PR-body input too), and each MDX file that explain.py reads."""
-    out = list(strings(extra or {}, "explain.json"))
-    for section in ("claims", "verifiers", "controls", "promises", "invariants"):
+def guard_inputs(data: dict, extra: list[Path] | None = None) -> list[tuple[str, str]]:
+    """The text that a person or a model writes into the store, and each extra file."""
+    out = []
+    for section in ("features", "invariants", "claims", "checks", "controls"):
         for item in data.get(section, []):
-            for key in ("text", "plain", "reason", "description"):
+            for key in ("text", "name", "description", "reason"):
                 if key in item:
-                    out += list(strings(item[key], f"trust-map {item.get('id', section)}.{key}"))
-            if item.get("waiver"):
-                out += list(strings(item["waiver"].get("reason", ""), f"trust-map {item['id']}.waiver"))
-    out += list(strings(data.get("narrative") or "", "trust-map narrative"))
-    out += list(strings(data.get("notes") or [], "trust-map notes"))
-    for p in mdx:
+                    out += list(strings(item[key], f"verify.json {item['id']}.{key}"))
+    for p in extra or []:
         out.append((str(p), p.read_text(encoding="utf-8")))
     return out
 
@@ -800,7 +792,7 @@ def main(c, argv: list[str]) -> int:
     ap.add_argument("--part", choices=["whole", "signature", "body"])
     ap.add_argument("--context", help="N, or BEFORE,AFTER")
     ap.add_argument("--lines", help="START-END: a line range (discouraged)")
-    ap.add_argument("--head", help="commit (default: where the trust map resolves the ref, its head or its ready head; else HEAD)")
+    ap.add_argument("--head", help="commit (default: where the store resolves the ref, its head or its ready head; else HEAD)")
     ap.add_argument("--suggest", action="store_true", help="with --lines: print the anchor that resolves to the same lines")
     args = ap.parse_args(argv)
     repo = c.repo or Path.cwd()
@@ -820,7 +812,7 @@ def main(c, argv: list[str]) -> int:
         a, _, b = args.lines.partition("-")
         ref.update(start=int(a), end=int(b or a))
     try:
-        # With no --head, a ref of the map resolves where explain resolves it (ref_commit).
+        # With no --head, a ref resolves where the export resolves it (ref_commit).
         head = rev(repo, args.head or (ref_commit(repo, data, ref) if data and data.get("head") else "HEAD"))
         if args.suggest:
             text = show(repo, head, path)
@@ -839,7 +831,7 @@ def main(c, argv: list[str]) -> int:
     if c.json:
         print(json.dumps({"ref": ref, "head": head, "start": r.start, "end": r.end, "cut": r.cut, "permalink": link, "code": r.excerpt}))
         return 0
-    where = f" ({REVIEW_BRANCH})" if data and data.get("head") and head != rev(repo, data["head"]) and not args.head else ""
+    where = f" ({READY_BRANCH})" if data and data.get("head") and head != rev(repo, data["head"]) and not args.head else ""
     print(f"{path}:{r.start}-{r.end} at {head[:10]}{where}" + (" (cut at 30 lines)" if r.cut else ""))
     if link:
         print(link)
@@ -849,32 +841,15 @@ def main(c, argv: list[str]) -> int:
     return 0
 
 
-def apply_file(path: str, edit: dict) -> None:
-    """Apply one anchor edit to a file in place (the learn app calls this). Raises AnchorError."""
-    p = Path(path)
-    if edit["op"] == "corrupt-byte":
-        data = bytearray(p.read_bytes())
-        data[corrupt_offset(bytes(data), edit)] ^= 0x01
-        p.write_bytes(bytes(data))
-        return
-    p.write_text(apply_text(p.read_text(encoding="utf-8"), edit), encoding="utf-8")
-
-
 if __name__ == "__main__":
     if sys.argv[1:2] == ["--apply-edit"]:
         # python3 -I coderef.py --apply-edit FILE EDIT_JSON: one anchor edit, in place.
         try:
-            apply_file(sys.argv[2], json.loads(sys.argv[3]))
+            p = Path(sys.argv[2])
+            p.write_text(apply_text(p.read_text(encoding="utf-8"), json.loads(sys.argv[3])), encoding="utf-8")
         except (AnchorError, KeyError, ValueError) as exc:
             print(f"ANCHOR ERROR: {exc}", file=sys.stderr)
             sys.exit(1)
         sys.exit(0)
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import ctx as context  # noqa: E402
-    opts_repo = None
-    rest = sys.argv[1:]
-    if "--repo" in rest:
-        i = rest.index("--repo")
-        opts_repo = rest[i + 1]
-        rest = rest[:i] + rest[i + 2:]
-    sys.exit(main(context.resolve(None, opts_repo, None, "--json" in rest), [a for a in rest if a != "--json"]))
+    print("run it as `understando snippet ...`", file=sys.stderr)
+    sys.exit(2)

@@ -1,19 +1,15 @@
 """The test-isolation guard: a test never writes, and never reads, the real understando data.
 
 Standard library only. Every script imports this module first, so the guard is in each understando
-Python process. It does two things:
+Python process. In a test run, an audit hook refuses each write outside the test's temp root.
 
-1. In a test run, an audit hook refuses each write outside the test's temp root. A test run is a
-   process with a test marker set: UNDERSTANDO_TEST (tests/isolate.sh and the Playwright config set
-   it), or TEST_WORKER_INDEX or LEARN_E2E_TEMPLATE (a Playwright worker). A write is each open for
-   write, each rename, replace, remove, mkdir, rmdir, symlink, link, truncate and rmtree. Its
-   target must be under $UNDERSTANDO_TEST_ROOT. When the marker is set and the root is not set,
-   each write is refused. This covers the run folders, mode.json, toolprobe.json, config.toml, the
-   journal, ci.json, review.json, trust-map.json (tm.save) and each other file, also the files of
-   a future verb. A read under the real ~/.understando (the home folder of the user account, not
-   $HOME) is refused too, except in a command that calls read_only() first.
-2. Out of a test run, fake_gh_refusal() finds a `gh` on PATH that is in a temp folder or a test
-   fixture folder. review refuses to run against a real run folder with it.
+- A test run is a process with UNDERSTANDO_TEST set (tests/isolate.sh sets it).
+- A write is each open for write, and each rename, replace, remove, mkdir, rmdir, symlink, link,
+  truncate and rmtree. Its target must be under $UNDERSTANDO_TEST_ROOT. When the marker is set
+  and the root is not set, each write is refused. This covers the run folders, verify.json
+  (store.save), the evidence, toolprobe.json, config.toml and each other file.
+- A read under the real ~/.understando (the home folder of the user account, not $HOME) is
+  refused too, except in a command that calls read_only() first.
 
 A refusal prints one line that starts with "understando test guard:" and stops the process with
 exit 1. It is a BaseException, so an `except OSError` or `except Exception` cannot hide it.
@@ -23,14 +19,11 @@ from __future__ import annotations
 
 import os
 import pwd
-import shutil
 import sys
-import tempfile
 
-MARKERS = ("UNDERSTANDO_TEST", "TEST_WORKER_INDEX", "LEARN_E2E_TEMPLATE")
+MARKERS = ("UNDERSTANDO_TEST",)
 PREFIX = "understando test guard:"
 ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-FIXTURE_PARTS = {"fixture", "fixtures", "fake-cli", "fake-bin", "fakebin"}
 _READ_ONLY = [False]
 _INSTALLED = [False]
 _WRITE_MODES = set("waxl+")
@@ -63,13 +56,6 @@ def real_store() -> str:
 def under(path: str, base: str) -> bool:
     p, b = os.path.realpath(path), os.path.realpath(base)
     return p == b or p.startswith(b.rstrip(os.sep) + os.sep)
-
-
-def temp_dirs() -> list[str]:
-    dirs = {tempfile.gettempdir(), "/tmp", "/private/tmp", "/var/folders", "/private/var/folders"}
-    if os.environ.get("TMPDIR"):
-        dirs.add(os.environ["TMPDIR"])
-    return sorted(os.path.realpath(d) for d in dirs)
 
 
 def read_only() -> None:
@@ -180,32 +166,6 @@ def install() -> None:
     _INSTALLED[0] = True
     sys.addaudithook(_hook)
     sys.excepthook = _excepthook
-
-
-def fake_gh_refusal(run) -> str | None:
-    """Out of a test run: the refusal when `gh` on PATH is a fake (in a temp folder or a test fixture
-    folder) and `run` is a real run folder (not in a temp folder). Else None."""
-    if active() or not run:
-        return None
-    gh = shutil.which("gh")
-    if not gh:
-        return None
-    real = os.path.realpath(gh)
-    where = None
-    tmp = next((d for d in temp_dirs() if under(gh, d) or under(real, d)), None)
-    if tmp:
-        where = f"a temp folder ({tmp})"
-    elif any(part in FIXTURE_PARTS for part in real.split(os.sep)) or under(real, os.path.join(ROOT, "tests")):
-        where = "a test fixture folder"
-    if not where:
-        return None
-    r = os.path.realpath(str(run))
-    if any(under(r, d) for d in temp_dirs()):
-        return None
-    shown = gh if real == gh else f"{gh} (it resolves to {real})"
-    return (f"refuse: the gh on PATH is {shown}, a fake gh in {where}. review does not run against the real "
-            f"run folder {r} with a fake gh. Remove {os.path.dirname(gh)} from PATH. For a test run, set "
-            "UNDERSTANDO_TEST=1 and UNDERSTANDO_TEST_ROOT (source tests/isolate.sh).")
 
 
 install()

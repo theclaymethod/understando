@@ -1,6 +1,25 @@
 # Changelog
 
-## Unreleased
+## Unreleased: the strip
+
+understando is now verifier-driven development and formal verification, around a project-local verify skill. Everything that served the reviewer of a PR is gone. The tag `pre-strip` (origin/main 4658387) holds the code, the docs and the tests from before; check it out for anything needed back.
+
+Removed:
+- The verbs `review`, `open`, `ready`, `close`, `trim`, `publish`, `learn` (the whole `learn/` app), `mode`, `menu`, `signals`, `hook`, `lock`, `ci`, `import`, `note` (and the journal), `map`, `coverage`, `routes`, the aliases `controls` and `rerun`, and copyedit/reword.
+- The trust map (`trust-map.json` and its schema), promises, the merge verdict and the blockers (`derive.py`), the ready gates, the promise grouping and the merge lint (`onto.py`, `regroup.py`), the budget, the paid-key wrapper, the orphan review branch, the copy and slogan lints for review prompts (`copy-rules`), the prompt machinery (`prompt.py`), the reviewer feedback rows, the MDX explainer generation (`explain.py`, `example.py`, `cards/`), the stored CI profile, the prompt hook, `commands.json` and the router generator.
+- Their docs, the adapted copies that only they used (autoreview, code-review, explain-report, glossary-format, handoff, pr-verification, teach, to-spec, unslop-core), and their tests (`mode-e2e`, `onto-e2e`, `refs-e2e`, `store-e2e`, the old fixture).
+
+Kept and reshaped:
+- `create` (new): the verify skill with a feature map and a Verifier section for each feature (surface, bar, verifiers), proven end to end on one feature, after the model of create-verification-skill. Code Contracts is a named backend bar.
+- `maintain` (new): the upkeep pass after maintain-verification-skill; it flags a verifier whose control no longer fails.
+- `discover`, `build` (the six-step verifier-first loop with a completion criterion for each step), `probe` (controls), `probe mutate` (new: mutmut and cosmic-ray, equivalent-mutant filters, per-test coverage, the kill matrix), `formalize` (Lean, TLA+, the 7-check conformance, receipts, drift, and the new `--recheck`), `snippet`, `export` (new: `verify-data.json` and `refs.resolved.json` for visual-explainer), `doctor` and `setup` (trimmed).
+- The evidence store `verify.json` (`schema/verify.schema.json`) replaces the trust map. Strength: a part is as strong as its strongest check that caught its bug; a claim is as strong as its weakest part.
+- Salvaged from the stopped ergo work: one check for each formal property, idempotent sync with stable check IDs and names, proposed claims matched by key, fresh control IDs, the `--recheck` flag (now implemented), and the one-line internal-error handler (exit 70, the traceback in a log).
+- Commands run only after the user's yes, each time (`--yes`); no approval is stored.
+- The test-isolation guard and its self-check.
+
+## Before the strip
+
 
 - Code refs of the review branch: a check whose verifier has `at` (the ready sha, which reverify_map sets) resolves its test at that commit, and a ref whose file the PR head does not have resolves at the ready head of the map (`coderef.ref_commit`). The PR's own refs keep the PR head. Each ref in refs.resolved.json records its `commit`, and its permalink points there. The page names review-branch code "On the review branch, <path>". `understando snippet` with no `--head` follows the same rule. The #489 build printed "no such file at 3758b0901c" for the formal conformance tests, the L3 regression test and the review checks.
 - `commands/explain.md`: the requests chapter quotes only a request that names a claim, and each narrative sentence has 25 words or fewer. The #489 page failed the export on a repeated "no claim" line and on a trade-off sentence of 26 words.

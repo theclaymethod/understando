@@ -7,7 +7,7 @@ original-skill: poteto-mode
 -->
 # Reply and comment rules
 
-Apply these to every reply, PR section, explainer and code comment you write.
+Apply these to every reply, report and code comment you write.
 
 ## Writing the reply
 
