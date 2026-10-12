@@ -124,6 +124,13 @@ def control_patches(repo: Path, data: dict) -> dict[str, list[dict]]:
     return out
 
 
+def runs(v: dict) -> str:
+    """What a check does when its record says nothing more: one plain sentence, "Runs the overdraft refusal test (a contract check)."
+    The page adds where it comes from. The name is not joined to the kind with a colon, and the ID is not in it."""
+    kind = str(v["kind"])
+    return f"Runs {v.get('name') or 'this check'} ({'an' if kind[:1] in 'aeiou' else 'a'} {kind} check)."
+
+
 def build(data: dict, rep: dict, refs: list[dict], head: str) -> tuple[dict, dict]:
     """The trust map of the card (trust-map.json) and the derived block of refs.resolved.json.
     Each check that a claim lists is a verifier; a check that backs no claim (the drive of a
@@ -151,7 +158,7 @@ def build(data: dict, rep: dict, refs: list[dict], head: str) -> tuple[dict, dic
     def check_row(v: dict) -> dict:
         paths = sorted({r["path"] for r in v.get("code", [])})
         row = {"id": v["id"], "name": v.get("name") or v["id"], "kind": v["kind"], "claims": backs.get(v["id"], []), "tier": "fact",
-               "description": v.get("description") or f"{v.get('name') or v['id']}: a {v['kind']} check.",
+               "description": v.get("description") or runs(v),
                "provenance": ", ".join(paths) or "the verify skill of the repo", "state": v.get("state"), "ladder": store.ladder(v), "at": v.get("at"),
                "feature": v.get("feature"), "baseline": trim(v.get("baseline")), "red_first": trim(v.get("red_first")), "formal": v.get("formal"),
                "recorded": v.get("recorded"), "property": v.get("property"),

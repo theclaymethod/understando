@@ -217,6 +217,24 @@ if [ -n "${UNDERSTANDO_VE_RUNTIME:-}" ] && [ -f "$UNDERSTANDO_VE_RUNTIME/scripts
   npm --prefix "$UNDERSTANDO_VE_RUNTIME" run ve:export -- "$WORK/page/explainer.mdx" --out "$WORK/page/explainer.html" > "$OUT/ve-export.txt" 2>&1 || { cat "$OUT/ve-export.txt"; fail "ve:export refused the export"; }
   has "$WORK/page/explainer.html" "caught its planted bug"
   has "$WORK/page/explainer.html" "cannot fail: it passed on each planted bug"
+  # A check reads as one plain sentence from its own fields, and a verification page has no PR flow.
+  has "$WORK/page/explainer.html" "Runs the "
+  has "$WORK/page/explainer.html" "Open these lines on GitHub"
+  lacks "$WORK/page/explainer.html" "PR head"
+  lacks "$WORK/page/explainer.html" "Provenance:"
+  lacks "$WORK/page/explainer.html" "Strongest check</dt>"
+  # Planted: fields glued into one line (a name said twice, a colon-joined list) fail the export.
+  mkdir -p "$WORK/glued" && cp "$WORK/page/"* "$WORK/glued/"
+  python3 - "$WORK/glued/trust-map.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+v = d["verifiers"][0]
+v["description"] = f"{v['name']}. {v['kind']} check, a tool check, proven ({v['id']}): {v['name']}: a {v['kind']} check."
+json.dump(d, open(sys.argv[1], "w"), indent=1)
+PY
+  if npm --prefix "$UNDERSTANDO_VE_RUNTIME" run ve:export -- "$WORK/glued/explainer.mdx" --out "$WORK/glued/explainer.html" > "$OUT/ve-glued.txt" 2>&1; then fail "ve:export took fields glued into one line"; fi
+  has "$OUT/ve-glued.txt" "as if fields were glued together"
+  has "$OUT/ve-glued.txt" "a sentence joins fields with colons"
 else
   echo "skip: UNDERSTANDO_VE_RUNTIME is not set"
 fi

@@ -36,7 +36,7 @@ WORDS = {"caught": "caught their bug", "missed": "missed", "cannot-fail": "canno
 ONE = {"caught": "caught its bug", "missed": "missed", "cannot-fail": "cannot fail", "no-bug": "had no planted bug",
        "recorded": "is a record of a past run", "checked": "is a mechanical check", "broken": "fails at the head"}
 SAID = {"caught": "It caught its planted bug.", "missed": "It missed its planted bug.",
-        "cannot-fail": "It cannot fail: it passed on each planted bug.", "broken": "It fails or does not complete at the PR head.",
+        "cannot-fail": "It cannot fail: it passed on each planted bug.", "broken": "It fails or does not complete.",
         "no-bug": "No planted bug ran, so no run proved that it can fail.", "recorded": "It is a record of a past run, and we did not run it again.",
         "checked": "It is a mechanical check with no planted bug.", "none": "No tool checks it."}
 OP = {"delete-line": "We deleted the line", "invert-condition": "We inverted the condition", "replace-with": "We replaced the code",
@@ -88,7 +88,7 @@ def action_of(v: dict, result: str) -> str:
         return "Its conformance link does not pass, or its record is not Formal. Finish its conformance run (understando formalize)."
     return {"missed": "Add a check that fails on this bug, or change this check so that it does.",
             "cannot-fail": "Change this check so that it can fail, or replace it.",
-            "broken": "Repair this check: it fails or does not complete at the PR head.",
+            "broken": "Repair this check: it fails or does not complete.",
             "no-bug": "Plant a bug for this check (understando probe), so a run shows that it can fail.",
             "recorded": "It is a record of a past run. Run it again, or accept the record as it stands.",
             "none": "Add a check for this claim (understando build)."}[result]
