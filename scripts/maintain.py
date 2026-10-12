@@ -67,17 +67,19 @@ def flags_for(before: dict, data: dict, fid: str | None) -> list[dict]:
         r = k.get("result") or {}
         if r.get("status") == "error" and "anchor" in (r.get("note") or ""):
             out.append({"flag": "stale-anchor", "check": k["check"], "detail": f"control {k['id']}: {r['note']}"})
+    import formal_record
     for v in data["checks"]:
         rec = v.get("formal_record") or {}
-        if rec.get("drift") and (not fid or v.get("feature") == fid):
-            import formal_record
-            try:
-                repo = Path(rec["drift"].get("root") or ".")
-                now = formal_record.stamp_of(repo, [f["path"] for f in rec["drift"]["code_files"]], [f["path"] for f in rec["drift"]["model_files"]])
-                if [f["blob"] for f in now["code_files"]] != [f["blob"] for f in rec["drift"]["code_files"]]:
-                    out.append({"flag": "proof-drift", "check": v["id"], "detail": f"{v['id']}: the code of its proof changed. Run `understando formalize --recheck {rec.get('id') or v['id']}`."})
-            except Exception:  # noqa: BLE001  a record of another checkout: no drift check here
-                pass
+        repo = Path((rec.get("drift") or {}).get("root") or ".")
+        if not rec.get("drift") or (fid and v.get("feature") != fid) or not repo.is_dir():
+            continue  # a record of another checkout: no drift check here
+        recheck = f"Run `understando formalize --recheck {rec.get('id') or v['id']}`."
+        try:
+            changed = formal_record.drifted(rec, repo)
+            if any(p in changed for p in (f["path"] for f in rec["drift"]["code_files"])):
+                out.append({"flag": "proof-drift", "check": v["id"], "detail": f"{v['id']}: the code of its proof changed. {recheck}"})
+        except formal_record.BrokenRecord as exc:
+            out.append({"flag": "proof-drift", "check": v["id"], "detail": f"{v['id']}: its proof record {exc}. {recheck}"})
     return out
 
 

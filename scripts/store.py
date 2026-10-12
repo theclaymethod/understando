@@ -78,11 +78,11 @@ def runs_root() -> Path:
     return Path(os.environ.get("UNDERSTANDO_RUNS") or home() / "runs")
 
 
-def git(repo: Path | str, *args: str, check: bool = True, raw: bool = False):
-    """The one git helper: `git -C repo args`. Returns the stripped stdout text, or with raw=True
-    the stdout bytes as they are. A failure raises RuntimeError; with check=False it returns ""
-    (b"" with raw=True)."""
-    out = subprocess.run(["git", "-C", str(repo), *args], capture_output=True)
+def git(repo: Path | str, *args: str, check: bool = True, raw: bool = False, stdin: str | None = None):
+    """The one git helper: `git -C repo args`, with `stdin` as its input. Returns the stripped
+    stdout text, or with raw=True the stdout bytes as they are. A failure raises RuntimeError;
+    with check=False it returns "" (b"" with raw=True)."""
+    out = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, input=stdin.encode() if stdin is not None else None)
     if out.returncode != 0:
         if check:
             raise RuntimeError(f"git {' '.join(args[:3])} failed: {out.stderr.decode('utf-8', 'replace').strip()}")

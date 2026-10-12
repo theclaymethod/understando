@@ -91,14 +91,14 @@ def findings(c: store.Ctx) -> list[dict]:
                         add("route", f"{where}: the anchor no longer resolves: {exc}", "fix the control, then `understando probe`")
             import formal_record
             for v in data["checks"]:
-                d = (v.get("formal_record") or {}).get("drift")
+                rec = v.get("formal_record") or {}
+                d = rec.get("drift")
                 if d and Path(d.get("root", "/nonexistent")).is_dir():
                     try:
-                        now = formal_record.stamp_of(Path(d["root"]), [f["path"] for f in d["code_files"]], [f["path"] for f in d["model_files"]])
-                        if now["code_files"] != d["code_files"] or now["model_files"] != d["model_files"]:
+                        if formal_record.drifted(rec, Path(d["root"])):
                             add("route", f"the proof of {v['id']} is older than its code or model", "understando formalize --recheck")
-                    except Exception:  # noqa: BLE001  a missing file is drift too
-                        add("route", f"the proof of {v['id']} names a file that is gone", "understando formalize --recheck")
+                    except formal_record.BrokenRecord as exc:  # a missing file is drift too
+                        add("route", f"the proof of {v['id']} {exc}", "understando formalize --recheck")
             if data.get("skill"):
                 import create
                 for p in create.check_shape(c.repo, (data.get("ready") or {}).get("head") or "HEAD", data["skill"]):

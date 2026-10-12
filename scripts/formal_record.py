@@ -159,19 +159,40 @@ def rate(r: dict) -> dict:
     return {"verdict": "Formal", "missing": []}
 
 
-def blob(repo: Path, path: str) -> str:
-    """The blob of the working-tree file, as git would store it."""
-    return git(repo, "hash-object", path)
+class BrokenRecord(ValueError):
+    """A drift block that cannot be checked: a file that it names is gone, or a key is missing."""
+
+
+def blobs(repo: Path, paths: list[str]) -> list[str]:
+    """The blob of each working-tree file, as git would store it: one git call for all of them."""
+    if not paths:
+        return []
+    return git(repo, "hash-object", "--stdin-paths", stdin="".join(p + "\n" for p in paths)).splitlines()
 
 
 def stamp_of(repo: Path, code: list[str], model: list[str]) -> dict:
     return {
         "commit": git(repo, "rev-parse", "HEAD"),
         "root": str(repo),
-        "code_files": [{"path": p, "blob": blob(repo, p)} for p in code],
-        "model_files": [{"path": p, "sha256": sha((repo / p).read_bytes())}
-                        for p in model],
+        "code_files": [{"path": p, "blob": b} for p, b in zip(code, blobs(repo, code))],
+        "model_files": [{"path": p, "sha256": sha((repo / p).read_bytes())} for p in model],
     }
+
+
+def drifted(record: dict, repo: Path) -> list[str]:
+    """The paths of the code and model files of a record that changed since its drift stamp.
+    Raises BrokenRecord when the record has no drift stamp, or names a file that is gone."""
+    old = record.get("drift")
+    if not old:
+        raise BrokenRecord("has no drift stamp")
+    try:
+        code, model = old["code_files"], old["model_files"]
+        new = stamp_of(repo, [f["path"] for f in code], [f["path"] for f in model])
+    except (KeyError, TypeError) as exc:
+        raise BrokenRecord(f"has a drift block without {exc}") from None
+    except (RuntimeError, OSError) as exc:
+        raise BrokenRecord(f"names a file that is gone ({exc})") from None
+    return [a["path"] for a, b in zip(code + model, new["code_files"] + new["model_files"]) if a != b]
 
 
 def cmd_stamp(args: argparse.Namespace) -> int:
@@ -185,16 +206,13 @@ def cmd_stamp(args: argparse.Namespace) -> int:
 
 def cmd_drift(args: argparse.Namespace) -> int:
     record = load(args.record)
-    old = record.get("drift")
-    if not old:
+    if not record.get("drift"):
         print(json.dumps({"status": "red", "why": "no drift stamp"}))
         return 1
     repo = Path(args.repo).resolve()
-    new = stamp_of(repo, [f["path"] for f in old["code_files"]], [f["path"] for f in old["model_files"]])
-    changed = [a["path"] for a, b in zip(old["code_files"] + old["model_files"], new["code_files"] + new["model_files"])
-               if a != b]
+    changed = drifted(record, repo)
     status = "green" if not changed else "red"
-    print(json.dumps({"status": status, "changed": changed, "stamped_at": old["commit"], "now": new["commit"]}))
+    print(json.dumps({"status": status, "changed": changed, "stamped_at": record["drift"]["commit"], "now": git(repo, "rev-parse", "HEAD")}))
     return 0 if status == "green" else 1
 
 
