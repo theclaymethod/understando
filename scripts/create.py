@@ -209,10 +209,9 @@ def render_feature(spec: dict, f: dict, verifier: str) -> str:
     return "\n".join(lines)
 
 
-def render_verifier(data: dict, fid: str) -> str:
-    """The Verifier section of one feature, from the evidence store."""
+def render_verifier(data: dict, fid: str, rep: dict) -> str:
+    """The Verifier section of one feature, from the evidence store and its report (strength.apply)."""
     feat = store.need(data, "features", fid)
-    rep = strength.apply(data)
     surface = feat["surface"]
     lines = ["## Verifier", "", f"- **Surface:** {surface}.", "- **Bar:**"] + [f"  - {x}" for x in strength.BARS[surface]["doc"]]
     invs = [i for i in data["invariants"] if i.get("feature") == fid and i["status"] in ("accepted", "proposed")]
@@ -301,17 +300,19 @@ def write_tree(root: Path, spec: dict, data: dict, extend: str | None) -> list[s
 
     if not extend:
         put("SKILL.md", render_skill(spec))
-    if spec.get("helper") and not (base / "helpers" / "verify").exists():
-        put("helpers/verify", render_helper(spec), 0o755)
-        if extend and "helpers/verify" not in (base / "SKILL.md").read_text(encoding="utf-8"):
-            put("SKILL.md", (base / "SKILL.md").read_text(encoding="utf-8").rstrip("\n") + "\n\n## Helpers (understando)\n\n"
+    if spec.get("helper"):
+        fresh = not (base / "helpers" / "verify").exists()
+        if fresh or not extend:
+            put("helpers/verify", render_helper(spec), 0o755)
+        skill = (base / "SKILL.md").read_text(encoding="utf-8") if fresh and extend else ""
+        if fresh and extend and "helpers/verify" not in skill:
+            put("SKILL.md", skill.rstrip("\n") + "\n\n## Helpers (understando)\n\n"
                 f"- `{sk}/helpers/verify launch | doctor | drive <feature> | cleanup | prove <feature>`.\n")
-    elif spec.get("helper") and not extend:
-        put("helpers/verify", render_helper(spec), 0o755)
+    rep = strength.apply(data)
     index = []
     for f in spec["features"]:
         p = base / "features" / f"{f['id']}.md"
-        block = render_verifier(data, f["id"])
+        block = render_verifier(data, f["id"], rep)
         body = set_verifier(p.read_text(encoding="utf-8"), block) if p.is_file() else render_feature(spec, f, block)
         put(f"features/{f['id']}.md", body)
         index.append((f"{f['id']}.md", f["name"], f["summary"].split(". ")[0].rstrip(".") + "."))
@@ -357,10 +358,7 @@ def write(c: store.Ctx, spec_path: str | None, patch: str | None, verifier_only:
     register(data, spec, sk)
     preview = [f"{sk}/SKILL.md", f"{sk}/helpers/verify", f"{sk}/features/README.md"] + [f"{sk}/features/{f['id']}.md" for f in spec["features"]]
     where = f"a patch at {patch}" if patch else f"the branch {branch} ({'a new commit on it' if tip else 'a new branch from HEAD'})"
-    if not c.yes:
-        msg = [f"create {'extends' if extend else 'writes'} the verify skill {sk} in {where}:"] + [f"  {p}" for p in preview]
-        msg += ["Your branches and your commits do not change. Write it? Repeat the same command with --yes."]
-        store.emit(c, {"confirm": {"what": "create", "writes": preview, "where": where}}, "\n".join(msg))
+    if not store.confirm(c, "create", [], writes=(f"create {'extends' if extend else 'writes'} the verify skill {sk} in {where}", preview, where)):
         return 0
     with ops.scratch_clone(repo) as (clone, wt):
         written: list[str] = []
@@ -449,29 +447,27 @@ def prove(c: store.Ctx, fid: str) -> int:
     sk = data.get("skill") or skill_dir(data["app"])
     helper = f"{sk}/helpers/verify"
     steps = [["bash", helper, "launch"], ["bash", helper, "doctor"], ["bash", helper, "drive", fid], ["bash", helper, "cleanup"]]
-    if not store.confirm(c, f"create --prove {fid}", steps + [v["command"]["argv"]]):
+    if not store.confirm(c, f"create --prove {fid}", run_control.commands(data, []) + steps + [v["command"]["argv"]]):
         return 0
     ev = c.run / "evidence" / fid / f"prove-{store.stamp()}"
     ev.mkdir(parents=True, exist_ok=True)
     state = Path(os.environ.get("TMPDIR", "/tmp")) / f"understando-state-{os.getpid()}"
     env = {"VERIFY_EVIDENCE_DIR": str(ev), "VERIFY_STATE_DIR": str(state)}
     rows, ok = [], True
-    with ops.scratch_clone(repo) as (clone, wt):
-        with run_control.Worktree(clone, tip, wt, "prove") as root:
-            run_control.prepare(root, data)
-            try:
-                for argv in steps[:3]:
-                    code, out, sec = run_control.run_command(root, {"argv": argv}, None, env)
-                    rows.append({"step": argv[2], "exit": code, "seconds": sec, "output_tail": run_control.tail(run_control.scrub(out, root))})
-                    print(f"prove {fid}: {argv[2]}: {'ok' if code == 0 else f'FAILED (exit {code})'}")
-                    if code != 0:
-                        ok = False
-                        break
-            finally:
-                code, out, sec = run_control.run_command(root, {"argv": steps[3]}, None, env)
-                rows.append({"step": "cleanup", "exit": code, "seconds": sec, "output_tail": run_control.tail(out)})
-                print(f"prove {fid}: cleanup: {'ok' if code == 0 else f'FAILED (exit {code})'}")
-                ok = ok and code == 0
+    with run_control.scratch_root(repo, tip, data, "prove") as (root, clone, wt):
+        try:
+            for argv in steps[:3]:
+                code, out, sec = run_control.run_command(root, {"argv": argv}, None, env)
+                rows.append({"step": argv[2], "exit": code, "seconds": sec, "output_tail": run_control.tail(run_control.scrub(out, root))})
+                print(f"prove {fid}: {argv[2]}: {'ok' if code == 0 else f'FAILED (exit {code})'}")
+                if code != 0:
+                    ok = False
+                    break
+        finally:
+            code, out, sec = run_control.run_command(root, {"argv": steps[3]}, None, env)
+            rows.append({"step": "cleanup", "exit": code, "seconds": sec, "output_tail": run_control.tail(out)})
+            print(f"prove {fid}: cleanup: {'ok' if code == 0 else f'FAILED (exit {code})'}")
+            ok = ok and code == 0
         kept = run_control.kept(ev)
         need = v.get("evidence", {}).get("require") or ["*"]
         import fnmatch

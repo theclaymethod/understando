@@ -85,12 +85,7 @@ def add_claim(data: dict, inv_id: str, risky: bool, text: str | None) -> dict:
     if text:
         cl["text"] = text
     import ste
-    try:
-        ste.require([cl["text"]], f"build claim {cl['id']}")
-    except ste.SteMissing as exc:
-        store.fail(str(exc), 1)
-    except ValueError as exc:
-        store.fail(str(exc), 2)
+    ste.require_or_fail([cl["text"]], f"build claim {cl['id']}")
     cl["plan"] = plan(data, cl)
     return cl
 
@@ -125,16 +120,15 @@ def red(c: store.Ctx, data: dict, v: dict, at: str | None, stub: str | None, pla
     repo = c.need_repo()
     if "command" not in v:
         store.fail(f"build red: {v['id']} has no command", 2)
-    if not store.confirm(c, f"build red {v['id']}", [s["argv"] for s in data.get("setup", [])] + [v["command"]["argv"]]):
+    if not store.confirm(c, f"build red {v['id']}", run_control.commands(data, [v])):
         return False
-    if plant or stub:
-        if stub:
-            path, _, ref = stub.partition("@")
-            edit = {"op": "restore-file", "path": path, "at": store.git(repo, "rev-parse", ref or "HEAD")}
-            kind, what = "stub", f"The code of {path} as it was at {ref}: the stub without the feature."
-        else:
-            edit = json.loads(plant)
-            kind, what = "planted", "A planted bug from build red."
+    if stub:
+        path, _, ref = stub.partition("@")
+        edit = {"op": "restore-file", "path": path, "at": store.git(repo, "rev-parse", ref or "HEAD")}
+        kind, what = "stub", f"The code of {path} as it was at {ref}: the stub without the feature."
+    elif plant:
+        edit, kind, what = json.loads(plant), "planted", "A planted bug from build red."
+    if stub or plant:
         k = {"id": store.next_id(data, "controls"), "check": v["id"], "kind": kind, "description": what,
              "edits": [edit], "expect": {"status": "red"}}
         data["controls"].append(k)
@@ -143,13 +137,10 @@ def red(c: store.Ctx, data: dict, v: dict, at: str | None, stub: str | None, pla
         v["red_first"] = {**k["result"], "note": f"control {k['id']} ({kind})"}
     else:
         commit = store.git(repo, "rev-parse", at or "HEAD")
-        with ops.scratch_clone(repo) as (clone, wt):
-            with run_control.Worktree(clone, commit, wt, "red") as root:
-                run_control.prepare(root, data)
-                code, out, seconds = run_control.run_command(root, v["command"])
-        v["red_first"] = {"status": run_control.classify(code, v["command"]), "exit": code, "seconds": seconds,
-                          "output_tail": run_control.tail(run_control.scrub(out, root)), "ran_at": store.now(), "head": commit,
-                          "note": f"the check at {commit[:10]}, before the code"}
+        with run_control.scratch_root(repo, commit, data, "red") as (root, _, _):
+            code, out, seconds = run_control.run_command(root, v["command"])
+            v["red_first"] = run_control.result(v["command"], code, out, seconds, root, commit,
+                                                note=f"the check at {commit[:10]}, before the code")
     st = v["red_first"]["status"]
     print(f"build red {v['id']}: {st}" + ("" if st == "red" else ". The check did not fail, so it cannot prove the code yet. "
                                           "Make it fail first: test the behaviour that the code must add."))

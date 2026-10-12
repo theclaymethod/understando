@@ -41,6 +41,10 @@ LANG = {".py": "python", ".ts": "ts", ".tsx": "tsx", ".js": "js", ".mjs": "js", 
         ".tla": "tla", ".md": "markdown", ".sh": "bash", ".toml": "toml", ".yml": "yaml", ".yaml": "yaml"}
 
 
+def lang(path: str) -> str:
+    return LANG.get(Path(path).suffix, "text")
+
+
 def hunks(repo: Path, base: str, head: str) -> dict[str, list[tuple[int, list[str], int, int]]]:
     """Per file, each hunk of `git diff -U0` base to head: (its first base line, the removed lines,
     its first head line, the number of added lines)."""
@@ -92,7 +96,7 @@ def resolve_refs(repo: Path, data: dict, base: str | None) -> tuple[list[dict], 
             misses.append(f"{where}: {exc}")
             continue
         row = {"key": key, "ref": json.loads(key), "path": ref["path"], "start": r.start, "end": r.end, "span": [whole.start, whole.end],
-               "language": LANG.get(Path(ref["path"]).suffix, "text"), "excerpt": r.excerpt, "commit": sha, "cut": r.cut,
+               "language": lang(ref["path"]), "excerpt": r.excerpt, "commit": sha, "cut": r.cut,
                "permalink": coderef.permalink(repo, sha, ref["path"], r.start, r.end, data.get("repo"))}
         if sha != head:
             row.update(on_ready_branch=True, branch=(data.get("ready") or {}).get("branch"))
@@ -112,11 +116,11 @@ def control_patches(repo: Path, data: dict) -> dict[str, list[dict]]:
         r = k.get("result") or {}
         rows = []
         if r.get("diff"):
-            rows = [{"path": p, "language": LANG.get(Path(p).suffix, "text"), "patch": patch} for p, patch in coderef.split_patch(r["diff"])]
+            rows = [{"path": p, "language": lang(p), "patch": patch} for p, patch in coderef.split_patch(r["diff"])]
         else:
             commit = v.get("at") or data["head"]
             try:
-                rows = [{"path": p, "language": LANG.get(Path(p).suffix, "text"), **({"patch": patch} if patch else {"note": "changed bytes"})}
+                rows = [{"path": p, "language": lang(p), **({"patch": patch} if patch else {"note": "changed bytes"})}
                         for p, patch in coderef.control_patches(repo, commit, k["edits"])]
             except ValueError as exc:  # an AnchorError too
                 rows = [{"path": e["path"], "note": f"{e['op']}: {exc}"} for e in k["edits"]]
@@ -170,8 +174,8 @@ def build(data: dict, rep: dict, refs: list[dict], head: str) -> tuple[dict, dic
     control_row = lambda k: {"id": k["id"], "verifier": k["check"], "kind": k["kind"], "description": derive.broke(k), "edits": k.get("edits"),  # noqa: E731
                              "outcome": strength.outcome(next(v for v in data["checks"] if v["id"] == k["check"]), k), "result": trim(k.get("result"))}
     listed = [v for v in data["checks"] if v["id"] in backs]
-    verifiers = [check_row(v) for v in listed] + [check_row({**derive.none_check(c["id"]), "state": "untested"}) | {"claims": [c["id"]], "description": "No tool checks this claim.",
-                                                                                                                  "provenance": "none"}
+    verifiers = [check_row(v) for v in listed] + [check_row(derive.none_check(c["id"])) | {"claims": [c["id"]], "description": "No tool checks this claim.",
+                                                                                          "provenance": "none"}
                                                  for c in data["claims"] if not c["checks"]]
     controls = [control_row(k) for k in data["controls"] if k["check"] in backs]
     test_ref = {v["id"]: v["code"][0] for v in listed if v.get("code")}
@@ -191,9 +195,7 @@ def build(data: dict, rep: dict, refs: list[dict], head: str) -> tuple[dict, dic
                       "matrix": m.get("matrix", {})} for m in data["mutation"]],
         "flags": rep["flags"], "summary": rep["summary"], "proved": data.get("proved"), "maintained": data.get("maintained"),
     }
-    by_id = {v["id"]: v for v in listed} | {c["id"] + "-none": derive.none_check(c["id"]) | {"state": "untested"} for c in data["claims"] if not c["checks"]}
-    claims_for_derive = [{**c, "checks": row["checks"]} for c, row in zip(data["claims"], claim_rows)]
-    d = derive.derived({**data, "claims": claims_for_derive}, rep, head, by_id, [k for k in data["controls"] if k["check"] in backs], test_ref)
+    d = derive.derived(data, rep, head, {v["id"]: v for v in listed}, [k for k in data["controls"] if k["check"] in backs], test_ref)
     return trust, d
 
 

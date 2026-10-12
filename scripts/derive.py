@@ -41,8 +41,9 @@ def listing(items: list[str]) -> str:
 
 
 def none_check(claim_id: str) -> dict:
-    """The placeholder check of a claim that no tool checks (the card: a check of kind none)."""
-    return {"id": f"{claim_id}-none", "name": "no check", "kind": "none"}
+    """The placeholder check of a claim that no tool checks (the card: a check of kind none). This
+    file and export.py build it here only."""
+    return {"id": f"{claim_id}-none", "name": "no check", "kind": "none", "state": "untested"}
 
 
 NONE = {"strength": "Gap", "result": "none"}  # the result and the strength of the placeholder check
@@ -145,7 +146,11 @@ def verify_block(checks: dict[str, dict], results: dict[str, dict], controls: li
 
 
 def derived(data: dict, rep: dict, head: str, checks: dict[str, dict], controls: list[dict], refs: dict[str, dict]) -> dict:
-    """`checks` and `controls` are the ones of the trust map (each check backs a claim); `refs` maps a check id to its test ref."""
+    """`checks` and `controls` are the ones of the trust map (each check backs a claim); `refs` maps a check id to its test ref.
+    A claim with no check gets the placeholder check of kind none."""
+    none = {cl["id"]: none_check(cl["id"]) for cl in data["claims"] if not cl["checks"]}
+    data = {**data, "claims": [{**cl, "checks": [none[cl["id"]]["id"]]} if cl["id"] in none else cl for cl in data["claims"]]}
+    checks = {**checks, **{v["id"]: v for v in none.values()}}
     by_claim = {c["id"]: c for c in rep["claims"]}
     results = {i: NONE if v["kind"] == "none" else rep["checks"][i] for i, v in checks.items()}
     claims = {cl["id"]: claim_row(cl, by_claim[cl["id"]], checks, results) for cl in data["claims"]}

@@ -38,17 +38,14 @@ def scratch_clone(repo: Path):
 def commit_on(clone: Path, wt: Path, tip: str, message: str, change) -> str | None:
     """Check out `tip` in a scratch worktree of the clone, call change(root), and commit. Returns
     the new commit, or None when change() changed nothing."""
-    root = wt / f"branch-{abs(hash(message)) % 100000}"
-    git(clone, "worktree", "add", "-q", "--detach", str(root), tip)
-    try:
+    from run_control import Worktree
+    with Worktree(clone, tip, wt, "branch") as root:
         change(root)
         git(root, "add", "-A")
         if not git(root, "status", "--porcelain"):
             return None
         git(root, *BOT, "commit", "-q", "-m", message + "\n\nWritten by understando on its own branch, never in your commits.")
         return git(root, "rev-parse", "HEAD")
-    finally:
-        git(clone, "worktree", "remove", "--force", str(root))
 
 
 def fast_forward(clone: Path, repo: Path, branch: str, commit: str) -> None:

@@ -31,6 +31,7 @@ class SteMissing(RuntimeError):
     pass
 
 
+@functools.lru_cache(maxsize=None)
 def lint_path() -> Path | None:
     import toolprobe
     found = toolprobe.find_skill(SKILL)
@@ -73,6 +74,17 @@ def require(texts: list[str], what: str) -> None:
     bad = hard_violations(body)
     if bad:
         raise ValueError(f"{what}: the text is not strict STE (asd-ste100): " + "; ".join(bad))
+
+
+def require_or_fail(texts: list[str], what: str, hint: str = "") -> None:
+    """require(), for a verb: exit 1 when the lint is missing, exit 2 on a hard violation (with the hint)."""
+    import store
+    try:
+        require(texts, what)
+    except SteMissing as exc:
+        store.fail(str(exc), 1)
+    except ValueError as exc:
+        store.fail(f"{exc} {hint}" if hint else str(exc), 2)
 
 
 def main(argv: list[str]) -> int:

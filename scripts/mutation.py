@@ -41,7 +41,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 import coderef  # noqa: E402
-import ops  # noqa: E402
 import run_control  # noqa: E402
 import store  # noqa: E402
 import toolprobe  # noqa: E402
@@ -386,14 +385,12 @@ def main(c: store.Ctx, argv: list[str]) -> int:
     py = str(v / "bin" / "python")
     cmds = ([[str(v / "bin" / "mutmut"), "run"], [py, "-m", "pytest", "-x", "-q", "<one covering test>"]] if args.tool == "mutmut" else
             [[str(v / "bin" / "cosmic-ray"), "init|dump|apply", "..."], [py, "-m", "pytest", "-x", "-q", "<one covering test>"]])
-    if not store.confirm(c, f"probe mutate ({args.tool})", cmds):
+    if not store.confirm(c, f"probe mutate ({args.tool})", run_control.commands(data, []) + cmds):
         return 0
-    with ops.scratch_clone(repo) as (clone, wt):
-        with run_control.Worktree(clone, head, wt, "mutate") as root:
-            run_control.prepare(root, data)
-            out = run_mutmut(root, v, paths, args.tests, args.matrix_max) if args.tool == "mutmut" else \
-                run_cosmic(root, v, lines, args.tests, args.matrix_max)
-            shutil.rmtree(root / "mutants", ignore_errors=True)
+    with run_control.scratch_root(repo, head, data, "mutate") as (root, _, _):
+        out = run_mutmut(root, v, paths, args.tests, args.matrix_max) if args.tool == "mutmut" else \
+            run_cosmic(root, v, lines, args.tests, args.matrix_max)
+        shutil.rmtree(root / "mutants", ignore_errors=True)
     rec = {"id": store.next_id(data, "mutation"), "tool": args.tool, "paths": paths, "at": head, "ran_at": store.now(),
            "summary": summary(out["mutants"]), "mutants": out["mutants"], "tests": out["tests"], "matrix": out["matrix"],
            **({"feature": args.feature} if args.feature else {}), **({"lines": out["lines"]} if out.get("lines") else {})}

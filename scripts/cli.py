@@ -81,8 +81,7 @@ def internal_error(verb: str, c: store.Ctx | None) -> int:
 
 def dispatch(verb: str, argv: list[str], c: store.Ctx) -> int:
     if verb == "setup":
-        flags = [a for a in argv if a in ("--links-only", "--mutation")] or argv
-        return subprocess.run(["bash", str(S / "setup.sh"), *flags]).returncode
+        return subprocess.run(["bash", str(S / "setup.sh"), *argv]).returncode
     if verb == "snippet":
         import coderef
         return coderef.main(c, argv)

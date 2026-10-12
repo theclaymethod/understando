@@ -26,6 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 import coderef  # noqa: E402
+import ste  # noqa: E402
 import store  # noqa: E402
 import toolprobe  # noqa: E402
 
@@ -57,7 +58,7 @@ def findings(c: store.Ctx) -> list[dict]:
                       ("cc-check", "run `understando setup` (npx @spolu/cc-check)")):
         if not tools.get(name):
             add("mention", f"{name} is missing", fix)
-    if not toolprobe.find_skill("asd-ste100"):
+    if not ste.lint_path():
         add("mention", "the asd-ste100 skill is missing; it is required for the written claim text", "run `understando setup`")
     for name in ROUTED:
         if not toolprobe.find_skill(name):

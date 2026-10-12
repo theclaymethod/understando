@@ -37,8 +37,7 @@ def run(c: store.Ctx, data: dict, check_ids: set[str], control_ids: set[str] | N
     repo = c.need_repo()
     targets = [v for v in data["checks"] if v["id"] in check_ids and "command" in v]
     controls = [k for k in data["controls"] if k["check"] in check_ids and (control_ids is None or k["id"] in control_ids)]
-    cmds = [step["argv"] for step in data.get("setup", [])] + [v["command"]["argv"] for v in targets]
-    if not store.confirm(c, what, cmds):
+    if not store.confirm(c, what, run_control.commands(data, targets)):
         return False
     with ops.scratch_clone(repo) as (clone, wt):
         if targets:

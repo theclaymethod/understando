@@ -38,6 +38,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 import coderef  # noqa: E402
 import ops  # noqa: E402
+import run_control  # noqa: E402
 import store  # noqa: E402
 import strength  # noqa: E402
 from store import git  # noqa: E402
@@ -209,20 +210,15 @@ def check_examples(repo: Path, head: str, cand: dict, examples: list[dict]) -> l
         return []
     module = cand["path"][:-3].replace("/", ".")
     bugs = []
-    with ops.scratch_clone(repo) as (clone, wt):
-        root = wt / "discover"
-        git(clone, "worktree", "add", "-q", "--detach", str(root), head)
-        try:
-            for ex in examples:
-                code = (f"import sys; sys.path.insert(0, '.')\nfrom {module} import *\n"
-                        f"try:\n    print(repr({ex['expr']}))\nexcept Exception as e:\n    print('raises ' + type(e).__name__)\n")
-                out = subprocess.run([sys.executable, "-I", "-c", code], cwd=root, capture_output=True, text=True, timeout=60)
-                got = out.stdout.strip() or (out.stderr.strip().splitlines() or [""])[-1]
-                want = f"raises {ex['raises']}" if "raises" in ex else str(ex["expect"])
-                if got != want:
-                    bugs.append({"question": ex.get("question", ex["expr"]), "expr": ex["expr"], "expected": want, "got": got, "at_commit": head})
-        finally:
-            git(clone, "worktree", "remove", "--force", str(root))
+    with ops.scratch_clone(repo) as (clone, wt), run_control.Worktree(clone, head, wt, "discover") as root:
+        for ex in examples:
+            code = (f"import sys; sys.path.insert(0, '.')\nfrom {module} import *\n"
+                    f"try:\n    print(repr({ex['expr']}))\nexcept Exception as e:\n    print('raises ' + type(e).__name__)\n")
+            out = subprocess.run([sys.executable, "-I", "-c", code], cwd=root, capture_output=True, text=True, timeout=60)
+            got = out.stdout.strip() or (out.stderr.strip().splitlines() or [""])[-1]
+            want = f"raises {ex['raises']}" if "raises" in ex else str(ex["expect"])
+            if got != want:
+                bugs.append({"question": ex.get("question", ex["expr"]), "expr": ex["expr"], "expected": want, "got": got, "at_commit": head})
     return bugs
 
 
@@ -270,12 +266,7 @@ def answer(c: store.Ctx, path: str) -> dict:
         if decision == "reword" and not a.get("text"):
             store.fail(f"discover: {cid}: a reword needs the user's text", 2)
         import ste
-        try:
-            ste.require([text], f"discover: {cid}: the invariant text")
-        except ste.SteMissing as exc:
-            store.fail(str(exc), 1)
-        except ValueError as exc:
-            store.fail(f"{exc} Word the invariant again (decision reword).", 2)
+        ste.require_or_fail([text], f"discover: {cid}: the invariant text", "Word the invariant again (decision reword).")
         author = "user" if a.get("confirmed") is True else "agent"
         head = state.get("head") or store.git(repo, "rev-parse", "HEAD")
         bugs = check_examples(repo, head, cand, a.get("examples", []))

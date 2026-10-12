@@ -24,7 +24,7 @@ The commands show once and run only with --yes. maintain edits no product code.
 from __future__ import annotations
 
 import argparse
-import json
+import copy
 import sys
 from pathlib import Path
 
@@ -103,12 +103,11 @@ def main(c: store.Ctx, argv: list[str]) -> int:
     for f in feats:
         (c.run / "maintain" / f"{f['id']}.md").write_text(brief(data, f, sk), encoding="utf-8")
     ids = {v["id"] for v in data["checks"] if v.get("feature") in {f["id"] for f in feats}}
-    cmds = [v["command"]["argv"] for v in data["checks"] if v["id"] in ids and "command" in v]
-    if not store.confirm(c, "maintain (the live pass)", cmds):
+    if not store.confirm(c, "maintain (the live pass)", run_control.commands(data, [v for v in data["checks"] if v["id"] in ids])):
         print(f"maintain: the source briefs are in {c.run / 'maintain'}: one read-only subagent for each.")
         return 0
     head = store.git(repo, "rev-parse", args.at or "HEAD")
-    before = json.loads(json.dumps(data))
+    before = copy.deepcopy(data)
     strength.apply(before)
     data["head"] = head
     moved = {}
@@ -116,18 +115,17 @@ def main(c: store.Ctx, argv: list[str]) -> int:
         if v["id"] in ids and v.get("at"):
             moved[v["id"]] = v.pop("at")
     paths = [sk] + ([f".claude/skills/{sk.rsplit('/', 1)[1]}"] if sk.startswith(".agents/") else [])
-    run_control.OVERLAY[0] = (tip, paths) if tip != "HEAD" else None
+    overlay = (tip, paths) if tip != "HEAD" else None
     blocked = None
     try:
         with ops.scratch_clone(repo) as (clone, wt):
-            run_control.run_baseline(data, clone, wt, ids, None, c.run / "evidence")
+            run_control.run_baseline(data, clone, wt, ids, None, c.run / "evidence", overlay)
             for k in data["controls"]:
                 if k["check"] in ids:
-                    run_control.run_one(data, k, clone, wt)
+                    run_control.run_one(data, k, clone, wt, overlay=overlay)
     except RuntimeError as exc:
         blocked = str(exc)
     finally:
-        run_control.OVERLAY[0] = None
         for vid, at in moved.items():
             store.find(data, "checks", vid)["at"] = at
     rep = strength.apply(data)

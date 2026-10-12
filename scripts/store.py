@@ -176,12 +176,18 @@ def emit(c: Ctx, payload: dict, text: str) -> None:
     print(json.dumps(payload, indent=2, ensure_ascii=False) if c.json else text)
 
 
-def confirm(c: Ctx, what: str, commands: list[list[str] | str], cwd: str | None = None) -> bool:
-    """Show the commands that a step runs, once. True only with --yes on this invocation."""
-    if not commands:
+def confirm(c: Ctx, what: str, commands: list[list[str] | str], cwd: str | None = None,
+            writes: tuple[str, list[str], str] | None = None) -> bool:
+    """Show the commands that a step runs, once. True only with --yes on this invocation.
+    writes (the sentence, the paths, where): show the files that a step writes into the repo instead."""
+    if c.yes or not (commands or writes):
         return True
-    if c.yes:
-        return True
+    if writes:
+        head, paths, where = writes
+        emit(c, {"confirm": {"what": what, "writes": paths, "where": where}},
+             "\n".join([f"{head}:"] + [f"  {p}" for p in paths]
+                       + ["Your branches and your commits do not change. Write it? Repeat the same command with --yes."]))
+        return False
     shown = list(dict.fromkeys(" ".join(x) if isinstance(x, (list, tuple)) else x for x in commands))
     lines = [f"{what} runs these commands{' in ' + cwd if cwd else ''}:"] + [f"  {x}" for x in shown]
     lines += ["They run in a scratch copy of the repo, never in your checkout.",

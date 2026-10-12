@@ -25,6 +25,7 @@ import shutil
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -37,20 +38,19 @@ TAIL_LINES = 40
 DIFF_LINES = 80
 
 
-# maintain sets this: (ref, paths). Each worktree then takes those paths from ref, so the verify
-# skill of the understando branch runs against the current code.
-OVERLAY: list = [None]
-
-
 class Worktree:
-    def __init__(self, repo: Path, head: str, parent: Path, name: str):
-        self.repo, self.head = repo, head
+    """A detached scratch worktree of `repo` at `head`, under `parent`, removed at the end.
+    overlay (ref, paths): the worktree takes those paths from ref (maintain: the verify skill of
+    the understando branch runs against the current code)."""
+
+    def __init__(self, repo: Path, head: str, parent: Path, name: str, overlay: tuple[str, list[str]] | None = None):
+        self.repo, self.head, self.overlay = repo, head, overlay
         self.path = parent / f"{name}-{os.getpid()}-{int(time.time() * 1000) % 100000}"
 
     def __enter__(self) -> Path:
         git(self.repo, "worktree", "add", "--detach", str(self.path), self.head)
-        if OVERLAY[0] and OVERLAY[0][0] != self.head:
-            ref, paths = OVERLAY[0]
+        if self.overlay and self.overlay[0] != self.head:
+            ref, paths = self.overlay
             git(self.path, "checkout", ref, "--", *paths)  # staged, so a control's diff leaves them out
         return self.path
 
@@ -115,6 +115,11 @@ def tail(text: str | None, n: int = TAIL_LINES) -> str:
     return store.redact("\n".join(text.rstrip().splitlines()[-n:]))
 
 
+def commands(data: dict, checks: list[dict]) -> list[list[str]]:
+    """The commands that a run of these checks shows before the user's yes: the setup, then each check."""
+    return [s["argv"] for s in data.get("setup", [])] + [v["command"]["argv"] for v in checks if "command" in v]
+
+
 def classify(code: int | None, command: dict) -> str:
     if code == 0:
         return "green"
@@ -132,6 +137,25 @@ def prepare(root: Path, data: dict) -> None:
 
 def scrub(text: str, root: Path) -> str:
     return text.replace(str(root), "<worktree>")
+
+
+def result(command: dict, code: int | None, output: str, seconds: float, root: Path, commit: str, **extra) -> dict:
+    """The record of one run of a command: its status, exit, time, output tail and commit."""
+    row = {"status": classify(code, command), "exit": code, "seconds": seconds}
+    if "matched" in extra:
+        row["matched"] = extra.pop("matched")
+    return {**row, "output_tail": tail(scrub(output, root)), "ran_at": store.now(), "head": commit, **extra}
+
+
+@contextmanager
+def scratch_root(repo: Path, commit: str, data: dict, name: str):
+    """(root, clone, scratch): a private clone of the repo, and a worktree of it at `commit` with
+    the store's setup run. Both go away at the end, also on failure."""
+    import ops
+    with ops.scratch_clone(repo) as (clone, wt):
+        with Worktree(clone, commit, wt, name) as root:
+            prepare(root, data)
+            yield root, clone, wt
 
 
 def commit_of(v: dict, data: dict) -> str:
@@ -152,28 +176,27 @@ def kept(d: Path | None) -> list[str]:
 
 
 def run_baseline(data: dict, repo: Path, scratch: Path, only: set[str], env_file: str | None = None,
-                 evidence: Path | None = None) -> None:
+                 evidence: Path | None = None, overlay: tuple[str, list[str]] | None = None) -> None:
     targets = [v for v in data["checks"] if "command" in v and (not only or v["id"] in only)]
     for commit in dict.fromkeys(commit_of(v, data) for v in targets):
-        with Worktree(repo, commit, scratch, "baseline") as root:
+        with Worktree(repo, commit, scratch, "baseline", overlay) as root:
             prepare(root, data)
             for v in (v for v in targets if commit_of(v, data) == commit):
                 env, d = evidence_env(v, evidence, "baseline")
                 code, output, seconds = run_command(root, v["command"], env_file, env)
-                v["baseline"] = {"status": classify(code, v["command"]), "exit": code, "seconds": seconds,
-                                 "output_tail": tail(scrub(output, root)), "ran_at": store.now(), "head": commit,
-                                 **({"evidence": kept(d)} if d else {})}
+                v["baseline"] = result(v["command"], code, output, seconds, root, commit, **({"evidence": kept(d)} if d else {}))
                 print(f"baseline {v['id']}: {v['baseline']['status']} (exit {code}, {seconds}s)")
 
 
-def run_one(data: dict, control: dict, repo: Path, scratch: Path, env_file: str | None = None, commit: str | None = None) -> None:
+def run_one(data: dict, control: dict, repo: Path, scratch: Path, env_file: str | None = None, commit: str | None = None,
+            overlay: tuple[str, list[str]] | None = None) -> None:
     v = next(v for v in data["checks"] if v["id"] == control["check"])
     if "command" not in v:
         if not (control.get("result") or {}).get("recorded"):
             control["result"] = {"status": "skipped", "note": "The check has no command.", "ran_at": store.now()}
         return
     commit = commit or commit_of(v, data)
-    with Worktree(repo, commit, scratch, control["id"].lower()) as root:
+    with Worktree(repo, commit, scratch, control["id"].lower(), overlay) as root:
         try:
             prepare(root, data)
             for edit in control["edits"]:
@@ -195,11 +218,8 @@ def run_one(data: dict, control: dict, repo: Path, scratch: Path, env_file: str 
     pattern = control["expect"].get("pattern")
     if status == "red" and pattern:
         matched = re.search(pattern, output, re.M) is not None
-    control["result"] = {
-        "status": status, "exit": code, "seconds": seconds, "matched": matched,
-        "output_tail": tail(scrub(output, root)), "ran_at": store.now(), "head": commit,
-        **({"diff": "\n".join(diff.splitlines()[:DIFF_LINES]) + "\n"} if diff.strip() else {}),
-    }
+    control["result"] = result(v["command"], code, output, seconds, root, commit, matched=matched,
+                               **({"diff": "\n".join(diff.splitlines()[:DIFF_LINES]) + "\n"} if diff.strip() else {}))
     if control["kind"] == "degraded":
         import strength
         control["result"]["score"] = strength.score_of(v, {"output_tail": output})

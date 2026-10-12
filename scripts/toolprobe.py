@@ -9,6 +9,7 @@ Definite results are cached in ~/.understando/toolprobe.json for one day. Standa
 
 from __future__ import annotations
 
+import functools
 import glob
 import json
 import os
@@ -17,18 +18,15 @@ import subprocess
 import time
 from pathlib import Path
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
+import store  # noqa: E402
 
 TIMEOUT = 5
 TTL = 24 * 3600
 CC_PKG = "@spolu/cc-check@0.2.0"
 JAVA_HOMES = ("/opt/homebrew/opt/openjdk", "/usr/local/opt/openjdk")
 
-def _home() -> Path:
-    return Path(os.environ.get("UNDERSTANDO_HOME") or Path.home() / ".understando")
-
-
 def _cache_path() -> Path:
-    return _home() / "toolprobe.json"
+    return store.home() / "toolprobe.json"
 
 
 def _load() -> dict:
@@ -141,7 +139,7 @@ def cc_check() -> tuple[str | None, str]:
 def tla2tools_jar() -> str | None:
     """$UNDERSTANDO_TLA2TOOLS, $TLA2TOOLS_JAR, then ~/.understando/tools/tla2tools.jar."""
     for c in (os.environ.get("UNDERSTANDO_TLA2TOOLS"), os.environ.get("TLA2TOOLS_JAR"),
-              str(_home() / "tools" / "tla2tools.jar"), str(Path.home() / ".understando" / "tools" / "tla2tools.jar")):
+              str(store.home() / "tools" / "tla2tools.jar"), str(Path.home() / ".understando" / "tools" / "tla2tools.jar")):
         if c and Path(c).is_file():
             return c
     return None
@@ -150,7 +148,7 @@ def tla2tools_jar() -> str | None:
 def mutation_venv() -> Path | None:
     """The venv with mutmut, cosmic-ray and pytest: $UNDERSTANDO_MUTATION_VENV, else
     ~/.understando/tools/mutation (`understando setup --mutation` makes it)."""
-    for c in (os.environ.get("UNDERSTANDO_MUTATION_VENV"), str(_home() / "tools" / "mutation"),
+    for c in (os.environ.get("UNDERSTANDO_MUTATION_VENV"), str(store.home() / "tools" / "mutation"),
               str(Path.home() / ".understando" / "tools" / "mutation")):
         if c and (Path(c) / "bin" / "python").exists():
             return Path(c)
@@ -169,6 +167,7 @@ def tool_status() -> dict:
 SKILL_HOMES = [".agents/skills", ".claude/skills", ".claude/skills/pstack/skills", ".codex/skills", ".cursor/skills"]
 
 
+@functools.lru_cache(maxsize=None)
 def find_skill(name: str) -> Path | None:
     """An installed skill: <home>/<skills folder>/<name>/SKILL.md, also inside a plugin cache."""
     base = Path(os.environ.get("UNDERSTANDO_SKILLS_HOME") or Path.home())
