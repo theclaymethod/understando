@@ -29,6 +29,7 @@ Standard library only; `lake` must be on PATH (elan).
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shutil
 import subprocess
@@ -54,16 +55,21 @@ def lake(project: Path, *args: str, timeout: int = 1800, stdin: str | None = Non
     return out.returncode, out.stdout + out.stderr, round(time.monotonic() - start, 2)
 
 
-def sources(project: Path) -> list[Path]:
-    return sorted(p for p in project.rglob("*.lean") if ".lake" not in p.parts)
+def sources(project: Path) -> dict[Path, bytes]:
+    """The bytes of each .lean file of the project, in path order. The walk skips each .lake folder."""
+    found = []
+    for folder, dirs, files in os.walk(project):
+        dirs[:] = [d for d in dirs if d != ".lake"]
+        found += [Path(folder) / f for f in files if f.endswith(".lean")]
+    return {p: p.read_bytes() for p in sorted(found)}
 
 
-def theorem_block(project: Path, full_name: str) -> tuple[Path, int, str] | None:
+def theorem_block(srcs: dict[Path, bytes], full_name: str) -> tuple[Path, int, str] | None:
     """The source block of `theorem <short name>`: from its line to the next top-level decl."""
     short = full_name.split(".")[-1]
     head = re.compile(rf"^(?:@\[[^\]]*\]\s*)?(?:private\s+|protected\s+)*(theorem|lemma)\s+{re.escape(short)}\b")
-    for path in sources(project):
-        lines = path.read_text(encoding="utf-8").splitlines()
+    for path, data in srcs.items():
+        lines = data.decode("utf-8").splitlines()
         for i, line in enumerate(lines):
             if head.match(line):
                 end = i + 1
@@ -73,10 +79,10 @@ def theorem_block(project: Path, full_name: str) -> tuple[Path, int, str] | None
     return None
 
 
-def forbidden(project: Path) -> list[str]:
+def forbidden(project: Path, srcs: dict[Path, bytes]) -> list[str]:
     hits = []
-    for path in sources(project):
-        text = re.sub(r"/-.*?-/", "", path.read_text(encoding="utf-8"), flags=re.S)
+    for path, data in srcs.items():
+        text = re.sub(r"/-.*?-/", "", data.decode("utf-8"), flags=re.S)
         for n, line in enumerate(text.splitlines(), 1):
             code = line.split("--", 1)[0]
             if re.search(r"\bsorry\b|\badmit\b", code) or re.match(r"\s*axiom\s", code):
@@ -104,9 +110,10 @@ def axioms(project: Path, imports: list[str], theorems: list[str]) -> tuple[dict
 def cmd_check(args: argparse.Namespace) -> int:
     project = Path(args.project).resolve()
     code, out, seconds = lake(project, "build")
+    srcs = sources(project)
     record: dict[str, object] = {
         "build": {"exit": code, "seconds": seconds, "output_tail": tail(out)},
-        "files": {str(p.relative_to(project)): sha(p.read_bytes()) for p in sources(project)},
+        "files": {str(p.relative_to(project)): sha(data) for p, data in srcs.items()},
     }
     if code != 0:
         record["status"] = "red"
@@ -114,11 +121,11 @@ def cmd_check(args: argparse.Namespace) -> int:
         print(rerun_json(record, indent=2))
         return 1
     found, raw = axioms(project, args.imports, args.theorem)
-    bad = forbidden(project)
+    bad = forbidden(project, srcs)
     theorems = {}
     clean = not bad
     for t in args.theorem:
-        block = theorem_block(project, t)
+        block = theorem_block(srcs, t)
         ax = found[t]
         ok = ax is not None and set(ax) <= ALLOWED
         clean = clean and ok
@@ -142,7 +149,12 @@ def cmd_control(args: argparse.Namespace) -> int:
     project = Path(args.project).resolve()
     with scratch("lean-control-") as parent:
         tmp = parent / project.name
-        shutil.copytree(project, tmp, symlinks=True)
+        # The copy keeps the build cache; the packages under .lake are a link, not a copy.
+        packages = project / ".lake" / "packages"
+        shutil.copytree(project, tmp, symlinks=True,
+                        ignore=lambda folder, names: {"packages"} if Path(folder) == packages.parent else set())
+        if packages.is_dir():
+            (tmp / ".lake" / "packages").symlink_to(packages)
         target = tmp / args.file
         try:
             edit, after = plant(args, args.file, target.read_text(encoding="utf-8"))

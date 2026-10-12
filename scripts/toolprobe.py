@@ -4,7 +4,8 @@ Presence comes from the filesystem and PATH first. A tool runs only to check tha
 stdin closed and a 5 second limit. npx runs with `--no-install` and npm_config_offline=true, and
 it does not run at all while the network is known to be down ($UNDERSTANDO_OFFLINE). A probe that
 fails or times out is never fatal: it becomes a note, which doctor shows as a mention.
-Definite results are cached in ~/.understando/toolprobe.json for one day. Standard library only.
+Definite results are cached in ~/.understando/toolprobe.json for one day, and a probe that did not
+finish for 10 minutes. Standard library only.
 """
 
 from __future__ import annotations
@@ -22,8 +23,10 @@ import store  # noqa: E402
 
 TIMEOUT = 5
 TTL = 24 * 3600
+UNFINISHED_TTL = 600
 CC_PKG = "@spolu/cc-check@0.2.0"
 JAVA_HOMES = ("/opt/homebrew/opt/openjdk", "/usr/local/opt/openjdk")
+
 
 def _cache_path() -> Path:
     return store.home() / "toolprobe.json"
@@ -37,18 +40,19 @@ def _load() -> dict:
         return {}
 
 
-def _cached(name: str):
-    """(hit, value). A hit is a definite result younger than the TTL."""
+def _cached(name: str) -> dict | None:
+    """The cache entry {value, note?}: a definite result younger than TTL, or a probe that did not
+    finish (it has a note) younger than UNFINISHED_TTL."""
     e = _load().get(name)
-    if isinstance(e, dict) and time.time() - float(e.get("at", 0)) < TTL:
-        return True, e.get("value")
-    return False, None
+    if isinstance(e, dict) and time.time() - float(e.get("at", 0)) < (UNFINISHED_TTL if e.get("note") else TTL):
+        return e
+    return None
 
 
-def _store(name: str, value) -> None:
+def _store(name: str, value, note: str = "") -> None:
     try:
         d = _load()
-        d[name] = {"value": value, "at": time.time()}
+        d[name] = {"value": value, "at": time.time(), **({"note": note} if note else {})}
         _cache_path().parent.mkdir(parents=True, exist_ok=True)
         _cache_path().write_text(json.dumps(d, indent=2) + "\n", encoding="utf-8")
     except OSError:
@@ -77,9 +81,9 @@ def java_bin() -> str | None:
         cands.append(str(Path(os.environ["JAVA_HOME"]) / "bin" / "java"))
     # The cache entry belongs to the environment that names a java ($UNDERSTANDO_JAVA, $JAVA_HOME).
     key = "java" + "".join(f"|{c}" for c in cands if c)
-    hit, val = _cached(key)
-    if hit and (val is None or Path(val).is_file()):
-        return val
+    hit = _cached(key)
+    if hit and (hit.get("value") is None or Path(hit["value"]).is_file()):
+        return hit.get("value")
     cands += [f"{h}/bin/java" for h in JAVA_HOMES] + [shutil.which("java")]
     unfinished = False
     for c in cands:
@@ -89,8 +93,7 @@ def java_bin() -> str | None:
                 _store(key, c)
                 return c
             unfinished = unfinished or ok is None
-    if not unfinished:
-        _store(key, None)
+    _store(key, None, "a java probe did not finish" if unfinished else "")
     return None
 
 
@@ -116,9 +119,9 @@ def _cc_on_disk() -> str | None:
 
 def cc_check() -> tuple[str | None, str]:
     """(command or None, note). A note means the probe did not finish: the tool is not checked."""
-    hit, val = _cached("cc-check")
+    hit = _cached("cc-check")
     if hit:
-        return val, ""
+        return hit.get("value"), hit.get("note", "")
     found = _cc_on_disk()
     if found:
         _store("cc-check", found)
@@ -130,6 +133,7 @@ def cc_check() -> tuple[str | None, str]:
         return None, "not checked (offline)"
     ok, note = run_probe(["npx", "--no-install", CC_PKG, "--help"], {"DO_NOT_TRACK": "1", "npm_config_offline": "true"})
     if ok is None:
+        _store("cc-check", None, f"not checked ({note})")
         return None, f"not checked ({note})"
     val = f"npx {CC_PKG}" if ok else None
     _store("cc-check", val)
@@ -155,13 +159,18 @@ def mutation_venv() -> Path | None:
     return None
 
 
-def tool_status() -> dict:
-    """Which formal, contract and mutation tools are on this machine."""
+def _venv_tool(name: str) -> str | None:
     venv = mutation_venv()
-    cc, _ = cc_check()
-    return {"lake": shutil.which("lake"), "java": java_bin(), "tla2tools": tla2tools_jar(), "cc-check": cc,
-            "mutmut": str(venv / "bin" / "mutmut") if venv and (venv / "bin" / "mutmut").exists() else None,
-            "cosmic-ray": str(venv / "bin" / "cosmic-ray") if venv and (venv / "bin" / "cosmic-ray").exists() else None}
+    return str(venv / "bin" / name) if venv and (venv / "bin" / name).exists() else None
+
+
+TOOLS = {"lake": lambda: shutil.which("lake"), "java": lambda: java_bin(), "tla2tools": lambda: tla2tools_jar(),
+         "cc-check": lambda: cc_check()[0], "mutmut": lambda: _venv_tool("mutmut"), "cosmic-ray": lambda: _venv_tool("cosmic-ray")}
+
+
+def tool_status(names: list[str] | None = None) -> dict:
+    """Which formal, contract and mutation tools are on this machine: each of `names`, else all."""
+    return {name: TOOLS[name]() for name in names or TOOLS}
 
 
 SKILL_HOMES = [".agents/skills", ".claude/skills", ".claude/skills/pstack/skills", ".codex/skills", ".cursor/skills"]

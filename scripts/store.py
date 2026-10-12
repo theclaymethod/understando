@@ -20,7 +20,8 @@ import os
 import re
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from functools import lru_cache
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -99,6 +100,12 @@ class Ctx:
     app: str | None
     json: bool
     yes: bool = False
+    loaded: dict | None = field(default=None, repr=False)  # the store, read once for each CLI run
+
+    def _load(self) -> dict:
+        if self.loaded is None:
+            self.loaded = load(self.store)
+        return self.loaded
 
     @property
     def store(self) -> Path | None:
@@ -119,19 +126,19 @@ class Ctx:
         return self.run
 
     def data(self) -> dict | None:
-        return load(self.store) if self.store and self.store.is_file() else None
+        return self._load() if self.store and self.store.is_file() else None
 
     def need_data(self) -> dict:
         self.need_run()
         if not self.store.is_file():
             fail(f"no evidence store at {self.store}: run `understando create` or `understando discover` first", 2)
-        return load(self.store)
+        return self._load()
 
     def open_data(self) -> dict:
         """The store, or a new one for the repo."""
         self.need_run()
         if self.store.is_file():
-            return load(self.store)
+            return self._load()
         repo = self.need_repo()
         import repoinfo
         return new(repoinfo.slug(repoinfo.origin_url(repo)) or repoinfo.repo_name(repo), self.app or repoinfo.repo_name(repo),
@@ -139,15 +146,18 @@ class Ctx:
 
     def save(self, data: dict) -> None:
         save(data, self.store)
+        self.loaded = data
 
 
 def resolve(run: str | None, repo: str | None, app: str | None, as_json: bool, yes: bool) -> Ctx:
     import repoinfo
     repo_p = Path(repo).expanduser().resolve() if repo else repoinfo.repo_root(Path.cwd())
+    loaded = None
     if run:
         run_p = Path(run).expanduser().resolve()
         if not app and (run_p / "verify.json").is_file():
-            app = load(run_p / "verify.json").get("app")
+            loaded = load(run_p / "verify.json")
+            app = loaded.get("app")
     elif repo_p:
         base = runs_root() / repoinfo.repo_name(repo_p)
         if not app:
@@ -156,7 +166,7 @@ def resolve(run: str | None, repo: str | None, app: str | None, as_json: bool, y
         run_p = base / app
     else:
         run_p = None
-    return Ctx(run_p, repo_p, app, as_json, yes)
+    return Ctx(run_p, repo_p, app, as_json, yes, loaded)
 
 
 def refuse_run_write(run: Path | None) -> str | None:
@@ -280,8 +290,13 @@ def _check(value, schema: dict, root: dict, where: str, errors: list[str]) -> No
                 errors.append(f"{where}: unknown key {key!r}")
 
 
+@lru_cache(maxsize=1)
+def schema() -> dict:
+    return json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+
+
 def validate(data: dict) -> list[str]:
-    root = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    root = schema()
     errors: list[str] = []
     _check(data, root, root, "$", errors)
     if errors:

@@ -41,7 +41,9 @@ from __future__ import annotations
 
 import argparse
 import ast
+import dataclasses
 import difflib
+import functools
 import json
 import re
 import sys
@@ -177,7 +179,13 @@ def _lead(lines: list[str], first: int) -> int:
     return first
 
 
-def python_symbols(text: str, path: str = "") -> list[Sym]:
+def python_symbols(text: str, path: str = "") -> tuple[Sym, ...]:
+    """The symbols of a Python file, cached for each (path, text)."""
+    return _python_symbols(path, text)
+
+
+@functools.lru_cache(maxsize=256)
+def _python_symbols(path: str, text: str) -> tuple[Sym, ...]:
     try:
         tree = ast.parse(text)
     except SyntaxError as exc:
@@ -204,7 +212,7 @@ def python_symbols(text: str, path: str = "") -> list[Sym]:
                 visit(getattr(node, "orelse", []), prefix)
 
     visit(tree.body, "")
-    return out
+    return tuple(out)
 
 
 _JS_DECL = r"^[ \t]*(?:export[ \t]+)?(?:default[ \t]+)?(?:declare[ \t]+)?(?:abstract[ \t]+)?(?:async[ \t]+)?" \
@@ -393,8 +401,13 @@ def resolve_text(path: str, text: str, ref: dict, cap: bool = True) -> Resolved:
         if start > n_lines:
             raise AnchorError(f"{path}: line {start} is past the end ({n_lines} lines)")
         res = Resolved(path, start, min(end, n_lines), text, (1, n_lines))
-    if cap and res.end - res.start + 1 > MAX_LINES:
-        res.end, res.cut = res.start + MAX_LINES - 1, True
+    return capped(res) if cap else res
+
+
+def capped(res: Resolved) -> Resolved:
+    """The resolved lines, cut at MAX_LINES."""
+    if res.end - res.start + 1 > MAX_LINES:
+        return dataclasses.replace(res, end=res.start + MAX_LINES - 1, cut=True)
     return res
 
 
@@ -688,14 +701,27 @@ def strings(value, where: str = "$"):
 
 def pasted(repo: str | Path, head: str, inputs: list[tuple[str, str]]) -> list[str]:
     """Each input string of 2 or more lines whose 2 consecutive lines (whitespace-normalised)
-    occur as 2 consecutive lines of a tracked file at `head`. inputs: (where, text)."""
+    occur as 2 consecutive lines of a tracked file at `head`. inputs: (where, text). One git grep
+    finds the first line of every window; each file that it hits is normalised once."""
+    windows = [(where, _windows(value)) for where, value in inputs]
+    firsts = list(dict.fromkeys(a for _, ws in windows for a, _ in ws))
+    rows: list[tuple[str, str, str]] = []  # (path, line number, raw line), in git grep order
+    if firsts:
+        out = git(repo, "grep", "-I", "-F", "-n", "--full-name", "-f", "-", head, check=False, stdin="\n".join(firsts) + "\n")
+        for row in out.splitlines():
+            _, path, n, raw = row.split(":", 3)
+            rows.append((path, n, raw))
+    files: dict[str, list[str]] = {}
     found = []
-    for where, value in inputs:
-        for a, b in _windows(value):
+    for where, ws in windows:
+        for a, b in ws:
             hit = None
-            for row in git(repo, "grep", "-I", "-F", "-n", "--full-name", "-e", a, head, check=False).splitlines():
-                _, path, n, _ = row.split(":", 3)
-                lines = [_norm(x) for x in (show(repo, head, path) or "").splitlines()]
+            for path, n, raw in rows:
+                if a not in raw:  # a row that git grep found for another window
+                    continue
+                if path not in files:
+                    files[path] = [_norm(x) for x in (show(repo, head, path) or "").splitlines()]
+                lines = files[path]
                 i = int(n) - 1
                 if lines[i] != a:
                     continue
@@ -727,7 +753,7 @@ def guard_inputs(data: dict) -> list[tuple[str, str]]:
 def suggest(path: str, text: str, start: int, end: int) -> list[dict] | None:
     """The anchors that resolve to exactly start..end: one symbol part, else consecutive whole
     symbols, else a unique text in the innermost symbol with context."""
-    syms: list[Sym] = python_symbols(text, path) if path.endswith(".py") else []
+    syms = python_symbols(text, path) if path.endswith(".py") else ()
     holders = sorted([s for s in syms if s.start <= start and end <= s.end], key=lambda s: s.end - s.start)
     for s in holders:
         for part in ("whole", "body", "signature"):

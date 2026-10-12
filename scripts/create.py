@@ -22,6 +22,7 @@ exists, and that the feature's control makes the drive fail. A skill that never 
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import os
 import re
@@ -62,7 +63,7 @@ def interview(repo: Path) -> dict:
     import testcmd
     import toolprobe
     files = store.git(repo, "ls-files").split()
-    text = lambda p: (repo / p).read_text(encoding="utf-8", errors="replace") if (repo / p).is_file() else ""  # noqa: E731
+    text = functools.lru_cache(maxsize=None)(lambda p: (repo / p).read_text(encoding="utf-8", errors="replace") if (repo / p).is_file() else "")
     surfaces = []
     pkg = text("package.json")
     if re.search(r'"(react|vue|svelte|next|vite|@angular/core|solid-js)"', pkg) or any(f.endswith((".tsx", ".jsx", ".vue", ".svelte")) for f in files):
@@ -402,11 +403,16 @@ def check_shape(repo: Path, ref: str, sk: str) -> list[str]:
             problems.append(f"SKILL.md has no {s} section")
     if re.search(r"\{\{|\bTODO\b|<placeholder>|TBD", body):
         problems.append("SKILL.md holds a placeholder")
-    files = store.git(repo, "ls-tree", "-r", "--name-only", ref, "--", f"{sk}/").split()
+    link = f".claude/skills/{sk.rsplit('/', 1)[1]}"
+    # One ls-tree: the mode of each file of the skill, and of its .claude link.
+    modes = {}
+    for row in store.git(repo, "ls-tree", "-r", ref, "--", f"{sk}/", *([link] if sk.startswith(".agents/") else [])).splitlines():
+        meta, _, path = row.partition("\t")
+        modes[path] = meta.split()[0]
+    files = [f for f in modes if f.startswith(f"{sk}/")]
     helpers = [f for f in files if f.startswith(f"{sk}/helpers/")]
     for h in helpers:
-        mode = store.git(repo, "ls-tree", ref, "--", h).split()[0]
-        if mode != "100755":
+        if modes[h] != "100755":
             problems.append(f"{h} is not executable")
         if h.split(f"{sk}/", 1)[1] not in body:
             problems.append(f"{h} is not shown in SKILL.md")
@@ -427,11 +433,10 @@ def check_shape(repo: Path, ref: str, sk: str) -> list[str]:
                 problems.append(f"{name} has no '{want}' section")
         if START not in text:
             problems.append(f"{name} has no Verifier section from understando")
-    for link in re.findall(r"\]\(\./([^)]+)\)", readme):
-        if f"{sk}/features/{link}" not in files:
-            problems.append(f"features/README.md links {link}, which does not exist")
-    link = f".claude/skills/{sk.rsplit('/', 1)[1]}"
-    if sk.startswith(".agents/") and store.git(repo, "ls-tree", ref, "--", link, check=False).split()[:1] != ["120000"]:
+    for target in re.findall(r"\]\(\./([^)]+)\)", readme):
+        if f"{sk}/features/{target}" not in files:
+            problems.append(f"features/README.md links {target}, which does not exist")
+    if sk.startswith(".agents/") and modes.get(link) != "120000":
         problems.append(f"{link} is not a symlink to {sk}")
     return problems
 

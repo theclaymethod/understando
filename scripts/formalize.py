@@ -42,8 +42,8 @@ def main(c: store.Ctx, argv: list[str]) -> int:
                                       f"{len(out['checks'])} formal checks, {len(out['claims'])} proposed claims matched by key"] + out["report"]))
         return 0
     data = c.need_data()
-    tools = toolprobe.tool_status()
     if not args.claim:
+        tools = toolprobe.tool_status()
         rows = [x for x in data["claims"] if (x.get("plan") or {}).get("kind") in ("lean", "tla")]
         store.emit(c, {"targets": [x["id"] for x in rows], "toolchains": tools},
                    "formalize targets: " + (", ".join(f"{x['id']} ({x['plan']['kind']})" for x in rows) or "none")
@@ -58,6 +58,7 @@ def main(c: store.Ctx, argv: list[str]) -> int:
         lines.append(f"The invariant {', '.join(agent) or '(none linked)'} is agent-picked: the record can reach only "
                      "\"Formal (pending user confirmation)\" until the user accepts it (understando discover).")
     need = ["lake"] if tier == 5 else ["java", "tla2tools"]
+    tools = toolprobe.tool_status(need)
     missing = [t for t in need if not tools[t]]
     if missing:
         lines.append("missing toolchains (install them yourself): " + ", ".join(missing))

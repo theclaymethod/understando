@@ -89,8 +89,9 @@ def resolve_refs(repo: Path, data: dict, base: str | None) -> tuple[list[dict], 
             continue
         seen.add(key)
         try:
-            r, commit = coderef.resolve_for(repo, data, ref, at)
+            commit = coderef.ref_commit(repo, data, ref, at)
             whole = coderef.resolve(repo, commit, ref, cap=False)
+            r = coderef.capped(whole)
             sha = coderef.rev(repo, commit)
         except coderef.AnchorError as exc:
             misses.append(f"{where}: {exc}")

@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import functools
 import json
 import re
 import subprocess
@@ -90,17 +91,23 @@ def mine_python(path: str, source: str) -> list[dict]:
     return out
 
 
-def evidence(repo: Path, head: str, cand: dict, tests: dict[str, str]) -> list[str]:
+@functools.lru_cache(maxsize=None)
+def _log(repo: Path, head: str, path: str, *args: str) -> tuple[str, ...]:
+    """The first two lines of a git log of one path, cached for each (path, query)."""
+    return tuple(git(repo, "log", *args, "--format=%h %s", head, "--", path, check=False).splitlines()[:2])
+
+
+def evidence(repo: Path, head: str, cand: dict, tests: dict[str, list[str]]) -> list[str]:
+    """tests: the lines of each test file."""
     ev = [f"{cand['path']}:{cand['line']}"]
-    for path, text in tests.items():
-        for i, line in enumerate(text.splitlines(), 1):
-            if re.search(rf"\b{re.escape(cand['function'])}\b", line):
+    name = re.compile(rf"\b{re.escape(cand['function'])}\b")
+    for path, lines in tests.items():
+        for i, line in enumerate(lines, 1):
+            if name.search(line):
                 ev.append(f"test {path}:{i}")
                 break
-    for line in git(repo, "log", "--format=%h %s", "-S", cand["function"], head, "--", cand["path"], check=False).splitlines()[:2]:
-        ev.append(f"commit {line}")
-    for line in git(repo, "log", "-i", "--grep=fix", "--format=%h %s", head, "--", cand["path"], check=False).splitlines()[:2]:
-        ev.append(f"fix commit {line}")
+    ev += [f"commit {line}" for line in _log(repo, head, cand["path"], "-S", cand["function"])]
+    ev += [f"fix commit {line}" for line in _log(repo, head, cand["path"], "-i", "--grep=fix")]
     return list(dict.fromkeys(ev))
 
 
@@ -157,7 +164,7 @@ def mine(c: store.Ctx, feature: str | None, paths: list[str]) -> dict:
     paths = paths or (feat or {}).get("paths") or []
     files = git(repo, "ls-tree", "-r", "--name-only", head, check=False).split()
     sources = [p for p in files if p.endswith(".py") and not is_test(p) and (not paths or any(p.startswith(x) for x in paths))]
-    tests = {p: coderef.show(repo, head, p) or "" for p in files if is_test(p) and p.endswith(".py")}
+    tests = {p: (coderef.show(repo, head, p) or "").splitlines() for p in files if is_test(p) and p.endswith(".py")}
     old = load_state(c.run)
     by_text = {cd["text"]: cd["id"] for cd in old["candidates"]}
     used = set(by_text.values())
