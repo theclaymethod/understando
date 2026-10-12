@@ -1,6 +1,6 @@
 # probe
 
-Prove that each check of a feature can fail. Start it only on an explicit request from the user. The cost is compute only.
+Prove that each check of a feature can fail. [The rules for every verb](../SKILL.md#rules-for-every-verb) apply. The cost is compute only.
 
 ## Controls
 

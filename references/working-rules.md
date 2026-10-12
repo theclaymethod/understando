@@ -4,7 +4,7 @@ understando works on its own. When an original skill is installed, understando r
 
 ## Writing
 
-- **Claim and invariant text.** Write it by **applying the asd-ste100 skill** (`~/.agents/skills/asd-ste100/SKILL.md`). Follow its rules while you write. discover and `build claim` run its lint (`scripts/ste.py`) on the text and refuse a hard violation. The skill is required, with no adapted copy.
+- **Claim and invariant text.** Apply the asd-ste100 skill (`~/.agents/skills/asd-ste100/SKILL.md`; [the rule](../SKILL.md#rules-for-every-verb)). discover and `build claim` run its lint (`scripts/ste.py`) on the text and refuse a hard violation. The skill is required, with no adapted copy.
 - **Prose for the user.** Lead with the outcome. Say what happens, once, in the place where it applies: no reassurance, no slogan. Name a check by what it checks; IDs, SHAs and paths go in a trailing `(ref: ...)` part. When a list has more than three items, name the top three and give the count. The rules come from concisely ([adapted/concisely.md](adapted/concisely.md)) and the reply rules ([adapted/reply-rules.md](adapted/reply-rules.md)).
 - **Text for an agent** (a verify skill, a brief): follow [adapted/writing-for-agents.md](adapted/writing-for-agents.md): context pointers, steps with completion criteria, leading words, no no-ops.
 
@@ -12,7 +12,7 @@ understando works on its own. When an original skill is installed, understando r
 
 Each stop ends with one decision. Ask it as one question with numbered options: the situation in at most five lines, a Next line (scope, cost, time, what it writes), then two to four options. Option 1 is the recommended default; the last option is "Something else". Wait for the pick. A pick is the user's yes for that one option only.
 
-A verb that runs commands prints them and stops without `--yes`. Relay the commands in the question, then run the same verb with `--yes` only after the user picks it.
+Relay the commands that a verb prints without `--yes` ([the rule](../SKILL.md#rules-for-every-verb)) in the question, then run the same verb with `--yes` only after the user picks it.
 
 ## Subagents
 

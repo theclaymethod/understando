@@ -1,8 +1,8 @@
 # build
 
-Verifier-driven development for new work on a feature. Start it only on an explicit request from the user. Run `understando build --feature F` at any time: it prints each step and whether its criterion holds. For the general loop, use the tdd skill when it is installed, else [../references/adapted/tdd-red-first.md](../references/adapted/tdd-red-first.md) and [../references/adapted/feature-playbook.md](../references/adapted/feature-playbook.md).
+Verifier-driven development for new work on a feature. [The rules for every verb](../SKILL.md#rules-for-every-verb) apply. Run `understando build --feature F` at any time: it prints each step and whether its criterion holds. For the general loop, use the tdd skill when it is installed, else [../references/adapted/tdd-red-first.md](../references/adapted/tdd-red-first.md) and [../references/adapted/feature-playbook.md](../references/adapted/feature-playbook.md).
 
-The checks run at a commit in a scratch copy of the repo: commit the check, then the code. Each run shows its command and runs only with `--yes`, after the user's yes.
+The checks run at a commit in a scratch copy of the repo: commit the check, then the code.
 
 ## Steps
 

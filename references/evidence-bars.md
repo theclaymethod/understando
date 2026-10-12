@@ -2,7 +2,7 @@
 
 This file is guidance on which verifier to write for a feature. `scripts/strength.py` (`BARS`) is the one implementation: the bar check of each proven verifier, the plan of `build claim`, the Verifier section of each feature file and the bar line of the explainer all read it.
 
-Each feature has a surface, and the surface sets the bar. Pick the strongest practical check on the ladder that meets the bar ([verdicts.md](verdicts.md)). Every verifier has a control that must make it fail ([controls.md](controls.md)); a verifier that cannot fail does not count.
+Each feature has a surface, and the surface sets the bar. Pick the strongest practical check on the ladder that meets the bar ([verdicts.md](verdicts.md)). Every verifier has a control ([the rules for every verb](../SKILL.md#rules-for-every-verb), [controls.md](controls.md)).
 
 | Surface | The feature | The bar | Its control |
 |---|---|---|---|

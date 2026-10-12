@@ -1,6 +1,6 @@
 # setup
 
-Start it only on an explicit request from the user.
+[The rules for every verb](../SKILL.md#rules-for-every-verb) apply.
 
 1. Run `understando setup`. It is idempotent. It links the CLI into `~/.local/bin` and the skill into the four skill folders, makes the mutation venv (`~/.understando/tools/mutation`: mutmut, cosmic-ray and pytest from PyPI, through uv), and, for the scope that the user picks, installs a missing Code Contracts skill, the pstack verification skills, asd-ste100 and visual-explainer. It ends with `understando doctor`.
    - **Done when** doctor names no missing required piece.

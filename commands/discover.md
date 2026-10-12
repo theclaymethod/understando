@@ -1,6 +1,6 @@
 # discover
 
-The user states the invariants of a feature, through edge-case questions, before any verifier exists. Start it only on an explicit request from the user. This verb stops for the user at each decision.
+The user states the invariants of a feature, through edge-case questions, before any verifier exists. [The rules for every verb](../SKILL.md#rules-for-every-verb) apply. This verb stops for the user at each decision.
 
 For the question rounds, use the grilling skill when it is installed, else [../references/adapted/grilling.md](../references/adapted/grilling.md).
 
@@ -15,6 +15,6 @@ For the question rounds, use the grilling skill when it is installed, else [../r
 4. **Record.** Run `understando discover answer --answers FILE`. Each decision becomes an invariant in the store, with its shape (rule, process, wiring, input space, flow) and the ladder rung that suits it. An example that the code does not give prints a finding in the format of [../references/adapted/find-bugs.md](../references/adapted/find-bugs.md); put the rating in the answer (`"rating"`). An answer that the user confirmed is a bug; else it is a lead.
    - **Done when** `discover status` prints `DONE`. Report each possible bug and each agent-picked invariant.
 
-An invariant without `"confirmed": true` is `author: agent`, status `proposed`. A claim on it stays Backed, and the Verifier section marks it agent-picked.
+An invariant without `"confirmed": true` is `author: agent`, status `proposed` ([the rules for every verb](../SKILL.md#rules-for-every-verb)), and the Verifier section marks it agent-picked.
 
 `understando discover import --sidecar $R/formal/verifiers.json` takes the proposed invariants of a formal sidecar as candidates.

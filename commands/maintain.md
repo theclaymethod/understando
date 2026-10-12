@@ -1,6 +1,6 @@
 # maintain
 
-The upkeep loop of the verify skill, modelled on maintain-verification-skill ([../references/adapted/maintain-verification-skill.md](../references/adapted/maintain-verification-skill.md)). The unit of rigour is the feature. Start it only on an explicit request from the user.
+The upkeep loop of the verify skill, modelled on maintain-verification-skill ([../references/adapted/maintain-verification-skill.md](../references/adapted/maintain-verification-skill.md)). The unit of rigour is the feature. [The rules for every verb](../SKILL.md#rules-for-every-verb) apply.
 
 ## Edit scope
 

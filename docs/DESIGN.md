@@ -21,7 +21,7 @@ The core artefact is a project-local verify skill with a feature map, in the sha
 - **Backend:** Formal (Lean or TLA+ with conformance) for a risky invariant; Code Contracts (a `@cc` contract with a check that a control proves); types, import rules and property tests for wiring.
 - **llm:** a recorded eval with a frozen judge or labels, and a degraded variant that must score worse.
 
-Every verifier has a control. A verifier that cannot fail does not count. An invariant that the agent picked is marked `author: agent`, and its claim stays Backed until the user accepts it.
+The rules for the controls, the invariants, the commands and the writes are in [SKILL.md](../SKILL.md#rules-for-every-verb).
 
 The skill is the one place where understando writes into a repo: a commit on `understando/verify-<app>`, or a patch, after the user's yes. A repo with a verify skill already gets it extended, not duplicated.
 
@@ -44,8 +44,8 @@ One JSON file for each verify skill, `~/.understando/runs/<repo>/<app>/verify.js
 
 ## Running commands
 
-There is no stored CI profile. A verb runs the command that the user names, or the repo's own test command (AGENTS.md, the workflows), and it shows the commands once and runs them only with `--yes`, on each invocation. Every run is in a scratch worktree of a private clone; the user's checkout and branches do not change.
+There is no stored CI profile. A verb runs the commands under [the rules](../SKILL.md#rules-for-every-verb). Every run is in a scratch worktree of a private clone; the user's checkout and branches do not change.
 
 ## Tests
 
-End to end only, never unit tests. `tests/e2e.sh` drives the kept loop on the fixture repo (`tests/fixture`), and `tests/formal/e2e.sh` takes the fixture's Lean and TLA+ examples to Formal, syncs them into the store and rechecks them. `tests/isolate.sh` and `scripts/testguard.py` keep each test out of the real `~/.understando`.
+End to end only ([the rules](../SKILL.md#rules-for-every-verb)). `tests/e2e.sh` drives the kept loop on the fixture repo (`tests/fixture`), and `tests/formal/e2e.sh` takes the fixture's Lean and TLA+ examples to Formal, syncs them into the store and rechecks them. `tests/isolate.sh` and `scripts/testguard.py` keep each test out of the real `~/.understando`.
