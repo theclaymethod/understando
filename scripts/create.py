@@ -25,13 +25,13 @@ import argparse
 import json
 import os
 import re
-import subprocess
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 import ops  # noqa: E402
+import repoinfo  # noqa: E402
 import run_control  # noqa: E402
 import store  # noqa: E402
 import strength  # noqa: E402
@@ -356,7 +356,7 @@ def write(c: store.Ctx, spec_path: str | None, patch: str | None, verifier_only:
     app = spec["app"]
     data["app"] = app
     branch = branch_of(app)
-    tip = ops.branch_tip(repo, branch)
+    tip = repoinfo.rev(repo, f"refs/heads/{branch}")
     start = tip or store.git(repo, "rev-parse", "HEAD")
     found = existing(repo, start)
     # Our own skill (on the branch, or merged) is updated in place. Another verify skill (for example
@@ -381,7 +381,7 @@ def write(c: store.Ctx, spec_path: str | None, patch: str | None, verifier_only:
             store.emit(c, {"written": [], "branch": branch}, "create: nothing changed")
             return 0
         if patch:
-            diff = ops.git(clone, "format-patch", "--stdout", f"{start}..{new}")
+            diff = store.git(clone, "format-patch", "--stdout", f"{start}..{new}")
             Path(patch).write_text(diff + "\n", encoding="utf-8")
         else:
             ops.fast_forward(clone, repo, branch, new)
@@ -403,7 +403,8 @@ def write(c: store.Ctx, spec_path: str | None, patch: str | None, verifier_only:
 # ---- the shape check ---------------------------------------------------------------------------
 
 def check_shape(repo: Path, ref: str, sk: str) -> list[str]:
-    show = lambda p: subprocess.run(["git", "-C", str(repo), "show", f"{ref}:{p}"], capture_output=True, text=True).stdout  # noqa: E731
+    import coderef
+    show = lambda p: coderef.show(repo, ref, p) or ""  # noqa: E731
     problems = []
     body = show(f"{sk}/SKILL.md")
     if not body.startswith("---\n") or not re.search(r"(?m)^name: verify-", body) or not re.search(r"(?m)^description: ", body):

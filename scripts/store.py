@@ -72,11 +72,16 @@ def runs_root() -> Path:
     return Path(os.environ.get("UNDERSTANDO_RUNS") or home() / "runs")
 
 
-def git(repo: Path, *args: str, check: bool = True) -> str:
-    out = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True)
-    if check and out.returncode != 0:
-        raise RuntimeError(f"git {' '.join(args[:3])} failed: {out.stderr.strip()}")
-    return out.stdout.strip()
+def git(repo: Path | str, *args: str, check: bool = True, raw: bool = False):
+    """The one git helper: `git -C repo args`. Returns the stripped stdout text, or with raw=True
+    the stdout bytes as they are. A failure raises RuntimeError; with check=False it returns ""
+    (b"" with raw=True)."""
+    out = subprocess.run(["git", "-C", str(repo), *args], capture_output=True)
+    if out.returncode != 0:
+        if check:
+            raise RuntimeError(f"git {' '.join(args[:3])} failed: {out.stderr.decode('utf-8', 'replace').strip()}")
+        return b"" if raw else ""
+    return out.stdout if raw else out.stdout.decode("utf-8", "replace").strip()
 
 
 # ---- the context -------------------------------------------------------------------------------
@@ -148,22 +153,13 @@ def resolve(run: str | None, repo: str | None, app: str | None, as_json: bool, y
     return Ctx(run_p, repo_p, app, as_json, yes)
 
 
-def git_toplevel(path: Path) -> Path | None:
-    p = Path(path).expanduser().resolve()
-    while not p.exists() and p != p.parent:
-        p = p.parent
-    if p.is_file():
-        p = p.parent
-    out = subprocess.run(["git", "-C", str(p), "rev-parse", "--show-toplevel"], capture_output=True, text=True)
-    return Path(out.stdout.strip()).resolve() if out.returncode == 0 and out.stdout.strip() else None
-
-
 def refuse_run_write(run: Path | None) -> str | None:
     """None when run output may go into `run`. Run output never goes into a git repo."""
     if not run:
         return None
+    import repoinfo
     r = Path(run).expanduser().resolve()
-    top = git_toplevel(r)
+    top = repoinfo.repo_root(r)
     if top:
         return (f"refuse: the run folder {r} is inside the git repo {top}. Run state is local and never in a git repo; "
                 "use the default runs root (~/.understando/runs) or --run DIR outside every git repo.")

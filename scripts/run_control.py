@@ -31,16 +31,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 import coderef  # noqa: E402
 import store  # noqa: E402
+from store import git  # noqa: E402
 
 TAIL_LINES = 40
 DIFF_LINES = 80
-
-
-def git(repo: Path, *args: str) -> str:
-    out = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True)
-    if out.returncode != 0:
-        raise RuntimeError(f"git {' '.join(args)} failed: {out.stderr.strip()}")
-    return out.stdout.strip()
 
 
 # maintain sets this: (ref, paths). Each worktree then takes those paths from ref, so the verify
@@ -76,10 +70,10 @@ def apply_edit(root: Path, edit: dict) -> None:
     if op == "restore-file":
         # Put back the file as it was at `at` (for example the map head, before a fix on the ready
         # branch): the new test of the fix must go red on the code without the fix.
-        out = subprocess.run(["git", "-C", str(root), "show", f"{edit['at']}:{edit['path']}"], capture_output=True)
-        if out.returncode:
-            raise ValueError(f"{edit['path']}: no copy at {edit['at']}")
-        path.write_bytes(out.stdout)
+        try:
+            path.write_bytes(git(root, "show", f"{edit['at']}:{edit['path']}", raw=True))
+        except RuntimeError:
+            raise ValueError(f"{edit['path']}: no copy at {edit['at']}") from None
         return
     if op == "delete-file":
         path.unlink()
@@ -206,7 +200,7 @@ def run_one(data: dict, control: dict, repo: Path, scratch: Path, env_file: str 
                                  "ran_at": store.now(), "head": commit}
             print(f"control {control['id']}: error ({exc})")
             return
-        diff = subprocess.run(["git", "-C", str(root), "diff", "--no-color", "-U2"], capture_output=True, text=True).stdout
+        diff = git(root, "diff", "--no-color", "-U2", check=False, raw=True).decode("utf-8", "replace")
         code, output, seconds = run_command(root, v["command"], env_file)
     status = classify(code, v["command"])
     matched = None

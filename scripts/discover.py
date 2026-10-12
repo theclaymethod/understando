@@ -36,17 +36,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
+import coderef  # noqa: E402
 import ops  # noqa: E402
 import store  # noqa: E402
+from store import git  # noqa: E402
 
 DECISIONS = ("accept", "reword", "reject", "defer")
 # The ladder rung that suits each shape of invariant (references/evidence-bars.md).
 SHAPE_TIER = {"rule": 5, "process": 4, "wiring": 3, "input-space": 2, "flow": 1}
-
-
-def git(repo: Path, *args: str) -> str:
-    out = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True)
-    return out.stdout if out.returncode == 0 else ""
 
 
 def is_test(path: str) -> bool:
@@ -100,9 +97,9 @@ def evidence(repo: Path, head: str, cand: dict, tests: dict[str, str]) -> list[s
             if re.search(rf"\b{re.escape(cand['function'])}\b", line):
                 ev.append(f"test {path}:{i}")
                 break
-    for line in git(repo, "log", "--format=%h %s", "-S", cand["function"], head, "--", cand["path"]).splitlines()[:2]:
+    for line in git(repo, "log", "--format=%h %s", "-S", cand["function"], head, "--", cand["path"], check=False).splitlines()[:2]:
         ev.append(f"commit {line}")
-    for line in git(repo, "log", "-i", "--grep=fix", "--format=%h %s", head, "--", cand["path"]).splitlines()[:2]:
+    for line in git(repo, "log", "-i", "--grep=fix", "--format=%h %s", head, "--", cand["path"], check=False).splitlines()[:2]:
         ev.append(f"fix commit {line}")
     return list(dict.fromkeys(ev))
 
@@ -158,16 +155,16 @@ def mine(c: store.Ctx, feature: str | None, paths: list[str]) -> dict:
     if feature and not feat:
         store.fail(f"discover: no feature {feature}. Run `understando create` first, or name --paths only.", 2)
     paths = paths or (feat or {}).get("paths") or []
-    files = git(repo, "ls-tree", "-r", "--name-only", head).split()
+    files = git(repo, "ls-tree", "-r", "--name-only", head, check=False).split()
     sources = [p for p in files if p.endswith(".py") and not is_test(p) and (not paths or any(p.startswith(x) for x in paths))]
-    tests = {p: git(repo, "show", f"{head}:{p}") for p in files if is_test(p) and p.endswith(".py")}
+    tests = {p: coderef.show(repo, head, p) or "" for p in files if is_test(p) and p.endswith(".py")}
     old = load_state(c.run)
     by_text = {cd["text"]: cd["id"] for cd in old["candidates"]}
     used = set(by_text.values())
     out = [cd for cd in old["candidates"] if cd.get("kind") == "formal"]
     n = 0
     for path in sources:
-        for cand in mine_python(path, git(repo, "show", f"{head}:{path}")):
+        for cand in mine_python(path, coderef.show(repo, head, path) or ""):
             cand["evidence"] = evidence(repo, head, cand, tests)
             cand["feature"] = feature
             cid = by_text.get(cand["text"])
@@ -215,7 +212,7 @@ def check_examples(repo: Path, head: str, cand: dict, examples: list[dict]) -> l
     bugs = []
     with ops.scratch_clone(repo) as (clone, wt):
         root = wt / "discover"
-        ops.git(clone, "worktree", "add", "-q", "--detach", str(root), head)
+        git(clone, "worktree", "add", "-q", "--detach", str(root), head)
         try:
             for ex in examples:
                 code = (f"import sys; sys.path.insert(0, '.')\nfrom {module} import *\n"
@@ -226,7 +223,7 @@ def check_examples(repo: Path, head: str, cand: dict, examples: list[dict]) -> l
                 if got != want:
                     bugs.append({"question": ex.get("question", ex["expr"]), "expr": ex["expr"], "expected": want, "got": got, "at_commit": head})
         finally:
-            ops.git(clone, "worktree", "remove", "--force", str(root))
+            git(clone, "worktree", "remove", "--force", str(root))
     return bugs
 
 

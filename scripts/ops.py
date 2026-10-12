@@ -9,7 +9,6 @@ user's yes. The user's own branches and commits never change. Nothing pushes to 
 from __future__ import annotations
 
 import shutil
-import subprocess
 import sys
 import tempfile
 from contextlib import contextmanager
@@ -17,15 +16,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
+from store import git  # noqa: E402
 
 BOT = ["-c", "user.name=understando", "-c", "user.email=understando@localhost", "-c", "commit.gpgsign=false"]
-
-
-def git(repo: Path, *args: str) -> str:
-    out = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True)
-    if out.returncode != 0:
-        raise RuntimeError(f"git {' '.join(args[:3])} failed: {out.stderr.strip()}")
-    return out.stdout.strip()
 
 
 @contextmanager
@@ -35,16 +28,11 @@ def scratch_clone(repo: Path):
     try:
         clone = scratch / "clone"
         git(repo, "rev-parse", "--git-dir")
-        subprocess.run(["git", "clone", "-q", "--shared", "--no-checkout", str(repo), str(clone)], check=True, capture_output=True)
+        git(repo, "clone", "-q", "--shared", "--no-checkout", str(repo), str(clone))
         (scratch / "wt").mkdir()
         yield clone, scratch / "wt"
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
-
-
-def branch_tip(repo: Path, branch: str) -> str | None:
-    out = subprocess.run(["git", "-C", str(repo), "rev-parse", "--verify", "-q", f"refs/heads/{branch}"], capture_output=True, text=True)
-    return out.stdout.strip() or None
 
 
 def commit_on(clone: Path, wt: Path, tip: str, message: str, change) -> str | None:

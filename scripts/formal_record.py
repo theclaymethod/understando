@@ -44,11 +44,11 @@ import argparse
 import hashlib
 import json
 import re
-import subprocess
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # also under python3 -I, which drops the script folder
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
+from store import git  # noqa: E402
 
 CHECKS7 = ("statement_parity", "state_parity", "transition_parity", "concurrency_parity",
            "cancel_drain_parity", "runtime_evidence", "drift_gate")
@@ -157,10 +157,6 @@ def rate(r: dict) -> dict:
         return {"verdict": "Formal (pending user confirmation)",
                 "missing": ["no user-confirmed invariant (an invariant that the user accepted in discover)"]}
     return {"verdict": "Formal", "missing": []}
-
-
-def git(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True, check=True).stdout.strip()
 
 
 def blob(repo: Path, path: str) -> str:

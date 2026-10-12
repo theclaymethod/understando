@@ -44,12 +44,13 @@ import ast
 import difflib
 import json
 import re
-import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # also under python3 -I, which drops the script folder
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
+import repoinfo  # noqa: E402
+from store import git  # noqa: E402
 
 MAX_LINES = 30
 MAX_WITH = 80
@@ -69,29 +70,24 @@ _SHOW: dict[tuple[str, str, str], str | None] = {}
 def show(repo: str | Path, head: str, path: str) -> str | None:
     key = (str(repo), head, path)
     if key not in _SHOW:
-        out = subprocess.run(["git", "-C", str(repo), "show", f"{head}:{path}"], capture_output=True)
-        _SHOW[key] = out.stdout.decode("utf-8", "replace") if out.returncode == 0 else None
+        try:
+            _SHOW[key] = git(repo, "show", f"{head}:{path}", raw=True).decode("utf-8", "replace")
+        except RuntimeError:
+            _SHOW[key] = None
     return _SHOW[key]
 
 
 def rev(repo: str | Path, name: str) -> str:
-    out = subprocess.run(["git", "-C", str(repo), "rev-parse", "--verify", "-q", f"{name}^{{commit}}"], capture_output=True, text=True)
-    if out.returncode != 0:
+    sha = repoinfo.rev(Path(repo), name)
+    if not sha:
         raise AnchorError(f"no commit {name!r} in {repo}")
-    return out.stdout.strip()
-
-
-def remote_slug(repo: str | Path) -> str | None:
-    """owner/name of the GitHub remote `origin`, or None."""
-    out = subprocess.run(["git", "-C", str(repo), "remote", "get-url", "origin"], capture_output=True, text=True)
-    m = re.search(r"github\.com[:/]([^/\s]+)/([^/\s]+?)(?:\.git)?/?$", out.stdout.strip()) if out.returncode == 0 else None
-    return f"{m.group(1)}/{m.group(2)}" if m else None
+    return sha
 
 
 def permalink(repo: str | Path, head: str, path: str, start: int | None = None, end: int | None = None,
               slug: str | None = None) -> str | None:
     """The GitHub permalink blob/<sha>/<path>#Lx-Ly, from the git remote (else `slug`, owner/name)."""
-    owner = remote_slug(repo) or slug
+    owner = repoinfo.remote_slug(Path(repo)) or slug
     if not owner or not re.fullmatch(r"[\w.-]+/[\w.-]+", owner):
         return None
     sha = rev(repo, head)
@@ -692,10 +688,8 @@ def pasted(repo: str | Path, head: str, inputs: list[tuple[str, str]]) -> list[s
     found = []
     for where, value in inputs:
         for a, b in _windows(value):
-            out = subprocess.run(["git", "-C", str(repo), "grep", "-I", "-F", "-n", "--full-name", "-e", a, head],
-                                 capture_output=True, text=True)
             hit = None
-            for row in out.stdout.splitlines():
+            for row in git(repo, "grep", "-I", "-F", "-n", "--full-name", "-e", a, head, check=False).splitlines():
                 _, path, n, _ = row.split(":", 3)
                 lines = [_norm(x) for x in (show(repo, head, path) or "").splitlines()]
                 i = int(n) - 1
