@@ -35,44 +35,26 @@ workers (default auto); 1 gives the same counterexample on each run. Standard li
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import re
 import shutil
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 import coderef  # noqa: E402
-
-TAIL = 40
-
-
-
-def _rerun_json(obj, **kw) -> str:
-    """The JSON result, with the call that made it (formalize --recheck runs it again)."""
-    if isinstance(obj, dict):
-        obj = {**obj, "rerun": {"script": Path(__file__).name, "args": sys.argv[1:], "cwd": os.getcwd()}}
-    return json.dumps(obj, **kw)
-
-def java() -> str:
-    """The java that toolprobe.java_bin() finds ($UNDERSTANDO_JAVA, $JAVA_HOME, Homebrew's openjdk, PATH)."""
-    import toolprobe
-    return toolprobe.java_bin() or os.environ.get("UNDERSTANDO_JAVA") or "java"
-
-
-def jar() -> str:
-    import toolprobe
-    return toolprobe.tla2tools_jar() or os.environ.get("UNDERSTANDO_TLA2TOOLS") or str(Path.home() / ".understando/tools/tla2tools.jar")
+import store  # noqa: E402
+import toolprobe  # noqa: E402
+from formal_common import control_exit, control_match, plant, rerun_json, scratch, sha, vectors_out  # noqa: E402
+from run_control import tail  # noqa: E402
 
 
 def sha256(path: Path) -> str:
-    return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+    return sha(path.read_bytes())
 
 
 # ---- TLA+ value parser (the subset TLC prints for states) -------------------------------------
@@ -170,26 +152,25 @@ def parse_state(block: str) -> dict[str, object]:
 def run(spec: Path, cfg: Path | None, deadlock_check: bool, dump: Path | None = None,
         timeout: int = 900) -> dict[str, object]:
     spec = spec.resolve()
-    meta = Path(tempfile.mkdtemp(prefix="tlc-meta-"))
-    # One worker makes the search order, and so the counterexample, the same on each run.
-    argv = [java(), "-XX:+UseParallelGC", "-cp", jar(), "tlc2.TLC", "-workers", os.environ.get("UNDERSTANDO_TLC_WORKERS") or "auto",
-            "-metadir", str(meta), "-cleanup"]
-    if cfg is not None:
-        argv += ["-config", str(cfg.resolve())]
-    if not deadlock_check:
-        argv.append("-deadlock")
-    if dump is not None:
-        argv += ["-dump", str(dump)]
-    argv.append(spec.name)
+    jar = toolprobe.tla2tools_jar() or str(store.home() / "tools" / "tla2tools.jar")
     start = time.monotonic()
-    try:
-        out = subprocess.run(argv, cwd=spec.parent, capture_output=True, text=True, timeout=timeout,
-                             stdin=subprocess.DEVNULL)
-        code, text = out.returncode, out.stdout + out.stderr
-    except subprocess.TimeoutExpired:
-        code, text = None, "[formal_tlc] timeout"
-    finally:
-        shutil.rmtree(meta, ignore_errors=True)
+    with scratch("tlc-meta-") as meta:
+        # One worker makes the search order, and so the counterexample, the same on each run.
+        argv = [toolprobe.java_bin() or "java", "-XX:+UseParallelGC", "-cp", jar, "tlc2.TLC",
+                "-workers", os.environ.get("UNDERSTANDO_TLC_WORKERS") or "auto", "-metadir", str(meta), "-cleanup"]
+        if cfg is not None:
+            argv += ["-config", str(cfg.resolve())]
+        if not deadlock_check:
+            argv.append("-deadlock")
+        if dump is not None:
+            argv += ["-dump", str(dump)]
+        argv.append(spec.name)
+        try:
+            out = subprocess.run(argv, cwd=spec.parent, capture_output=True, text=True, timeout=timeout,
+                                 stdin=subprocess.DEVNULL)
+            code, text = out.returncode, out.stdout + out.stderr
+        except subprocess.TimeoutExpired:
+            code, text = None, "[formal_tlc] timeout"
     result = read_output(text)
     result.update({
         "exit": code,
@@ -199,7 +180,7 @@ def run(spec: Path, cfg: Path | None, deadlock_check: bool, dump: Path | None = 
         "cfg": cfg.name if cfg else None,
         "cfg_sha256": sha256(cfg) if cfg else None,
         "deadlock_checked": deadlock_check,
-        "output_tail": "\n".join(text.rstrip().splitlines()[-TAIL:]),
+        "output_tail": tail(text),
     })
     return result
 
@@ -253,22 +234,26 @@ def read_dump(path: Path) -> list[dict[str, object]]:
 
 def cmd_check(args: argparse.Namespace) -> int:
     res = run(Path(args.spec), Path(args.cfg) if args.cfg else None, not args.no_deadlock_check)
-    print(_rerun_json(res, indent=2))
+    print(rerun_json(res, indent=2))
     return {"green": 0, "red": 1}.get(str(res["status"]), 2)
 
 
-def cmd_dump(args: argparse.Namespace) -> int:
-    tmp = Path(tempfile.mkdtemp(prefix="tlc-dump-"))
-    try:
+def dump_states(args: argparse.Namespace, prefix: str) -> tuple[dict, list[dict] | None]:
+    """(the TLC result, every distinct state), or (the result, None) when TLC is not green."""
+    with scratch(prefix) as tmp:
         res = run(Path(args.spec), Path(args.cfg), not args.no_deadlock_check, dump=tmp / "states")
         if res["status"] != "green":
-            print(_rerun_json(res, indent=2))
-            return 2
-        states = read_dump(tmp / "states.dump")
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
+            print(rerun_json(res, indent=2))
+            return res, None
+        return res, read_dump(tmp / "states.dump")
+
+
+def cmd_dump(args: argparse.Namespace) -> int:
+    res, states = dump_states(args, "tlc-dump-")
+    if states is None:
+        return 2
     Path(args.out).write_text(json.dumps(states, indent=1, sort_keys=True) + "\n", encoding="utf-8")
-    print(_rerun_json({"status": "green", "states": len(states), "out": args.out,
+    print(rerun_json({"status": "green", "states": len(states), "out": args.out,
                       "spec_sha256": res["spec_sha256"], "cfg_sha256": res["cfg_sha256"]}))
     return 0
 
@@ -302,15 +287,9 @@ def _matches(state: dict[str, object], conds: list[str]) -> bool:
 
 
 def cmd_vectors(args: argparse.Namespace) -> int:
-    tmp = Path(tempfile.mkdtemp(prefix="tlc-vectors-"))
-    try:
-        res = run(Path(args.spec), Path(args.cfg), not args.no_deadlock_check, dump=tmp / "states")
-        if res["status"] != "green":
-            print(_rerun_json(res, indent=2))
-            return 2
-        states = read_dump(tmp / "states.dump")
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
+    res, states = dump_states(args, "tlc-vectors-")
+    if states is None:
+        return 2
     done = sorted((s for s in states if _matches(s, args.done)), key=lambda s: json.dumps(s, sort_keys=True))
     if args.keep:
         done = [{k: v[k] for k in args.keep if k in v} for v in done]
@@ -320,35 +299,13 @@ def cmd_vectors(args: argparse.Namespace) -> int:
     # One vector per line, so the file diffs and greps line by line.
     text = (json.dumps(head, sort_keys=True)[:-1] + ', "vectors": [\n'
             + ",\n".join(json.dumps(v, sort_keys=True, separators=(",", ":")) for v in done) + "\n]}\n")
-    out = Path(args.out)
-    if args.check:
-        same = out.exists() and out.read_text(encoding="utf-8") == text
-        print(_rerun_json({"status": "green" if same else "red", "vectors": len(done), "out": args.out}))
-        return 0 if same else 1
-    out.write_text(text, encoding="utf-8")
-    print(_rerun_json({"status": "green", "states": len(states), "vectors": len(done), "out": args.out,
-                      "spec_sha256": res["spec_sha256"]}))
-    return 0
-
-
-def plant(args: argparse.Namespace, name: str, text: str) -> tuple[dict, str]:
-    """(the edit that was applied, the planted text). An anchor edit, else the deprecated find/replace."""
-    if args.find is not None:
-        print("formal_tlc.py: --find/--replace is deprecated; use --symbol, --match, --op and --with", file=sys.stderr)
-        if args.replace is None:
-            raise coderef.AnchorError("--find needs --replace")
-        edit = {"op": "replace", "path": name, "find": args.find, "replace": args.replace}
-        return edit, coderef.edit_text(text, edit)
-    if not (args.symbol or args.match):
-        raise coderef.AnchorError("a control needs --symbol or --match (an anchor edit)")
-    edit = coderef.cli_edit(name, args.op, args.symbol, args.match, args.with_)
-    return edit, coderef.apply_text(text, edit)
+    return vectors_out(Path(args.out), text, args.check, {"vectors": len(done), "out": args.out},
+                       {"states": len(states), "vectors": len(done), "out": args.out, "spec_sha256": res["spec_sha256"]})
 
 
 def cmd_control(args: argparse.Namespace) -> int:
     spec = Path(args.spec).resolve()
-    tmp = Path(tempfile.mkdtemp(prefix="tlc-control-"))
-    try:
+    with scratch("tlc-control-") as tmp:
         for f in spec.parent.iterdir():
             if f.is_file() and f.suffix in (".tla", ".cfg"):
                 shutil.copy2(f, tmp / f.name)
@@ -357,21 +314,15 @@ def cmd_control(args: argparse.Namespace) -> int:
         try:
             edit, after = plant(args, spec.name, text)
         except coderef.AnchorError as exc:
-            print(_rerun_json({"status": "error", "note": f"ANCHOR ERROR: {exc}"}))
+            print(rerun_json({"status": "error", "note": f"ANCHOR ERROR: {exc}"}))
             return 2
         planted.write_text(after, encoding="utf-8")
         cfg = tmp / Path(args.cfg).name if args.cfg else None
         res = run(planted, cfg, not args.no_deadlock_check)
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
-    matched = None
-    if res["status"] == "red" and args.pattern:
-        matched = re.search(args.pattern, str(res["output_tail"]) + json.dumps(res["violation"])) is not None
+    matched = control_match(str(res["status"]), args.pattern, str(res["output_tail"]) + json.dumps(res["violation"]))
     res["control"] = {"edit": edit, "pattern": args.pattern, "matched": matched}
-    print(_rerun_json(res, indent=2))
-    if res["status"] == "red" and matched is not False:
-        return 0
-    return 1 if res["status"] == "green" else 2
+    print(rerun_json(res, indent=2))
+    return control_exit(str(res["status"]), matched)
 
 
 def main() -> int:

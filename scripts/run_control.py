@@ -122,9 +122,11 @@ def run_command(root: Path, command: dict, env_file: str | None = None, extra_en
     return code, output, round(time.monotonic() - start, 2)
 
 
-def tail(text: str) -> str:
-    text = text.replace(str(Path.home()), "~")
-    return store.redact("\n".join(text.rstrip().splitlines()[-TAIL_LINES:]))
+def tail(text: str | None, n: int = TAIL_LINES) -> str:
+    """The last n lines of a command output, with the home folder as ~, a macOS temp folder as
+    <tmp>/, and each secret redacted."""
+    text = re.sub(r"/(?:private/)?var/folders/\S+?/T/", "<tmp>/", (text or "").replace(str(Path.home()), "~"))
+    return store.redact("\n".join(text.rstrip().splitlines()[-n:]))
 
 
 def classify(code: int | None, command: dict) -> str:

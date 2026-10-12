@@ -41,13 +41,13 @@ library only.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
-import re
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # also under python3 -I, which drops the script folder
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
+from formal_common import sha  # noqa: E402
+from run_control import tail  # noqa: E402
 from store import git  # noqa: E402
 
 CHECKS7 = ("statement_parity", "state_parity", "transition_parity", "concurrency_parity",
@@ -70,7 +70,7 @@ def trim(result: dict) -> dict:
             "tree_sha256", "files", "why", "control", "argv", "edits", "output_tail", "rerun")
     out = {k: result[k] for k in keep if k in result}
     if isinstance(out.get("output_tail"), str):
-        out["output_tail"] = re.sub(r"/(?:private/)?var/folders/\S+?/T/", "<tmp>/", out["output_tail"].replace(str(Path.home()), "~"))
+        out["output_tail"] = tail(out["output_tail"])
     return out
 
 
@@ -169,7 +169,7 @@ def stamp_of(repo: Path, code: list[str], model: list[str]) -> dict:
         "commit": git(repo, "rev-parse", "HEAD"),
         "root": str(repo),
         "code_files": [{"path": p, "blob": blob(repo, p)} for p in code],
-        "model_files": [{"path": p, "sha256": "sha256:" + hashlib.sha256((repo / p).read_bytes()).hexdigest()}
+        "model_files": [{"path": p, "sha256": sha((repo / p).read_bytes())}
                         for p in model],
     }
 

@@ -37,6 +37,7 @@ import testguard  # noqa: E402,F401  (the test-isolation guard: it must load bef
 import coderef  # noqa: E402
 import formal_record  # noqa: E402
 import store  # noqa: E402
+from run_control import tail  # noqa: E402
 
 KEEP = ("ladder_tier", "conformance", "route", "invariant", "witness", "drift", "formal", "blocker_open", "card", "witness_test")
 OWNED = ("kind", "ladder", "description", "recorded", "formal_record", "formal", "property", "feature")
@@ -45,10 +46,6 @@ HERE = Path(__file__).resolve().parent
 
 class Refused(Exception):
     pass
-
-
-def tail(text: str | None, n: int = 12) -> str:
-    return "\n".join((text or "").splitlines()[-n:])
 
 
 def holders(data: dict) -> dict[str, tuple[dict, dict | None]]:
@@ -129,7 +126,7 @@ def store_control(rec: dict, k: dict, vid: str, models: list[str], before: dict 
             "edits": edits, "expect": {"status": "red"},
             "result": {"status": "red" if red else ("green" if r.get("status") == "green" else "error"), "exit": r.get("exit"),
                        "matched": True if red else None, "recorded": True,
-                       "output_tail": re.sub(r"/Users/[^/\s]+", "~", tail(r.get("output_tail"))),
+                       "output_tail": re.sub(r"/Users/[^/\s]+", "~", tail(r.get("output_tail"), 12)),
                        "ran_at": r.get("ran_at") or ((before or {}).get("result") or {}).get("ran_at") or store.now()}}
 
 
@@ -281,7 +278,7 @@ def rerun(result: dict, old_root: str | None, new_root: Path) -> dict:
     try:
         return formal_record.trim(json.loads(out.stdout))
     except json.JSONDecodeError:
-        return {"status": "error", "exit": out.returncode, "output_tail": tail(out.stdout + out.stderr), "rerun": call}
+        return {"status": "error", "exit": out.returncode, "output_tail": tail(out.stdout + out.stderr, 12), "rerun": call}
 
 
 def commands(rec: dict) -> list[list[str]]:

@@ -24,31 +24,20 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import shutil
-import subprocess
 import sys
-import tempfile
-import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 import coderef  # noqa: E402
-from run_control import apply_edit  # noqa: E402
+from formal_common import rerun_json, scratch  # noqa: E402
+from run_control import apply_edit, classify, run_command, tail  # noqa: E402
 
-TAIL = 40
 SKIP = shutil.ignore_patterns(".git", ".venv", ".lake", "node_modules", "__pycache__", ".pytest_cache",
                               ".ruff_cache", "*.pyc")
 
-
-
-def _rerun_json(obj, **kw) -> str:
-    """The JSON result, with the call that made it (formalize --recheck runs it again)."""
-    if isinstance(obj, dict):
-        obj = {**obj, "rerun": {"script": Path(__file__).name, "args": sys.argv[1:], "cwd": os.getcwd()}}
-    return json.dumps(obj, **kw)
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -64,14 +53,13 @@ def main() -> int:
     args = ap.parse_args()
 
     cwd = Path(args.cwd).resolve()
-    tmp: Path | None = None
     edits = [json.loads(Path(e).read_text()) if Path(e).is_file() else json.loads(e) for e in args.edit]
-    try:
-        if args.copy:
-            root = Path(args.copy).resolve()
-            if not cwd.is_relative_to(root):
-                raise SystemExit("--cwd must be inside --copy")
-            tmp = Path(tempfile.mkdtemp(prefix="formal-run-"))
+    command = {"argv": args.argv, "env": dict(e.split("=", 1) for e in args.env), "timeout_s": args.timeout}
+    if args.copy:
+        root = Path(args.copy).resolve()
+        if not cwd.is_relative_to(root):
+            raise SystemExit("--cwd must be inside --copy")
+        with scratch("formal-run-") as tmp:
             copy = tmp / root.name
             shutil.copytree(root, copy, ignore=SKIP, symlinks=True)
             for rel in args.link:
@@ -83,32 +71,19 @@ def main() -> int:
                 try:
                     apply_edit(copy, edit)
                 except (coderef.AnchorError, ValueError, KeyError, OSError) as exc:
-                    print(_rerun_json({"status": "error", "note": f"ANCHOR ERROR: {exc}", "edit": edit}, indent=2))
+                    print(rerun_json({"status": "error", "note": f"ANCHOR ERROR: {exc}", "edit": edit}, indent=2))
                     return 2
-            run_dir = copy / cwd.relative_to(root)
-        else:
-            run_dir = cwd
-        env = {**os.environ, **dict(e.split("=", 1) for e in args.env)}
-        start = time.monotonic()
-        out = subprocess.run(args.argv, cwd=run_dir, capture_output=True, text=True, env=env,
-                             timeout=args.timeout, stdin=subprocess.DEVNULL)
-        seconds = round(time.monotonic() - start, 2)
-        text = out.stdout + out.stderr
-        if tmp is not None:
+            code, text, seconds = run_command(copy / cwd.relative_to(root), command)
             text = text.replace(str(tmp), "<copy>")
-    finally:
-        if tmp is not None:
-            shutil.rmtree(tmp, ignore_errors=True)
-    status = {0: "green", 1: "red"}.get(out.returncode, "error")
+    else:
+        code, text, seconds = run_command(cwd, command)
+    status = classify(code, command)
     matched = re.search(args.pattern, text, re.M) is not None if (status == "red" and args.pattern) else None
     if matched is False:
         status = "error"  # red for another reason
-    result = {
-        "status": status, "exit": out.returncode, "seconds": seconds, "matched": matched,
-        "argv": args.argv, "edits": edits,
-        "output_tail": "\n".join(text.rstrip().replace(str(Path.home()), "~").splitlines()[-TAIL:]),
-    }
-    print(_rerun_json(result, indent=2))
+    result = {"status": status, "exit": code, "seconds": seconds, "matched": matched, "argv": args.argv, "edits": edits,
+              "output_tail": tail(text)}
+    print(rerun_json(result, indent=2))
     if args.expect:
         return 0 if status == args.expect else 1
     return {"green": 0, "red": 1}.get(status, 2)

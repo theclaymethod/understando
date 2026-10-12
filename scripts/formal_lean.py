@@ -29,33 +29,23 @@ Standard library only; `lake` must be on PATH (elan).
 from __future__ import annotations
 
 import argparse
-import hashlib
-import json
-import os
 import re
 import shutil
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import testguard  # noqa: E402,F401  (the test-isolation guard: it must load before any write)
 import coderef  # noqa: E402
+from formal_common import control_exit, control_match, plant, rerun_json, scratch, sha, vectors_out  # noqa: E402
+from run_control import tail  # noqa: E402
 
 ALLOWED = {"propext", "Quot.sound", "Classical.choice"}
-TAIL = 40
 DECL = re.compile(r"^(?:@\[[^\]]*\]\s*)?(?:private\s+|protected\s+|noncomputable\s+)*"
                   r"(theorem|lemma|def|abbrev|instance|structure|inductive|axiom|example|namespace|end|section|open)\b")
 
-
-
-def _rerun_json(obj, **kw) -> str:
-    """The JSON result, with the call that made it (formalize --recheck runs it again)."""
-    if isinstance(obj, dict):
-        obj = {**obj, "rerun": {"script": Path(__file__).name, "args": sys.argv[1:], "cwd": os.getcwd()}}
-    return json.dumps(obj, **kw)
 
 def lake(project: Path, *args: str, timeout: int = 1800, stdin: str | None = None) -> tuple[int, str, float]:
     start = time.monotonic()
@@ -66,10 +56,6 @@ def lake(project: Path, *args: str, timeout: int = 1800, stdin: str | None = Non
 
 def sources(project: Path) -> list[Path]:
     return sorted(p for p in project.rglob("*.lean") if ".lake" not in p.parts)
-
-
-def sha(data: bytes) -> str:
-    return "sha256:" + hashlib.sha256(data).hexdigest()
 
 
 def theorem_block(project: Path, full_name: str) -> tuple[Path, int, str] | None:
@@ -119,13 +105,13 @@ def cmd_check(args: argparse.Namespace) -> int:
     project = Path(args.project).resolve()
     code, out, seconds = lake(project, "build")
     record: dict[str, object] = {
-        "build": {"exit": code, "seconds": seconds, "output_tail": "\n".join(out.strip().splitlines()[-TAIL:])},
+        "build": {"exit": code, "seconds": seconds, "output_tail": tail(out)},
         "files": {str(p.relative_to(project)): sha(p.read_bytes()) for p in sources(project)},
     }
     if code != 0:
         record["status"] = "red"
         record["why"] = "lake build failed"
-        print(_rerun_json(record, indent=2))
+        print(rerun_json(record, indent=2))
         return 1
     found, raw = axioms(project, args.imports, args.theorem)
     bad = forbidden(project)
@@ -148,48 +134,29 @@ def cmd_check(args: argparse.Namespace) -> int:
         record["why"] = "sorry, admit, a new axiom, or an axiom outside the allowed three"
         record["axioms_output"] = raw[-2000:]
     record["tree_sha256"] = sha("".join(f"{k} {v}\n" for k, v in sorted(dict(record["files"]).items())).encode())
-    print(_rerun_json(record, indent=2))
+    print(rerun_json(record, indent=2))
     return 0 if clean else 1
-
-
-def plant(args: argparse.Namespace, text: str) -> tuple[dict, str]:
-    """(the edit that was applied, the planted text). An anchor edit, else the deprecated find/replace."""
-    if args.find is not None:
-        print("formal_lean.py: --find/--replace is deprecated; use --symbol, --match, --op and --with", file=sys.stderr)
-        if args.replace is None:
-            raise coderef.AnchorError("--find needs --replace")
-        edit = {"op": "replace", "path": args.file, "find": args.find, "replace": args.replace}
-        return edit, coderef.edit_text(text, edit)
-    if not (args.symbol or args.match):
-        raise coderef.AnchorError("a control needs --symbol or --match (an anchor edit)")
-    edit = coderef.cli_edit(args.file, args.op, args.symbol, args.match, args.with_)
-    return edit, coderef.apply_text(text, edit)
 
 
 def cmd_control(args: argparse.Namespace) -> int:
     project = Path(args.project).resolve()
-    tmp = Path(tempfile.mkdtemp(prefix="lean-control-")) / project.name
-    try:
+    with scratch("lean-control-") as parent:
+        tmp = parent / project.name
         shutil.copytree(project, tmp, symlinks=True)
         target = tmp / args.file
-        text = target.read_text(encoding="utf-8")
         try:
-            edit, after = plant(args, text)
+            edit, after = plant(args, args.file, target.read_text(encoding="utf-8"))
         except coderef.AnchorError as exc:
-            print(_rerun_json({"status": "error", "note": f"ANCHOR ERROR: {exc}"}))
+            print(rerun_json({"status": "error", "note": f"ANCHOR ERROR: {exc}"}))
             return 2
         target.write_text(after, encoding="utf-8")
         code, out, seconds = lake(tmp, "build")
-    finally:
-        shutil.rmtree(tmp.parent, ignore_errors=True)
     status = "green" if code == 0 else "red"
-    matched = re.search(args.pattern, out) is not None if (status == "red" and args.pattern) else None
-    print(_rerun_json({"status": status, "exit": code, "seconds": seconds, "matched": matched,
+    matched = control_match(status, args.pattern, out)
+    print(rerun_json({"status": status, "exit": code, "seconds": seconds, "matched": matched,
                       "control": {"file": args.file, "edit": edit},
-                      "output_tail": "\n".join(out.strip().splitlines()[-TAIL:])}, indent=2))
-    if status == "red" and matched is not False:
-        return 0
-    return 1 if status == "green" else 2
+                      "output_tail": tail(out)}, indent=2))
+    return control_exit(status, matched)
 
 
 def cmd_vectors(args: argparse.Namespace) -> int:
@@ -200,23 +167,15 @@ def cmd_vectors(args: argparse.Namespace) -> int:
         return 2
     exe = project / ".lake" / "build" / "bin" / args.exe
     res = subprocess.run([str(exe)], capture_output=True, text=True, check=True)
-    path = Path(args.out)
-    if args.check:
-        same = path.exists() and path.read_text(encoding="utf-8") == res.stdout
-        print(_rerun_json({"status": "green" if same else "red", "vectors": str(path),
-                          "sha256": sha(res.stdout.encode()), "lines": res.stdout.count("\n")}))
-        return 0 if same else 1
-    path.write_text(res.stdout, encoding="utf-8")
-    print(_rerun_json({"status": "green", "vectors": str(path), "sha256": sha(res.stdout.encode()),
-                      "lines": res.stdout.count("\n")}))
-    return 0
+    info = {"vectors": str(Path(args.out)), "sha256": sha(res.stdout.encode()), "lines": res.stdout.count("\n")}
+    return vectors_out(Path(args.out), res.stdout, args.check, info, info)
 
 
 def cmd_attempt(args: argparse.Namespace) -> int:
     project = Path(args.project).resolve()
     code, out, seconds = lake(project, "env", "lean", args.file)
-    print(_rerun_json({"status": "green" if code == 0 else "red", "exit": code, "seconds": seconds,
-                      "file": args.file, "output_tail": "\n".join(out.strip().splitlines()[-TAIL:])}, indent=2))
+    print(rerun_json({"status": "green" if code == 0 else "red", "exit": code, "seconds": seconds,
+                      "file": args.file, "output_tail": tail(out)}, indent=2))
     return 0 if code == 0 else 1
 
 
