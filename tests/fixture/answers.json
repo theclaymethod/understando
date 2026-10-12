@@ -1,9 +1,0 @@
-{"answers": [
-  {"candidate": "GUARD", "decision": "reword", "confirmed": true,
-   "text": "The wallet refuses an amount above the balance.",
-   "examples": [{"question": "What should happen if the amount is exactly equal to the balance?", "expr": "withdraw(10, 10)", "expect": "0"},
-                {"question": "What should happen if the amount is zero, or below zero?", "expr": "withdraw(10, -5)", "raises": "ValueError"}],
-   "rating": {"priority": "P2", "fix": "Small fix", "finding_confidence": "90%", "fix_confidence": "85%", "fix_direction": "refuse an amount below 1 in withdraw"}},
-  {"candidate": "RESULT", "decision": "accept"}
-],
- "rest": {"decision": "defer", "reason": "not part of the withdraw feature"}}
