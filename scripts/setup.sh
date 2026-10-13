@@ -5,6 +5,7 @@
 #   scripts/setup.sh --links-only  only link the skill
 #   scripts/setup.sh --check       report only; change nothing
 #
+# jq is only checked, never installed (the gate hook needs it).
 # Writes: a link named understando in ~/.agents/skills, ~/.claude/skills, ~/.codex/skills and
 # ~/.cursor/skills (only when the name is free or already links here); under ~/.understando/tools:
 # elan (only when no elan is on PATH), tla2tools.jar, and the venv mutation/ (mutmut, pytest);
@@ -80,6 +81,10 @@ step_tla() {
   else missing "TLC ($TOOLS/tla2tools.jar)"; fi
 }
 
+step_jq() {
+  if command -v jq >/dev/null 2>&1; then ok "jq (the verifier-first gate): $(command -v jq)"; else missing "jq (the verifier-first gate needs it: brew install jq)"; fi
+}
+
 step_mutation() {
   local v="$TOOLS/mutation"
   if [ -x "$v/bin/mutmut" ] && [ -x "$v/bin/pytest" ]; then ok "mutmut: $v/bin/mutmut"; return; fi
@@ -92,5 +97,5 @@ step_mutation() {
 }
 
 for d in "$HOME/.agents/skills" "$HOME/.claude/skills" "$HOME/.codex/skills" "$HOME/.cursor/skills"; do link_skill "$d"; done
-if [ "$MODE" != links ]; then step_lean; step_java; step_tla; step_mutation; fi
+if [ "$MODE" != links ]; then step_jq; step_lean; step_java; step_tla; step_mutation; fi
 exit "$MISSING"
