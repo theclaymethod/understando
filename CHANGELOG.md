@@ -1,10 +1,8 @@
 # Changelog
 
-## The verifier-first gate
+## Verifier-first by prompt
 
-The skill now enforces the order that it advised. While it is active, a `PreToolUse` hook (registered in the SKILL.md frontmatter) denies a write to a source file until a verifier has been seen to fail. Run `scripts/gate.sh start "<invariant>"`, write the verifier, then run `gate.sh red -- <command>`. For a behavior that exists already, run `gate.sh red --control <control.sh args> -- <command>`: `control.sh` plants a bug in a throwaway copy and the verifier must fail on it. `gate.sh green` records the pass and notes a verifier that changed after it went red.
-
-The hook allows tests, specs, fixtures, `formal/`, `*.lean`, `*.tla`, `*.cfg`, `*.md` and verify skills at any time, and any file outside the repo. `gate.sh allow GLOB` adds more verifier paths. `gate.sh off "<reason>"` is for when the user says to skip. The state is per repo, in `~/.understando/gate`, and expires after 12 hours. For Bash the hook checks redirects, `tee`, `sed -i`, `perl -i`, `patch` and `git apply`, and it ignores `>` inside quoted text and heredoc bodies. That check is a best effort. Codex has no skill hooks: `modes/build.md` shows the `~/.codex/hooks.json` entry. The hook needs `jq`; `setup.sh --check` reports it.
+`modes/build.md` and the first rule in SKILL.md now state the order: invariant, verifier, red, code, green. The agent may edit tests, specs, formal files and verify skills first, and must not edit source until it has shown the verifier fail on the current tree or on a bug planted by `control.sh`. This is prompt-only: a hook-based gate (`gate.sh`, ed3c7aa) was tried and removed because it was too much code for a best-effort check.
 
 ## The lean cut
 

@@ -5,8 +5,7 @@
 #
 # It checks the frontmatter, every relative link, each script's --help, setup.sh in a fake HOME,
 # control.sh (red on a planted bug, the tree untouched), mutate.sh (a killed and a survived mutant),
-# gate.sh (source edits denied until a verifier fails), and lean-check.sh and tlc.sh on the tiny
-# fixtures, each with a planted wrong model.
+# and lean-check.sh and tlc.sh on the tiny fixtures, each with a planted wrong model.
 set -u
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -84,56 +83,6 @@ else
   "$S/control.sh" --dir "$FIX/tla" --replace Counter.tla 'n < Max' 'n <= Max' -- "$S/tlc.sh" Counter.tla > "$T/t2" 2>&1 \
     && grep -q 'exited 12' "$T/t2" && pass "tlc.sh red on a wrong spec" || fail "tlc.sh control: $(cat "$T/t2")"
 fi
-
-# 9. gate.sh denies source edits until a verifier has been seen to fail.
-if command -v jq >/dev/null && command -v python3 >/dev/null && python3 -c 'import pytest' 2>/dev/null; then
-  GR="$T/gate/repo"; mkdir -p "$T/gate" && cp -R "$FIX/py" "$GR"
-  (cd "$GR" && git init -q && git add -A && git -c user.email=a@b -c user.name=t commit -qm init)
-  export UNDERSTANDO_STATE="$T/gate/state"
-  hook() { (cd "$GR" && jq -n --arg t "$1" --arg c "$GR" --argjson i "$2" '{tool_name: $t, cwd: $c, tool_input: $i}' | "$S/gate.sh" hook); }
-  denies() { hook "$@" | grep -q '"permissionDecision": "deny"'; }
-  PYT="python3 -m pytest -q -p no:cacheprovider"
-  expect() { if eval "$2"; then pass "gate: $1"; else fail "gate: $1"; fi; }
-  expect "denies a source edit with no state" "denies Write '{\"file_path\": \"$GR/wallet/core.py\"}'"
-  expect "denies a relative Edit" "denies Edit '{\"file_path\": \"wallet/core.py\"}'"
-  expect "denies apply_patch on source" "denies apply_patch '{\"command\": \"*** Begin Patch\\n*** Update File: wallet/core.py\\n\"}'"
-  expect "denies sed -i on source" "denies Bash '{\"command\": \"sed -i s/a/b/ wallet/core.py\"}'"
-  expect "denies a redirect into source" "denies Bash '{\"command\": \"echo x > wallet/core.py\"}'"
-  expect "allows a test file" "! denies Write '{\"file_path\": \"$GR/tests/test_new.py\"}'"
-  expect "allows a Lean file and a spec" "! denies Write '{\"file_path\": \"$GR/proofs/A.lean\"}' && ! denies Write '{\"file_path\": \"$GR/x.tla\"}'"
-  expect "allows a file outside the repo" "! denies Write '{\"file_path\": \"/tmp/elsewhere.py\"}'"
-  expect "allows a harmless Bash command" "! denies Bash '{\"command\": \"echo x > /tmp/x && $PYT\"}'"
-  bash_denies() { denies Bash "$(jq -nc --arg c "$1" '{command: $c}')"; }
-  C_MSG='git commit -m "wire it -> done; gate.sh hook `x` > y" && git push'
-  C_HERE=$'python3 - <<\'PY\'\nprint("a > b")\nPY\nls'
-  C_QUOTED='echo "x" > "wallet/core.py"'
-  C_TEE='echo "a > b" | tee wallet/core.py'
-  expect "ignores > inside a quoted commit message" "! bash_denies \"\$C_MSG\""
-  expect "ignores > inside a heredoc body" "! bash_denies \"\$C_HERE\""
-  expect "denies a quoted redirect target after quoted text" "bash_denies \"\$C_QUOTED\""
-  expect "denies tee into source after quoted text" "bash_denies \"\$C_TEE\""
-  expect "red needs start first" "! (cd $GR && $S/gate.sh red -- false >/dev/null 2>&1)"
-  (cd "$GR" && "$S/gate.sh" start "withdraw refuses an amount above the balance") > "$T/g1" 2>&1
-  expect "still denies after start" "denies Write '{\"file_path\": \"$GR/wallet/core.py\"}'"
-  (cd "$GR" && "$S/gate.sh" red -- $PYT) > "$T/g2" 2>&1; GC=$?
-  expect "a verifier that passes is not red" "[ $GC = 1 ] && grep -q '^not red' $T/g2 && denies Write '{\"file_path\": \"$GR/wallet/core.py\"}'"
-  (cd "$GR" && "$S/gate.sh" red --control --replace wallet/core.py 'balance - amount' 'balance + amount' -- $PYT) > "$T/g3" 2>&1
-  expect "red with a planted bug opens the gate" "grep -q '^red:' $T/g3 && ! denies Write '{\"file_path\": \"$GR/wallet/core.py\"}'"
-  (cd "$GR" && "$S/gate.sh" green -- $PYT) > "$T/g4" 2>&1
-  expect "green passes on the real tree" "grep -q '^green:' $T/g4 && ! grep -q '^NOTE' $T/g4"
-  printf '\n# changed\n' >> "$GR/tests/test_core.py"; (cd "$GR" && "$S/gate.sh" green -- $PYT) > "$T/g5" 2>&1
-  expect "green notes a verifier edited after red" "grep -q '^NOTE: a verifier file changed' $T/g5"
-  touch -t 202001010000 "$(find "$UNDERSTANDO_STATE" -name status)"
-  expect "the state expires" "denies Write '{\"file_path\": \"$GR/wallet/core.py\"}'"
-  (cd "$GR" && "$S/gate.sh" off "the user said to skip") > /dev/null 2>&1
-  expect "off allows an edit" "! denies Write '{\"file_path\": \"$GR/wallet/core.py\"}'"
-  (cd "$GR" && "$S/gate.sh" clear) > /dev/null 2>&1
-  expect "clear denies again" "denies Write '{\"file_path\": \"$GR/wallet/core.py\"}'"
-  (cd "$GR" && "$S/gate.sh" allow 'src_tests/*') > /dev/null 2>&1
-  expect "allow adds a verifier folder" "! denies Write '{\"file_path\": \"$GR/src_tests/a.py\"}'"
-  unset UNDERSTANDO_STATE
-  expect "SKILL.md registers the hook" "grep -q 'gate.sh hook' $ROOT/SKILL.md"
-else skip "gate.sh: jq, or python3 with pytest, is not installed"; fi
 
 [ "$FAILED" = 0 ] && echo "ALL PASS" || echo "SOME FAILED"
 exit "$FAILED"
