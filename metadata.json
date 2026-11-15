@@ -1,7 +1,7 @@
 {
   "name": "understando",
   "version": "1.0.0",
-  "description": "Reconcile ticket intent, specifications, observed behavior, and verification evidence.",
+  "description": "Direct developer attention to the consequential assumptions a change still needs verified.",
   "author": "claytonkim",
   "license": "MIT",
   "keywords": [

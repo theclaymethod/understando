@@ -1,5 +1,9 @@
 # Changelog
 
+## Developer review
+
+Understando now directs review attention to the most consequential gap between intended behavior and verification. PStack supplies the verification tools. The project installer removes the original quiz hook on upgrade.
+
 ## Verifier-first by prompt
 
 `modes/build.md` and the first rule in SKILL.md now state the order: invariant, verifier, red, code, green. The agent may edit tests, specs, formal files and verify skills first, and must not edit source until it has shown the verifier fail on the current tree or on a bug planted by `control.sh`. This is prompt-only: a hook-based gate (`gate.sh`, ed3c7aa) was tried and removed because it was too much code for a best-effort check.

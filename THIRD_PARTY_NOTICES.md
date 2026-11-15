@@ -1,12 +1,12 @@
 # Third-party notices
 
-understando adapts MIT-licensed skill text. The licence is reproduced in full below.
+Earlier releases of Understando adapted MIT-licensed skill text. The licence is reproduced in full below.
 
 ## pstack (Poteto Mode)
 
 Copyright (c) 2026 Lauren Tan. Version 0.15.5. Source: https://github.com/cursor/plugins/tree/main/pstack
 
-Derived files:
+Derived files in those releases:
 
 - `modes/create.md` and `modes/maintain.md` (skills/create-verification-skill and skills/maintain-verification-skill: the steps, the edit scope and the outcomes)
 - `references/verify-skill.md` (the sections of the verify skill and the feature-file shape of create-verification-skill)
