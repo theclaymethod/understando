@@ -1,8 +1,10 @@
 # Understando
 
-Understando helps you turn the spec in your head into behavior you can verify. Start with something an agent did. What did you expect? What did the evidence show? Your judgment updates a working spec, and a check preserves that decision for the next change.
+Understando hunts for the implicit spec in your head. You can often tell that an agent did the wrong thing before you can say which rule it broke. Give Understando a recording, a diff, or a ticket. It writes down what it thinks you meant, checks that reading against the PStack decision log, and brings you the question whose answer would change the expected behavior.
 
-Suppose you ask an agent to create a support ticket. It gives you a link as soon as the request enters the queue. A trace shows that no ticket was saved at reply time. You clarify that success means the ticket exists and the link opens that record. Understando revises the clause and links a delayed-save replay that distinguishes a premature reply from a valid one. How to report a failed save remains an open decision.
+Take “one click should send one invitation.” In a review scenario, the queue check passed after one enqueue. The recipient got two messages. You rule out duplicates and say a suppressed address may receive nothing. The clause becomes **“One click may deliver at most one invitation.”** Whether an eligible recipient must always get one is still open. [Walk through the example](https://claytonkim.com/understando#example)
+
+Understando updates the affected clause, or drafts it if there’s no spec yet. The queue check stays linked to what it measured. For the delivery rule, Understando proposes an E2E check that follows one click into the recipient’s inbox and counts the messages. An existing eval or checked statechart property can serve the same purpose if it covers that promise.
 
 ## Use it
 
