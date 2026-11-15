@@ -21,3 +21,16 @@ The first sync preserved the draft rule and found both discrepancies but require
 We froze the repaired skill at SHA-256 `8bd6ae289c8cdfa8fffca5f22f9cf95c66e274ec2f75f8ecfb7f9343a0db16ba` and replayed from the original inputs in a separate scratch directory. The resulting spec retained one send attempt, capped deliveries at one, allowed suppressed zeroes, and left the other lower bound open. The index preserved S3/T3, linked both r8 discrepancies, and put duplicate delivery first because copies survive rollback. The three earlier controls retained their verdicts. We inspected the resulting spec and index. No application or mail delivery was exercised. Verification of downstream behavior in these scenarios used only the evidence supplied to each agent.
 
 The independent intent reviewer accepted the repaired revision for this bounded development suite after inspecting the resulting files. The repaired instructions include the invitation example, so its replay establishes regression coverage.
+
+## Internal intent and the working spec
+
+The owner described an internal spec whose representation changes as they judge examples. The release review tested whether an agent could distinguish an observation from a judgment, revise the representation, and use existing verification to keep the confirmed promise precise. These were synthetic instruction-following cases.
+
+| Case | Review outcome |
+| --- | --- |
+| An unjudged queue trace and a confirmation screenshot, with no spec | Drafted the request, identified an inference about the destination, and asked whether queuing was enough to announce creation. |
+| A confirmed save-before-success rule and a matching local replay | Retained the clause and credited timing and ticket identity under the recorded conditions. Left failed writes unexercised. |
+| A stale queue clause, a green row count, and a customer who got a 404 | Revised the clause from owner decision D2, kept draft privacy, and credited the green check only for storage. The trace timestamped the internal guess but did not establish when the customer saw it. Proposed independent timing and identity controls and admitted a pending acknowledgement without a URL. |
+| Missing spec and index, with complementary restart and title checks | Wrote a scratch spec from owner decision D7. Its byte and title clauses link to separate r9 evidence records, each scoped to its own conditions. |
+
+An independent reviewer identified a gap in the first freeze (`1cbab4d3ab7453cd76e4afc665fa0539abe37570a7a96b4daea4e6572b219d04`). A single link could obscure complementary evidence and the missing-index case had no destination. The repaired skill (`3aa2d4cce0d8b14d7404c7006b7fd24564acd3619d522fbeb627efc4404eb2dc`) indexes each relevant check and starts beside the clause when needed. The original cases kept their verdicts on replay. The independent reviewer inspected the saved D7 artifact and accepted the repair. The supplied r9 outcomes were inputs to the review. The agents did not execute a downstream application or its checks.

@@ -1,7 +1,7 @@
 {
   "name": "understando",
   "version": "1.0.0",
-  "description": "Direct developer attention to the consequential assumptions a change still needs verified.",
+  "description": "Make the owner’s intended behavior explicit, refine the working spec with evidence, and link its promises to verification.",
   "author": "claytonkim",
   "license": "MIT",
   "keywords": [

@@ -1,19 +1,19 @@
 ---
 name: understando
-description: Help a developer decide where to spend review time on a change by tracing a consequential assumption to the user outcome and the evidence that would verify it.
+description: Use when a developer needs to make their intended behavior explicit, reconcile a working spec with evidence and owner judgments, or link a consequential clause to verification.
 license: MIT
 ---
 
 # Understando
 
-Answer the reviewer’s question: **What deserves my attention here?**
+The owner carries a spec in their head. Your job is to maintain the best available representation of it and make its consequential promises verifiable.
 
-Read the change and follow it through a real user journey. Identify the outcome the user expects and where that expectation came from. Use whatever evidence the project has. A ticket can establish a promise; a recording can show what actually happened. When the intended outcome is uncertain, say what you inferred.
+Start with one user journey. Read the request, relevant examples, owner corrections and the PStack decision log. Find the existing representation, whether it is prose, a statechart, an eval index or an E2E assertion. Write the smallest clause you think the owner means. Attribute it to the source that supports it and distinguish an inference from an owner decision. If a spec is missing, start a working draft. For a read-only review, show the proposed change inline.
 
-Find the assumption that matters most if it is wrong. Trace it to the procedure that decides the outcome. Compare it with what the available verification actually observed, on which revision, and under which conditions. Give priority to a plausible failure that would affect users, survive a rollback, or go unnoticed. If the checks already settle the consequential questions, cite the evidence and finish.
+Use a recording, trace, email, diff or bootstrapped scenario to test that reading. Identify what happened, under which conditions, and the owner’s judgment of whether it was right or wrong. A run can expose a distinction the draft missed. If several intentions fit, keep the question open and ask the one question whose answer changes the outcome. Label a synthetic example as a scenario. It supplies a choice for the owner to judge.
 
-Lead with the user consequence. Point to the deciding code and the relevant assertion or observation. Use PStack or an existing project check to resolve the uncertainty when possible. If a gap remains, give the smallest scenario that distinguishes success from failure. Ask the developer only when their judgment would change the expected result.
+Revise the affected clause when evidence of intent warrants it. Preserve unrelated promises, the event each bound applies to, and unresolved cases. If a run violates a confirmed clause, keep the clause and identify the deciding procedure. If the verifier rewards the wrong behavior, correct its expectation. Direct the developer’s attention to the remaining ambiguity or mismatch with the largest user consequence.
 
-For example, one click enqueues one invitation, but a retry can still deliver two emails. Follow the retry through delivery and count distinct messages attributable to that click after processing settles. A green enqueue check establishes only the queue behavior.
+Solidify a supported clause with a discriminating check. Use PStack’s verification toolkit or the project’s existing check. An E2E replay, an eval, a deterministic assertion or a checked statechart property can express the same promise. Prefer one that rejects the known wrong outcome and accepts a legitimate alternative. In the verification index, link each relevant check to the part of the clause it covers, with its revision, conditions and observed result. If there is no index, start with those links beside the clause. Label proposed checks as proposals. When new owner evidence changes the promise, revisit its linked checks.
 
-When asked to sync a spec, update the affected clause and its links to verification. Keep each claim within the scope its source supports. If there is no spec, draft the smallest supported clause. An E2E assertion, an eval, or a formal property can each supply evidence for it.
+Leave the reader with the specific change in understanding, its source, and what verification has established. If the evidence already supports the current representation, retain it and show why.
