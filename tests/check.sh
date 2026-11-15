@@ -3,7 +3,7 @@
 #
 #   tests/check.sh
 #
-# It checks the frontmatter, every relative link, each script's --help, setup.sh in a fake HOME,
+# It checks the project install, every relative link, each script's --help, setup.sh in a fake HOME,
 # control.sh (red on a planted bug, the tree untouched), mutate.sh (a killed and a survived mutant),
 # and lean-check.sh and tlc.sh on the tiny fixtures, each with a planted wrong model.
 set -u
@@ -17,12 +17,27 @@ pass() { echo "PASS $*"; }
 fail() { echo "FAIL $*"; FAILED=1; }
 skip() { echo "SKIP $*"; }
 
-# 1. The frontmatter parses, and the description is the agreed one.
-WANT="Verifier-driven development and formal verification: state invariants, write checks that are proven to fail on planted bugs, Lean/TLA+ proofs with conformance, mutation testing. Use for 'prove this', 'can this test fail', 'formal methods', 'build this verifier-first'."
-FM="$(awk 'NR == 1 && $0 != "---" { exit 1 } NR > 1 && $0 == "---" { exit } NR > 1 { print }' "$ROOT/SKILL.md")"
-NAME="$(printf '%s\n' "$FM" | sed -n 's/^name: //p')"
-DESC="$(printf '%s\n' "$FM" | sed -n 's/^description: "\(.*\)"$/\1/p')"
-[ "$NAME" = understando ] && [ "$DESC" = "$WANT" ] && pass "frontmatter" || fail "frontmatter: name '$NAME', description '$DESC'"
+# 1. Check discovery fields and the entry point a project actually installs.
+if awk '
+  NR == 1 { if ($0 != "---") exit 1; next }
+  /^---$/ { closed = 1; exit }
+  /^name: understando$/ { named = 1 }
+  /^description: [^[:space:]]/ { described = 1 }
+  END { exit !(named && described && closed) }
+' "$ROOT/SKILL.md"; then
+  pass "skill discovery metadata"
+else
+  fail "missing skill discovery metadata"
+fi
+
+mkdir -p "$T/project"
+if (cd "$T/project" && "$ROOT/install.sh" && "$ROOT/install.sh") > "$T/install" 2>&1 &&
+   cmp -s "$ROOT/SKILL.md" "$T/project/.claude/skills/understando/SKILL.md" &&
+   [ ! -e "$T/project/.claude/settings.json" ]; then
+  pass "project install, repeat install, and no commit hook"
+else
+  fail "project install: $(cat "$T/install")"
+fi
 
 # 2. Every relative link in SKILL.md, modes/ and references/ resolves.
 BAD=0
