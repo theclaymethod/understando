@@ -1,14 +1,15 @@
 # Understando
 
-Understando hunts for the implicit spec in your head and helps you encode it in checks your project can run. Start with something an agent did. Which outcome would you accept? Which would make you ask for a fix? Your judgment supplies the expected result for an eval, an end-to-end test, or a checked statechart property. The check itself can carry that part of the spec.
+Understando looks for the implicit spec behind your corrections to an agent's work. Show it an outcome you rejected and one you would accept. The difference tells you what to check in a test, an eval, or a statechart. That check can be the first place you record the rule.
 
-Take “one click should send one invitation.” In the review scenario, the queue check passed after one enqueue, but the recipient got two messages. You reject the duplicate and say a suppressed address may receive nothing. The proposed inbox test waits for processing and retries to settle, counts the messages delivered by that click, and asserts `deliveries <= 1`. Replaying the duplicate would fail. A suppressed address receiving nothing would pass. Whether an eligible recipient must always get one is still your call. [Walk through the example](https://claytonkim.com/understando#example)
+In the invitation example, the queue check counted one request, but the recipient got two messages. You rule out duplicates and confirm that a suppressed address can receive nothing. The proposed test waits for retries to finish, counts the deliveries caused by one click, and asserts `deliveries <= 1`. It catches the duplicate. Whether an eligible address must receive a message is a separate decision. [Try the invitation example](https://claytonkim.com/understando#example)
 
-Use PStack’s verification toolkit or the project’s existing runner to create or update the check. Link it to the example or decision that explains the expectation. If a written spec already describes that behavior, keep it in sync. A project with no spec document can start directly with the test. When your intention changes, revisit the expected result and rerun it.
+Use PStack's verification toolkit or your project's test runner to create or update the check. Link it to the decision that explains the expected result. If that decision changes, update the check and any existing written spec.
 
 ## Use it
 
-- **Recover an intention.** “Here’s a recording and my review. Find the expectation behind my correction. What other outcome would you need me to judge before turning it into an eval?”
-- **Codify a decision.** “Compare this run with the PStack decision log. Find or build the check that would catch the behavior I rejected and still pass for the case I accepted.”
+For a recording, try "I rejected the second invitation. What test would catch it and still allow a suppressed address to receive nothing?"
 
-Run this repository’s `install.sh` from the target project to install the Claude Code skill. It also removes the original Understando commit-hook registration on upgrade. For other agents, install [SKILL.md](SKILL.md) using their skill installer.
+For a diff, try "Compare this change with the PStack decision log. Which user outcome could go wrong while our current tests still pass?"
+
+To install the Claude Code skill, run this repository's [install.sh](install.sh) from your target project. On upgrade, the installer removes the old Understando commit hook. For other agents, use their skill installer with [SKILL.md](SKILL.md).
