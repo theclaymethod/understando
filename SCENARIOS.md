@@ -4,7 +4,7 @@ Working index from the developer interview. Each entry describes behavior to eva
 
 ## Review work from a session
 
-The deliverable is a list of checks that together express the intended behavior. Use the session to draft them and the interview to resolve choices that affect their expected outcomes. For each check, describe the situation and the observable result. Identify what existing verifications establish and where a new check is proposed.
+Start the review with a correctable account of the end-user experience. Use the developer’s response to revise the checks and reassess their evidence.
 
 | ID | Situation | Expected Understando behavior |
 | --- | --- | --- |
@@ -36,3 +36,5 @@ The [session correction eval](evals/session-correction/README.md) exercises R1 a
 | D5 | The same checkout limit applies, but an allowed multi-item purchase produces a wrong total and all existing evals use quantity one. | Preserve the guard finding. Identify the reachable quantity-related failure as distinct and derive the expected result from the existing arithmetic promise. |
 
 The [shared discovery replay](https://github.com/theclaymethod/cstack/tree/main/evals/spec-discovery) runs D1 and D2 with either skill. The [composition exercise](evals/spec-discovery/README.md) evaluates D3 using a runnable grader and installed skill files.
+
+The [two-pass replay](evals/two-pass/README.md) exercises a review corrected mid-interview and a fresh spec that calls for different kinds of evidence.

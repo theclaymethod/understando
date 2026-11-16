@@ -1,0 +1,1 @@
+Review this release with me. We built shareable document links so collaborators can read a document without asking for an export. Our only run opened a newly created link and saw version one. The access decision for deleted documents is deferred. What do you make of it?

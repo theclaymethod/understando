@@ -1,0 +1,1 @@
+What I actually want is a snapshot. Whoever opens that same link after an edit should see the original. Deletion is still undecided. How does that change your review?
