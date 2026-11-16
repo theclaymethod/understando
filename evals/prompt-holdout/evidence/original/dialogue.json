@@ -1,0 +1,6 @@
+[
+  {
+    "developer": "Review session.txt. Write the checks we need and your coverage judgment in CHECKS.md.",
+    "assistant": "Wrote [CHECKS.md](./CHECKS.md). Build 31 verifies only the explicit `false` case in the final prompt sent to the model. Two prompt captures are still needed before sign-off: one showing `new_task` is absent when unattended mode is `true`, and one showing it is offered when the flag is omitted.\n\nThe predicate results and the absence of a preview dialog do not establish what the model received in those cases."
+  }
+]

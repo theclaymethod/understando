@@ -1,0 +1,6 @@
+[
+  {
+    "developer": "Review session.txt. Write the checks we need and your coverage judgment in CHECKS.md.",
+    "assistant": "Build 31 verifies **one of three required outcomes**. The captured interactive prompt offered `new_task` when the unattended flag was explicitly false.\n\nTwo prompt checks remain proposed. With the flag true, the final prompt must exclude `new_task`. With the flag omitted, it must include `new_task`. Whether to block direct calls remains open.\n\n[CHECKS.md](./CHECKS.md) links each check to the recorded evidence."
+  }
+]
