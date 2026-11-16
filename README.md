@@ -6,6 +6,8 @@ In the invitation example, the queue check counted one request, but the recipien
 
 Use PStack's verification toolkit or your project's test runner to create or update the check. Link it to the decision that explains the expected result. If that decision changes, update the check and any existing written spec.
 
+With CStack installed, Understando can use Bootstrap to pick the question that separates two plausible rules, then use Adversarial Cases to challenge the proposed check. For example, an immediate open of a shared link shows the same image whether the link snapshots the cover or follows later changes. Replace the cover before opening the same link and the two rules predict different images. Ask which the developer intended before turning either prediction into a scored row.
+
 ## Use it
 
 For a recording, try "I rejected the second invitation. What test would catch it and still allow a suppressed address to receive nothing?"

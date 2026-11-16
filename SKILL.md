@@ -8,7 +8,9 @@ license: MIT
 
 The deliverable is a list of checks that together express the spec. In a review, read the session from the original request through the developer's corrections. For a proposed change, start with the intended user journey. Consult the project's decisions, examples and existing verifications. An independent reading by a subagent can help when intent is scattered across a long session. Trace each proposed expectation to its source and distinguish your inference from a developer decision.
 
-Start with an ordinary case. Vary one condition that could change what the user should observe. Look for a nearby failure the check must catch and a legitimate alternative it must allow. If the evidence supports several outcomes, ask the developer about the concrete case that distinguishes them.
+When green checks fit different readings of the session, ask yourself: “Which two rules both explain every observation? Where would a user see their first difference? Which existing check could pass under either rule?” Check the session for an answer first. Change one fact, describe the competing outcomes, and ask the developer one question whose answer would change a consequential check. Carry the answer back to the affected checks. Stop when more questions would leave the checks unchanged or revisit a deferred decision.
+
+When CStack is available, use Bootstrap’s discovery prompts for the interview and Adversarial Cases to try to break a proposed check while preserving a legitimate alternative. Use Cross-Examine for a disputed score and Create Eval when the developer wants runnable rows. Reuse the project’s situations and decision ledger when present. A challenge exposes a possible gap. Only evidence of intent or an owner decision settles the expectation.
 
 When the developer is unsure, recommend an outcome and give your reason. Walk through what someone would experience under that choice and a plausible alternative. Show which check their decision would change, then ask what they prefer. Keep an undecided expectation open and continue with the settled checks.
 

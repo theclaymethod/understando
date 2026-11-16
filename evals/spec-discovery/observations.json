@@ -1,0 +1,52 @@
+{
+  "skill_source": "Understando working tree and CStack 78c042c",
+  "model": "gpt-6-astra",
+  "observations": [
+    {
+      "command": "/bin/zsh -lc 'cat .agents/skills/understando/SKILL.md'",
+      "exit_code": 0,
+      "output": ""
+    },
+    {
+      "command": "/bin/zsh -lc 'cat .agents/skills/bootstrap/SKILL.md'",
+      "exit_code": 0,
+      "output": ""
+    },
+    {
+      "command": "/bin/zsh -lc 'cat .agents/skills/adversarial-cases/SKILL.md'",
+      "exit_code": 0,
+      "output": ""
+    },
+    {
+      "command": "/bin/zsh -lc 'cat .agents/skills/bootstrap/references/discovery-prompts.md'",
+      "exit_code": 0,
+      "output": ""
+    },
+    {
+      "command": "/bin/zsh -lc \"python3 grade.py 'cropped fox'\"",
+      "exit_code": 0,
+      "output": "True"
+    },
+    {
+      "command": "/bin/zsh -lc \"python3 grade.py 'broken image'\"",
+      "exit_code": 0,
+      "output": "True"
+    },
+    {
+      "command": "/bin/zsh -lc \"python3 grade.py 'owl'\"",
+      "exit_code": 0,
+      "output": "True"
+    },
+    {
+      "command": "/bin/zsh -lc \"python3 grade.py ' '\"",
+      "exit_code": 0,
+      "output": "False"
+    },
+    {
+      "command": "/bin/zsh -lc \"python3 grade.py 'full fox'\"",
+      "exit_code": 0,
+      "output": "True"
+    }
+  ],
+  "review": "# Published card illustration\n\n**Proposed check:** Choose a specific fox illustration, publish the card, and open it as a reviewer. Inspect what the card renders: the chosen artwork must be visible. A crop and the full image are both valid; a different fox illustration, an owl, or a broken image fails. Compare the visible artwork with the chosen original, allowing for cropping.\n\n**Coverage:** [QA](session.md#L2) reported seeing the fox on an immediate open. That supports the ordinary case in one unspecified framing. [The grader](grade.py#L2) checks only whether its argument contains non-whitespace text. Running it with each of `full fox`, `cropped fox`, `owl`, and `broken image` printed `True`; a space printed `False`. These are text probes. The grader neither opens the card nor compares its rendered illustration with the selection.\n\n**Open check:** Publish with the fox, replace the source artwork with an owl without editing or republishing the card, then reopen the card. QA opened it before any such change, so both a fixed publication and a live reference explain that observation. The existing grader accepts either description. [Deletion](session.md#L3) remains deferred.\n\n**Decision:** After that replacement, should a reviewer see the original fox or the new owl? I recommend the fox so the publisher can rely on the artwork they approved. If published cards should follow updates to the source, the expected result is the owl instead. Leave this check unscored until decided.\n"
+}

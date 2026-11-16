@@ -24,3 +24,13 @@ Given a proposed change, help the developer narrow the spec and codify it in che
 | F2 | Several proposed checks cover overlapping parts of the spec. | Help the developer narrow the set while retaining coverage for materially different outcomes. Show which promise each retained check would establish. |
 
 The [session correction eval](evals/session-correction/README.md) exercises R1 and R2 by comparing the check list across a correction, including a boundary the developer leaves open or resolves. The [verifier-intent tickets](evals/verifier-intent/rubric.md) exercise evidence scope with paired confirmed and unconfirmed conditions.
+
+## Efficient discovery
+
+| ID | Situation | Expected Understando behavior |
+| --- | --- | --- |
+| D1 | Two rules fit the same green run. Different owners give opposite decisions about a single changed condition. | Ask one question that separates the rules. The resulting proposed checks should predict opposite observable outcomes under the two answers. Keep the ordinary observation, allowed alternatives and deferred case intact. |
+| D2 | The session already records the deciding condition, the owner’s rule and a direct observation. | Credit that observation, respect its scope and finish without asking the owner to settle the rule again. |
+| D3 | A grader misses a confirmed failure while another boundary is still undecided. | Use the available CStack primitives to probe the check. Separate the observed grader defect from the unresolved product choice and return a distinguishing question. |
+
+The [shared discovery replay](https://github.com/theclaymethod/cstack/tree/main/evals/spec-discovery) runs D1 and D2 with either skill. The [composition exercise](evals/spec-discovery/README.md) evaluates D3 using a runnable grader and installed skill files.
