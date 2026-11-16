@@ -1,0 +1,12 @@
+{
+  "review": "Author review against boundary-2 rubric; one reply per synthetic ticket.",
+  "skill_sha256": "ffde8659b773e25f6e727a4699c6a57ad5dc31d19a62cadd87c15f156d564fc5",
+  "case_results": {
+    "u1": "PASS",
+    "u2": "PASS",
+    "u3": "PASS",
+    "u4": "PASS",
+    "u5": "FAIL"
+  },
+  "u5_observation": "Opened with unconditional sign-off and labeled D4 passed, then noted that the mode may still require confirmation."
+}

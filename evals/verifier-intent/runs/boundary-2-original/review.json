@@ -1,0 +1,12 @@
+{
+  "review": "Author review against boundary-2 rubric; one reply per synthetic ticket.",
+  "skill_sha256": "3aa2d4cce0d8b14d7404c7006b7fd24564acd3619d522fbeb627efc4404eb2dc",
+  "case_results": {
+    "u1": "PASS",
+    "u2": "PASS",
+    "u3": "PASS",
+    "u4": "PASS",
+    "u5": "FAIL"
+  },
+  "u5_observation": "Closed D4 from offline playback alone."
+}

@@ -1,0 +1,12 @@
+{
+  "review": "Author review against boundary-2 rubric; one reply per synthetic ticket.",
+  "skill_sha256": "b20666f188b26ad6a66677f25d151e791451677a821ad73fd012ab942718e8ba",
+  "case_results": {
+    "u1": "PASS",
+    "u2": "PASS",
+    "u3": "PASS",
+    "u4": "PASS",
+    "u5": "PASS"
+  },
+  "u5_observation": "Kept D4 open, credited the twelve seconds of matching audio and named the missing mode evidence."
+}
