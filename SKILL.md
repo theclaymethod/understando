@@ -1,19 +1,19 @@
 ---
 name: understando
-description: Use when a developer needs to make their intended behavior explicit, reconcile a working spec with evidence and owner judgments, or link a consequential clause to verification.
+description: Review a development session or help design a change by expressing the developer's intended behavior as checks.
 license: MIT
 ---
 
 # Understando
 
-The owner carries a spec in their head. Your job is to maintain the best available representation of it and make its consequential promises verifiable.
+The deliverable is a list of checks that together express the spec. In a review, read the session from the original request through the developer's corrections. For a proposed change, start with the intended user journey. Consult the project's decisions, examples and existing verifications. An independent reading by a subagent can help when intent is scattered across a long session. Trace each proposed expectation to its source and distinguish your inference from a developer decision.
 
-Start with one user journey. Read the request, relevant examples, owner corrections and the PStack decision log. Find the existing representation, whether it is prose, a statechart, an eval index or an E2E assertion. Write the smallest clause you think the owner means. Attribute it to the source that supports it and distinguish an inference from an owner decision. If a spec is missing, start a working draft. For a read-only review, show the proposed change inline.
+Start with an ordinary case. Vary one condition that could change what the user should observe. Look for a nearby failure the check must catch and a legitimate alternative it must allow. If the evidence supports several outcomes, ask the developer about the concrete case that distinguishes them.
 
-Use a recording, trace, email, diff or bootstrapped scenario to test that reading. Identify what happened, under which conditions, and the owner’s judgment of whether it was right or wrong. A run can expose a distinction the draft missed. If several intentions fit, keep the question open and ask the one question whose answer changes the outcome. Label a synthetic example as a scenario. It supplies a choice for the owner to judge.
+When the developer is unsure, recommend an outcome and give your reason. Walk through what someone would experience under that choice and a plausible alternative. Show which check their decision would change, then ask what they prefer. Keep an undecided expectation open and continue with the settled checks.
 
-Revise the affected clause when evidence of intent warrants it. Preserve unrelated promises, the event each bound applies to, and unresolved cases. If a run violates a confirmed clause, keep the clause and identify the deciding procedure. If the verifier rewards the wrong behavior, correct its expectation. Direct the developer’s attention to the remaining ambiguity or mismatch with the largest user consequence.
+For each check, state the starting conditions, the action and the observable outcome. Choose a verification that can observe the event the promise concerns. A replay, an eval, an assertion or a statechart property may fit. Narrow overlapping checks while preserving distinct boundaries.
 
-Solidify a supported clause with a discriminating check. Use PStack’s verification toolkit or the project’s existing check. An E2E replay, an eval, a deterministic assertion or a checked statechart property can express the same promise. Prefer one that rejects the known wrong outcome and accepts a legitimate alternative. In the verification index, link each relevant check to the part of the clause it covers, with its revision, conditions and observed result. If there is no index, start with those links beside the clause. Label proposed checks as proposals. When new owner evidence changes the promise, revisit its linked checks.
+Compare the list with the verifications actually created. Link each existing check to the promise it covers and record the revision, conditions and observed result when available. Use the project's verification index or put the links beside the clause. If a run violates a confirmed promise, retain the promise and report the failure. If a verifier rewards the wrong behavior, identify the expectation to change. Revisit affected checks when the developer revises the spec.
 
-Leave the reader with the specific change in understanding, its source, and what verification has established. If the evidence already supports the current representation, retain it and show why.
+A session review ends with the check list, its coverage and any open decisions. Label missing checks as proposed. When asked to verify the change, also create and run the needed checks where the project supports them and report what happened.
