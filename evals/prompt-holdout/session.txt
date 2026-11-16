@@ -1,0 +1,7 @@
+Developer: Keep the new_task tool out of the model's assembled prompt when unattended mode is enabled. In ordinary interactive mode it should still be offered.
+Engineer: I could remove it from the registry.
+Developer: The contract is what the model receives. Older interactive settings sometimes omit the unattended flag entirely. Treat that like false. We haven't decided whether a direct tool call outside this prompt should be blocked.
+Runner A, build 31: generic tool availability predicate returned false for true, true for false and true for an omitted flag. All assertions passed.
+Runner B, build 31: captured the final outbound generic-model prompt for an interactive session with an explicit false flag. Its offered tools included new_task. Passed.
+Runner C, build 31: on a true-flag unattended session no preview dialog opened during one task. Passed.
+Engineer: That covers every mode. Ready to ship?
