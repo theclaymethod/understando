@@ -1,0 +1,6 @@
+[
+  {
+    "developer": "Review session.txt. Write the checks we need and your coverage judgment in CHECKS.md.",
+    "assistant": "Wrote four behavior checks and their coverage judgments in [CHECKS.md](/private./CHECKS.md).\n\n**Coverage is incomplete.** r18 confirms that a signed-in member can play the full recording. Its public-page check observed only that Play disappeared. Fresh public playback and replay by a previous listener both remain unverified.\n\nr17\u2019s recorded interruption fails the corrected requirement that an active stream can finish. A request already in flight with zero audio bytes received remains an explicit open decision."
+  }
+]

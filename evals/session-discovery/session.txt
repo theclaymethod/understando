@@ -1,0 +1,9 @@
+Developer: A group owner can turn off the public address for a recording. Anyone who already listened through it should lose access on their next play, too.
+Engineer: Maybe hide the player on the public page when that happens.
+Developer: Yesterday I said to cut off playback that was already streaming the moment the owner switched it off. Correction after trying it: a stream already playing can finish the recording. A fresh play must still be refused. If the listener is signed in as a group member, the normal members-only page must still play.
+Engineer: What if the public player requested playback but hasn't received a single audio byte when the owner switches it off?
+Developer: I haven't picked a rule there. Leave it open for this review.
+Runner r18: public page/playerVisibility — PASS; after owner disabled public address the Play control was absent.
+Runner r18: private page/memberPlayback — PASS; with public address disabled, a signed-in member played the full recording on the members-only page.
+Runner r17: public page/interruptActive — PASS; listener heard the first five seconds, public address was disabled, no further audio bytes arrived. The r17 expectation was immediate interruption.
+Engineer: All green, so I'll mark this complete.

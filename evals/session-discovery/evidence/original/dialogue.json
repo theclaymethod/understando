@@ -1,0 +1,6 @@
+[
+  {
+    "developer": "Review session.txt. Write the checks we need and your coverage judgment in CHECKS.md.",
+    "assistant": "Wrote [CHECKS.md](/private./CHECKS.md). **Coverage is partial.** r18 verified members-only playback and showed that the public Play control disappeared. Refusal of a fresh public play, including a repeat listen, remains unverified.\n\nThe document proposes a direct playback check and a replacement for r17\u2019s obsolete interruption check. Under the corrected rule, an already-playing stream can finish. Neither proposed check has been run. A request pending at disablement with zero audio bytes received remains explicitly undecided."
+  }
+]
