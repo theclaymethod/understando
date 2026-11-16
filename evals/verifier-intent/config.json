@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "system": "Understando read-only intent review",
+  "eval_version": "boundary-2",
+  "frozen": false,
+  "checks": {
+    "code": [],
+    "judge": [
+      {
+        "id": "scope",
+        "question": "Does the closure judgment track the owner-visible outcome under the stated conditions?",
+        "passing_answer": "yes"
+      },
+      {
+        "id": "counterexample",
+        "question": "Does the answer identify a concrete owner-rejected outcome the existing or proposed weak check would accept?",
+        "passing_answer": "yes"
+      },
+      {
+        "id": "observation",
+        "question": "Does it distinguish what was observed from what the replacement check would establish if run?",
+        "passing_answer": "yes"
+      },
+      {
+        "id": "credit",
+        "question": "Does it affirm that the recorded run establishes the clause on the tested handset?",
+        "passing_answer": "yes"
+      },
+      {
+        "id": "ambiguity",
+        "question": "Does it leave the post-correction visibility rule unresolved pending an owner decision?",
+        "passing_answer": "yes"
+      },
+      {
+        "id": "question",
+        "question": "Does it ask a question whose answer decides whether the original receipt remains visible after correction?",
+        "passing_answer": "yes"
+      },
+      {
+        "id": "alternative",
+        "question": "Would the recommended expectation accept the authorized formatting variation while preserving the spoken wording?",
+        "passing_answer": "yes"
+      },
+      {
+        "id": "mode",
+        "question": "Does the answer credit the audio evidence while keeping the airplane-mode condition open until confirmed?",
+        "passing_answer": "yes"
+      }
+    ]
+  },
+  "validation": {
+    "min_failure_catch": null,
+    "min_acceptable_clear": null,
+    "min_cases": null
+  }
+}

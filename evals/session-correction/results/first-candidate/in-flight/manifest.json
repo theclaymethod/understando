@@ -1,0 +1,8 @@
+{
+  "model": "gpt-6-astra",
+  "cli": "codex-cli 0.169.0",
+  "branch": "in-flight",
+  "case_sha256": "6311caaf13272aa5857b572288652e27f8075192c8affb2a98a0f1aeb9ca015e",
+  "skill_sha256": "ffde8659b773e25f6e727a4699c6a57ad5dc31d19a62cadd87c15f156d564fc5",
+  "runner_sha256": "06f93feb93b529cc51e69d83e72a366b057670470b16a51aa188d9a0c319e72b"
+}

@@ -1,0 +1,69 @@
+{
+  "turns": [
+    {
+      "rows": {
+        "A": [
+          "deny",
+          "proposed"
+        ],
+        "B": [
+          "deny",
+          "observed-pass"
+        ],
+        "C": [
+          "finish",
+          "observed-pass"
+        ],
+        "D": [
+          "open",
+          "open"
+        ]
+      },
+      "issues": []
+    },
+    {
+      "rows": {
+        "A": [
+          "deny",
+          "proposed"
+        ],
+        "B": [
+          "finish",
+          "observed-conflict"
+        ],
+        "C": [
+          "finish",
+          "observed-pass"
+        ],
+        "D": [
+          "deny",
+          "proposed"
+        ]
+      },
+      "issues": []
+    }
+  ],
+  "delta": {
+    "B": [
+      [
+        "deny",
+        "observed-pass"
+      ],
+      [
+        "finish",
+        "observed-conflict"
+      ]
+    ],
+    "D": [
+      [
+        "open",
+        "open"
+      ],
+      [
+        "deny",
+        "proposed"
+      ]
+    ]
+  },
+  "pass": true
+}

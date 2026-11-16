@@ -1,0 +1,70 @@
+{
+  "skill": "understando",
+  "artifact": "CHECKS.md",
+  "columns": [
+    "Outcome",
+    "Evidence"
+  ],
+  "situations": {
+    "A": "Returning reader makes a fresh download after link revocation",
+    "B": "Transfer already started when revocation takes effect",
+    "C": "New reader downloads through an active link",
+    "D": "Request queued before revocation, transfer has not started"
+  },
+  "values": {
+    "Outcome": [
+      "deny",
+      "finish",
+      "open"
+    ],
+    "Evidence": [
+      "observed-pass",
+      "observed-conflict",
+      "proposed",
+      "open"
+    ]
+  },
+  "initial": {
+    "A": [
+      "deny",
+      "proposed"
+    ],
+    "B": [
+      "deny",
+      "observed-pass"
+    ],
+    "C": [
+      "finish",
+      "observed-pass"
+    ],
+    "D": [
+      "open",
+      "open"
+    ]
+  },
+  "turn_one": "Review this session with me. My decisions: a new request after revocation is denied even in a returning browser; interrupt any transfer in progress at revocation; an active link delivers the full file. The queued-but-not-started case is undecided. r12 direct checks observed an active-link download finish and an in-progress transfer stop at revocation. A third check saw the revoke button disappear. That's all our evidence. Record the checks in our list and ask me about one boundary.",
+  "branches": {
+    "in-flight": {
+      "reply": "Correction: let a transfer already in progress finish. Update the check list. No tests were run since r12. I'm still undecided about queued requests.",
+      "patch": {
+        "B": [
+          "finish",
+          "observed-conflict"
+        ]
+      }
+    },
+    "queued": {
+      "reply": "I have decided that a request still queued at revocation must be denied. Correction to my earlier blanket rule on transfers: one already transferring may finish. No new runs. Update the check list.",
+      "patch": {
+        "B": [
+          "finish",
+          "observed-conflict"
+        ],
+        "D": [
+          "deny",
+          "proposed"
+        ]
+      }
+    }
+  }
+}
