@@ -1,7 +1,7 @@
 {
   "name": "understando",
   "version": "1.0.0",
-  "description": "Make the owner’s intended behavior explicit, refine the working spec with evidence, and link its promises to verification.",
+  "description": "Elicit intended behavior before designing verifiers, or read the intent implied by existing verifiers back to the owner.",
   "author": "claytonkim",
   "license": "MIT",
   "keywords": [

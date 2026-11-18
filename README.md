@@ -1,17 +1,17 @@
 # Understando
 
-At code review, Understando reads the verifications and tells you in its own words what it thinks you wanted the end user to experience. Correct that reading and it traces your correction through the checks and their earlier results. Starting from a spec, it works forward to the evidence that would distinguish the intended outcome from a plausible mistake.
+Do your verifiers actually capture what you intend? Understando helps you answer that question from either direction.
 
-In the invitation example, the queue check counted one request, but the recipient got two messages. You rule out duplicates and confirm that a suppressed address can receive nothing. The proposed test waits for retries to finish, counts the deliveries caused by one click, and asserts `deliveries <= 1`. It catches the duplicate. Whether an eligible address must receive a message is a separate decision. [Try the invitation example](https://claytonkim.com/understando#example)
+**Forward pass.** Start with a feature idea or spec. Understando uses Bootstrap's interview technique to find the cases where reasonable interpretations differ. It changes one detail at a time and asks what should happen. After each topic, you confirm or correct its readback. The confirmed behavior tells you what each verifier should observe.
 
-Use PStack's verification toolkit or your project's test runner to create or update the check. Link it to the decision that explains the expected result. If that decision changes, update the check and any existing written spec.
+**Backward pass.** Start with the assertions in your existing tests and evals. Understando explains the user experience they imply and asks whether that matches what you meant. If you correct its reading, it identifies which results still hold and which verifier needs work.
 
-With CStack installed, Understando can use Bootstrap to pick the question that separates two plausible rules, then use Adversarial Cases to challenge the proposed check. For example, an immediate open of a shared link shows the same image whether the link snapshots the cover or follows later changes. Replace the cover before opening the same link and the two rules predict different images. Ask which the developer intended before turning either prediction into a scored row.
+For example, opening a new share link and seeing the current document proves that the link works on first open. A snapshot and a live link both pass. Edit the document and open the original URL again. Which version should the reader see? Your answer determines the assertion. [Explore both passes](https://claytonkim.com/understando)
 
 ## Use it
 
-For a recording, try "I rejected the second invitation. What test would catch it and still allow a suppressed address to receive nothing?"
+For a new feature, try "I want readers to share documents by link. Interview me about what sharing should do before we write the checks."
 
-For a diff, try "Compare this change with the PStack decision log. Which user outcome could go wrong while our current tests still pass?"
+For a diff, try "Read the verifiers for this change. Tell me what you think I intended and where you had to infer it. Let me check your reading."
 
 To install the Claude Code skill, run this repository's [install.sh](install.sh) from your target project. On upgrade, the installer removes the old Understando commit hook. For other agents, use their skill installer with [SKILL.md](SKILL.md).
