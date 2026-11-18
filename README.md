@@ -23,3 +23,5 @@ To install the Claude Code skill, run this repository's [install.sh](install.sh)
 ## Checking interview changes
 
 With CStack checked out beside this repository, run `BOOTSTRAP_SKILL=../cstack/skills/bootstrap/SKILL.md bash tests/check.sh` to check that both skills ship the same interview instructions.
+
+Use the [CStack multi-turn suite](https://github.com/theclaymethod/cstack/tree/main/evals/intent-turns) to replay forward interviews, backward reviews, and threads where the owner changed their mind. Score the decision, the on-disk change, and the readability of the reply separately.
