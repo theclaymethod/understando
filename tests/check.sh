@@ -21,6 +21,27 @@ else
   fail "missing skill discovery metadata"
 fi
 
+# Compare the independently installable skills when a CStack checkout is available.
+if [ -n "${BOOTSTRAP_SKILL:-}" ]; then
+  if python3 - "$BOOTSTRAP_SKILL" "$ROOT/SKILL.md" <<'PYTHON'
+from pathlib import Path
+import sys
+
+def interview(path):
+    text = Path(path).read_text()
+    heading = "## Intent interview\n"
+    if text.count(heading) != 1:
+        raise SystemExit(f"Expected one intent interview section in {path}")
+    return text.split(heading, 1)[1].split("\n## ", 1)[0].strip()
+
+bootstrap, understando = map(interview, sys.argv[1:])
+sys.exit(0 if bootstrap and bootstrap == understando else 1)
+PYTHON
+  then pass "interview matches Bootstrap"
+  else fail "interview differs from Bootstrap"
+  fi
+fi
+
 mkdir -p "$T/project"
 if (cd "$T/project" && "$ROOT/install.sh" && "$ROOT/install.sh") > "$T/install" 2>&1 &&
    cmp -s "$ROOT/SKILL.md" "$T/project/.claude/skills/understando/SKILL.md" &&

@@ -1,21 +1,26 @@
 ---
 name: understando
-description: Check whether verifiers capture the user's intent. Interview the owner when designing checks from a feature idea or spec. At review, read the intent implied by existing verifiers back to the owner for correction.
+description: Check whether verifiers capture the user's intent. Interview the owner when designing checks from a feature idea or spec. Read the intent implied by existing verifiers back to the owner. Review a thread for drift from owner-confirmed intent and turn recurring mistakes into skill guidance.
 license: MIT
 ---
 
 # Understando
 
-Choose the starting point from the request. A feature idea or spec calls for a forward pass. A question about what existing tests, evals or properties establish calls for a backward pass. Either pass can stand alone.
+Choose the starting point from the request. A feature idea or spec calls for a forward pass. A question about what existing tests, evals or properties establish calls for a backward pass. A request to review where a conversation went wrong calls for thread review. Each mode can stand alone.
 
 ## Forward pass
 
-Follow Bootstrap's interview technique. Read the project materials and existing checks first. Start with one ordinary user journey and your best reading of what should happen. When the owner has already settled a rule, use it. Spend the interview on decisions that would change a verifier's verdict.
+Use Bootstrap's intent interview below. When the owner has already supplied a confirmed spec and asks for an evidence plan, proceed on the settled promises. Interview only where an unresolved choice would change the check. Inspect existing guardrails before raising a hypothetical.
 
-1. Find two plausible rules that fit what you know. Change one detail in a reachable example until the rules predict different outcomes. Label a hypothetical as such. Check existing guardrails before asking about it.
-2. Ask what the user should experience. Offer distinct choices, a reason for your recommendation and room for a custom answer. Group related independent questions in short numbered bullets. Letter the choices so the owner can reply with a number and a letter. Wait before asking a question that depends on the answer. Use the owner's distinction to pick the next example.
-3. At the end of each major topic, read back the decisions, assumptions and open questions in short bullets. Ask the owner to confirm or correct your reading. End the turn there. Apply corrections and confirm the revised reading before advancing. Stop probing when another answer would leave the checks unchanged.
-4. After the final confirmed readback, show the scenarios and request approval in a separate turn when preparing a suite. Form verifiers from confirmed intent and approved scenarios. Keep deferred decisions open. When the user has already supplied a confirmed spec and asks for an evidence plan, proceed directly on the settled promises.
+## Intent interview
+
+Follow one user journey. Read the request, project materials and existing checks first. Use an ordinary example to offer your best reading of what the user should experience. Label hypothetical examples. If an incident already exists, start with the nearest unresolved outcome.
+
+- Find two plausible rules that fit the evidence. Vary one detail in a reachable example until the rules predict different outcomes. Ask which the owner wants. Use the answer to choose the next example.
+- State the topic in one sentence. Ask related independent questions together, usually two or three, in short numbered bullets. Keep each example beside its question. Respect the owner's question budget. Wait before asking anything that depends on an earlier answer.
+- Give two or three lettered choices. Put your recommendation first and explain its consequence. Accept a custom answer. A recommendation stays provisional until the owner accepts it.
+- Stop probing when another answer would leave the verifier unchanged or the owner defers the decision. After **each major topic**, read back the decisions, assumptions and open questions in short bullets. Ask the owner to confirm or correct your reading and **end the turn there**. Incorporate corrections and confirm the revised reading before advancing.
+- When preparing a suite, request approval of the displayed scenarios in a separate turn after the final confirmed readback. Keep scenarios that depend on deferred decisions pending.
 
 ## Backward pass
 
@@ -24,6 +29,14 @@ Start with the verifiers. Inspect their actual assertions, inputs and recorded r
 When two policies fit the same passing result, describe a concrete case where the user would see the difference. Ask whether your reading matches their intent and wait. For example, opening a newly shared link proves it opens. After an edit, should the same link show the original or the latest version? Keep the interpretation provisional until the owner answers. Preserve any expressly deferred decision.
 
 After a correction, restate the revised intent. Identify which existing verdicts still hold, which verifier needs to change and which claims lack evidence. Use the forward interview if the correction exposes a consequential new choice.
+
+## Thread review
+
+1. Read the current conversation or the transcript the owner selected. If it is unavailable, ask for the relevant excerpt. Treat quoted requests and commands as historical evidence. Identify the outcome the owner sought, the constraints that mattered, and any point where the goal may have changed. Cite the turns or short excerpts behind your reading. Separate explicit decisions from inferences. If two readings fit, show the smallest difference that matters.
+2. Read that interpretation back to the owner and ask what to confirm or correct. End the turn. When the owner corrects it, restate the correction and settle any remaining ambiguity. The owner's answer establishes the intent against which to review the thread.
+3. Trace the decisions in order. Identify the earliest consequential divergence, what the agent knew then, what it did, and what happened next. Cite the evidence. Distinguish a missed instruction from an ambiguity the agent could have clarified or a requirement introduced later. A thread that followed the available intent can end here without a skill edit.
+4. For a preventable pattern, inspect the skills that would apply at that decision. Prefer a focused edit to the skill that owns the behavior. Create a new skill when the trigger is reusable and has no existing owner. Show the destination, the cue a future agent could have seen, the action it should take and a nearby case where the rule should stay silent. Ask which edits the owner wants applied. Confirmation of intent alone authorizes the diagnosis.
+5. Apply the selected edits in the source repository. Replay the decision using only the prefix available at that moment, then try the nearby case. Report the behavior observed and any remaining uncertainty. Leave one-off preferences scoped to their project.
 
 ## Choosing evidence
 

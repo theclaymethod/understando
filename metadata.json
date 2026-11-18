@@ -1,7 +1,7 @@
 {
   "name": "understando",
   "version": "1.0.0",
-  "description": "Elicit intended behavior before designing verifiers, or read the intent implied by existing verifiers back to the owner.",
+  "description": "Elicit intended behavior before designing verifiers, read existing verifiers back to the owner, or trace conversation drift and improve the responsible skill.",
   "author": "claytonkim",
   "license": "MIT",
   "keywords": [
