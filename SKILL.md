@@ -24,7 +24,7 @@ Follow one user journey. Read the request, project materials and existing checks
 
 ## Backward pass
 
-Start with the verifiers. Inspect their actual assertions, inputs and recorded runs. Consult the request, prior decisions and corrections for context. Make the first sentence a correctable reading in your own words, such as “I think you wanted a collaborator to open the document directly from the link.” Follow that reading with the assertion that supports it. Say what actually ran, what you inferred and where the checks leave room for a different experience.
+Start with the verifiers. Inspect their actual assertions, inputs and recorded runs. Consult the request, prior decisions and corrections for context. Make the first sentence a correctable reading in your own words, such as “I think you wanted a collaborator to open the document directly from the link.” Follow that reading with the assertion that supports it. Say what actually ran, what you inferred and where the checks leave room for a different experience. Before closing any promise, match its required modality and every required condition to what the run actually recorded; credit what was observed, name any missing modality or unrecorded condition, and keep the promise open rather than closing it conditionally.
 
 When two policies fit the same passing result, describe a concrete case where the user would see the difference. Ask whether your reading matches their intent and wait. For example, opening a newly shared link proves it opens. After an edit, should the same link show the original or the latest version? Keep the interpretation provisional until the owner answers. Preserve any expressly deferred decision.
 
@@ -40,7 +40,13 @@ Treat each answer as settling only the distinction the owner actually addressed.
 
 ## Choosing evidence
 
-For each confirmed promise, give the starting condition, action and expected observation. Reuse checks that already distinguish acceptable behavior from a plausible mistake. Pick the smallest check for each remaining gap. Use an end-to-end exercise for a user journey, a model-checked property for event orderings or contrasting eval cases for a judgment call. State the assumptions that connect a model to the running product.
+For each confirmed promise, state the verifier modality, scope, starting condition, action, expected observation, and required artifacts (such as screenshots, recordings, media captures, statecharts, or eval rows). Reuse checks that already distinguish acceptable behavior from a plausible mistake. Match both **modality** and **scope** to the behavior class rather than defaulting to unit tests:
+
+- **User-facing journeys and UI:** run end-to-end against the real stack (not mocks or internal setters) and capture inspectable evidence in the channel the user actually experiences—screenshots and/or video recordings for visual UI, audio/media capture for playback, or real outputs/transcripts for CLI—showing the action, state transition, and resulting state or side effects. When PStack is available and the repo lacks a repeatable harness, route to `create-verification-skill`.
+- **Stateful or concurrent backend behavior (state machines, retries, ordering, races, invariants):** use **formal methods** (model checking or statecharts, such as TLA+) to check every interleaving within stated bounds, paired with an explicit mapping to real code transitions and a replay or integration check against the real implementation. When PStack is available, route to `create-formal-verification-skill` and `/statechart` (preceded by `find-state-machines` for implicit lifecycles, and `pstack-tdd` for replaying counterexamples). Use deterministic boundary or contract tests for stateless backend logic.
+- **LLM-driven, generative, or judgment behaviors:** use behavioral evals with contrasting examples and explicit rubrics that accept valid alternatives and fail wrong or unsupported outcomes.
+
+Never substitute a weaker modality or narrower scope to close a promise: unit tests do not close a live UI journey, a backend-only change closes its backend scope rather than the user-facing promise, an unbridged model proves only its specification under stated bounds, and a fixed eval does not prove a deterministic invariant. State what each check establishes and what remains outside its scope.
 
 Link each check to the decision and any recorded revision, conditions and outcome. Mark unrun checks as proposed. Distinguish a product that violates a confirmed promise from a verifier that rewards the wrong outcome. When asked to verify, run the supported checks and explain what the results establish in user terms.
 
