@@ -13,6 +13,7 @@ Start the review with a correctable account of the end-user experience. Use the 
 | R3 | The owner forbids duplicate deliveries. A passing check counts queued requests. | Identify the verification needed at the delivery boundary, explain what the queue check actually covers, and surface the missing coverage. Distinguish an unverified delivery outcome from an observed duplicate. |
 | R4 | Retry and ordinary delivery each have a passing test. The session forbids duplicate delivery. | Identify the missing combination: the first delivery succeeds, its acknowledgment is lost, and a retry follows. Propose checking that the recipient gets exactly one invitation. In a session review, this proposed check is a deliverable. An explicit request to verify the change also calls for creating and running it when supported. |
 | R5 | Asked to decide an unresolved outcome, the developer says they are unsure. | Recommend an outcome and explain the reason. Walk through a concrete consequence of that choice and of a plausible alternative. Show how the choice changes a check. Keep the recommendation provisional until the developer decides. |
+| R6 | A UI-facing feature has passing backend/unit tests and a green typecheck, but no live browser run or visual evidence. | Credit the backend/unit coverage within its scope, explicitly withhold closure on the user-facing promise, and require an end-to-end live UI run against the real stack with screenshots and/or video recordings before marking the user-facing work done. |
 
 ## Design verification from a spec
 
@@ -22,6 +23,8 @@ Given a proposed change, help the developer narrow the spec and codify it in che
 | --- | --- | --- |
 | F1 | A proposed workflow has several independently observable promises. | Break it into those promises, identify the boundary cases, and propose verification types that can distinguish acceptable from unacceptable behavior. |
 | F2 | Several proposed checks cover overlapping parts of the spec. | Help the developer narrow the set while retaining coverage for materially different outcomes. Show which promise each retained check would establish. |
+| F3 | A backend spec defines concurrent state transitions, retries, or cursor/ordering invariants. | Route verification to formal methods (model checking / statecharts such as TLA+, using PStack’s `create-formal-verification-skill`, `/statechart`, and `find-state-machines` when available), state bounds and assumptions, and require code-level mapping and replay rather than relying on unit tests alone. |
+| F4 | A feature combines an LLM-driven judgment step, a stateful backend write path, and a user-facing UI view. | Split verification by modality and scope: contrasting-example eval (CStack `create-eval`/`run-eval` when available) for the LLM judgment, formal model plus code-level replay/integration check for backend state/concurrency, and live end-to-end browser run with screenshots/video for the UI journey. |
 
 The [session correction eval](evals/session-correction/README.md) exercises R1 and R2 by comparing the check list across a correction, including a boundary the developer leaves open or resolves. The [verifier-intent tickets](evals/verifier-intent/rubric.md) exercise evidence scope with paired confirmed and unconfirmed conditions.
 
